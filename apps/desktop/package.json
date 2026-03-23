@@ -1,0 +1,12 @@
+{
+  "name": "@gtd-on-rails/desktop",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "node ./scripts/dev.mjs",
+    "build": "node ./scripts/build.mjs",
+    "lint": "node ./scripts/lint.mjs",
+    "check": "node ./scripts/check.mjs"
+  }
+}
+

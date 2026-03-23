@@ -1,0 +1,21 @@
+plugins {
+    id 'java'
+}
+
+group = 'com.gtdonrails'
+version = '0.0.0'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+tasks.register('printStructure') {
+    group = 'help'
+    description = 'Prints the placeholder status for the API module.'
+
+    doLast {
+        println 'api: placeholder Gradle module'
+    }
+}
