@@ -1,12 +1,22 @@
 {
   "name": "@gtd-on-rails/desktop",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "scripts": {
-    "dev": "node ./scripts/dev.mjs",
-    "build": "node ./scripts/build.mjs",
-    "lint": "node ./scripts/lint.mjs",
-    "check": "node ./scripts/check.mjs"
+    "dev": "tauri dev",
+    "dev:web": "vite --host 127.0.0.1 --port 1420 --strictPort",
+    "build": "pnpm run build:web",
+    "build:web": "tsc && vite build",
+    "desktop:build": "tauri build",
+    "lint": "tsc --noEmit",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.10.1"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.10.1",
+    "typescript": "^6.0.2",
+    "vite": "^8.0.2"
   }
 }
-

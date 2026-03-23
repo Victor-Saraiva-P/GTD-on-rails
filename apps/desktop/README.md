@@ -1,6 +1,9 @@
 # Desktop
 
-Placeholder do app desktop em Tauri 2.
+Esqueleto mínimo do app desktop com Vite e Tauri 2.
 
-Nenhuma interface ou configuração Tauri foi iniciada ainda. Esta pasta existe apenas para fixar a estrutura do monorepo.
+## Comandos
 
+- `pnpm dev`: executa o app desktop via Tauri em modo de desenvolvimento
+- `pnpm build`: gera apenas o frontend web local
+- `pnpm desktop:build`: gera o bundle desktop via Tauri
