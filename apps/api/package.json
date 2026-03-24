@@ -1,0 +1,12 @@
+{
+  "name": "@gtd-on-rails/api",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "./gradlew bootRun",
+    "build": "./gradlew build",
+    "lint": "./gradlew test",
+    "check": "./gradlew test"
+  }
+}
+
