@@ -206,7 +206,6 @@ O CI/CD valida o código e gera os binários de distribuição.
 
 ## 14. Evolução Futura Da Infraestrutura
 
-- Implementação de travas de segurança (lock) para evitar conflitos de merge no SQLite durante a sincronização entre dispositivos do mesmo usuário.
 - Migração para PostgreSQL se a escala ou concorrência simultânea se tornar um requisito crítico no futuro.
 
 ---

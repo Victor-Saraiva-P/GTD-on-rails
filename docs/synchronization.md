@@ -28,9 +28,9 @@ Para suportar mesclagem lógica (Merge) sem um servidor central, todas as tabela
 
 Quando o Git detecta uma divergência (estado *ahead* e *behind* simultâneos), o backend executa o seguinte fluxo:
 
-### 3.1 Detecção e Travamento
+### 3.1 Detecção de Conflitos
 1. O app detecta o conflito de arquivos binários no Git.
-2. A interface do usuário é bloqueada, exibindo o **Painel de Resolução de Conflitos**.
+2. A interface do usuário exibe o **Painel de Resolução de Conflitos**.
 
 ### 3.2 Execução do Merge via SQL
 O backend anexa o banco de dados remoto (vinda do GitHub) ao banco local e executa as seguintes operações:
@@ -51,17 +51,7 @@ A UI do Tauri deve apresentar as seguintes opções ao usuário:
 
 ---
 
-## 5. Mecanismo de Lock (Pessimista)
-
-Para minimizar conflitos, utiliza-se um arquivo de trava no repositório:
-
-1. **`data.lock`**: Arquivo contendo o nome do dispositivo, timestamp e um *heartbeat* opcional.
-2. **Heartbeat:** O app atualiza o timestamp do lock a cada 10 minutos enquanto estiver aberto com conexão à internet.
-3. **Stale Lock:** Se o lock for mais antigo que 30 minutos, o sistema oferece a opção de "Quebrar Lock", assumindo que o outro dispositivo crashou ou ficou offline.
-
----
-
-## 6. Sincronização de Arquivos e Anexos
+## 5. Sincronização de Arquivos e Anexos
 
 Materiais de referência (PDFs, imagens) seguem a mesma lógica de sincronização por arquivo, preferencialmente utilizando:
 - **Git LFS:** Para arquivos grandes, garantindo que o repositório principal não fique lento.
