@@ -53,7 +53,7 @@ Responsabilidades:
 - expor as APIs da aplicação
 - validar e processar operações recebidas
 - gerenciar a conexão com o arquivo SQLite
-- aplicar autenticação e autorização em cenários multi-usuário
+- garantir a integridade dos dados e regras de negócio do usuário único
 
 ### 3.3 Camada De Banco De Dados
 
@@ -206,8 +206,7 @@ O CI/CD valida o código e gera os binários de distribuição.
 
 ## 14. Evolução Futura Da Infraestrutura
 
-- Suporte a múltiplos backends sincronizando com o mesmo repositório de dados.
-- Implementação de travas de segurança (lock) para evitar conflitos de merge no SQLite.
+- Implementação de travas de segurança (lock) para evitar conflitos de merge no SQLite durante a sincronização entre dispositivos do mesmo usuário.
 - Migração para PostgreSQL se a escala ou concorrência simultânea se tornar um requisito crítico no futuro.
 
 ---
