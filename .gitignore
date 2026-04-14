@@ -1,0 +1,17 @@
+.DS_Store
+.idea/
+**/.idea/
+*.iml
+*.ipr
+*.iws
+node_modules/
+.turbo/
+dist/
+build/
+.gradle/
+out/
+*.log
+.env
+.env.*
+infra/postgres-data/
+apps/desktop/src-tauri/gen/

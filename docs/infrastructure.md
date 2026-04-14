@@ -1,408 +1,225 @@
-# Infrastructure Documentation
+# Documentação de Infraestrutura
 
-## 1. Overview
+## 1. Visão Geral
 
-This document defines the technical infrastructure of the project, including the core stack, execution model, deployment strategy, synchronization approach, and CI/CD design.
+Este documento define a infraestrutura técnica do projeto, incluindo a stack principal, o modelo de execução, a estratégia de deploy, a abordagem de sincronização e o desenho de CI/CD.
 
-The system is based on a desktop-first architecture, with a centralized backend and database, prioritizing simplicity, low operational cost, and maintainability.
+O sistema é baseado em uma arquitetura desktop-first, priorizando simplicidade, portabilidade e baixo custo operacional através do uso de um banco de dados local sincronizado.
 
 ---
 
-## 2. Core Stack
+## 2. Stack Principal
 
 ### Frontend
 
 - **Tauri 2**
-- Desktop application built with web technologies
-- Lightweight runtime with native operating system integration
+- Aplicação desktop construída com tecnologias web
+- Runtime leve com integração nativa com o sistema operacional
 
 ### Backend
 
 - **Java + Spring Boot**
-- Central application API
-- Responsible for data access, synchronization, authentication, and future integrations
+- API da aplicação executada localmente ou em servidor de apoio
+- Responsável por acesso a dados, lógica de negócio e integrações
 
-### Database
+### Banco de Dados
 
-- **PostgreSQL**
-- Primary relational database
-- Stores the structured data of the application
-
----
-
-## 3. High-Level Architecture
-
-The system is divided into three main layers:
-
-### 3.1 Desktop Client
-
-Tauri application executed locally on the user machine.
-
-Responsibilities:
-
-- render the user interface
-- process keyboard interactions and local UX behavior
-- communicate with the backend through HTTP/HTTPS
-- support local lightweight caching in future iterations if needed
-
-### 3.2 Central Backend
-
-Spring Boot service executed on the main server machine.
-
-Responsibilities:
-
-- expose application APIs
-- validate and process incoming operations
-- centralize synchronization between devices
-- enforce authentication and authorization
-- support future integrations and background operations
-
-### 3.3 Database Layer
-
-PostgreSQL instance connected to the backend.
-
-Responsibilities:
-
-- store application entities
-- preserve relational integrity
-- support filtering, querying, and history
-- act as the single source of truth for structured data
+- **SQLite**
+- Banco relacional leve baseado em arquivo
+- Armazena os dados estruturados de forma portátil e versionável
 
 ---
 
-## 4. Infrastructure Topology
+## 3. Arquitetura Em Alto Nível
 
-### Initial topology
+O sistema é dividido em três camadas principais:
 
-- **1 main machine** hosting backend and PostgreSQL
-- **desktop clients** connecting to the backend
-- local network access by default
-- remote access through secure tunneling or future controlled exposure
+### 3.1 Cliente Desktop
 
-### Suggested structure
+Aplicação Tauri executada localmente na máquina do usuário.
 
-- `desktop app` → runs locally on each client machine
-- `spring boot api` → runs on the main server
-- `postgres` → runs on the same main server
-- `local storage` → filesystem directory for attachments and reference files
+Responsabilidades:
 
----
+- renderizar a interface do usuário
+- processar interações de teclado e comportamentos locais de UX
+- se comunicar com o backend local/remoto por HTTP/HTTPS
 
-## 5. Data Synchronization Strategy
+### 3.2 Backend
 
-Synchronization is based on a **centralized server model**, avoiding direct replication between local databases.
+Serviço Spring Boot responsável pela persistência e lógica.
 
-### Adopted approach
+Responsabilidades:
 
-- all clients communicate with the same backend
-- the backend reads from and writes to a centralized PostgreSQL database
-- PostgreSQL acts as the **single source of truth**
-- concurrency conflicts are handled at the application layer
+- expor as APIs da aplicação
+- validar e processar operações recebidas
+- gerenciar a conexão com o arquivo SQLite
+- garantir a integridade dos dados e regras de negócio do usuário único
 
-### Reasoning
+### 3.3 Camada De Banco De Dados
 
-This approach reduces:
+Arquivo SQLite local.
 
-- merge complexity across devices
-- risks of data corruption
-- operational overhead of distributed synchronization
-- need for file-based database sync strategies
+Responsabilidades:
+
+- armazenar entidades da aplicação
+- preservar a integridade relacional
+- permitir o versionamento do estado da aplicação via Git
 
 ---
 
-## 6. File Storage Strategy
+## 4. Topologia De Infraestrutura
 
-Attachments and reference materials are not stored directly inside the database.
+### Topologia inicial
 
-### Approach
+- **Execução Local:** Backend e SQLite rodando na mesma máquina que o cliente desktop.
+- **Sincronização Distribuída:** O arquivo de banco de dados é sincronizado entre dispositivos via repositório Git privado.
 
-- files are stored in **local server storage**
-- the database stores only:
-  - file identifier
-  - physical/logical path
-  - metadata
-  - relationship to domain entities
+### Estrutura sugerida
 
-### Benefits
-
-- better database performance
-- simpler backup strategy
-- lower coupling between structured data and binary files
+- `desktop app` → roda localmente
+- `spring boot api` → roda localmente (ou em container leve)
+- `sqlite file` → localizado em diretório controlado para sincronização
+- `local storage` → diretório no sistema de arquivos para anexos e arquivos de referência
 
 ---
 
-## 7. Execution Model
+## 5. Estratégia De Sincronização De Dados
+
+A sincronização é baseada no **versionamento do arquivo SQLite via Git**.
+
+### Abordagem adotada
+
+- O arquivo SQLite é tratado como um artefato de dados versionável.
+- Sincronização entre diferentes máquinas (ex: desktop e notebook) via push/pull em repositório Git privado (ex: GitHub).
+- Uso de branches específicas para dados para evitar poluição do histórico de código.
+
+### Justificativa
+
+Essa abordagem oferece:
+
+- **Custo Zero:** Sem necessidade de hospedar e manter um servidor de banco de dados centralizado.
+- **Simplicidade:** Aproveita a infraestrutura de controle de versão já existente.
+- **Portabilidade:** Todo o estado da aplicação reside em um único arquivo fácil de mover.
+- **Offline-First:** A aplicação funciona plenamente sem conexão constante, sincronizando apenas quando desejado.
+
+---
+
+## 6. Estratégia De Armazenamento De Arquivos
+
+Anexos e materiais de referência são armazenados no sistema de arquivos.
+
+### Abordagem
+
+- arquivos são armazenados em **armazenamento local** (também passíveis de sincronização via ferramentas de arquivo ou Git LFS).
+- o banco armazena apenas:
+  - identificador do arquivo
+  - caminho relativo
+  - metadados
+  - relacionamento com entidades de domínio
+
+### Benefícios
+
+- mantém o arquivo SQLite leve.
+- estratégia de backup integrada com a de arquivos.
+- menor acoplamento entre dados estruturados e binários.
+
+---
+
+## 7. Modelo De Execução
 
 ### Frontend (Tauri)
 
-- distributed as a desktop application
-- lightweight binary
-- optimized for Linux-first usage
-- future builds for other operating systems remain possible
+- distribuído como aplicação desktop binária.
 
 ### Backend (Spring Boot)
 
-- runs as an independent service
-- packaged as a `.jar`
-- can be executed directly or through containers
+- executado como um processo local acompanhando o frontend.
+- configurado para se conectar ao arquivo SQLite no caminho definido.
 
-### Database (PostgreSQL)
+### Banco De Dados (SQLite)
 
-- runs as a dedicated service
-- persistent data stored in isolated volumes
-- backed up periodically
+- arquivo único de banco de dados (`.db` ou `.sqlite`).
+- sem necessidade de serviço/daemon rodando em segundo plano.
 
 ---
 
-## 8. Environment Model
+## 8. Modelo De Ambientes
 
-### Development
+### Desenvolvimento e Produção
 
-- frontend and backend run separately
-- local PostgreSQL instance for development
-- local communication between Tauri app and backend API
-
-### Initial production
-
-- one main server machine hosting:
-  - backend application
-  - PostgreSQL
-  - local attachment storage directory
+- A stack é idêntica em ambos os ambientes, simplificando o ciclo de desenvolvimento.
+- Diferenciação apenas no caminho dos arquivos de dados e credenciais de sincronização.
 
 ---
 
-## 9. Deployment Strategy
-
-### Backend execution options
-
-#### Option A — Direct execution
-
-- Java installed on the server
-- Spring Boot running as a system service
-
-#### Option B — Containerized execution
-
-- backend in a container
-- PostgreSQL in a container or separate service
-- orchestration through Docker Compose
-
-### Recommended approach
-
-- **Docker Compose for backend and database**
-- Tauri desktop application running locally on client machines
-
-This provides:
-
-- clearer service isolation
-- portability
-- easier migration to another machine
-- simpler operational maintenance
-
----
-
-## 10. CI/CD Strategy
-
-The project uses CI/CD to validate code changes, generate build artifacts, and automate backend deployment.
-
-### 10.1 Continuous Integration (CI)
-
-CI is responsible for:
-
-- validating frontend changes
-- executing backend tests
-- verifying build integrity
-- preventing broken changes from reaching deployment
-
-### 10.2 Continuous Delivery / Deployment (CD)
-
-CD is applied primarily to the backend.
-
-Expected flow:
-
-1. a new commit or merge to the main branch triggers the workflow
-2. GitHub Actions executes the CI pipeline
-3. if CI succeeds, the deploy job becomes eligible
-4. the deploy job is executed automatically on the main server
-
----
-
-## 11. Self-Hosted Runner
-
-To support automated deployment on a local machine, the infrastructure uses a **self-hosted runner**.
-
-### Definition
-
-A self-hosted runner is a GitHub Actions agent running on a machine controlled by the project owner.
-
-It:
-
-- stays online and available to receive jobs
-- does **not** monitor commits on its own
-- receives jobs only when GitHub triggers a workflow and dispatches a matching job
-
-### Role in the architecture
-
-- execute deployment jobs inside the main server
-- allow automatic backend delivery without requiring paid cloud infrastructure
-- access local containers, files, services, and volumes directly
-
-### Expected behavior
-
-- the runner stays idle and available
-- GitHub detects repository events such as `push` or `merge`
-- GitHub runs CI
-- only if CI succeeds, GitHub sends the deploy job to the self-hosted runner
-- if CI fails, deploy is not executed
-
-### Recommended usage
-
-- **GitHub-hosted runners** for validation, testing, and build stages
-- **self-hosted runner** on the main server for backend deployment
-
----
-
-## 12. Workflow Separation
-
-The pipeline should be separated into distinct workflows.
-
-### CI workflow
-
-Responsibilities:
-
-- frontend lint/build/test
-- backend test execution
-- general validation
-
-### Backend deploy workflow
-
-Responsibilities:
-
-- fetch updated code or artifacts
-- rebuild containers
-- restart backend services
-- keep database data and persistent volumes intact
-
-### Desktop release workflow
-
-Responsibilities:
-
-- build Tauri application
-- generate artifacts
-- support future release automation for the desktop client
-
----
-
-## 13. Network and Access
-
-### Local access
-
-- communication over the local network between clients and server
-
-### Remote access
-
-- preference for secure tunneling in early stages
-- direct public exposure only if necessary in the future
-
-### Goal
-
-Avoid:
-
-- unnecessary open ports
-- premature network/security complexity
-- dependency on paid public infrastructure
-
----
-
-## 14. Security Baseline
-
-### Database
-
-- accessible only by the backend
-- never directly exposed to the desktop client
-- credentials stored through environment variables or secrets management
+## 9. Estratégia De Deploy
 
 ### Backend
 
-- centralized authentication
-- input validation
-- session/token control
-- clear separation between development and production configuration
+- Empacotado como `.jar` ou container Docker leve.
+- Execução simplificada sem dependências de serviços externos de banco de dados.
 
-### File storage
+### Abordagem recomendada
 
-- non-predictable internal file naming
-- controlled directory organization
-- file access mediated by the backend when required
-
-### Pipeline and deployment
-
-- production deploy gated by successful CI
-- deploy runner restricted to the main server
-- secrets and credentials kept out of source code
-- production automation isolated from local development routines
+- Execução via **Docker Compose** (opcional para o backend) ou diretamente via JRE.
+- O arquivo SQLite é montado via volume se estiver em container.
 
 ---
 
-## 15. Backup and Recovery
+## 10. Estratégia De CI/CD
 
-### Database
+O CI/CD valida o código e gera os binários de distribuição.
 
-- periodic PostgreSQL backups
-- retention of multiple backup versions
-
-### Files
-
-- periodic copy of the local storage directory
-
-### Objective
-
-Ensure recoverability in case of:
-
-- disk failure
-- human error
-- data corruption
-- failed update or broken deployment
+- **CI:** Testes unitários e de integração (usando SQLite em memória ou arquivo temporário).
+- **CD:** Geração de releases do Tauri e artefatos do backend.
 
 ---
 
-## 16. Future Infrastructure Evolution
+## 11. Rede E Acesso
 
-The chosen architecture allows future expansion toward:
-
-- local cache on the client
-- partial offline support
-- real-time synchronization through WebSocket
-- separation of application server and database server
-- S3-compatible external storage
-- stronger authentication mechanisms
-- centralized logs and observability
-- automated desktop releases
-- future Tauri auto-update support
+- **Local:** Acesso direto via localhost entre frontend e backend.
+- **Sincronização:** Requer acesso ao GitHub/Git remoto para troca de dados entre máquinas.
 
 ---
 
-## 17. Technical Summary
+## 12. Linha De Base De Segurança
 
-### Defined stack
+### Banco de dados
 
-- **Desktop app:** Tauri 2
-- **Backend:** Spring Boot with Java
-- **Database:** PostgreSQL
+- Proteção por permissões de arquivo no sistema operacional.
+- Criptografia em repouso opcional (via extensões SQLite se necessário).
 
-### Defined architecture
+### Pipeline e deploy
 
-- desktop clients connect to a centralized backend
-- backend connects to a centralized PostgreSQL database
-- files are stored outside the database in local storage
-- synchronization is performed through a central server model
-- CI validates changes before deployment
-- backend deployment is executed automatically through a self-hosted runner on the main server
+- Segredos do GitHub para sincronização armazenados de forma segura.
 
-### Primary infrastructure principles
+---
 
-- operational simplicity
-- low cost
-- reliability
-- centralized synchronization
-- maintainability
-- safe build and deploy automation
+## 13. Backup E Recuperação
+
+### Estratégia
+
+- O próprio histórico do Git serve como sistema de backup versionado.
+- Recomenda-se cópias periódicas do arquivo SQLite para armazenamento frio ou nuvem adicional.
+
+---
+
+## 14. Evolução Futura Da Infraestrutura
+
+- Migração para PostgreSQL se a escala ou concorrência simultânea se tornar um requisito crítico no futuro.
+
+---
+
+## 15. Resumo Técnico
+
+### Stack definida
+
+- **Aplicação desktop:** Tauri 2
+- **Backend:** Spring Boot com Java
+- **Banco de dados:** SQLite
+
+### Arquitetura definida
+
+- Aplicação local autossuficiente.
+- Sincronização de dados baseada em arquivo via Git.
+- Foco em simplicidade, baixo custo e portabilidade.
