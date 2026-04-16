@@ -5,8 +5,10 @@
   "scripts": {
     "dev": "./gradlew bootRun",
     "build": "./gradlew build",
-    "lint": "./gradlew test",
-    "check": "./gradlew test"
+    "test": "./gradlew test",
+    "unitTest": "./gradlew unitTest",
+    "integrationTest": "./gradlew integrationTest",
+    "lint": "./gradlew check",
+    "check": "./gradlew check"
   }
 }
-

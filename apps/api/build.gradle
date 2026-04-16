@@ -36,3 +36,25 @@ dependencies {
 tasks.named('test') {
 	useJUnitPlatform()
 }
+
+tasks.register('unitTest', Test) {
+	group = 'verification'
+	description = 'Runs unit tests.'
+	testClassesDirs = sourceSets.test.output.classesDirs
+	classpath = sourceSets.test.runtimeClasspath
+	useJUnitPlatform {
+		excludeTags 'integration'
+	}
+	shouldRunAfter tasks.named('test')
+}
+
+tasks.register('integrationTest', Test) {
+	group = 'verification'
+	description = 'Runs integration tests.'
+	testClassesDirs = sourceSets.test.output.classesDirs
+	classpath = sourceSets.test.runtimeClasspath
+	useJUnitPlatform {
+		includeTags 'integration'
+	}
+	shouldRunAfter tasks.named('test')
+}
