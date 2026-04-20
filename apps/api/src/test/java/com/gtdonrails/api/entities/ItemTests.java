@@ -69,4 +69,16 @@ class ItemTests {
 
         assertEquals(ItemStatus.STUFF, item.getStatus());
     }
+
+    // timestamps
+    @Test
+    void setsCreatedAtWhenItemIsPersisted() {
+        Item item = new Item(new Title("Capture idea"), null);
+
+        assertNull(item.getCreatedAt());
+
+        item.prePersist();
+
+        assertNotNull(item.getCreatedAt());
+    }
 }

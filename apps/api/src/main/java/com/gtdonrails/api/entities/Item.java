@@ -45,6 +45,9 @@ public class Item {
     @Column(nullable = false, length = 50)
     private ItemStatus status;
 
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private Instant createdAt;
+
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
@@ -81,6 +84,9 @@ public class Item {
 
     @PrePersist
     void prePersist() {
+        if (createdAt == null) {
+            createdAt = Instant.now();
+        }
         status = inferStatus();
         if (updatedAt == null) {
             updatedAt = Instant.now();

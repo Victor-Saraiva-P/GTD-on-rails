@@ -3,6 +3,7 @@ create table items (
     title text not null,
     body text,
     status text not null,
+    created_at timestamp not null,
     updated_at timestamp not null,
     deleted_at timestamp,
     constraint chk_items_title_length check (length(title) <= 200),
