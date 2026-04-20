@@ -4,8 +4,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.lang.reflect.Field;
+import java.time.Instant;
 
 import com.gtdonrails.api.enums.ItemStatus;
 import com.gtdonrails.api.types.Title;
@@ -79,5 +82,18 @@ class ItemTests {
         item.prePersist();
 
         assertNotNull(item.getCreatedAt());
+    }
+
+    @Test
+    void keepsExistingCreatedAtWhenItemIsPersisted() throws Exception {
+        Item item = new Item(new Title("Capture idea"), null);
+        Instant existingCreatedAt = Instant.parse("2026-01-01T10:15:30Z");
+        Field createdAtField = Item.class.getDeclaredField("createdAt");
+        createdAtField.setAccessible(true);
+        createdAtField.set(item, existingCreatedAt);
+
+        item.prePersist();
+
+        assertEquals(existingCreatedAt, item.getCreatedAt());
     }
 }
