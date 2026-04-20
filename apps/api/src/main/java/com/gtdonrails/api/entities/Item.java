@@ -4,7 +4,12 @@ import java.time.Instant;
 import java.util.UUID;
 
 import com.gtdonrails.api.enums.ItemStatus;
+import com.gtdonrails.api.persistence.converters.BodyConverter;
+import com.gtdonrails.api.persistence.converters.TitleConverter;
+import com.gtdonrails.api.types.Body;
+import com.gtdonrails.api.types.Title;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -15,25 +20,26 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.Getter;
+import lombok.Setter;
 
 @Entity
 @Table(name = "items")
 @Getter
 public class Item {
 
-    private static final int MAX_TITLE_LENGTH = 200;
-    private static final int MAX_BODY_LENGTH = 10_000;
-
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(nullable = false, updatable = false)
     private UUID id;
 
-    @Column(nullable = false, length = MAX_TITLE_LENGTH)
-    private String title;
+    @Convert(converter = TitleConverter.class)
+    @Column(nullable = false, length = Title.MAX_LENGTH)
+    private Title title;
 
-    @Column(length = MAX_BODY_LENGTH)
-    private String body;
+    @Setter
+    @Convert(converter = BodyConverter.class)
+    @Column(length = Body.MAX_LENGTH)
+    private Body body;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
@@ -48,32 +54,17 @@ public class Item {
     public Item() {
     }
 
-    public Item(String title, String body) {
+    public Item(Title title, Body body) {
         setTitle(title);
         setBody(body);
     }
 
-    public void setTitle(String title) {
-        if (title == null || title.isBlank()) {
+    public void setTitle(Title title) {
+        if (title == null) {
             throw new IllegalArgumentException("title is required");
-        }
-        if (title.length() > MAX_TITLE_LENGTH) {
-            throw new IllegalArgumentException("title exceeds max length of " + MAX_TITLE_LENGTH);
         }
 
         this.title = title;
-    }
-
-    public void setBody(String body) {
-        String normalizedBody = body;
-        if (normalizedBody != null && normalizedBody.isBlank()) {
-            normalizedBody = null;
-        }
-        if (normalizedBody != null && normalizedBody.length() > MAX_BODY_LENGTH) {
-            throw new IllegalArgumentException("body exceeds max length of " + MAX_BODY_LENGTH);
-        }
-
-        this.body = normalizedBody;
     }
 
     public void softDelete() {
