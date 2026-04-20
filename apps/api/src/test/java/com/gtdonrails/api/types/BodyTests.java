@@ -10,6 +10,15 @@ import org.junit.jupiter.api.Test;
 class BodyTests {
 
     @Test
+    void rejectsNullBody() {
+        IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> new Body(null));
+
+        assertEquals("body is required", exception.getMessage());
+    }
+
+    @Test
     void rejectsBlankBody() {
         IllegalArgumentException exception = assertThrows(
             IllegalArgumentException.class,
