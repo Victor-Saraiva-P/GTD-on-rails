@@ -8,7 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.gtdonrails.api.enums.ItemStatus;
-import com.gtdonrails.api.types.Body;
 import com.gtdonrails.api.types.Title;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
