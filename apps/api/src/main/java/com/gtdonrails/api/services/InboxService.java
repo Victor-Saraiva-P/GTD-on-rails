@@ -50,27 +50,25 @@ public class InboxService {
 
     @Transactional
     public InboxItemResponseDto createStuff(CreateInboxItemRequestDto request) {
-        try {
-            Item item = new Item(
-                new Title(itemTextNormalizer.normalizeTitle(request.title())),
-                createBody(itemTextNormalizer.normalizeBody(request.body())));
-            return inboxItemMapper.toResponse(itemRepository.save(item));
-        } catch (IllegalArgumentException exception) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, exception.getMessage(), exception);
-        }
+        Title title = new Title(itemTextNormalizer.normalizeTitle(request.title()));
+        String normalizedBodyValue = itemTextNormalizer.normalizeBody(request.body());
+        Body body = normalizedBodyValue == null ? null : new Body(normalizedBodyValue);
+        Item item = new Item(
+            title,
+            body);
+        return inboxItemMapper.toResponse(itemRepository.save(item));
     }
 
     @Transactional
     public InboxItemResponseDto updateStuff(UUID id, UpdateInboxItemRequestDto request) {
         Item item = findInboxStuff(id);
+        Title title = new Title(itemTextNormalizer.normalizeTitle(request.title()));
+        String normalizedBodyValue = itemTextNormalizer.normalizeBody(request.body());
+        Body body = normalizedBodyValue == null ? null : new Body(normalizedBodyValue);
 
-        try {
-            item.setTitle(new Title(itemTextNormalizer.normalizeTitle(request.title())));
-            item.setBody(createBody(itemTextNormalizer.normalizeBody(request.body())));
-            return inboxItemMapper.toResponse(itemRepository.save(item));
-        } catch (IllegalArgumentException exception) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, exception.getMessage(), exception);
-        }
+        item.setTitle(title);
+        item.setBody(body);
+        return inboxItemMapper.toResponse(itemRepository.save(item));
     }
 
     @Transactional
@@ -83,9 +81,5 @@ public class InboxService {
     private Item findInboxStuff(UUID id) {
         return itemRepository.findByIdAndStatusAndDeletedAtIsNull(id, ItemStatus.STUFF)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "inbox item not found"));
-    }
-
-    private Body createBody(String normalizedBody) {
-        return normalizedBody == null ? null : new Body(normalizedBody);
     }
 }
