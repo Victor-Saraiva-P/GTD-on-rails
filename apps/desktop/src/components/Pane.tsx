@@ -6,11 +6,20 @@ type PaneProps = PropsWithChildren<{
   status?: ReactNode;
   bodyClassName?: string;
   wrapLabel?: boolean;
+  active?: boolean;
 }>;
 
-export function Pane({ iconSrc, label, status, bodyClassName, wrapLabel = false, children }: PaneProps) {
+export function Pane({
+  iconSrc,
+  label,
+  status,
+  bodyClassName,
+  wrapLabel = false,
+  active = false,
+  children
+}: PaneProps) {
   return (
-    <div className="pane">
+    <div className={`pane${active ? " pane--active" : ""}`}>
       <header className={`pane__header${wrapLabel ? " pane__header--wrap" : ""}`}>
         <span className={`pane__tab${wrapLabel ? " pane__tab--wrap" : ""}`}>
           <img src={iconSrc} alt="" className="pane__tab-icon" />

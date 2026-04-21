@@ -1,5 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
+import { KeybindProvider } from "./features/keybinds/KeybindProvider";
 import { InboxPage } from "./pages/InboxPage";
 import "./styles.css";
 
@@ -11,6 +12,8 @@ if (!app) {
 
 ReactDOM.createRoot(app).render(
   <React.StrictMode>
-    <InboxPage />
+    <KeybindProvider>
+      <InboxPage />
+    </KeybindProvider>
   </React.StrictMode>
 );
