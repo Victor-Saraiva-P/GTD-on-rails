@@ -1,4 +1,4 @@
-package com.gtdonrails.api.exceptions.api;
+package com.gtdonrails.api;
 
 import com.gtdonrails.api.exceptions.inbox.InboxItemNotFoundException;
 import com.gtdonrails.api.exceptions.shared.BusinessException;
