@@ -8,6 +8,7 @@ public record Body(String value) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException("body is required");
         }
+
         if (value.length() > MAX_LENGTH) {
             throw new IllegalArgumentException("body exceeds max length of " + MAX_LENGTH);
         }

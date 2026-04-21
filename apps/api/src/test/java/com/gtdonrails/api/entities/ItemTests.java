@@ -11,6 +11,7 @@ import java.lang.reflect.Field;
 import java.time.Instant;
 
 import com.gtdonrails.api.enums.ItemStatus;
+import com.gtdonrails.api.types.Body;
 import com.gtdonrails.api.types.Title;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -37,6 +38,16 @@ class ItemTests {
             () -> item.setTitle(null));
 
         assertEquals("title is required", exception.getMessage());
+    }
+
+    // body
+    @Test
+    void setBodyAllowsNull() {
+        Item item = new Item(new Title("Capture idea"), new Body("Details"));
+
+        item.setBody(null);
+
+        assertNull(item.getBody());
     }
 
     // deletion
