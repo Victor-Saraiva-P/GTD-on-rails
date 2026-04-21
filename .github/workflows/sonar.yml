@@ -1,0 +1,40 @@
+name: SonarCloud
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  sonar:
+    name: SonarCloud Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      - name: Run tests, coverage, and SonarCloud analysis
+        working-directory: apps/api
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_USER_HOME: /tmp/sonar-home
+        run: ./gradlew test jacocoTestReport sonar -Dsonar.token="$SONAR_TOKEN"
