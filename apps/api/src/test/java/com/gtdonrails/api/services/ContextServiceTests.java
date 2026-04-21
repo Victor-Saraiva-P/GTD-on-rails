@@ -1,7 +1,6 @@
 package com.gtdonrails.api.services;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -9,17 +8,20 @@ import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import com.gtdonrails.api.dtos.context.ContextResponseDto;
 import com.gtdonrails.api.dtos.context.CreateContextRequestDto;
 import com.gtdonrails.api.dtos.context.UpdateContextRequestDto;
 import com.gtdonrails.api.entities.Context;
+import com.gtdonrails.api.entities.Item;
 import com.gtdonrails.api.exceptions.context.ContextAlreadyExistsException;
 import com.gtdonrails.api.exceptions.context.ContextNotFoundException;
 import com.gtdonrails.api.mappers.ContextMapper;
 import com.gtdonrails.api.normalizers.ContextNameNormalizer;
 import com.gtdonrails.api.repositories.ContextRepository;
+import com.gtdonrails.api.types.Title;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -201,6 +203,24 @@ class ContextServiceTests {
         contextService.deleteContext(contextId);
 
         verify(contextRepository).save(contextCaptor.capture());
-        assertEquals(true, contextCaptor.getValue().isDeleted());
+        assertTrue(contextCaptor.getValue().isDeleted());
+    }
+
+    @Test
+    void deleteContextRemovesRelationFromAllItems() {
+        UUID contextId = UUID.randomUUID();
+        Context context = new Context("home");
+        Item firstItem = new Item(new Title("First item"), null);
+        Item secondItem = new Item(new Title("Second item"), null);
+        firstItem.addContext(context);
+        secondItem.addContext(context);
+
+        when(contextRepository.findByIdAndDeletedAtIsNull(contextId)).thenReturn(Optional.of(context));
+
+        contextService.deleteContext(contextId);
+
+        assertEquals(Set.of(), firstItem.getContexts());
+        assertEquals(Set.of(), secondItem.getContexts());
+        assertEquals(Set.of(), context.getItems());
     }
 }

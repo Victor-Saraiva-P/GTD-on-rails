@@ -1,5 +1,6 @@
 package com.gtdonrails.api.services;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
 
@@ -72,6 +73,7 @@ public class ContextService {
     @Transactional
     public void deleteContext(UUID id) {
         Context context = findContext(id);
+        new HashSet<>(context.getItems()).forEach(item -> item.removeContext(context));
         context.softDelete();
         contextRepository.save(context);
     }

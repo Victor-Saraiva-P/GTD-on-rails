@@ -10,8 +10,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.gtdonrails.api.entities.Context;
+import com.gtdonrails.api.entities.Item;
 import com.gtdonrails.api.repositories.ContextRepository;
 import com.gtdonrails.api.repositories.ItemRepository;
+import com.gtdonrails.api.types.Title;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -133,5 +135,20 @@ class ContextControllerTests {
         mockMvc.perform(get("/contexts"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$", hasSize(0)));
+    }
+
+    @Test
+    void deletingContextRemovesItFromRelatedItems() throws Exception {
+        Context context = contextRepository.save(new Context("home"));
+        Item item = new Item(new Title("Capture idea"), null);
+        item.addContext(context);
+        item = itemRepository.saveAndFlush(item);
+
+        mockMvc.perform(delete("/contexts/{id}", context.getId()))
+            .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/inbox/items/{id}", item.getId()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.contexts", hasSize(0)));
     }
 }
