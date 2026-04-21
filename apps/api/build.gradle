@@ -38,6 +38,7 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform()
+	finalizedBy tasks.named('jacocoTestReport')
 }
 
 tasks.register('unitTest', Test) {
@@ -63,7 +64,21 @@ tasks.register('integrationTest', Test) {
 }
 
 jacocoTestReport {
+	dependsOn tasks.named('test')
 	reports {
 		xml.required = true
+	}
+}
+
+tasks.named('sonar') {
+	dependsOn tasks.named('jacocoTestReport')
+}
+
+sonar {
+	properties {
+		property 'sonar.organization', 'victor-saraiva-p-1'
+		property 'sonar.projectKey', 'victor-saraiva-p-1'
+		property 'sonar.host.url', 'https://sonarcloud.io'
+		property 'sonar.coverage.jacoco.xmlReportPaths', 'build/reports/jacoco/test/jacocoTestReport.xml'
 	}
 }
