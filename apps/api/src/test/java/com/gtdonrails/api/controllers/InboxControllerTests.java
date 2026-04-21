@@ -1,4 +1,4 @@
-package com.gtdonrails.api.inbox;
+package com.gtdonrails.api.controllers;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -9,10 +9,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.gtdonrails.api.controllers.InboxController;
 import com.gtdonrails.api.entities.Item;
 import com.gtdonrails.api.repositories.ItemRepository;
-import com.gtdonrails.api.services.InboxService;
 import com.gtdonrails.api.types.Body;
 import com.gtdonrails.api.types.Title;
 import org.junit.jupiter.api.BeforeEach;
