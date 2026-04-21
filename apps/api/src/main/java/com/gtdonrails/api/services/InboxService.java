@@ -8,15 +8,14 @@ import com.gtdonrails.api.dtos.InboxItemResponseDto;
 import com.gtdonrails.api.dtos.UpdateInboxItemRequestDto;
 import com.gtdonrails.api.entities.Item;
 import com.gtdonrails.api.enums.ItemStatus;
+import com.gtdonrails.api.exceptions.inbox.InboxItemNotFoundException;
 import com.gtdonrails.api.mappers.InboxItemMapper;
 import com.gtdonrails.api.normalizers.ItemTextNormalizer;
 import com.gtdonrails.api.repositories.ItemRepository;
 import com.gtdonrails.api.types.Body;
 import com.gtdonrails.api.types.Title;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class InboxService {
@@ -80,6 +79,6 @@ public class InboxService {
 
     private Item findInboxStuff(UUID id) {
         return itemRepository.findByIdAndStatusAndDeletedAtIsNull(id, ItemStatus.STUFF)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "inbox item not found"));
+            .orElseThrow(() -> new InboxItemNotFoundException("item not found"));
     }
 }

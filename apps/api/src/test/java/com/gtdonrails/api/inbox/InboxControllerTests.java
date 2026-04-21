@@ -73,7 +73,11 @@ class InboxControllerTests {
                     }
                     """))
             .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.message").value("title is required"));
+            .andExpect(jsonPath("$.title").value("Invalid data"))
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.type").value("https://gtdonrails.local/errors/invalid-data"))
+            .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("Field 'title': title is required")))
+            .andExpect(jsonPath("$.instance").value("/inbox/items"));
     }
 
     @Test
@@ -126,7 +130,22 @@ class InboxControllerTests {
     void returnsNotFoundForMissingInboxItem() throws Exception {
         mockMvc.perform(get("/inbox/items/00000000-0000-0000-0000-000000000001"))
             .andExpect(status().isNotFound())
-            .andExpect(jsonPath("$.message").value("inbox item not found"));
+            .andExpect(jsonPath("$.title").value("Resource not found"))
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.detail").value("item not found"))
+            .andExpect(jsonPath("$.type").value("https://gtdonrails.local/errors/resource-not-found"))
+            .andExpect(jsonPath("$.instance").value("/inbox/items/00000000-0000-0000-0000-000000000001"));
+    }
+
+    @Test
+    void returnsStandardizedNotFoundForUnknownRoute() throws Exception {
+        mockMvc.perform(get("/route/that/does-not-exist"))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.title").value("Invalid URI"))
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.type").value("https://gtdonrails.local/errors/invalid-uri"))
+            .andExpect(jsonPath("$.detail").value("The requested URI '/route/that/does-not-exist' does not exist. Correct it and try again."))
+            .andExpect(jsonPath("$.instance").value("/route/that/does-not-exist"));
     }
 
     @Test
