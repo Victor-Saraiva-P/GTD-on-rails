@@ -5,6 +5,7 @@
 *.ipr
 *.iws
 node_modules/
+.pnpm-store/
 .turbo/
 dist/
 build/
