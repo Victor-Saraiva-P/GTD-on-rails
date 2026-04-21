@@ -20,6 +20,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.Getter;
+import lombok.Setter;
 
 @Entity
 @Table(name = "items")
@@ -35,6 +36,7 @@ public class Item {
     @Column(nullable = false, length = Title.MAX_LENGTH)
     private Title title;
 
+    @Setter
     @Convert(converter = BodyConverter.class)
     @Column(length = Body.MAX_LENGTH)
     private Body body;
@@ -66,10 +68,6 @@ public class Item {
         }
 
         this.title = title;
-    }
-
-    public void setBody(Body body) {
-        this.body = body;
     }
 
     public void softDelete() {
