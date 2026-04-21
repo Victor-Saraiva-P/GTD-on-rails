@@ -21,6 +21,7 @@ import lombok.Getter;
 public class Context extends AuditableEntity {
 
     public static final int MAX_NAME_LENGTH = 100;
+    public static final int MAX_CONTEXTS_PER_ITEM = 20;
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)

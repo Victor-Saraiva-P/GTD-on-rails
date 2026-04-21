@@ -12,14 +12,18 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import com.gtdonrails.api.dtos.CreateInboxItemRequestDto;
-import com.gtdonrails.api.dtos.InboxItemResponseDto;
-import com.gtdonrails.api.dtos.UpdateInboxItemRequestDto;
+import com.gtdonrails.api.dtos.context.ContextResponseDto;
+import com.gtdonrails.api.dtos.inbox.CreateInboxItemRequestDto;
+import com.gtdonrails.api.dtos.inbox.InboxItemResponseDto;
+import com.gtdonrails.api.dtos.inbox.UpdateInboxItemRequestDto;
+import com.gtdonrails.api.entities.Context;
 import com.gtdonrails.api.entities.Item;
 import com.gtdonrails.api.enums.ItemStatus;
+import com.gtdonrails.api.exceptions.context.ContextNotFoundException;
 import com.gtdonrails.api.exceptions.inbox.InboxItemNotFoundException;
 import com.gtdonrails.api.mappers.InboxItemMapper;
 import com.gtdonrails.api.normalizers.ItemTextNormalizer;
+import com.gtdonrails.api.repositories.ContextRepository;
 import com.gtdonrails.api.repositories.ItemRepository;
 import com.gtdonrails.api.types.Body;
 import com.gtdonrails.api.types.Title;
@@ -40,6 +44,9 @@ class InboxServiceTests {
     private ItemRepository itemRepository;
 
     @Mock
+    private ContextRepository contextRepository;
+
+    @Mock
     private InboxItemMapper inboxItemMapper;
 
     @Captor
@@ -51,6 +58,7 @@ class InboxServiceTests {
     void setUp() {
         inboxService = new InboxService(
             itemRepository,
+            contextRepository,
             inboxItemMapper,
             new ItemTextNormalizer());
     }
@@ -64,12 +72,14 @@ class InboxServiceTests {
             UUID.randomUUID(),
             "Older item",
             null,
-            "STUFF");
+            "STUFF",
+            List.of());
         InboxItemResponseDto newerResponse = new InboxItemResponseDto(
             UUID.randomUUID(),
             "Newer item",
             "Body",
-            "STUFF");
+            "STUFF",
+            List.of());
 
         when(itemRepository.findAllByStatusAndDeletedAtIsNullOrderByCreatedAtDesc(ItemStatus.STUFF))
             .thenReturn(List.of(newerItem, olderItem));
@@ -100,7 +110,8 @@ class InboxServiceTests {
             itemId,
             "Capture idea",
             null,
-            "STUFF");
+            "STUFF",
+            List.of());
 
         when(itemRepository.findByIdAndStatusAndDeletedAtIsNull(itemId, ItemStatus.STUFF))
             .thenReturn(Optional.of(item));
@@ -131,13 +142,15 @@ class InboxServiceTests {
             UUID.randomUUID(),
             "Capture idea later",
             "line 1\nline 2",
-            "STUFF");
+            "STUFF",
+            List.of());
         when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(inboxItemMapper.toResponse(any(Item.class))).thenReturn(expectedResponse);
 
         InboxItemResponseDto response = inboxService.createStuff(new CreateInboxItemRequestDto(
             " Capture\tidea\r\nlater ",
-            " line 1\r\nline 2 "));
+            " line 1\r\nline 2 ",
+            null));
 
         verify(itemRepository).save(itemCaptor.capture());
         Item savedItem = itemCaptor.getValue();
@@ -147,18 +160,51 @@ class InboxServiceTests {
     }
 
     @Test
+    void createStuffAssignsContextsToItem() {
+        UUID notebookId = UUID.randomUUID();
+        UUID streetId = UUID.randomUUID();
+        Context notebook = new Context("notebook");
+        Context street = new Context("street");
+        InboxItemResponseDto expectedResponse = new InboxItemResponseDto(
+            UUID.randomUUID(),
+            "Capture idea",
+            null,
+            "STUFF",
+            List.of(
+                new ContextResponseDto(notebookId, "notebook"),
+                new ContextResponseDto(streetId, "street")));
+
+        when(contextRepository.findAllByIdInAndDeletedAtIsNull(any()))
+            .thenReturn(List.of(notebook, street));
+        when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(inboxItemMapper.toResponse(any(Item.class))).thenReturn(expectedResponse);
+
+        InboxItemResponseDto response = inboxService.createStuff(new CreateInboxItemRequestDto(
+            "Capture idea",
+            null,
+            List.of(notebookId, streetId)));
+
+        verify(itemRepository).save(itemCaptor.capture());
+        Item savedItem = itemCaptor.getValue();
+        assertEquals(2, savedItem.getContexts().size());
+        assertEquals(expectedResponse, response);
+    }
+
+    @Test
     void createStuffSavesNullBodyWhenNormalizedBodyIsAbsent() {
         InboxItemResponseDto expectedResponse = new InboxItemResponseDto(
             UUID.randomUUID(),
             "Capture idea",
             null,
-            "STUFF");
+            "STUFF",
+            List.of());
         when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(inboxItemMapper.toResponse(any(Item.class))).thenReturn(expectedResponse);
 
         InboxItemResponseDto response = inboxService.createStuff(new CreateInboxItemRequestDto(
             " Capture idea ",
-            "   "));
+            "   ",
+            null));
 
         verify(itemRepository).save(itemCaptor.capture());
         Item savedItem = itemCaptor.getValue();
@@ -169,13 +215,31 @@ class InboxServiceTests {
 
     @Test
     void createStuffThrowsWhenTitleIsInvalid() {
-        CreateInboxItemRequestDto request = new CreateInboxItemRequestDto("   ", "Body");
+        CreateInboxItemRequestDto request = new CreateInboxItemRequestDto("   ", "Body", null);
 
         IllegalArgumentException exception = assertThrows(
             IllegalArgumentException.class,
             () -> inboxService.createStuff(request));
 
         assertEquals("title is required", exception.getMessage());
+        verify(itemRepository, never()).save(any(Item.class));
+    }
+
+    @Test
+    void createStuffThrowsWhenContextDoesNotExist() {
+        UUID missingContextId = UUID.randomUUID();
+
+        when(contextRepository.findAllByIdInAndDeletedAtIsNull(any()))
+            .thenReturn(List.of());
+
+        ContextNotFoundException exception = assertThrows(
+            ContextNotFoundException.class,
+            () -> inboxService.createStuff(new CreateInboxItemRequestDto(
+                "Capture idea",
+                null,
+                List.of(missingContextId))));
+
+        assertEquals("context not found", exception.getMessage());
         verify(itemRepository, never()).save(any(Item.class));
     }
 
@@ -188,7 +252,8 @@ class InboxServiceTests {
             itemId,
             "New title",
             null,
-            "STUFF");
+            "STUFF",
+            List.of());
 
         when(itemRepository.findByIdAndStatusAndDeletedAtIsNull(itemId, ItemStatus.STUFF))
             .thenReturn(Optional.of(existingItem));
@@ -197,12 +262,46 @@ class InboxServiceTests {
 
         InboxItemResponseDto response = inboxService.updateStuff(itemId, new UpdateInboxItemRequestDto(
             " New title ",
-            "   "));
+            "   ",
+            null));
 
         verify(itemRepository).save(itemCaptor.capture());
         Item savedItem = itemCaptor.getValue();
         assertEquals("New title", savedItem.getTitle().value());
         assertNull(savedItem.getBody());
+        assertEquals(expectedResponse, response);
+    }
+
+    @Test
+    void updateStuffReplacesContexts() {
+        UUID itemId = UUID.randomUUID();
+        UUID homeId = UUID.randomUUID();
+        Item existingItem = new Item(new Title("Old title"), null);
+        existingItem.addContext(new Context("old"));
+        Context home = new Context("home");
+        InboxItemResponseDto expectedResponse = new InboxItemResponseDto(
+            itemId,
+            "New title",
+            null,
+            "STUFF",
+            List.of(new ContextResponseDto(homeId, "home")));
+
+        when(itemRepository.findByIdAndStatusAndDeletedAtIsNull(itemId, ItemStatus.STUFF))
+            .thenReturn(Optional.of(existingItem));
+        when(contextRepository.findAllByIdInAndDeletedAtIsNull(any()))
+            .thenReturn(List.of(home));
+        when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(inboxItemMapper.toResponse(any(Item.class))).thenReturn(expectedResponse);
+
+        InboxItemResponseDto response = inboxService.updateStuff(itemId, new UpdateInboxItemRequestDto(
+            "New title",
+            null,
+            List.of(homeId)));
+
+        verify(itemRepository).save(itemCaptor.capture());
+        Item savedItem = itemCaptor.getValue();
+        assertEquals(1, savedItem.getContexts().size());
+        assertEquals("home", savedItem.getContexts().iterator().next().getName());
         assertEquals(expectedResponse, response);
     }
 
@@ -214,7 +313,8 @@ class InboxServiceTests {
             itemId,
             "New title later",
             "line 1\nline 2",
-            "STUFF");
+            "STUFF",
+            List.of());
 
         when(itemRepository.findByIdAndStatusAndDeletedAtIsNull(itemId, ItemStatus.STUFF))
             .thenReturn(Optional.of(existingItem));
@@ -223,7 +323,8 @@ class InboxServiceTests {
 
         InboxItemResponseDto response = inboxService.updateStuff(itemId, new UpdateInboxItemRequestDto(
             " New\t title\r\nlater ",
-            " line 1\r\nline 2 "));
+            " line 1\r\nline 2 ",
+            null));
 
         verify(itemRepository).save(itemCaptor.capture());
         Item savedItem = itemCaptor.getValue();
@@ -240,7 +341,7 @@ class InboxServiceTests {
 
         InboxItemNotFoundException exception = assertThrows(
             InboxItemNotFoundException.class,
-            () -> inboxService.updateStuff(itemId, new UpdateInboxItemRequestDto("Title", "Body")));
+            () -> inboxService.updateStuff(itemId, new UpdateInboxItemRequestDto("Title", "Body", null)));
 
         assertEquals("item not found", exception.getMessage());
         verify(itemRepository, never()).save(any(Item.class));
@@ -256,7 +357,7 @@ class InboxServiceTests {
 
         IllegalArgumentException exception = assertThrows(
             IllegalArgumentException.class,
-            () -> inboxService.updateStuff(itemId, new UpdateInboxItemRequestDto("   ", "Body")));
+            () -> inboxService.updateStuff(itemId, new UpdateInboxItemRequestDto("   ", "Body", null)));
 
         assertEquals("title is required", exception.getMessage());
         verify(itemRepository, never()).save(any(Item.class));

@@ -9,7 +9,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.gtdonrails.api.entities.Context;
 import com.gtdonrails.api.entities.Item;
+import com.gtdonrails.api.repositories.ContextRepository;
 import com.gtdonrails.api.repositories.ItemRepository;
 import com.gtdonrails.api.types.Body;
 import com.gtdonrails.api.types.Title;
@@ -35,12 +37,16 @@ class InboxControllerTests {
     @Autowired
     private ItemRepository itemRepository;
 
+    @Autowired
+    private ContextRepository contextRepository;
+
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).build();
         itemRepository.deleteAll();
+        contextRepository.deleteAll();
     }
 
     @Test
@@ -57,7 +63,28 @@ class InboxControllerTests {
             .andExpect(header().string("Location", "/inbox/items/" + itemRepository.findAll().getFirst().getId()))
             .andExpect(jsonPath("$.title").value("Capture rent receipt"))
             .andExpect(jsonPath("$.body").value("Need to process later"))
-            .andExpect(jsonPath("$.status").value("STUFF"));
+            .andExpect(jsonPath("$.status").value("STUFF"))
+            .andExpect(jsonPath("$.contexts", hasSize(0)));
+    }
+
+    @Test
+    void createsInboxItemWithContexts() throws Exception {
+        Context home = contextRepository.save(new Context("home"));
+        Context street = contextRepository.save(new Context("street"));
+
+        mockMvc.perform(post("/inbox/items")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "title": "Capture rent receipt",
+                      "body": "Need to process later",
+                      "contextIds": ["%s", "%s"]
+                    }
+                    """.formatted(home.getId(), street.getId())))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.contexts", hasSize(2)))
+            .andExpect(jsonPath("$.contexts[0].name").value("home"))
+            .andExpect(jsonPath("$.contexts[1].name").value("street"));
     }
 
     @Test
@@ -121,7 +148,27 @@ class InboxControllerTests {
                     """))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.title").value("New title"))
-            .andExpect(jsonPath("$.body").value("New body"));
+            .andExpect(jsonPath("$.body").value("New body"))
+            .andExpect(jsonPath("$.contexts", hasSize(0)));
+    }
+
+    @Test
+    void updatesInboxItemContexts() throws Exception {
+        Item item = itemRepository.save(new Item(new Title("Old title"), null));
+        Context office = contextRepository.save(new Context("office"));
+
+        mockMvc.perform(put("/inbox/items/{id}", item.getId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "title": "New title",
+                      "body": null,
+                      "contextIds": ["%s"]
+                    }
+                    """.formatted(office.getId())))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.contexts", hasSize(1)))
+            .andExpect(jsonPath("$.contexts[0].name").value("office"));
     }
 
     @Test

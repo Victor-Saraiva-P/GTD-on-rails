@@ -1,0 +1,137 @@
+package com.gtdonrails.api.controllers;
+
+import static org.hamcrest.Matchers.hasSize;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.gtdonrails.api.entities.Context;
+import com.gtdonrails.api.repositories.ContextRepository;
+import com.gtdonrails.api.repositories.ItemRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.WebApplicationContext;
+
+@SpringBootTest
+@ActiveProfiles("test")
+@Tag("integration")
+class ContextControllerTests {
+
+    @Autowired
+    private WebApplicationContext webApplicationContext;
+
+    @Autowired
+    private ContextRepository contextRepository;
+
+    @Autowired
+    private ItemRepository itemRepository;
+
+    private MockMvc mockMvc;
+
+    @BeforeEach
+    void setUp() {
+        mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).build();
+        itemRepository.deleteAll();
+        contextRepository.deleteAll();
+    }
+
+    @Test
+    void createsContext() throws Exception {
+        mockMvc.perform(post("/contexts")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "name": "home"
+                    }
+                    """))
+            .andExpect(status().isCreated())
+            .andExpect(header().string("Location", "/contexts/" + contextRepository.findAll().getFirst().getId()))
+            .andExpect(jsonPath("$.name").value("home"));
+    }
+
+    @Test
+    void rejectsDuplicateContextName() throws Exception {
+        contextRepository.save(new Context("home"));
+
+        mockMvc.perform(post("/contexts")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "name": "home"
+                    }
+                    """))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.title").value("Data conflict"))
+            .andExpect(jsonPath("$.detail").value("context name already exists"));
+    }
+
+    @Test
+    void listsOnlyNonDeletedContexts() throws Exception {
+        Context visibleContext = contextRepository.save(new Context("home"));
+        Context deletedContext = contextRepository.save(new Context("street"));
+        deletedContext.softDelete();
+        contextRepository.save(deletedContext);
+
+        mockMvc.perform(get("/contexts"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(1)))
+            .andExpect(jsonPath("$[0].id").value(visibleContext.getId().toString()))
+            .andExpect(jsonPath("$[0].name").value("home"));
+    }
+
+    @Test
+    void getsContext() throws Exception {
+        Context context = contextRepository.save(new Context("home"));
+
+        mockMvc.perform(get("/contexts/{id}", context.getId()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(context.getId().toString()))
+            .andExpect(jsonPath("$.name").value("home"));
+    }
+
+    @Test
+    void updatesContext() throws Exception {
+        Context context = contextRepository.save(new Context("home"));
+
+        mockMvc.perform(put("/contexts/{id}", context.getId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "name": "office"
+                    }
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.name").value("office"));
+    }
+
+    @Test
+    void returnsNotFoundForMissingContext() throws Exception {
+        mockMvc.perform(get("/contexts/00000000-0000-0000-0000-000000000001"))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.title").value("Resource not found"))
+            .andExpect(jsonPath("$.detail").value("context not found"));
+    }
+
+    @Test
+    void softDeletesContext() throws Exception {
+        Context context = contextRepository.save(new Context("home"));
+
+        mockMvc.perform(delete("/contexts/{id}", context.getId()))
+            .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/contexts"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(0)));
+    }
+}

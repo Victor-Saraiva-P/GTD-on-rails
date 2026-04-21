@@ -91,6 +91,13 @@ public class Item extends AuditableEntity {
         context.getItems().remove(this);
     }
 
+    public void replaceContexts(Set<Context> contexts) {
+        Set<Context> currentContexts = new HashSet<>(this.contexts);
+
+        currentContexts.forEach(this::removeContext);
+        contexts.forEach(this::addContext);
+    }
+
     @PrePersist
     void prePersist() {
         initializeAuditTimestamps();

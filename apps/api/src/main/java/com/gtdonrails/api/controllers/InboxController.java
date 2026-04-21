@@ -4,9 +4,9 @@ import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 
-import com.gtdonrails.api.dtos.CreateInboxItemRequestDto;
-import com.gtdonrails.api.dtos.InboxItemResponseDto;
-import com.gtdonrails.api.dtos.UpdateInboxItemRequestDto;
+import com.gtdonrails.api.dtos.inbox.CreateInboxItemRequestDto;
+import com.gtdonrails.api.dtos.inbox.InboxItemResponseDto;
+import com.gtdonrails.api.dtos.inbox.UpdateInboxItemRequestDto;
 import com.gtdonrails.api.services.InboxService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;

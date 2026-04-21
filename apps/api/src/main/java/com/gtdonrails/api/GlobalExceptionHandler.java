@@ -1,5 +1,6 @@
 package com.gtdonrails.api;
 
+import com.gtdonrails.api.exceptions.context.ContextNotFoundException;
 import com.gtdonrails.api.exceptions.inbox.InboxItemNotFoundException;
 import com.gtdonrails.api.exceptions.shared.BusinessException;
 import com.gtdonrails.api.exceptions.shared.ConflictException;
@@ -43,6 +44,17 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(InboxItemNotFoundException.class)
     public ResponseEntity<Object> handleInboxItemNotFoundException(
         InboxItemNotFoundException ex, WebRequest request) {
+        return handleResourceNotFoundException(ex, request, "Inbox item not found");
+    }
+
+    @ExceptionHandler(ContextNotFoundException.class)
+    public ResponseEntity<Object> handleContextNotFoundException(
+        ContextNotFoundException ex, WebRequest request) {
+        return handleResourceNotFoundException(ex, request, "Context not found");
+    }
+
+    private ResponseEntity<Object> handleResourceNotFoundException(
+        BusinessException ex, WebRequest request, String logMessage) {
         HttpStatus status = HttpStatus.NOT_FOUND;
         ProblemDetail problemDetail =
             createProblemDetail(
@@ -52,7 +64,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 ex.getMessage(),
                 request);
 
-        log.warn("Inbox item not found: {}", ex.getMessage());
+        log.warn("{}: {}", logMessage, ex.getMessage());
         return handleExceptionInternal(ex, problemDetail, new HttpHeaders(), status, request);
     }
 
