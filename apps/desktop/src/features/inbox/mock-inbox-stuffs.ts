@@ -30,7 +30,8 @@ export const inboxStuffs: Stuff[] = [
   },
   {
     id: "portfolio",
-    title: "The project will be used as portfolio work, so I want it to feel polished",
+    title:
+      "The project will be used as portfolio work, so I want it to feel polished and representative of the product direction",
     details: [
       "Use consistent English across code and UI",
       "Keep interactions intentional and keyboard-friendly",
@@ -39,7 +40,8 @@ export const inboxStuffs: Stuff[] = [
   },
   {
     id: "mvc",
-    title: "They seem very interested in MVC, I can mention the anime project",
+    title:
+      "They seem very interested in MVC, so I can mention the anime project, the architecture tradeoffs, the controller boundaries, and why that experience still matters here, and also talk about a little why the company should hire me, because I'm a good coworker and those stuff",
     details: [
       "Mention MVC only where it helps the story",
       "Connect it to practical backend design choices",

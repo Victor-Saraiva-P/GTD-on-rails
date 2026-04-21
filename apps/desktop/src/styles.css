@@ -29,18 +29,21 @@ body {
   min-height: 100vh;
   display: grid;
   place-items: center;
-  padding: 14px 16px;
+  padding: clamp(8px, 1.1vw, 16px);
 }
 
 .inbox-layout {
-  width: min(100%, 1080px);
+  width: min(100%, 1420px);
   display: grid;
-  grid-template-columns: minmax(320px, 1fr) minmax(320px, 1fr);
-  gap: 10px;
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+  gap: clamp(8px, 0.9vw, 14px);
+  align-items: stretch;
 }
 
 .pane {
-  min-height: 620px;
+  min-height: clamp(360px, 66vh, 760px);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
   background: #252525;
@@ -55,22 +58,57 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  min-width: 0;
   min-height: 40px;
   padding: 0 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+.pane__header--wrap {
+  align-items: flex-start;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
 .pane__tab {
   display: inline-flex;
   align-items: center;
+  flex: 0 1 auto;
   gap: 8px;
   padding: 0 10px;
   min-height: 28px;
+  min-width: 0;
+  max-width: min(100%, calc(100% - 72px));
   border-radius: 999px;
   background: #2e2e2e;
   color: #d4d4d4;
   font-size: 0.9rem;
   font-weight: 600;
+}
+
+.pane__tab-label {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pane__tab--wrap {
+  align-items: flex-start;
+  max-width: 100%;
+  padding: 0;
+  min-height: auto;
+  border-radius: 0;
+  background: transparent;
+}
+
+.pane__tab-label--wrap {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
 }
 
 .pane__tab-icon {
@@ -80,9 +118,14 @@ body {
   flex: 0 0 auto;
 }
 
+.pane__header--wrap .pane__tab-icon {
+  margin-top: 1px;
+}
+
 .pane__status {
   margin-left: auto;
   display: inline-flex;
+  flex: 0 0 auto;
   gap: 10px;
   color: #9b9b9b;
   font-size: 0.84rem;
@@ -90,6 +133,8 @@ body {
 
 .pane__body {
   padding: 10px 6px 8px;
+  min-height: 0;
+  overflow: auto;
 }
 
 .pane__body--detail {
@@ -112,11 +157,11 @@ body {
 
 .tree-entry {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   width: 100%;
-  min-height: 30px;
-  padding: 0 8px;
+  min-height: 34px;
+  padding: 4px 8px;
   border: 0;
   background: transparent;
   color: #d4d4d4;
@@ -142,6 +187,7 @@ body {
   color: #9b9b9b;
   font-size: 0.72rem;
   text-align: center;
+  margin-top: 5px;
 }
 
 .tree-entry__icon,
@@ -150,6 +196,7 @@ body {
   height: 13px;
   object-fit: contain;
   flex: 0 0 auto;
+  margin-top: 4px;
 }
 
 .tree-entry__label,
@@ -158,7 +205,14 @@ body {
 }
 
 .tree-entry__label {
+  min-width: 0;
   line-height: 1.35;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-clamp: 2;
+  text-overflow: ellipsis;
 }
 
 .detail-card {
@@ -187,18 +241,94 @@ body {
   color: #9b9b9b;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
+  .workspace {
+    padding: 10px;
+  }
+
   .inbox-layout {
-    grid-template-columns: 1fr;
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 
   .pane {
-    min-height: 320px;
+    min-height: clamp(340px, 60vh, 680px);
+  }
+
+  .pane__header {
+    padding: 0 10px;
+  }
+
+  .pane__status {
+    gap: 8px;
+    font-size: 0.8rem;
+  }
+
+  .tree-entry {
+    padding: 4px 6px;
+  }
+
+  .tree-entry__label,
+  .detail-card__title,
+  .detail-list__item {
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-aspect-ratio: 3/4), (max-width: 700px) {
+  .inbox-layout {
+    grid-template-columns: 1fr;
+    width: min(100%, 920px);
+  }
+
+  .pane {
+    min-height: clamp(220px, 42vh, 420px);
   }
 }
 
 @media (max-width: 640px) {
   .workspace {
-    padding: 10px;
+    padding: 8px;
+  }
+
+  .pane__header {
+    min-height: 38px;
+    padding: 0 8px;
+  }
+
+  .pane__tab {
+    max-width: min(100%, calc(100% - 56px));
+    min-height: 26px;
+    padding: 0 8px;
+    font-size: 0.86rem;
+  }
+
+  .pane__status {
+    font-size: 0.76rem;
+  }
+
+  .pane__body {
+    padding: 8px 4px 6px;
+  }
+
+  .pane__body--detail {
+    padding-inline: 8px;
+  }
+
+  .tree-entry {
+    align-items: flex-start;
+    min-height: 36px;
+    padding-block: 4px;
+  }
+
+  .tree-entry__marker,
+  .tree-entry__icon {
+    margin-top: 3px;
+  }
+
+  .tree-entry__label,
+  .detail-card__title,
+  .detail-list__item {
+    font-size: 0.88rem;
   }
 }

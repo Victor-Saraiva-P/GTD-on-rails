@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Pane } from "../components/Pane";
 import { InboxList } from "../features/inbox/InboxList";
 import { InboxStuffDetails } from "../features/inbox/InboxStuffDetails";
-import { inboxStuffs } from "../features/inbox/inbox-stuffs";
+import { inboxStuffs } from "../features/inbox/mock-inbox-stuffs";
 
 export function InboxPage() {
   const [selectedId, setSelectedId] = useState<string>(inboxStuffs[0].id);
@@ -29,6 +29,7 @@ export function InboxPage() {
           iconSrc="/inbox/stuff icon.png"
           label={selectedItem.title}
           bodyClassName="pane__body--detail"
+          wrapLabel
         >
           <InboxStuffDetails item={selectedItem} />
         </Pane>
