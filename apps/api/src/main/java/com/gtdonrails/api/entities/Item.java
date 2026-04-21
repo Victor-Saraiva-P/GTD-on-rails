@@ -1,6 +1,7 @@
 package com.gtdonrails.api.entities;
 
-import java.time.Instant;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 import com.gtdonrails.api.enums.ItemStatus;
@@ -16,6 +17,9 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -25,7 +29,7 @@ import lombok.Setter;
 @Entity
 @Table(name = "items")
 @Getter
-public class Item {
+public class Item extends AuditableEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -45,14 +49,13 @@ public class Item {
     @Column(nullable = false, length = 50)
     private ItemStatus status;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt;
-
-    @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
-
-    @Column(name = "deleted_at")
-    private Instant deletedAt;
+    @ManyToMany
+    @JoinTable(
+        name = "item_contexts",
+        joinColumns = @JoinColumn(name = "item_id"),
+        inverseJoinColumns = @JoinColumn(name = "context_id")
+    )
+    private Set<Context> contexts = new HashSet<>();
 
     public Item() {
     }
@@ -70,33 +73,34 @@ public class Item {
         this.title = title;
     }
 
-    public void softDelete() {
-        this.deletedAt = Instant.now();
+    public void addContext(Context context) {
+        if (context == null) {
+            throw new IllegalArgumentException("context is required");
+        }
+
+        contexts.add(context);
+        context.getItems().add(this);
     }
 
-    public void restore() {
-        this.deletedAt = null;
-    }
+    public void removeContext(Context context) {
+        if (context == null) {
+            return;
+        }
 
-    public boolean isDeleted() {
-        return deletedAt != null;
+        contexts.remove(context);
+        context.getItems().remove(this);
     }
 
     @PrePersist
     void prePersist() {
-        if (createdAt == null) {
-            createdAt = Instant.now();
-        }
+        initializeAuditTimestamps();
         status = inferStatus();
-        if (updatedAt == null) {
-            updatedAt = Instant.now();
-        }
     }
 
     @PreUpdate
     void preUpdate() {
         status = inferStatus();
-        updatedAt = Instant.now();
+        touchUpdatedAt();
     }
 
     private ItemStatus inferStatus() {

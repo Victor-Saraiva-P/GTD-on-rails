@@ -2,13 +2,9 @@ package com.gtdonrails.api.entities;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import java.lang.reflect.Field;
-import java.time.Instant;
 
 import com.gtdonrails.api.enums.ItemStatus;
 import com.gtdonrails.api.types.Body;
@@ -50,27 +46,37 @@ class ItemTests {
         assertNull(item.getBody());
     }
 
-    // deletion
+    // contexts
     @Test
-    void softDeleteSetsDeletedAt() {
+    void addContextAddsContextToItem() {
         Item item = new Item(new Title("Capture idea"), null);
+        Context context = new Context("notebook");
 
-        assertNull(item.getDeletedAt());
+        item.addContext(context);
 
-        item.softDelete();
-
-        assertNotNull(item.getDeletedAt());
+        assertTrue(item.getContexts().contains(context));
     }
 
     @Test
-    void reportsWhetherItemIsDeleted() {
+    void addContextRejectsNull() {
         Item item = new Item(new Title("Capture idea"), null);
 
-        assertFalse(item.isDeleted());
+        IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> item.addContext(null));
 
-        item.softDelete();
+        assertEquals("context is required", exception.getMessage());
+    }
 
-        assertTrue(item.isDeleted());
+    @Test
+    void removeContextRemovesContextFromItem() {
+        Item item = new Item(new Title("Capture idea"), null);
+        Context context = new Context("college");
+        item.addContext(context);
+
+        item.removeContext(context);
+
+        assertFalse(item.getContexts().contains(context));
     }
 
     // status
@@ -83,28 +89,13 @@ class ItemTests {
         assertEquals(ItemStatus.STUFF, item.getStatus());
     }
 
-    // timestamps
     @Test
-    void setsCreatedAtWhenItemIsPersisted() {
+    void keepsStatusAsStuffWhenItemIsUpdated() {
         Item item = new Item(new Title("Capture idea"), null);
-
-        assertNull(item.getCreatedAt());
-
         item.prePersist();
 
-        assertNotNull(item.getCreatedAt());
-    }
+        item.preUpdate();
 
-    @Test
-    void keepsExistingCreatedAtWhenItemIsPersisted() throws Exception {
-        Item item = new Item(new Title("Capture idea"), null);
-        Instant existingCreatedAt = Instant.parse("2026-01-01T10:15:30Z");
-        Field createdAtField = Item.class.getDeclaredField("createdAt");
-        createdAtField.setAccessible(true);
-        createdAtField.set(item, existingCreatedAt);
-
-        item.prePersist();
-
-        assertEquals(existingCreatedAt, item.getCreatedAt());
+        assertEquals(ItemStatus.STUFF, item.getStatus());
     }
 }
