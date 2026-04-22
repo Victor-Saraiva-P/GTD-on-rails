@@ -1,12 +1,19 @@
 import { useEffect, useState } from "react";
 import { ApiRequestError } from "../../lib/api/apiClient";
-import { fetchInboxStuffs } from "./api";
+import { createStuff, deleteStuff, fetchInboxStuffs, updateStuffBody, updateStuffTitle } from "./api";
 import type { Stuff } from "./types";
 
 type InboxStuffsQueryState = {
   stuffs: Stuff[];
   isLoading: boolean;
+  isCreating: boolean;
+  isDeleting: boolean;
+  isUpdating: boolean;
   errorMessage: string | null;
+  createStuff: () => Promise<Stuff>;
+  deleteStuff: (id: string) => Promise<void>;
+  updateStuffBody: (item: Stuff, body: string | null) => Promise<Stuff>;
+  updateStuffTitle: (item: Stuff, title: string) => Promise<Stuff>;
   reload: () => void;
 };
 
@@ -25,6 +32,9 @@ function toErrorMessage(error: unknown): string {
 export function useInboxStuffsQuery(): InboxStuffsQueryState {
   const [stuffs, setStuffs] = useState<Stuff[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isCreating, setIsCreating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
 
@@ -67,7 +77,71 @@ export function useInboxStuffsQuery(): InboxStuffsQueryState {
   return {
     stuffs,
     isLoading,
+    isCreating,
+    isDeleting,
+    isUpdating,
     errorMessage,
+    createStuff: async () => {
+      setIsCreating(true);
+
+      try {
+        const createdStuff = await createStuff();
+
+        setStuffs((currentStuffs) => [createdStuff, ...currentStuffs]);
+        setErrorMessage(null);
+
+        return createdStuff;
+      } finally {
+        setIsCreating(false);
+      }
+    },
+    deleteStuff: async (id: string) => {
+      setIsDeleting(true);
+
+      try {
+        await deleteStuff(id);
+        setStuffs((currentStuffs) => currentStuffs.filter((stuff) => stuff.id !== id));
+        setErrorMessage(null);
+      } finally {
+        setIsDeleting(false);
+      }
+    },
+    updateStuffBody: async (item: Stuff, body: string | null) => {
+      setIsUpdating(true);
+
+      try {
+        const updatedStuff = await updateStuffBody(item, body);
+
+        setStuffs((currentStuffs) =>
+          currentStuffs.map((currentStuff) =>
+            currentStuff.id === updatedStuff.id ? updatedStuff : currentStuff
+          )
+        );
+        setErrorMessage(null);
+
+        return updatedStuff;
+      } finally {
+        setIsUpdating(false);
+      }
+    },
+    updateStuffTitle: async (item: Stuff, title: string) => {
+      setIsUpdating(true);
+
+      try {
+        const updatedStuff = await updateStuffTitle(item, title);
+
+        setStuffs((currentStuffs) =>
+          currentStuffs.map((currentStuff) =>
+            currentStuff.id === updatedStuff.id ? updatedStuff : currentStuff
+          )
+        );
+        setErrorMessage(null);
+
+        return updatedStuff;
+      } finally {
+        setIsUpdating(false);
+      }
+    },
     reload: () => setReloadToken((value) => value + 1)
   };
 }

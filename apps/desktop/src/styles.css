@@ -224,9 +224,40 @@ body {
   text-overflow: ellipsis;
 }
 
+.tree-entry__input {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #d4d4d4;
+  font: inherit;
+  line-height: 1.35;
+}
+
+.tree-entry__input:focus {
+  outline: none;
+}
+
 .detail-card {
   display: grid;
   gap: 14px;
+}
+
+.detail-card__textarea {
+  width: 100%;
+  min-height: clamp(220px, 42vh, 520px);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #d4d4d4;
+  resize: none;
+  font: inherit;
+  line-height: 1.55;
+}
+
+.detail-card__textarea:focus {
+  outline: none;
 }
 
 .detail-card__title {
