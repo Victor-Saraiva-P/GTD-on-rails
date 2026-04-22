@@ -1,8 +1,7 @@
 :root {
+  --terminal-surface: #1c1c1c;
   color: #d4d4d4;
-  background:
-    radial-gradient(circle at top, rgba(155, 155, 155, 0.06), transparent 38%),
-    linear-gradient(180deg, #1c1c1c 0%, #191919 100%);
+  background: var(--terminal-surface);
   font-family:
     ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   line-height: 1.5;
@@ -15,14 +14,14 @@
 }
 
 html {
-  background: #191919;
+  background: var(--terminal-surface);
 }
 
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background: transparent;
+  background: var(--terminal-surface);
 }
 
 #app {
@@ -43,9 +42,7 @@ body {
   min-height: 100vh;
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
-  background:
-    radial-gradient(circle at top, rgba(155, 155, 155, 0.05), transparent 34%),
-    linear-gradient(180deg, #1d1d1d 0%, #191919 100%);
+  background: var(--terminal-surface);
   color: #d4d4d4;
 }
 
@@ -96,14 +93,17 @@ body {
 }
 
 .inbox-terminal-layout {
+  padding: 20px 10px 12px;
   min-height: 0;
   height: 100%;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
   overflow: hidden;
 }
 
 .stuff-detail-layout {
+  padding: 20px 10px 12px;
   min-height: 0;
   height: 100%;
   display: grid;
@@ -117,53 +117,77 @@ body {
   min-height: 0;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
-  background: rgba(25, 25, 25, 0.98);
-  border-right: 2px solid rgba(255, 255, 255, 0.08);
+  background: var(--terminal-surface);
+  border: 3px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.02),
+    0 18px 36px rgba(0, 0, 0, 0.18);
+  overflow: visible;
 }
 
 .list-pane::before {
   content: "";
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
+  inset: 0;
+  border-radius: inherit;
+  border: 0 solid transparent;
   background: transparent;
   pointer-events: none;
 }
 
-.list-pane:first-child {
-  border-left: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.inbox-terminal-layout .list-pane:first-child {
-  border-right-color: rgba(var(--list-accent-rgb), 0.95);
-}
-
 .list-pane--active {
-  box-shadow: none;
+  border-color: rgba(var(--list-accent-rgb), 0.72);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.02),
+    0 0 0 1px rgba(var(--list-accent-rgb), 0.2),
+    0 18px 36px rgba(0, 0, 0, 0.2);
 }
 
 .list-pane--active::before {
-  background: rgba(var(--list-accent-rgb), 0.95);
+  border-color: transparent;
 }
 
 .list-pane__header {
-  min-height: 52px;
+  position: relative;
+  min-height: 30px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 0 14px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0 12px;
   color: #9b9b9b;
   font-family:
     ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 }
 
 .list-pane__heading {
+  position: absolute;
+  top: 0;
+  left: 12px;
+  right: 12px;
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  transform: translateY(-50%);
   min-width: 0;
+  pointer-events: none;
+}
+
+.list-pane__cap {
   display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 0 6px;
+  background: var(--terminal-surface);
+}
+
+.list-pane__title-row {
+  flex: 0 1 auto;
+  min-width: 0;
+  display: flex;
   align-items: center;
   gap: 8px;
 }
@@ -177,11 +201,25 @@ body {
   opacity: 0.98;
 }
 
+.list-pane__line {
+  display: none;
+}
+
+.list-pane__line--left {
+  width: 14px;
+}
+
+.list-pane__line--right {
+  min-width: 18px;
+  width: 100%;
+}
+
 .list-pane__title {
-  color: #d4d4d4;
-  font-size: 0.9rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  flex: 0 0 auto;
+  color: #d7d2ce;
+  font-size: 0.86rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   font-family:
     ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
@@ -189,14 +227,15 @@ body {
 
 .list-pane__meta,
 .list-pane__panel-index {
-  color: #6f6f6f;
-  font-size: 0.78rem;
+  color: #8a817c;
+  font-size: 0.76rem;
   font-family:
     ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 }
 
 .list-pane__panel-index {
   flex: 0 0 auto;
+  visibility: hidden;
 }
 
 .list-pane--active .list-pane__panel-index {
@@ -223,7 +262,7 @@ body {
 }
 
 .list-pane__body--detail {
-  padding: 18px 22px 24px;
+  padding: 22px 22px 26px;
 }
 
 .inbox-layout {
@@ -357,7 +396,7 @@ body {
 }
 
 .tree-list--inbox .tree-list__item {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .tree-list--inbox .tree-list__item:last-child {
@@ -388,12 +427,12 @@ body {
 .tree-list--inbox .tree-entry {
   display: grid;
   grid-template-columns: 12px minmax(0, 1fr);
-  min-height: 40px;
-  padding: 0 16px 0 18px;
+  min-height: 42px;
+  padding: 0 18px 0 18px;
   align-items: center;
   column-gap: 8px;
   border-radius: 0;
-  color: #a8a8a8;
+  color: #b0aba7;
   font-family:
     ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
   font-size: 0.88rem;
@@ -420,7 +459,7 @@ body {
 
 .tree-list--inbox .tree-entry:hover,
 .tree-list--inbox .tree-entry:focus-visible {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .tree-entry--active {
@@ -429,8 +468,10 @@ body {
 }
 
 .tree-list--inbox .tree-entry--active {
-  background: rgba(255, 255, 255, 0.08);
-  color: #ece6e4;
+  background:
+    linear-gradient(90deg, rgba(var(--list-accent-rgb), 0.14), rgba(var(--list-accent-rgb), 0.04));
+  color: #f0e8e4;
+  box-shadow: inset 3px 0 0 rgba(var(--list-accent-rgb), 0.92);
 }
 
 .tree-entry__marker {
@@ -582,8 +623,8 @@ body {
   display: grid;
   justify-items: start;
   gap: 8px;
-  padding: 12px 12px 0;
-  color: #9b9b9b;
+  padding: 18px;
+  color: #9d9590;
   line-height: 1.35;
   font-size: 0.84rem;
   cursor: default;
@@ -608,7 +649,7 @@ body {
 
 .inbox-detail {
   display: grid;
-  gap: 12px;
+  gap: 14px;
   align-content: start;
 }
 
@@ -620,7 +661,7 @@ body {
 
 .inbox-detail__meta {
   margin: 0;
-  color: #6f6f6f;
+  color: #8a817c;
   font-family:
     ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
   font-size: 0.72rem;
@@ -631,11 +672,11 @@ body {
 .inbox-detail__title {
   margin: 0;
   max-width: 100%;
-  color: #efe8e5;
-  font-size: clamp(1.05rem, 0.9rem + 0.55vw, 1.55rem);
-  line-height: 1.22;
-  font-weight: 800;
-  letter-spacing: -0.03em;
+  color: #f0ebe8;
+  font-size: clamp(1.1rem, 0.95rem + 0.48vw, 1.45rem);
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.025em;
   text-wrap: wrap;
   overflow-wrap: anywhere;
   word-break: break-word;
@@ -643,17 +684,17 @@ body {
 
 .inbox-detail__divider {
   height: 1px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.09);
 }
 
 .inbox-detail__body,
 .inbox-detail__textarea {
   margin: 0;
-  color: #d0cac7;
+  color: #c8c1bc;
   font-family:
     ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
-  font-size: 0.94rem;
-  line-height: 1.72;
+  font-size: 0.92rem;
+  line-height: 1.68;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
@@ -673,6 +714,23 @@ body {
 
 .inbox-detail__textarea:focus {
   outline: none;
+}
+
+.inbox-pane .list-pane__panel-index {
+  display: none;
+}
+
+.inbox-pane--detail .list-pane__title {
+  color: #d7d2ce;
+}
+
+.inbox-pane--detail.list-pane--active .list-pane__title {
+  color: var(--list-accent);
+}
+
+.inbox-pane--detail.list-pane--active .list-pane__icon {
+  filter: brightness(0) saturate(100%) invert(56%) sepia(20%) saturate(1559%)
+    hue-rotate(317deg) brightness(95%) contrast(87%);
 }
 
 .leader-menu {
@@ -820,13 +878,17 @@ body {
   }
 
   .inbox-terminal-layout {
+    padding: 16px 8px 8px;
     grid-template-columns: 1fr;
     grid-template-rows: minmax(260px, 42vh) minmax(260px, 1fr);
   }
 
+  .stuff-detail-layout {
+    padding: 16px 8px 8px;
+  }
+
   .list-pane {
-    border-right: 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom-width: 1px;
   }
 
   .list-pane:last-child {
@@ -834,8 +896,8 @@ body {
   }
 
   .list-pane__header {
-    min-height: 50px;
-    padding: 0 14px;
+    min-height: 54px;
+    padding: 0 16px;
   }
 
   .list-pane__title {
@@ -847,7 +909,7 @@ body {
   }
 
   .list-pane__body--detail {
-    padding: 18px 16px 24px;
+    padding: 18px 16px 22px;
   }
 
   .tree-list--inbox .tree-entry {

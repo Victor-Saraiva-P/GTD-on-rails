@@ -372,6 +372,7 @@ export function InboxPage({ controller }: InboxPageProps) {
           active={activeZone === "inbox-list"}
           bodyClassName="list-pane__body--flush"
           iconSrc={inboxListTheme.iconSrc}
+          className="inbox-pane inbox-pane--list"
         >
           {listBody}
         </ListPane>
@@ -382,6 +383,7 @@ export function InboxPage({ controller }: InboxPageProps) {
           active={activeZone === "stuff-detail"}
           bodyClassName="list-pane__body--detail"
           iconSrc="/inbox/stuff icon.png"
+          className="inbox-pane inbox-pane--detail"
         >
           {detailBody}
         </ListPane>
