@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 
 import com.gtdonrails.api.entities.Item;
 import com.gtdonrails.api.repositories.ContextRepository;
@@ -52,8 +53,8 @@ class InboxControllerTests {
 
     @Test
     void listsOnlyNonDeletedInboxItems() throws Exception {
-        Item visibleItem = itemRepository.save(new Item(new Title("Visible item"), null, energy("1.0")));
-        Item deletedItem = itemRepository.save(new Item(new Title("Deleted item"), null, energy("2.0")));
+        Item visibleItem = itemRepository.save(new Item(new Title("Visible item"), null, energy("1.0"), Duration.ofMinutes(45)));
+        Item deletedItem = itemRepository.save(new Item(new Title("Deleted item"), null, energy("2.0"), Duration.ofMinutes(15)));
         deletedItem.softDelete();
         itemRepository.save(deletedItem);
 
@@ -63,6 +64,8 @@ class InboxControllerTests {
             .andExpect(jsonPath("$[0].id").value(visibleItem.getId().toString()))
             .andExpect(jsonPath("$[0].title").value("Visible item"))
             .andExpect(jsonPath("$[0].energy").value(1.0))
+            .andExpect(jsonPath("$[0].time.hours").value(0))
+            .andExpect(jsonPath("$[0].time.minutes").value(45))
             .andExpect(jsonPath("$[0].createdAt", notNullValue()));
     }
 

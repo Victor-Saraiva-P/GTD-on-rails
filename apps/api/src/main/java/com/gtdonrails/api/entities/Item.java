@@ -1,12 +1,14 @@
 package com.gtdonrails.api.entities;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
 import com.gtdonrails.api.enums.ItemStatus;
 import com.gtdonrails.api.persistence.converters.BodyConverter;
+import com.gtdonrails.api.persistence.converters.DurationMinutesConverter;
 import com.gtdonrails.api.persistence.converters.TitleConverter;
 import com.gtdonrails.api.types.Body;
 import com.gtdonrails.api.types.Title;
@@ -37,6 +39,7 @@ public class Item extends AuditableEntity {
     public static final String MAX_ENERGY_VALUE = "10.0";
     public static final BigDecimal MIN_ENERGY = new BigDecimal(MIN_ENERGY_VALUE);
     public static final BigDecimal MAX_ENERGY = new BigDecimal(MAX_ENERGY_VALUE);
+    public static final String MIN_TIME_VALUE = "PT0M";
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -59,6 +62,10 @@ public class Item extends AuditableEntity {
     @Column(precision = 10, scale = ENERGY_SCALE)
     private BigDecimal energy;
 
+    @Convert(converter = DurationMinutesConverter.class)
+    @Column(name = "time_minutes")
+    private Duration time;
+
     @ManyToMany
     @JoinTable(
         name = "item_contexts",
@@ -71,13 +78,18 @@ public class Item extends AuditableEntity {
     }
 
     public Item(Title title, Body body) {
-        this(title, body, null);
+        this(title, body, null, null);
     }
 
     public Item(Title title, Body body, BigDecimal energy) {
+        this(title, body, energy, null);
+    }
+
+    public Item(Title title, Body body, BigDecimal energy, Duration time) {
         setTitle(title);
         setBody(body);
         setEnergy(energy);
+        setTime(time);
     }
 
     public void setTitle(Title title) {
@@ -107,6 +119,23 @@ public class Item extends AuditableEntity {
         }
 
         this.energy = normalizedEnergy;
+    }
+
+    public void setTime(Duration time) {
+        if (time == null) {
+            this.time = null;
+            return;
+        }
+
+        if (time.isNegative()) {
+            throw new IllegalArgumentException("time must be greater than or equal to " + MIN_TIME_VALUE);
+        }
+
+        if (time.getSeconds() % 60 != 0 || time.getNano() != 0) {
+            throw new IllegalArgumentException("time must be expressed in hours and minutes only");
+        }
+
+        this.time = time;
     }
 
     public void addContext(Context context) {

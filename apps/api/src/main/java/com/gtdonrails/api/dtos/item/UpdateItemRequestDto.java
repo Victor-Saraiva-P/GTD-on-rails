@@ -13,6 +13,7 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.Valid;
 
 public record UpdateItemRequestDto(
     @NotBlank(message = "title is required")
@@ -32,6 +33,9 @@ public record UpdateItemRequestDto(
         message = "energy must be between " + Item.MIN_ENERGY_VALUE + " and " + Item.MAX_ENERGY_VALUE)
     @Digits(integer = 2, fraction = Item.ENERGY_SCALE, message = "energy must have up to 1 decimal place")
     BigDecimal energy,
+
+    @Valid
+    ItemTimeRequestDto time,
 
     @Size(
         max = Context.MAX_CONTEXTS_PER_ITEM,

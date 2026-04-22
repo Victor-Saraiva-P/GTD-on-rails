@@ -12,6 +12,7 @@ public record ItemResponseDto(
     String title,
     String body,
     BigDecimal energy,
+    ItemTimeDto time,
     String status,
     Instant createdAt,
     List<ContextResponseDto> contexts

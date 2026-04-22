@@ -48,6 +48,7 @@ class InboxServiceTests {
             "Older item",
             null,
             new BigDecimal("1.0"),
+            null,
             "STUFF",
             Instant.now(),
             List.of());
@@ -56,6 +57,7 @@ class InboxServiceTests {
             "Newer item",
             "Body",
             new BigDecimal("2.5"),
+            null,
             "STUFF",
             Instant.now(),
             List.of());

@@ -3,6 +3,7 @@ package com.gtdonrails.api.services;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.time.Duration;
 import java.util.UUID;
 
 import com.gtdonrails.api.dtos.item.CreateItemRequestDto;
@@ -51,7 +52,8 @@ public class ItemService {
         Title title = new Title(itemTextNormalizer.normalizeTitle(request.title()));
         String normalizedBodyValue = itemTextNormalizer.normalizeBody(request.body());
         Body body = normalizedBodyValue == null ? null : new Body(normalizedBodyValue);
-        Item item = new Item(title, body, request.energy());
+        Duration time = request.time() == null ? null : request.time().toDuration();
+        Item item = new Item(title, body, request.energy(), time);
         item.replaceContexts(findContextsOrThrow(request.contextIds()));
         return itemMapper.toResponse(itemRepository.save(item));
     }
@@ -66,6 +68,7 @@ public class ItemService {
         item.setTitle(title);
         item.setBody(body);
         item.setEnergy(request.energy());
+        item.setTime(request.time() == null ? null : request.time().toDuration());
 
         if (request.contextIds() != null) {
             item.replaceContexts(findContextsOrThrow(request.contextIds()));

@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 
 import com.gtdonrails.api.enums.ItemStatus;
 import com.gtdonrails.api.types.Body;
@@ -114,6 +115,54 @@ class ItemTests {
             () -> item.setEnergy(new BigDecimal("10.1")));
 
         assertEquals("energy must be between 0.0 and 10.0", exception.getMessage());
+    }
+
+    // time
+    @Test
+    void constructorWithoutTimeSetsNullTime() {
+        Item item = new Item(new Title("Capture idea"), null);
+
+        assertNull(item.getTime());
+    }
+
+    @Test
+    void setTimeUpdatesTime() {
+        Item item = new Item(new Title("Capture idea"), null);
+
+        item.setTime(Duration.ofHours(1).plusMinutes(30));
+
+        assertEquals(Duration.ofMinutes(90), item.getTime());
+    }
+
+    @Test
+    void setTimeAllowsNull() {
+        Item item = new Item(new Title("Capture idea"), null, new BigDecimal("3.0"), Duration.ofMinutes(45));
+
+        item.setTime(null);
+
+        assertNull(item.getTime());
+    }
+
+    @Test
+    void setTimeRejectsNegativeDuration() {
+        Item item = new Item(new Title("Capture idea"), null);
+
+        IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> item.setTime(Duration.ofMinutes(-1)));
+
+        assertEquals("time must be greater than or equal to PT0M", exception.getMessage());
+    }
+
+    @Test
+    void setTimeRejectsSecondsPrecision() {
+        Item item = new Item(new Title("Capture idea"), null);
+
+        IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> item.setTime(Duration.ofSeconds(30)));
+
+        assertEquals("time must be expressed in hours and minutes only", exception.getMessage());
     }
 
     // contexts
