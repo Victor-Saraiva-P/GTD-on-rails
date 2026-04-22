@@ -3,6 +3,7 @@ package com.gtdonrails.api.services;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.when;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -46,6 +47,7 @@ class InboxServiceTests {
             UUID.randomUUID(),
             "Older item",
             null,
+            new BigDecimal("1.0"),
             "STUFF",
             Instant.now(),
             List.of());
@@ -53,6 +55,7 @@ class InboxServiceTests {
             UUID.randomUUID(),
             "Newer item",
             "Body",
+            new BigDecimal("2.5"),
             "STUFF",
             Instant.now(),
             List.of());

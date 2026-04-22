@@ -1,5 +1,6 @@
 package com.gtdonrails.api.entities;
 
+import java.math.BigDecimal;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -31,6 +32,12 @@ import lombok.Setter;
 @Getter
 public class Item extends AuditableEntity {
 
+    public static final int ENERGY_SCALE = 1;
+    public static final String MIN_ENERGY_VALUE = "0.0";
+    public static final String MAX_ENERGY_VALUE = "10.0";
+    public static final BigDecimal MIN_ENERGY = new BigDecimal(MIN_ENERGY_VALUE);
+    public static final BigDecimal MAX_ENERGY = new BigDecimal(MAX_ENERGY_VALUE);
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(nullable = false, updatable = false)
@@ -49,6 +56,9 @@ public class Item extends AuditableEntity {
     @Column(nullable = false, length = 50)
     private ItemStatus status;
 
+    @Column(precision = 10, scale = ENERGY_SCALE)
+    private BigDecimal energy;
+
     @ManyToMany
     @JoinTable(
         name = "item_contexts",
@@ -61,8 +71,13 @@ public class Item extends AuditableEntity {
     }
 
     public Item(Title title, Body body) {
+        this(title, body, null);
+    }
+
+    public Item(Title title, Body body, BigDecimal energy) {
         setTitle(title);
         setBody(body);
+        setEnergy(energy);
     }
 
     public void setTitle(Title title) {
@@ -71,6 +86,27 @@ public class Item extends AuditableEntity {
         }
 
         this.title = title;
+    }
+
+    public void setEnergy(BigDecimal energy) {
+        if (energy == null) {
+            this.energy = null;
+            return;
+        }
+
+        BigDecimal normalizedEnergy = energy.stripTrailingZeros();
+
+        if (normalizedEnergy.scale() > ENERGY_SCALE) {
+            throw new IllegalArgumentException("energy must have up to 1 decimal place");
+        }
+
+        normalizedEnergy = energy.setScale(ENERGY_SCALE);
+
+        if (normalizedEnergy.compareTo(MIN_ENERGY) < 0 || normalizedEnergy.compareTo(MAX_ENERGY) > 0) {
+            throw new IllegalArgumentException("energy must be between 0.0 and 10.0");
+        }
+
+        this.energy = normalizedEnergy;
     }
 
     public void addContext(Context context) {

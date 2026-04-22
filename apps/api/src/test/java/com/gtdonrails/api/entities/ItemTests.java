@@ -6,6 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.math.BigDecimal;
+
 import com.gtdonrails.api.enums.ItemStatus;
 import com.gtdonrails.api.types.Body;
 import com.gtdonrails.api.types.Title;
@@ -44,6 +46,74 @@ class ItemTests {
         item.setBody(null);
 
         assertNull(item.getBody());
+    }
+
+    // energy
+    @Test
+    void constructorWithoutEnergySetsNullEnergy() {
+        Item item = new Item(new Title("Capture idea"), null);
+
+        assertNull(item.getEnergy());
+    }
+
+    @Test
+    void setEnergyUpdatesEnergy() {
+        Item item = new Item(new Title("Capture idea"), null);
+
+        item.setEnergy(new BigDecimal("4.5"));
+
+        assertEquals(new BigDecimal("4.5"), item.getEnergy());
+    }
+
+    @Test
+    void setEnergyDefaultsToZeroWhenNull() {
+        Item item = new Item(new Title("Capture idea"), null, new BigDecimal("3.0"));
+
+        item.setEnergy(null);
+
+        assertNull(item.getEnergy());
+    }
+
+    @Test
+    void setEnergyRejectsMoreThanOneDecimalPlace() {
+        Item item = new Item(new Title("Capture idea"), null);
+
+        IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> item.setEnergy(new BigDecimal("4.25")));
+
+        assertEquals("energy must have up to 1 decimal place", exception.getMessage());
+    }
+
+    @Test
+    void setEnergyAcceptsWholeNumbersAndNormalizesScale() {
+        Item item = new Item(new Title("Capture idea"), null);
+
+        item.setEnergy(new BigDecimal("7"));
+
+        assertEquals(new BigDecimal("7.0"), item.getEnergy());
+    }
+
+    @Test
+    void setEnergyRejectsValuesBelowRange() {
+        Item item = new Item(new Title("Capture idea"), null);
+
+        IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> item.setEnergy(new BigDecimal("-0.1")));
+
+        assertEquals("energy must be between 0.0 and 10.0", exception.getMessage());
+    }
+
+    @Test
+    void setEnergyRejectsValuesAboveRange() {
+        Item item = new Item(new Title("Capture idea"), null);
+
+        IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> item.setEnergy(new BigDecimal("10.1")));
+
+        assertEquals("energy must be between 0.0 and 10.0", exception.getMessage());
     }
 
     // contexts

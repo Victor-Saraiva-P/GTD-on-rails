@@ -2,6 +2,7 @@ create table items (
     id blob primary key,
     title text not null,
     body text,
+    energy numeric,
     status text not null,
     created_at timestamp not null,
     updated_at timestamp not null,

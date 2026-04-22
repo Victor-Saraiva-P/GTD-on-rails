@@ -8,6 +8,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -39,6 +40,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 @Tag("unit")
 class ItemServiceTests {
+
+    private static BigDecimal energy(String value) {
+        return new BigDecimal(value);
+    }
 
     @Mock
     private ItemRepository itemRepository;
@@ -72,6 +77,7 @@ class ItemServiceTests {
             itemId,
             "Capture idea",
             null,
+            null,
             "STUFF",
             Instant.now(),
             List.of());
@@ -103,6 +109,7 @@ class ItemServiceTests {
             UUID.randomUUID(),
             "Capture idea later",
             "line 1\nline 2",
+            energy("4.5"),
             "STUFF",
             Instant.now(),
             List.of());
@@ -112,12 +119,14 @@ class ItemServiceTests {
         ItemResponseDto response = itemService.createItem(new CreateItemRequestDto(
             " Capture\tidea\r\nlater ",
             " line 1\r\nline 2 ",
+            energy("4.5"),
             null));
 
         verify(itemRepository).save(itemCaptor.capture());
         Item savedItem = itemCaptor.getValue();
         assertEquals("Capture idea later", savedItem.getTitle().value());
         assertEquals("line 1\nline 2", savedItem.getBody().value());
+        assertEquals(energy("4.5"), savedItem.getEnergy());
         assertEquals(expectedResponse, response);
     }
 
@@ -131,6 +140,7 @@ class ItemServiceTests {
             UUID.randomUUID(),
             "Capture idea",
             null,
+            energy("2.0"),
             "STUFF",
             Instant.now(),
             List.of(
@@ -145,6 +155,7 @@ class ItemServiceTests {
         ItemResponseDto response = itemService.createItem(new CreateItemRequestDto(
             "Capture idea",
             null,
+            energy("2.0"),
             List.of(notebookId, streetId)));
 
         verify(itemRepository).save(itemCaptor.capture());
@@ -159,6 +170,7 @@ class ItemServiceTests {
             UUID.randomUUID(),
             "Capture idea",
             null,
+            null,
             "STUFF",
             Instant.now(),
             List.of());
@@ -168,18 +180,20 @@ class ItemServiceTests {
         ItemResponseDto response = itemService.createItem(new CreateItemRequestDto(
             " Capture idea ",
             "   ",
+            null,
             null));
 
         verify(itemRepository).save(itemCaptor.capture());
         Item savedItem = itemCaptor.getValue();
         assertEquals("Capture idea", savedItem.getTitle().value());
         assertNull(savedItem.getBody());
+        assertNull(savedItem.getEnergy());
         assertEquals(expectedResponse, response);
     }
 
     @Test
     void createItemThrowsWhenTitleIsInvalid() {
-        CreateItemRequestDto request = new CreateItemRequestDto("   ", "Body", null);
+        CreateItemRequestDto request = new CreateItemRequestDto("   ", "Body", energy("1.0"), null);
 
         IllegalArgumentException exception = assertThrows(
             IllegalArgumentException.class,
@@ -201,6 +215,7 @@ class ItemServiceTests {
             () -> itemService.createItem(new CreateItemRequestDto(
                 "Capture idea",
                 null,
+                energy("1.0"),
                 List.of(missingContextId))));
 
         assertEquals("context not found", exception.getMessage());
@@ -216,6 +231,7 @@ class ItemServiceTests {
             itemId,
             "New title",
             null,
+            energy("3.0"),
             "STUFF",
             Instant.now(),
             List.of());
@@ -227,12 +243,14 @@ class ItemServiceTests {
         ItemResponseDto response = itemService.updateItem(itemId, new UpdateItemRequestDto(
             " New title ",
             "   ",
+            energy("3.0"),
             null));
 
         verify(itemRepository).save(itemCaptor.capture());
         Item savedItem = itemCaptor.getValue();
         assertEquals("New title", savedItem.getTitle().value());
         assertNull(savedItem.getBody());
+        assertEquals(energy("3.0"), savedItem.getEnergy());
         assertEquals(expectedResponse, response);
     }
 
@@ -247,6 +265,7 @@ class ItemServiceTests {
             itemId,
             "New title",
             null,
+            energy("5.0"),
             "STUFF",
             Instant.now(),
             List.of(new ContextResponseDto(homeId, "home")));
@@ -260,12 +279,14 @@ class ItemServiceTests {
         ItemResponseDto response = itemService.updateItem(itemId, new UpdateItemRequestDto(
             "New title",
             null,
+            energy("5.0"),
             List.of(homeId)));
 
         verify(itemRepository).save(itemCaptor.capture());
         Item savedItem = itemCaptor.getValue();
         assertEquals(1, savedItem.getContexts().size());
         assertEquals("home", savedItem.getContexts().iterator().next().getName());
+        assertEquals(energy("5.0"), savedItem.getEnergy());
         assertEquals(expectedResponse, response);
     }
 
@@ -277,6 +298,7 @@ class ItemServiceTests {
             itemId,
             "New title later",
             "line 1\nline 2",
+            energy("7.5"),
             "STUFF",
             Instant.now(),
             List.of());
@@ -288,12 +310,14 @@ class ItemServiceTests {
         ItemResponseDto response = itemService.updateItem(itemId, new UpdateItemRequestDto(
             " New\t title\r\nlater ",
             " line 1\r\nline 2 ",
+            energy("7.5"),
             null));
 
         verify(itemRepository).save(itemCaptor.capture());
         Item savedItem = itemCaptor.getValue();
         assertEquals("New  title later", savedItem.getTitle().value());
         assertEquals("line 1\nline 2", savedItem.getBody().value());
+        assertEquals(energy("7.5"), savedItem.getEnergy());
         assertEquals(expectedResponse, response);
     }
 
@@ -304,7 +328,7 @@ class ItemServiceTests {
 
         ItemNotFoundException exception = assertThrows(
             ItemNotFoundException.class,
-            () -> itemService.updateItem(itemId, new UpdateItemRequestDto("Title", "Body", null)));
+            () -> itemService.updateItem(itemId, new UpdateItemRequestDto("Title", "Body", energy("1.0"), null)));
 
         assertEquals("item not found", exception.getMessage());
         verify(itemRepository, never()).save(any(Item.class));
@@ -319,7 +343,7 @@ class ItemServiceTests {
 
         IllegalArgumentException exception = assertThrows(
             IllegalArgumentException.class,
-            () -> itemService.updateItem(itemId, new UpdateItemRequestDto("   ", "Body", null)));
+            () -> itemService.updateItem(itemId, new UpdateItemRequestDto("   ", "Body", energy("1.0"), null)));
 
         assertEquals("title is required", exception.getMessage());
         verify(itemRepository, never()).save(any(Item.class));
@@ -335,6 +359,7 @@ class ItemServiceTests {
             itemId,
             "New title",
             null,
+            null,
             "STUFF",
             Instant.now(),
             List.of(new ContextResponseDto(UUID.randomUUID(), "office")));
@@ -346,12 +371,14 @@ class ItemServiceTests {
         ItemResponseDto response = itemService.updateItem(itemId, new UpdateItemRequestDto(
             "New title",
             null,
+            null,
             null));
 
         verify(itemRepository).save(itemCaptor.capture());
         Item savedItem = itemCaptor.getValue();
         assertEquals(1, savedItem.getContexts().size());
         assertEquals("office", savedItem.getContexts().iterator().next().getName());
+        assertNull(savedItem.getEnergy());
         assertEquals(expectedResponse, response);
         verify(contextRepository, never()).findAllByIdInAndDeletedAtIsNull(any());
     }

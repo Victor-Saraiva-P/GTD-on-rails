@@ -51,7 +51,7 @@ public class ItemService {
         Title title = new Title(itemTextNormalizer.normalizeTitle(request.title()));
         String normalizedBodyValue = itemTextNormalizer.normalizeBody(request.body());
         Body body = normalizedBodyValue == null ? null : new Body(normalizedBodyValue);
-        Item item = new Item(title, body);
+        Item item = new Item(title, body, request.energy());
         item.replaceContexts(findContextsOrThrow(request.contextIds()));
         return itemMapper.toResponse(itemRepository.save(item));
     }
@@ -65,6 +65,7 @@ public class ItemService {
 
         item.setTitle(title);
         item.setBody(body);
+        item.setEnergy(request.energy());
 
         if (request.contextIds() != null) {
             item.replaceContexts(findContextsOrThrow(request.contextIds()));

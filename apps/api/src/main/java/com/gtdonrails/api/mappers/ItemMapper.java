@@ -20,6 +20,7 @@ public class ItemMapper {
             item.getId(),
             item.getTitle().value(),
             item.getBody() == null ? null : item.getBody().value(),
+            item.getEnergy(),
             item.getStatus().name(),
             item.getCreatedAt(),
             item.getContexts().stream()

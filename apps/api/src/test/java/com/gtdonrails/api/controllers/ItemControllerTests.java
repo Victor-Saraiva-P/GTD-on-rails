@@ -2,6 +2,7 @@ package com.gtdonrails.api.controllers;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -9,6 +10,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import java.math.BigDecimal;
 
 import com.gtdonrails.api.entities.Context;
 import com.gtdonrails.api.entities.Item;
@@ -31,6 +34,10 @@ import org.springframework.web.context.WebApplicationContext;
 @ActiveProfiles("test")
 @Tag("integration")
 class ItemControllerTests {
+
+    private static BigDecimal energy(String value) {
+        return new BigDecimal(value);
+    }
 
     @Autowired
     private WebApplicationContext webApplicationContext;
@@ -57,13 +64,15 @@ class ItemControllerTests {
                 .content("""
                     {
                       "title": "Capture rent receipt",
-                      "body": "Need to process later"
+                      "body": "Need to process later",
+                      "energy": 3.5
                     }
                     """))
             .andExpect(status().isCreated())
             .andExpect(header().string("Location", "/items/" + itemRepository.findAll().getFirst().getId()))
             .andExpect(jsonPath("$.title").value("Capture rent receipt"))
             .andExpect(jsonPath("$.body").value("Need to process later"))
+            .andExpect(jsonPath("$.energy").value(3.5))
             .andExpect(jsonPath("$.status").value("STUFF"))
             .andExpect(jsonPath("$.createdAt", notNullValue()))
             .andExpect(jsonPath("$.contexts", hasSize(0)));
@@ -80,10 +89,12 @@ class ItemControllerTests {
                     {
                       "title": "Capture rent receipt",
                       "body": "Need to process later",
+                      "energy": 4.0,
                       "contextIds": ["%s", "%s"]
                     }
                     """.formatted(home.getId(), street.getId())))
             .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.energy").value(4.0))
             .andExpect(jsonPath("$.contexts", hasSize(2)))
             .andExpect(jsonPath("$.contexts[0].name").value("home"))
             .andExpect(jsonPath("$.contexts[1].name").value("street"));
@@ -91,15 +102,30 @@ class ItemControllerTests {
 
     @Test
     void getsItem() throws Exception {
-        Item item = itemRepository.save(new Item(new Title("Capture idea"), new Body("Need to process later")));
+        Item item = itemRepository.save(new Item(new Title("Capture idea"), new Body("Need to process later"), energy("2.0")));
 
         mockMvc.perform(get("/items/{id}", item.getId()))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(item.getId().toString()))
             .andExpect(jsonPath("$.title").value("Capture idea"))
             .andExpect(jsonPath("$.body").value("Need to process later"))
+            .andExpect(jsonPath("$.energy").value(2.0))
             .andExpect(jsonPath("$.status").value("STUFF"))
             .andExpect(jsonPath("$.createdAt", notNullValue()));
+    }
+
+    @Test
+    void createsItemWithNullEnergyWhenEnergyIsOmitted() throws Exception {
+        mockMvc.perform(post("/items")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "title": "Capture rent receipt",
+                      "body": "Need to process later"
+                    }
+                    """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.energy").value(nullValue()));
     }
 
     @Test
@@ -109,7 +135,8 @@ class ItemControllerTests {
                 .content("""
                     {
                       "title": "   ",
-                      "body": "Need to process later"
+                      "body": "Need to process later",
+                      "energy": 1.0
                     }
                     """))
             .andExpect(status().isBadRequest())
@@ -122,26 +149,28 @@ class ItemControllerTests {
 
     @Test
     void updatesItem() throws Exception {
-        Item item = itemRepository.save(new Item(new Title("Old title"), new Body("Old body")));
+        Item item = itemRepository.save(new Item(new Title("Old title"), new Body("Old body"), energy("1.0")));
 
         mockMvc.perform(put("/items/{id}", item.getId())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
                       "title": "New title",
-                      "body": "New body"
+                      "body": "New body",
+                      "energy": 6.5
                     }
                     """))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.title").value("New title"))
             .andExpect(jsonPath("$.body").value("New body"))
+            .andExpect(jsonPath("$.energy").value(6.5))
             .andExpect(jsonPath("$.createdAt", notNullValue()))
             .andExpect(jsonPath("$.contexts", hasSize(0)));
     }
 
     @Test
     void updatesItemContexts() throws Exception {
-        Item item = itemRepository.save(new Item(new Title("Old title"), null));
+        Item item = itemRepository.save(new Item(new Title("Old title"), null, energy("1.0")));
         Context office = contextRepository.save(new Context("office"));
 
         mockMvc.perform(put("/items/{id}", item.getId())
@@ -150,10 +179,12 @@ class ItemControllerTests {
                     {
                       "title": "New title",
                       "body": null,
+                      "energy": 5.0,
                       "contextIds": ["%s"]
                     }
                     """.formatted(office.getId())))
             .andExpect(status().isOk())
+            .andExpect(jsonPath("$.energy").value(5.0))
             .andExpect(jsonPath("$.contexts", hasSize(1)))
             .andExpect(jsonPath("$.contexts[0].name").value("office"))
             .andExpect(jsonPath("$.createdAt", notNullValue()));
@@ -162,7 +193,7 @@ class ItemControllerTests {
     @Test
     void preservesExistingContextsWhenContextIdsAreOmittedOnUpdate() throws Exception {
         Context office = contextRepository.save(new Context("office"));
-        Item item = itemRepository.save(new Item(new Title("Old title"), null));
+        Item item = itemRepository.save(new Item(new Title("Old title"), null, energy("2.0")));
         item.addContext(office);
         item = itemRepository.save(item);
 
@@ -171,12 +202,14 @@ class ItemControllerTests {
                 .content("""
                     {
                       "title": "Updated title",
-                      "body": "Updated body"
+                      "body": "Updated body",
+                      "energy": 7.0
                     }
                     """))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.title").value("Updated title"))
             .andExpect(jsonPath("$.body").value("Updated body"))
+            .andExpect(jsonPath("$.energy").value(7.0))
             .andExpect(jsonPath("$.contexts", hasSize(1)))
             .andExpect(jsonPath("$.contexts[0].name").value("office"));
     }
