@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { Pane } from "../components/Pane";
+import { ListPane } from "../components/ListPane";
+import { ListWorkspace } from "../components/ListWorkspace";
 import { InboxList } from "../features/inbox/InboxList";
 import { InboxStuffDetails } from "../features/inbox/InboxStuffDetails";
 import type { KeybindDefinition } from "../features/keybinds/types";
 import { LeaderMenu } from "../features/keybinds/LeaderMenu";
+import { inboxListTheme } from "../features/lists/listThemes";
 import { useActiveZone, useKeybindScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
 import { useInboxStuffsQuery } from "../features/inbox/useInboxStuffsQuery";
 
@@ -32,10 +34,9 @@ export function InboxPage() {
   const { activeZone, setActiveZone } = useActiveZone();
   const selectedItem =
     stuffs.find((item) => item.id === selectedId) ?? (stuffs.length > 0 ? stuffs[0] : null);
-  const selectedPosition = selectedItem
-    ? stuffs.findIndex((item) => item.id === selectedItem.id) + 1
-    : 0;
-  const selectedIndex = selectedPosition - 1;
+  const selectedIndex = selectedItem
+    ? stuffs.findIndex((item) => item.id === selectedItem.id)
+    : -1;
 
   useEffect(() => {
     setActiveZone("inbox-list");
@@ -497,34 +498,36 @@ export function InboxPage() {
     );
   })();
 
+  const listMeta = `${stuffs.length} ${stuffs.length === 1 ? "item" : "items"}`;
+
   return (
-    <main className="workspace">
-      <section className="inbox-layout" aria-label="Inbox">
-        <Pane
-          iconSrc="/inbox/inbox icon.png"
-          label="Inbox"
-          status={
-            <>
-              <span>({selectedPosition})</span>
-              <span>{stuffs.length}/{stuffs.length}</span>
-            </>
-          }
+    <ListWorkspace
+      theme={inboxListTheme}
+      currentIconSrc={inboxListTheme.iconSrc}
+      currentLabel={inboxListTheme.label}
+    >
+      <section className="inbox-terminal-layout" aria-label="Inbox">
+        <ListPane
+          title="Inbox"
+          meta={listMeta}
+          panelIndex={1}
           active={activeZone === "inbox-list"}
+          bodyClassName="list-pane__body--flush"
+          iconSrc={inboxListTheme.iconSrc}
         >
           {listBody}
-        </Pane>
+        </ListPane>
 
-        <Pane
-          iconSrc="/inbox/stuff icon.png"
-          label={selectedItem?.title ?? "Stuff"}
-          bodyClassName="pane__body--detail"
-          wrapLabel={selectedItem !== null}
+        <ListPane
+          title="Stuff Detail"
+          panelIndex={2}
           active={activeZone === "stuff-detail"}
+          bodyClassName="list-pane__body--detail"
         >
           {detailBody}
-        </Pane>
+        </ListPane>
       </section>
       <LeaderMenu />
-    </main>
+    </ListWorkspace>
   );
 }

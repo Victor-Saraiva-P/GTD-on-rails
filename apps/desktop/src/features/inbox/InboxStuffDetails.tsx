@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { formatStuffCreatedAt, getStuffBodyLines, type Stuff } from "./types";
+import { formatStuffCreatedAt, type Stuff } from "./types";
 
 type InboxStuffDetailsProps = {
   item: Stuff;
@@ -39,11 +39,14 @@ export function InboxStuffDetails({
 
   if (editing) {
     return (
-      <div className="detail-card">
+      <div className="inbox-detail">
+        <p className="inbox-detail__meta">Created: {formatStuffCreatedAt(item.createdAt)}</p>
+        <h1 className="inbox-detail__title">{item.title}</h1>
+        <div className="inbox-detail__divider" />
         <textarea
           ref={textareaRef}
           value={editingBody}
-          className="detail-card__textarea"
+          className="inbox-detail__textarea"
           onChange={(event) => onEditingBodyChange(event.target.value)}
           onBlur={onCommitEditing}
           onKeyDown={(event) => {
@@ -62,19 +65,18 @@ export function InboxStuffDetails({
     );
   }
 
-  const details = getStuffBodyLines(item.body);
-
   return (
-    <div className="detail-card">
-      <p className="detail-card__meta">Created {formatStuffCreatedAt(item.createdAt)}</p>
-      {details.length === 0 ? <p className="pane-state">No details yet for this stuff.</p> : null}
-      <ul className="detail-list" aria-label="Selected item details">
-        {details.map((detail) => (
-          <li key={detail} className="detail-list__item">
-            {detail}
-          </li>
-        ))}
-      </ul>
+    <div className="inbox-detail">
+      <p className="inbox-detail__meta">Created: {formatStuffCreatedAt(item.createdAt)}</p>
+      <h1 className="inbox-detail__title">{item.title}</h1>
+      <div className="inbox-detail__divider" />
+      {item.body ? (
+        <pre className="inbox-detail__body" aria-label="Selected item details">
+          {item.body}
+        </pre>
+      ) : (
+        <p className="pane-state">No details yet for this stuff.</p>
+      )}
     </div>
   );
 }

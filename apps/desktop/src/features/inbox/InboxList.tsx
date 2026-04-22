@@ -27,7 +27,7 @@ export function InboxList({
   onCancelEditing
 }: InboxListProps) {
   return (
-    <ol className="tree-list" aria-label="Inbox items">
+    <ol className="tree-list tree-list--inbox" aria-label="Inbox items">
       {items.map((item) => (
         <InboxListStuff
           key={item.id}
