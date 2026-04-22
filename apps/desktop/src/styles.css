@@ -356,6 +356,11 @@ body {
   font-weight: 600;
 }
 
+.leader-menu__subtitle {
+  color: #9b9b9b;
+  font-size: 0.84rem;
+}
+
 .leader-menu__list {
   display: grid;
   gap: 8px;

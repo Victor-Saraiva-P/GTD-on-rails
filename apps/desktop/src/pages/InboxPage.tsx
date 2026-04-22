@@ -38,6 +38,10 @@ export function InboxPage() {
   const selectedIndex = selectedPosition - 1;
 
   useEffect(() => {
+    setActiveZone("inbox-list");
+  }, [setActiveZone]);
+
+  useEffect(() => {
     if (stuffs.length === 0) {
       setSelectedId(null);
       setEditingId(null);

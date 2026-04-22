@@ -1,7 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { KeybindProvider } from "./features/keybinds/KeybindProvider";
-import { InboxPage } from "./pages/InboxPage";
+import { AppShell } from "./pages/AppShell";
 import "./styles.css";
 
 const app = document.querySelector<HTMLDivElement>("#app");
@@ -13,7 +13,7 @@ if (!app) {
 ReactDOM.createRoot(app).render(
   <React.StrictMode>
     <KeybindProvider>
-      <InboxPage />
+      <AppShell />
     </KeybindProvider>
   </React.StrictMode>
 );

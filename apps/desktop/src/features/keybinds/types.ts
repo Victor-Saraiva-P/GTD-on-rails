@@ -1,6 +1,6 @@
-export type ScreenId = "inbox";
+export type ScreenId = "inbox" | "contexts";
 
-export type FocusZoneId = "inbox-list" | "stuff-detail";
+export type FocusZoneId = "inbox-list" | "stuff-detail" | "context-list" | "context-detail";
 
 export type KeybindDefinition = {
   id: string;
@@ -10,4 +10,5 @@ export type KeybindDefinition = {
   screen?: ScreenId;
   zone?: FocusZoneId;
   leader?: boolean;
+  sequence?: string[];
 };

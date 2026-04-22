@@ -18,6 +18,7 @@ type KeybindContextValue = {
   activeScreen: ScreenId;
   activeZone: FocusZoneId;
   closeLeaderMenu: () => void;
+  leaderPath: string[];
   isLeaderMenuOpen: boolean;
   getAvailableLeaderBindings: () => KeybindDefinition[];
   registerBindings: (bindings: KeybindDefinition[]) => () => void;
@@ -31,9 +32,18 @@ export function KeybindProvider({ children }: PropsWithChildren) {
   const [activeScreen, setActiveScreen] = useState<ScreenId>("inbox");
   const [activeZone, setActiveZone] = useState<FocusZoneId>("inbox-list");
   const [isLeaderMenuOpen, setIsLeaderMenuOpen] = useState(false);
+  const [leaderPath, setLeaderPath] = useState<string[]>([]);
   const bindingsRef = useRef<RegisteredKeybind[]>([]);
 
   useEffect(() => {
+    function isModifierKey(key: string) {
+      return key === "Shift" || key === "Control" || key === "Alt" || key === "Meta";
+    }
+
+    function getLeaderSequence(binding: KeybindDefinition) {
+      return binding.sequence ?? [binding.key];
+    }
+
     function onKeyDown(event: KeyboardEvent) {
       const target = event.target;
       const isTypingTarget =
@@ -51,29 +61,59 @@ export function KeybindProvider({ children }: PropsWithChildren) {
         if (event.key === "Escape") {
           event.preventDefault();
           setIsLeaderMenuOpen(false);
+          setLeaderPath([]);
           return;
         }
 
-        const matchingLeaderBinding = bindingsRef.current.find((binding) => {
+        if (isModifierKey(event.key)) {
+          return;
+        }
+
+        const leaderBindings = bindingsRef.current.filter((binding) => {
           const screenMatches = !binding.screen || binding.screen === activeScreen;
           const zoneMatches = !binding.zone || binding.zone === activeZone;
 
-          return screenMatches && zoneMatches && binding.leader && binding.key === event.key;
+          return screenMatches && zoneMatches && binding.leader;
+        });
+        const nextLeaderPath = [...leaderPath, event.key];
+        const exactMatch = leaderBindings.find((binding) => {
+          const sequence = getLeaderSequence(binding);
+
+          return (
+            sequence.length === nextLeaderPath.length &&
+            sequence.every((segment, index) => segment === nextLeaderPath[index])
+          );
+        });
+        const hasContinuation = leaderBindings.some((binding) => {
+          const sequence = getLeaderSequence(binding);
+
+          if (sequence.length <= nextLeaderPath.length) {
+            return false;
+          }
+
+          return nextLeaderPath.every((segment, index) => sequence[index] === segment);
         });
 
         event.preventDefault();
 
-        if (matchingLeaderBinding) {
-          matchingLeaderBinding.handler();
+        if (hasContinuation) {
+          setLeaderPath(nextLeaderPath);
+          return;
+        }
+
+        if (exactMatch) {
+          exactMatch.handler();
         }
 
         setIsLeaderMenuOpen(false);
+        setLeaderPath([]);
         return;
       }
 
       if (event.key === " ") {
         event.preventDefault();
         setIsLeaderMenuOpen(true);
+        setLeaderPath([]);
         return;
       }
 
@@ -97,7 +137,7 @@ export function KeybindProvider({ children }: PropsWithChildren) {
     return () => {
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [activeScreen, activeZone, isLeaderMenuOpen]);
+  }, [activeScreen, activeZone, isLeaderMenuOpen, leaderPath]);
 
   const registerBindings = useCallback((bindings: KeybindDefinition[]) => {
     const registrationId = Symbol("keybind-registration");
@@ -115,29 +155,64 @@ export function KeybindProvider({ children }: PropsWithChildren) {
     };
   }, []);
 
-  const getAvailableLeaderBindings = useCallback(
-    () =>
-      bindingsRef.current.filter((binding) => {
+  const getAvailableLeaderBindings = useCallback(() => {
+    const availableBindings = bindingsRef.current.filter((binding) => {
         const screenMatches = !binding.screen || binding.screen === activeScreen;
         const zoneMatches = !binding.zone || binding.zone === activeZone;
 
         return screenMatches && zoneMatches && binding.leader;
-      }),
-    [activeScreen, activeZone]
-  );
+      });
+    const nextBindingsByKey = new Map<string, KeybindDefinition>();
+
+    availableBindings.forEach((binding) => {
+      const sequence = binding.sequence ?? [binding.key];
+
+      if (!leaderPath.every((segment, index) => sequence[index] === segment)) {
+        return;
+      }
+
+      if (sequence.length <= leaderPath.length) {
+        return;
+      }
+
+      const nextKey = sequence[leaderPath.length];
+
+      if (nextBindingsByKey.has(nextKey)) {
+        return;
+      }
+
+      nextBindingsByKey.set(nextKey, {
+        ...binding,
+        key: nextKey
+      });
+    });
+
+    return Array.from(nextBindingsByKey.values());
+  }, [activeScreen, activeZone, leaderPath]);
 
   const value = useMemo<KeybindContextValue>(
     () => ({
       activeScreen,
       activeZone,
-      closeLeaderMenu: () => setIsLeaderMenuOpen(false),
+      closeLeaderMenu: () => {
+        setIsLeaderMenuOpen(false);
+        setLeaderPath([]);
+      },
+      leaderPath,
       isLeaderMenuOpen,
       getAvailableLeaderBindings,
       registerBindings,
       setActiveScreen,
       setActiveZone
     }),
-    [activeScreen, activeZone, getAvailableLeaderBindings, isLeaderMenuOpen, registerBindings]
+    [
+      activeScreen,
+      activeZone,
+      getAvailableLeaderBindings,
+      isLeaderMenuOpen,
+      leaderPath,
+      registerBindings
+    ]
   );
 
   return <KeybindContext.Provider value={value}>{children}</KeybindContext.Provider>;

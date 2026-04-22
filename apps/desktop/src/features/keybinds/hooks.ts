@@ -19,6 +19,15 @@ export function useActiveZone() {
   };
 }
 
+export function useActiveScreen() {
+  const { activeScreen, setActiveScreen } = useKeybindContext();
+
+  return {
+    activeScreen,
+    setActiveScreen
+  };
+}
+
 export function useLeaderMenu() {
   const { closeLeaderMenu, isLeaderMenuOpen } = useKeybindContext();
 
