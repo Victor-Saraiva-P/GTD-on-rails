@@ -2,6 +2,7 @@ package com.gtdonrails.api.services;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -10,6 +11,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
+import com.gtdonrails.api.dtos.context.ContextItemResponseDto;
 import com.gtdonrails.api.dtos.context.ContextResponseDto;
 import com.gtdonrails.api.dtos.context.CreateContextRequestDto;
 import com.gtdonrails.api.dtos.context.UpdateContextRequestDto;
@@ -17,8 +19,10 @@ import com.gtdonrails.api.entities.Context;
 import com.gtdonrails.api.entities.Item;
 import com.gtdonrails.api.exceptions.context.ContextNotFoundException;
 import com.gtdonrails.api.mappers.ContextMapper;
+import com.gtdonrails.api.mappers.ItemMapper;
 import com.gtdonrails.api.normalizers.ContextNameNormalizer;
 import com.gtdonrails.api.repositories.ContextRepository;
+import com.gtdonrails.api.repositories.ItemRepository;
 import com.gtdonrails.api.types.Title;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
@@ -28,6 +32,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 @ExtendWith(MockitoExtension.class)
 @Tag("unit")
@@ -37,7 +43,13 @@ class ContextServiceTests {
     private ContextRepository contextRepository;
 
     @Mock
+    private ItemRepository itemRepository;
+
+    @Mock
     private ContextMapper contextMapper;
+
+    @Mock
+    private ItemMapper itemMapper;
 
     private final ContextNameNormalizer contextNameNormalizer = new ContextNameNormalizer();
 
@@ -48,7 +60,13 @@ class ContextServiceTests {
 
     @BeforeEach
     void setUp() {
-        contextService = new ContextService(contextRepository, contextMapper, contextNameNormalizer);
+        contextService = new ContextService(
+            contextRepository,
+            itemRepository,
+            contextMapper,
+            itemMapper,
+            contextNameNormalizer
+        );
     }
 
     // listContexts
@@ -92,6 +110,71 @@ class ContextServiceTests {
         ContextNotFoundException exception = assertThrows(
             ContextNotFoundException.class,
             () -> contextService.getContext(contextId));
+
+        assertEquals("context not found", exception.getMessage());
+    }
+
+    @Test
+    void listContextItemsReturnsMappedItemsOrderedByUpdatedAtDesc() {
+        UUID contextId = UUID.randomUUID();
+        Context context = new Context("home");
+        Item newerItem = new Item(new Title("Newer item"), null);
+        Item olderItem = new Item(new Title("Older item"), null);
+        ContextItemResponseDto newerResponse = new ContextItemResponseDto(
+            UUID.randomUUID(),
+            "Newer item",
+            "STUFF"
+        );
+        ContextItemResponseDto olderResponse = new ContextItemResponseDto(
+            UUID.randomUUID(),
+            "Older item",
+            "STUFF"
+        );
+
+        when(contextRepository.findByIdAndDeletedAtIsNull(contextId)).thenReturn(Optional.of(context));
+        when(itemRepository.findAllByContexts_IdAndDeletedAtIsNullOrderByUpdatedAtDesc(contextId))
+            .thenReturn(List.of(newerItem, olderItem));
+        when(itemMapper.toContextItemResponse(newerItem)).thenReturn(newerResponse);
+        when(itemMapper.toContextItemResponse(olderItem)).thenReturn(olderResponse);
+
+        List<ContextItemResponseDto> response = contextService.listContextItems(contextId, null);
+
+        assertEquals(List.of(newerResponse, olderResponse), response);
+    }
+
+    @Test
+    void listContextItemsAppliesLimit() {
+        UUID contextId = UUID.randomUUID();
+        Context context = new Context("home");
+        Item limitedItem = new Item(new Title("Limited item"), null);
+        ContextItemResponseDto limitedResponse = new ContextItemResponseDto(
+            UUID.randomUUID(),
+            "Limited item",
+            "STUFF"
+        );
+
+        when(contextRepository.findByIdAndDeletedAtIsNull(contextId)).thenReturn(Optional.of(context));
+        when(itemRepository.findAllByContexts_IdAndDeletedAtIsNullOrderByUpdatedAtDesc(
+            eq(contextId),
+            eq(PageRequest.of(0, 1))
+        )).thenReturn(new PageImpl<>(List.of(limitedItem)));
+        when(itemMapper.toContextItemResponse(limitedItem)).thenReturn(limitedResponse);
+
+        List<ContextItemResponseDto> response = contextService.listContextItems(contextId, 1);
+
+        assertEquals(List.of(limitedResponse), response);
+    }
+
+    @Test
+    void listContextItemsThrowsWhenContextDoesNotExist() {
+        UUID contextId = UUID.randomUUID();
+
+        when(contextRepository.findByIdAndDeletedAtIsNull(contextId)).thenReturn(Optional.empty());
+
+        ContextNotFoundException exception = assertThrows(
+            ContextNotFoundException.class,
+            () -> contextService.listContextItems(contextId, 10)
+        );
 
         assertEquals("context not found", exception.getMessage());
     }

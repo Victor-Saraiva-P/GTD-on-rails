@@ -154,4 +154,74 @@ class ContextControllerTests {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.contexts", hasSize(0)));
     }
+
+    @Test
+    void listsItemsForContextOrderedByMostRecentlyUpdatedFirst() throws Exception {
+        Context context = contextRepository.save(new Context("home"));
+
+        Item oldest = new Item(new Title("Oldest item"), null);
+        oldest.addContext(context);
+        itemRepository.saveAndFlush(oldest);
+
+        Thread.sleep(5);
+
+        Item middle = new Item(new Title("Middle item"), null);
+        middle.addContext(context);
+        itemRepository.saveAndFlush(middle);
+
+        Thread.sleep(5);
+
+        Item newest = new Item(new Title("Newest item"), null);
+        newest.addContext(context);
+        itemRepository.saveAndFlush(newest);
+
+        mockMvc.perform(get("/contexts/{id}/items", context.getId()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(3)))
+            .andExpect(jsonPath("$[0].id").value(newest.getId().toString()))
+            .andExpect(jsonPath("$[0].status").value("STUFF"))
+            .andExpect(jsonPath("$[0].body").doesNotExist())
+            .andExpect(jsonPath("$[0].title").value("Newest item"))
+            .andExpect(jsonPath("$[1].title").value("Middle item"))
+            .andExpect(jsonPath("$[2].title").value("Oldest item"));
+    }
+
+    @Test
+    void listsOnlyLimitedNumberOfItemsForContext() throws Exception {
+        Context context = contextRepository.save(new Context("home"));
+
+        Item older = new Item(new Title("Older item"), null);
+        older.addContext(context);
+        itemRepository.saveAndFlush(older);
+
+        Thread.sleep(5);
+
+        Item newer = new Item(new Title("Newer item"), null);
+        newer.addContext(context);
+        itemRepository.saveAndFlush(newer);
+
+        mockMvc.perform(get("/contexts/{id}/items", context.getId())
+                .param("limit", "1"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(1)))
+            .andExpect(jsonPath("$[0].title").value("Newer item"));
+    }
+
+    @Test
+    void returnsNotFoundWhenListingItemsForMissingContext() throws Exception {
+        mockMvc.perform(get("/contexts/00000000-0000-0000-0000-000000000001/items"))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.title").value("Resource not found"))
+            .andExpect(jsonPath("$.detail").value("context not found"));
+    }
+
+    @Test
+    void returnsBadRequestWhenLimitIsNotPositive() throws Exception {
+        Context context = contextRepository.save(new Context("home"));
+
+        mockMvc.perform(get("/contexts/{id}/items", context.getId())
+                .param("limit", "0"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.detail").value("limit must be greater than 0"));
+    }
 }

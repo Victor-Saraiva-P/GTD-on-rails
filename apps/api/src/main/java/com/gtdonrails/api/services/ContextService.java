@@ -4,14 +4,18 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
 
+import com.gtdonrails.api.dtos.context.ContextItemResponseDto;
 import com.gtdonrails.api.dtos.context.ContextResponseDto;
 import com.gtdonrails.api.dtos.context.CreateContextRequestDto;
 import com.gtdonrails.api.dtos.context.UpdateContextRequestDto;
 import com.gtdonrails.api.entities.Context;
 import com.gtdonrails.api.exceptions.context.ContextNotFoundException;
 import com.gtdonrails.api.mappers.ContextMapper;
+import com.gtdonrails.api.mappers.ItemMapper;
 import com.gtdonrails.api.normalizers.ContextNameNormalizer;
 import com.gtdonrails.api.repositories.ContextRepository;
+import com.gtdonrails.api.repositories.ItemRepository;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,16 +23,22 @@ import org.springframework.transaction.annotation.Transactional;
 public class ContextService {
 
     private final ContextRepository contextRepository;
+    private final ItemRepository itemRepository;
     private final ContextMapper contextMapper;
+    private final ItemMapper itemMapper;
     private final ContextNameNormalizer contextNameNormalizer;
 
     public ContextService(
         ContextRepository contextRepository,
+        ItemRepository itemRepository,
         ContextMapper contextMapper,
+        ItemMapper itemMapper,
         ContextNameNormalizer contextNameNormalizer
     ) {
         this.contextRepository = contextRepository;
+        this.itemRepository = itemRepository;
         this.contextMapper = contextMapper;
+        this.itemMapper = itemMapper;
         this.contextNameNormalizer = contextNameNormalizer;
     }
 
@@ -43,6 +53,26 @@ public class ContextService {
     @Transactional(readOnly = true)
     public ContextResponseDto getContext(UUID id) {
         return contextMapper.toResponse(findContext(id));
+    }
+
+    @Transactional(readOnly = true)
+    public List<ContextItemResponseDto> listContextItems(UUID id, Integer limit) {
+        findContext(id);
+
+        if (limit == null) {
+            return itemRepository.findAllByContexts_IdAndDeletedAtIsNullOrderByUpdatedAtDesc(id)
+                .stream()
+                .map(itemMapper::toContextItemResponse)
+                .toList();
+        }
+
+        return itemRepository.findAllByContexts_IdAndDeletedAtIsNullOrderByUpdatedAtDesc(
+                id,
+                PageRequest.of(0, limit)
+            )
+            .stream()
+            .map(itemMapper::toContextItemResponse)
+            .toList();
     }
 
     @Transactional

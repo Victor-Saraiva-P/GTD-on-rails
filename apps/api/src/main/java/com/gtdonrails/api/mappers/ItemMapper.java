@@ -2,6 +2,7 @@ package com.gtdonrails.api.mappers;
 
 import java.util.Comparator;
 
+import com.gtdonrails.api.dtos.context.ContextItemResponseDto;
 import com.gtdonrails.api.dtos.item.ItemResponseDto;
 import com.gtdonrails.api.entities.Item;
 import org.springframework.stereotype.Component;
@@ -28,6 +29,14 @@ public class ItemMapper {
                 .sorted(Comparator.comparing(context -> context.getName().toLowerCase()))
                 .map(contextMapper::toResponse)
                 .toList()
+        );
+    }
+
+    public ContextItemResponseDto toContextItemResponse(Item item) {
+        return new ContextItemResponseDto(
+            item.getId(),
+            item.getTitle().value(),
+            item.getStatus().name()
         );
     }
 }

@@ -11,6 +11,7 @@ import java.time.Instant;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import lombok.extern.slf4j.Slf4j;
+import jakarta.validation.ConstraintViolationException;
 import org.springframework.beans.TypeMismatchException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -89,6 +90,24 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 status, "Invalid operation", "/invalid-operation", ex.getMessage(), request);
 
         log.warn("Invalid business operation: {}", ex.getMessage());
+        return handleExceptionInternal(ex, problemDetail, new HttpHeaders(), status, request);
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<Object> handleConstraintViolationException(
+        ConstraintViolationException ex, WebRequest request) {
+        HttpStatus status = HttpStatus.BAD_REQUEST;
+        String detail = ex.getConstraintViolations()
+            .stream()
+            .map(violation -> violation.getMessage())
+            .distinct()
+            .reduce((first, second) -> first + "\n" + second)
+            .orElse(ex.getMessage());
+        ProblemDetail problemDetail =
+            createProblemDetail(
+                status, "Invalid data", "/invalid-data", detail, request);
+
+        log.warn("Constraint violation: {}", detail);
         return handleExceptionInternal(ex, problemDetail, new HttpHeaders(), status, request);
     }
 
