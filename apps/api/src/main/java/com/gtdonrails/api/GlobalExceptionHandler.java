@@ -1,7 +1,7 @@
 package com.gtdonrails.api;
 
 import com.gtdonrails.api.exceptions.context.ContextNotFoundException;
-import com.gtdonrails.api.exceptions.inbox.InboxItemNotFoundException;
+import com.gtdonrails.api.exceptions.item.ItemNotFoundException;
 import com.gtdonrails.api.exceptions.shared.BusinessException;
 import com.gtdonrails.api.exceptions.shared.ConflictException;
 
@@ -41,10 +41,10 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @Value("${api.base-url:/errors}")
     private String apiBasePath = "/errors";
 
-    @ExceptionHandler(InboxItemNotFoundException.class)
-    public ResponseEntity<Object> handleInboxItemNotFoundException(
-        InboxItemNotFoundException ex, WebRequest request) {
-        return handleResourceNotFoundException(ex, request, "Inbox item not found");
+    @ExceptionHandler(ItemNotFoundException.class)
+    public ResponseEntity<Object> handleItemNotFoundException(
+        ItemNotFoundException ex, WebRequest request) {
+        return handleResourceNotFoundException(ex, request, "Item not found");
     }
 
     @ExceptionHandler(ContextNotFoundException.class)

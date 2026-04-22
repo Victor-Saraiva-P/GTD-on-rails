@@ -12,5 +12,5 @@ public interface ItemRepository extends JpaRepository<Item, UUID> {
 
     List<Item> findAllByStatusAndDeletedAtIsNullOrderByCreatedAtDesc(ItemStatus status);
 
-    Optional<Item> findByIdAndStatusAndDeletedAtIsNull(UUID id, ItemStatus status);
+    Optional<Item> findByIdAndDeletedAtIsNull(UUID id);
 }

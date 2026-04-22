@@ -1,0 +1,348 @@
+package com.gtdonrails.api.services;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+import com.gtdonrails.api.dtos.context.ContextResponseDto;
+import com.gtdonrails.api.dtos.item.CreateItemRequestDto;
+import com.gtdonrails.api.dtos.item.ItemResponseDto;
+import com.gtdonrails.api.dtos.item.UpdateItemRequestDto;
+import com.gtdonrails.api.entities.Context;
+import com.gtdonrails.api.entities.Item;
+import com.gtdonrails.api.exceptions.context.ContextNotFoundException;
+import com.gtdonrails.api.exceptions.item.ItemNotFoundException;
+import com.gtdonrails.api.mappers.ItemMapper;
+import com.gtdonrails.api.normalizers.ItemTextNormalizer;
+import com.gtdonrails.api.repositories.ContextRepository;
+import com.gtdonrails.api.repositories.ItemRepository;
+import com.gtdonrails.api.types.Body;
+import com.gtdonrails.api.types.Title;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+@ExtendWith(MockitoExtension.class)
+@Tag("unit")
+class ItemServiceTests {
+
+    @Mock
+    private ItemRepository itemRepository;
+
+    @Mock
+    private ContextRepository contextRepository;
+
+    @Mock
+    private ItemMapper itemMapper;
+
+    @Captor
+    private ArgumentCaptor<Item> itemCaptor;
+
+    private ItemService itemService;
+
+    @BeforeEach
+    void setUp() {
+        itemService = new ItemService(
+            itemRepository,
+            contextRepository,
+            itemMapper,
+            new ItemTextNormalizer());
+    }
+
+    // getItem
+    @Test
+    void getItemReturnsMappedItem() {
+        UUID itemId = UUID.randomUUID();
+        Item item = new Item(new Title("Capture idea"), null);
+        ItemResponseDto expectedResponse = new ItemResponseDto(
+            itemId,
+            "Capture idea",
+            null,
+            "STUFF",
+            List.of());
+
+        when(itemRepository.findByIdAndDeletedAtIsNull(itemId)).thenReturn(Optional.of(item));
+        when(itemMapper.toResponse(item)).thenReturn(expectedResponse);
+
+        ItemResponseDto response = itemService.getItem(itemId);
+
+        assertEquals(expectedResponse, response);
+    }
+
+    @Test
+    void getItemThrowsNotFoundWhenItemDoesNotExist() {
+        UUID itemId = UUID.randomUUID();
+        when(itemRepository.findByIdAndDeletedAtIsNull(itemId)).thenReturn(Optional.empty());
+
+        ItemNotFoundException exception = assertThrows(
+            ItemNotFoundException.class,
+            () -> itemService.getItem(itemId));
+
+        assertEquals("item not found", exception.getMessage());
+    }
+
+    // createItem
+    @Test
+    void createItemNormalizesAndSavesItem() {
+        ItemResponseDto expectedResponse = new ItemResponseDto(
+            UUID.randomUUID(),
+            "Capture idea later",
+            "line 1\nline 2",
+            "STUFF",
+            List.of());
+        when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(itemMapper.toResponse(any(Item.class))).thenReturn(expectedResponse);
+
+        ItemResponseDto response = itemService.createItem(new CreateItemRequestDto(
+            " Capture\tidea\r\nlater ",
+            " line 1\r\nline 2 ",
+            null));
+
+        verify(itemRepository).save(itemCaptor.capture());
+        Item savedItem = itemCaptor.getValue();
+        assertEquals("Capture idea later", savedItem.getTitle().value());
+        assertEquals("line 1\nline 2", savedItem.getBody().value());
+        assertEquals(expectedResponse, response);
+    }
+
+    @Test
+    void createItemAssignsContextsToItem() {
+        UUID notebookId = UUID.randomUUID();
+        UUID streetId = UUID.randomUUID();
+        Context notebook = new Context("notebook");
+        Context street = new Context("street");
+        ItemResponseDto expectedResponse = new ItemResponseDto(
+            UUID.randomUUID(),
+            "Capture idea",
+            null,
+            "STUFF",
+            List.of(
+                new ContextResponseDto(notebookId, "notebook"),
+                new ContextResponseDto(streetId, "street")));
+
+        when(contextRepository.findAllByIdInAndDeletedAtIsNull(any()))
+            .thenReturn(List.of(notebook, street));
+        when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(itemMapper.toResponse(any(Item.class))).thenReturn(expectedResponse);
+
+        ItemResponseDto response = itemService.createItem(new CreateItemRequestDto(
+            "Capture idea",
+            null,
+            List.of(notebookId, streetId)));
+
+        verify(itemRepository).save(itemCaptor.capture());
+        Item savedItem = itemCaptor.getValue();
+        assertEquals(2, savedItem.getContexts().size());
+        assertEquals(expectedResponse, response);
+    }
+
+    @Test
+    void createItemSavesNullBodyWhenNormalizedBodyIsAbsent() {
+        ItemResponseDto expectedResponse = new ItemResponseDto(
+            UUID.randomUUID(),
+            "Capture idea",
+            null,
+            "STUFF",
+            List.of());
+        when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(itemMapper.toResponse(any(Item.class))).thenReturn(expectedResponse);
+
+        ItemResponseDto response = itemService.createItem(new CreateItemRequestDto(
+            " Capture idea ",
+            "   ",
+            null));
+
+        verify(itemRepository).save(itemCaptor.capture());
+        Item savedItem = itemCaptor.getValue();
+        assertEquals("Capture idea", savedItem.getTitle().value());
+        assertNull(savedItem.getBody());
+        assertEquals(expectedResponse, response);
+    }
+
+    @Test
+    void createItemThrowsWhenTitleIsInvalid() {
+        CreateItemRequestDto request = new CreateItemRequestDto("   ", "Body", null);
+
+        IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> itemService.createItem(request));
+
+        assertEquals("title is required", exception.getMessage());
+        verify(itemRepository, never()).save(any(Item.class));
+    }
+
+    @Test
+    void createItemThrowsWhenContextDoesNotExist() {
+        UUID missingContextId = UUID.randomUUID();
+
+        when(contextRepository.findAllByIdInAndDeletedAtIsNull(any()))
+            .thenReturn(List.of());
+
+        ContextNotFoundException exception = assertThrows(
+            ContextNotFoundException.class,
+            () -> itemService.createItem(new CreateItemRequestDto(
+                "Capture idea",
+                null,
+                List.of(missingContextId))));
+
+        assertEquals("context not found", exception.getMessage());
+        verify(itemRepository, never()).save(any(Item.class));
+    }
+
+    // updateItem
+    @Test
+    void updateItemClearsBodyWhenNormalizedBodyIsAbsent() {
+        UUID itemId = UUID.randomUUID();
+        Item existingItem = new Item(new Title("Old title"), new Body("Old body"));
+        ItemResponseDto expectedResponse = new ItemResponseDto(
+            itemId,
+            "New title",
+            null,
+            "STUFF",
+            List.of());
+
+        when(itemRepository.findByIdAndDeletedAtIsNull(itemId)).thenReturn(Optional.of(existingItem));
+        when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(itemMapper.toResponse(any(Item.class))).thenReturn(expectedResponse);
+
+        ItemResponseDto response = itemService.updateItem(itemId, new UpdateItemRequestDto(
+            " New title ",
+            "   ",
+            null));
+
+        verify(itemRepository).save(itemCaptor.capture());
+        Item savedItem = itemCaptor.getValue();
+        assertEquals("New title", savedItem.getTitle().value());
+        assertNull(savedItem.getBody());
+        assertEquals(expectedResponse, response);
+    }
+
+    @Test
+    void updateItemReplacesContexts() {
+        UUID itemId = UUID.randomUUID();
+        UUID homeId = UUID.randomUUID();
+        Item existingItem = new Item(new Title("Old title"), null);
+        existingItem.addContext(new Context("old"));
+        Context home = new Context("home");
+        ItemResponseDto expectedResponse = new ItemResponseDto(
+            itemId,
+            "New title",
+            null,
+            "STUFF",
+            List.of(new ContextResponseDto(homeId, "home")));
+
+        when(itemRepository.findByIdAndDeletedAtIsNull(itemId)).thenReturn(Optional.of(existingItem));
+        when(contextRepository.findAllByIdInAndDeletedAtIsNull(any()))
+            .thenReturn(List.of(home));
+        when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(itemMapper.toResponse(any(Item.class))).thenReturn(expectedResponse);
+
+        ItemResponseDto response = itemService.updateItem(itemId, new UpdateItemRequestDto(
+            "New title",
+            null,
+            List.of(homeId)));
+
+        verify(itemRepository).save(itemCaptor.capture());
+        Item savedItem = itemCaptor.getValue();
+        assertEquals(1, savedItem.getContexts().size());
+        assertEquals("home", savedItem.getContexts().iterator().next().getName());
+        assertEquals(expectedResponse, response);
+    }
+
+    @Test
+    void updateItemNormalizesAndUpdatesItem() {
+        UUID itemId = UUID.randomUUID();
+        Item existingItem = new Item(new Title("Old title"), null);
+        ItemResponseDto expectedResponse = new ItemResponseDto(
+            itemId,
+            "New title later",
+            "line 1\nline 2",
+            "STUFF",
+            List.of());
+
+        when(itemRepository.findByIdAndDeletedAtIsNull(itemId)).thenReturn(Optional.of(existingItem));
+        when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(itemMapper.toResponse(any(Item.class))).thenReturn(expectedResponse);
+
+        ItemResponseDto response = itemService.updateItem(itemId, new UpdateItemRequestDto(
+            " New\t title\r\nlater ",
+            " line 1\r\nline 2 ",
+            null));
+
+        verify(itemRepository).save(itemCaptor.capture());
+        Item savedItem = itemCaptor.getValue();
+        assertEquals("New  title later", savedItem.getTitle().value());
+        assertEquals("line 1\nline 2", savedItem.getBody().value());
+        assertEquals(expectedResponse, response);
+    }
+
+    @Test
+    void updateItemThrowsNotFoundWhenItemDoesNotExist() {
+        UUID itemId = UUID.randomUUID();
+        when(itemRepository.findByIdAndDeletedAtIsNull(itemId)).thenReturn(Optional.empty());
+
+        ItemNotFoundException exception = assertThrows(
+            ItemNotFoundException.class,
+            () -> itemService.updateItem(itemId, new UpdateItemRequestDto("Title", "Body", null)));
+
+        assertEquals("item not found", exception.getMessage());
+        verify(itemRepository, never()).save(any(Item.class));
+    }
+
+    @Test
+    void updateItemThrowsWhenTitleIsInvalid() {
+        UUID itemId = UUID.randomUUID();
+        Item existingItem = new Item(new Title("Old title"), null);
+
+        when(itemRepository.findByIdAndDeletedAtIsNull(itemId)).thenReturn(Optional.of(existingItem));
+
+        IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> itemService.updateItem(itemId, new UpdateItemRequestDto("   ", "Body", null)));
+
+        assertEquals("title is required", exception.getMessage());
+        verify(itemRepository, never()).save(any(Item.class));
+    }
+
+    // deleteItem
+    @Test
+    void deleteItemSoftDeletesAndSavesItem() {
+        UUID itemId = UUID.randomUUID();
+        Item existingItem = new Item(new Title("Disposable"), null);
+
+        when(itemRepository.findByIdAndDeletedAtIsNull(itemId)).thenReturn(Optional.of(existingItem));
+
+        itemService.deleteItem(itemId);
+
+        verify(itemRepository).save(itemCaptor.capture());
+        Item savedItem = itemCaptor.getValue();
+        assertEquals(existingItem, savedItem);
+        assertEquals(true, savedItem.isDeleted());
+    }
+
+    @Test
+    void deleteItemThrowsNotFoundWhenItemDoesNotExist() {
+        UUID itemId = UUID.randomUUID();
+        when(itemRepository.findByIdAndDeletedAtIsNull(itemId)).thenReturn(Optional.empty());
+
+        ItemNotFoundException exception = assertThrows(
+            ItemNotFoundException.class,
+            () -> itemService.deleteItem(itemId));
+
+        assertEquals("item not found", exception.getMessage());
+        verify(itemRepository, never()).save(any(Item.class));
+    }
+}

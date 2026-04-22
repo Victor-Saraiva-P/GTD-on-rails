@@ -1,4 +1,4 @@
-package com.gtdonrails.api.dtos.inbox;
+package com.gtdonrails.api.dtos.item;
 
 import java.util.List;
 import java.util.UUID;
@@ -9,7 +9,7 @@ import com.gtdonrails.api.types.Title;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
-public record CreateInboxItemRequestDto(
+public record UpdateItemRequestDto(
     @NotBlank(message = "title is required")
     @Size(max = Title.MAX_LENGTH, message = "title exceeds max length of " + Title.MAX_LENGTH)
     String title,

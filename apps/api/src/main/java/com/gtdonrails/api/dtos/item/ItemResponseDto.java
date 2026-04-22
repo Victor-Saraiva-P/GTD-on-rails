@@ -1,11 +1,11 @@
-package com.gtdonrails.api.dtos.inbox;
+package com.gtdonrails.api.dtos.item;
 
 import java.util.List;
 import java.util.UUID;
 
 import com.gtdonrails.api.dtos.context.ContextResponseDto;
 
-public record InboxItemResponseDto(
+public record ItemResponseDto(
     UUID id,
     String title,
     String body,
