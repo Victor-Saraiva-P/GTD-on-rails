@@ -1,9 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { Pane } from "../components/Pane";
-import { ContextDetails } from "../features/contexts/ContextDetails";
+import { ListPane } from "../components/ListPane";
+import { ListWorkspace } from "../components/ListWorkspace";
+import { ContextItemsPane } from "../features/contexts/ContextItemsPane";
 import { ContextsList } from "../features/contexts/ContextsList";
+import { CONTEXT_RELATED_ITEMS_LIMIT } from "../features/contexts/constants";
+import { useContextItemsQuery } from "../features/contexts/useContextItemsQuery";
 import { useContextsQuery } from "../features/contexts/useContextsQuery";
 import { LeaderMenu } from "../features/keybinds/LeaderMenu";
+import { contextsListTheme } from "../features/lists/listThemes";
 import { useActiveZone, useKeybindScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
 import type { KeybindDefinition } from "../features/keybinds/types";
 
@@ -33,6 +37,12 @@ export function ContextsPage() {
     ? contexts.findIndex((context) => context.id === selectedItem.id) + 1
     : 0;
   const selectedIndex = selectedPosition - 1;
+  const {
+    items: relatedItems,
+    isLoading: isLoadingRelatedItems,
+    errorMessage: relatedItemsErrorMessage,
+    reload: reloadRelatedItems
+  } = useContextItemsQuery(selectedItem?.id ?? null, CONTEXT_RELATED_ITEMS_LIMIT);
 
   useEffect(() => {
     setActiveZone("context-list");
@@ -324,46 +334,74 @@ export function ContextsPage() {
 
   const detailBody = (() => {
     if (isLoading) {
-      return <p className="pane-state">Loading context details...</p>;
+      return <p className="pane-state">Loading related items...</p>;
     }
 
     if (errorMessage) {
-      return <p className="pane-state">Context details are unavailable while loading fails.</p>;
+      return <p className="pane-state">Related items are unavailable while contexts loading fails.</p>;
     }
 
     if (!selectedItem) {
-      return <p className="pane-state">Select a context to inspect its details.</p>;
+      return <p className="pane-state">Select a context to inspect its related items.</p>;
     }
 
-    return <ContextDetails item={selectedItem} />;
+    if (isLoadingRelatedItems) {
+      return <p className="pane-state">Loading related items...</p>;
+    }
+
+    if (relatedItemsErrorMessage) {
+      return (
+        <div className="pane-state">
+          <p>{relatedItemsErrorMessage}</p>
+          <button type="button" className="pane-state__action" onClick={reloadRelatedItems}>
+            Retry
+          </button>
+        </div>
+      );
+    }
+
+    if (relatedItems.length === 0) {
+      return <p className="pane-state">No related items for this context yet.</p>;
+    }
+
+    return <ContextItemsPane context={selectedItem} items={relatedItems} />;
   })();
 
+  const listMeta = `${contexts.length} ${contexts.length === 1 ? "item" : "items"}`;
+  const detailMeta = `${relatedItems.length} ${relatedItems.length === 1 ? "item" : "items"}`;
+
   return (
-    <main className="workspace">
-      <section className="inbox-layout" aria-label="Contexts">
-        <Pane
-          iconSrc="/inbox/inbox icon.png"
-          label="Contexts"
-          status={
-            <>
-              <span>({selectedPosition})</span>
-              <span>{contexts.length}/{contexts.length}</span>
-            </>
-          }
+    <ListWorkspace
+      theme={contextsListTheme}
+      currentIconSrc={contextsListTheme.iconSrc}
+      currentLabel={contextsListTheme.label}
+    >
+      <section className="inbox-terminal-layout" aria-label="Contexts">
+        <ListPane
+          title="Contexts"
+          meta={listMeta}
+          panelIndex={1}
           active={activeZone === "context-list"}
+          bodyClassName="list-pane__body--flush"
+          iconSrc={contextsListTheme.iconSrc}
+          className="contexts-pane"
         >
           {listBody}
-        </Pane>
+        </ListPane>
 
-        <Pane
-          iconSrc="/inbox/inbox icon.png"
-          label={selectedItem?.name ?? "Context"}
+        <ListPane
+          title="Related Items"
+          meta={selectedItem ? detailMeta : undefined}
+          panelIndex={2}
           active={activeZone === "context-detail"}
+          bodyClassName="list-pane__body--detail"
+          iconSrc={contextsListTheme.iconSrc}
+          className="contexts-pane"
         >
           {detailBody}
-        </Pane>
+        </ListPane>
       </section>
       <LeaderMenu />
-    </main>
+    </ListWorkspace>
   );
 }

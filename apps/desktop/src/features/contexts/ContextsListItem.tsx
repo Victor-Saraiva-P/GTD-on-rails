@@ -1,3 +1,4 @@
+import { contextsListTheme } from "../lists/listThemes";
 import { useRef } from "react";
 import type { ContextItem } from "./types";
 
@@ -29,9 +30,12 @@ export function ContextsListItem({
   if (editing) {
     return (
       <li className="tree-list__item">
-        <div className="tree-entry tree-entry--active">
-          <span className="tree-entry__marker">{selected ? "●" : "○"}</span>
-          <img src="/inbox/inbox icon.png" alt="" className="tree-entry__icon" />
+        <div className="tree-entry tree-entry--active context-tree-entry">
+          <img
+            src={contextsListTheme.iconSrc}
+            alt=""
+            className="tree-entry__icon context-tree-entry__icon"
+          />
           <input
             value={editingName}
             className="tree-entry__input"
@@ -68,7 +72,7 @@ export function ContextsListItem({
     <li className="tree-list__item">
       <button
         type="button"
-        className={`tree-entry${selected ? " tree-entry--active" : ""}`}
+        className={`tree-entry context-tree-entry${selected ? " tree-entry--active" : ""}`}
         onClick={() => onSelect(item.id)}
         onDoubleClick={() => {
           onSelect(item.id);
@@ -78,8 +82,11 @@ export function ContextsListItem({
           }
         }}
       >
-        <span className="tree-entry__marker">{selected ? "●" : "○"}</span>
-        <img src="/inbox/inbox icon.png" alt="" className="tree-entry__icon" />
+        <img
+          src={contextsListTheme.iconSrc}
+          alt=""
+          className="tree-entry__icon context-tree-entry__icon"
+        />
         <span className="tree-entry__label">{item.name}</span>
       </button>
     </li>

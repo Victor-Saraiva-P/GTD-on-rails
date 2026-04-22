@@ -1,9 +1,15 @@
 import { apiFetch, apiJson } from "../../lib/api/apiClient";
-import type { ContextItem } from "./types";
+import type { ContextItem, ContextRelatedItem } from "./types";
 
 type ContextResponse = {
   id: string;
   name: string;
+};
+
+type ContextRelatedItemResponse = {
+  id: string;
+  title: string;
+  status: string;
 };
 
 export async function fetchContexts(): Promise<ContextItem[]> {
@@ -46,9 +52,28 @@ export async function deleteContext(id: string): Promise<void> {
   });
 }
 
+export async function fetchContextItems(id: string, limit: number): Promise<ContextRelatedItem[]> {
+  const searchParams = new URLSearchParams({
+    limit: String(limit)
+  });
+  const response = await apiJson<ContextRelatedItemResponse[]>(
+    `/contexts/${id}/items?${searchParams.toString()}`
+  );
+
+  return response.map(toContextRelatedItem);
+}
+
 function toContextItem(context: ContextResponse): ContextItem {
   return {
     id: context.id,
     name: context.name
+  };
+}
+
+function toContextRelatedItem(item: ContextRelatedItemResponse): ContextRelatedItem {
+  return {
+    id: item.id,
+    title: item.title,
+    status: item.status
   };
 }

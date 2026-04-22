@@ -7,6 +7,7 @@ type ListPaneProps = PropsWithChildren<{
   active?: boolean;
   bodyClassName?: string;
   iconSrc?: string;
+  className?: string;
 }>;
 
 export function ListPane({
@@ -16,10 +17,11 @@ export function ListPane({
   active = false,
   bodyClassName,
   iconSrc,
+  className,
   children
 }: ListPaneProps) {
   return (
-    <section className={`list-pane${active ? " list-pane--active" : ""}`}>
+    <section className={`list-pane${active ? " list-pane--active" : ""}${className ? ` ${className}` : ""}`}>
       <header className="list-pane__header">
         <div className="list-pane__heading">
           {iconSrc ? <img src={iconSrc} alt="" className="list-pane__icon" /> : null}

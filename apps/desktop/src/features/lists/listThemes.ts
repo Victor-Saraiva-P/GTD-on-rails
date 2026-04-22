@@ -21,3 +21,11 @@ export const stuffDetailListTheme: ListTheme = {
   accentColor: "#c85a53",
   accentColorRgb: "200, 90, 83"
 };
+
+export const contextsListTheme: ListTheme = {
+  id: "contexts",
+  label: "Contexts",
+  iconSrc: "/contexts/context icon.png",
+  accentColor: "#97353d",
+  accentColorRgb: "151, 53, 61"
+};
