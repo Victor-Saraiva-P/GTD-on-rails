@@ -2,7 +2,6 @@ package com.gtdonrails.api.services;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -16,7 +15,6 @@ import com.gtdonrails.api.dtos.context.CreateContextRequestDto;
 import com.gtdonrails.api.dtos.context.UpdateContextRequestDto;
 import com.gtdonrails.api.entities.Context;
 import com.gtdonrails.api.entities.Item;
-import com.gtdonrails.api.exceptions.context.ContextAlreadyExistsException;
 import com.gtdonrails.api.exceptions.context.ContextNotFoundException;
 import com.gtdonrails.api.mappers.ContextMapper;
 import com.gtdonrails.api.normalizers.ContextNameNormalizer;
@@ -103,7 +101,6 @@ class ContextServiceTests {
     void createContextSavesContext() {
         ContextResponseDto expectedResponse = new ContextResponseDto(UUID.randomUUID(), "home");
 
-        when(contextRepository.existsByName("home")).thenReturn(false);
         when(contextRepository.save(any(Context.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(contextMapper.toResponse(any(Context.class))).thenReturn(expectedResponse);
 
@@ -118,7 +115,6 @@ class ContextServiceTests {
     void createContextNormalizesNameBeforeSaving() {
         ContextResponseDto expectedResponse = new ContextResponseDto(UUID.randomUUID(), "home office");
 
-        when(contextRepository.existsByName("home office")).thenReturn(false);
         when(contextRepository.save(any(Context.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(contextMapper.toResponse(any(Context.class))).thenReturn(expectedResponse);
 
@@ -129,26 +125,12 @@ class ContextServiceTests {
     }
 
     @Test
-    void createContextThrowsWhenNameAlreadyExists() {
-        when(contextRepository.existsByName("home")).thenReturn(true);
-
-        ContextAlreadyExistsException exception = assertThrows(
-            ContextAlreadyExistsException.class,
-            () -> contextService.createContext(new CreateContextRequestDto("home")));
-
-        assertEquals("context name already exists", exception.getMessage());
-        verify(contextRepository, never()).save(any(Context.class));
-    }
-
-    // updateContext
-    @Test
     void updateContextUpdatesName() {
         UUID contextId = UUID.randomUUID();
         Context context = new Context("home");
         ContextResponseDto expectedResponse = new ContextResponseDto(contextId, "office");
 
         when(contextRepository.findByIdAndDeletedAtIsNull(contextId)).thenReturn(Optional.of(context));
-        when(contextRepository.existsByNameAndIdNot("office", contextId)).thenReturn(false);
         when(contextRepository.save(any(Context.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(contextMapper.toResponse(any(Context.class))).thenReturn(expectedResponse);
 
@@ -160,13 +142,12 @@ class ContextServiceTests {
     }
 
     @Test
-    void updateContextNormalizesNameBeforeCheckingUniqueness() {
+    void updateContextNormalizesNameBeforeSaving() {
         UUID contextId = UUID.randomUUID();
         Context context = new Context("home");
         ContextResponseDto expectedResponse = new ContextResponseDto(contextId, "office room");
 
         when(contextRepository.findByIdAndDeletedAtIsNull(contextId)).thenReturn(Optional.of(context));
-        when(contextRepository.existsByNameAndIdNot("office room", contextId)).thenReturn(false);
         when(contextRepository.save(any(Context.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(contextMapper.toResponse(any(Context.class))).thenReturn(expectedResponse);
 
@@ -174,22 +155,6 @@ class ContextServiceTests {
 
         verify(contextRepository).save(contextCaptor.capture());
         assertEquals("office room", contextCaptor.getValue().getName());
-    }
-
-    @Test
-    void updateContextThrowsWhenNameAlreadyExists() {
-        UUID contextId = UUID.randomUUID();
-        Context context = new Context("home");
-
-        when(contextRepository.findByIdAndDeletedAtIsNull(contextId)).thenReturn(Optional.of(context));
-        when(contextRepository.existsByNameAndIdNot("office", contextId)).thenReturn(true);
-
-        ContextAlreadyExistsException exception = assertThrows(
-            ContextAlreadyExistsException.class,
-            () -> contextService.updateContext(contextId, new UpdateContextRequestDto("office")));
-
-        assertEquals("context name already exists", exception.getMessage());
-        verify(contextRepository, never()).save(any(Context.class));
     }
 
     // deleteContext

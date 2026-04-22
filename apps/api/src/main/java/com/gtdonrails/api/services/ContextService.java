@@ -8,7 +8,6 @@ import com.gtdonrails.api.dtos.context.ContextResponseDto;
 import com.gtdonrails.api.dtos.context.CreateContextRequestDto;
 import com.gtdonrails.api.dtos.context.UpdateContextRequestDto;
 import com.gtdonrails.api.entities.Context;
-import com.gtdonrails.api.exceptions.context.ContextAlreadyExistsException;
 import com.gtdonrails.api.exceptions.context.ContextNotFoundException;
 import com.gtdonrails.api.mappers.ContextMapper;
 import com.gtdonrails.api.normalizers.ContextNameNormalizer;
@@ -49,10 +48,6 @@ public class ContextService {
     @Transactional
     public ContextResponseDto createContext(CreateContextRequestDto request) {
         String normalizedName = contextNameNormalizer.normalize(request.name());
-        if (contextRepository.existsByName(normalizedName)) {
-            throw new ContextAlreadyExistsException("context name already exists");
-        }
-
         Context context = new Context(normalizedName);
         return contextMapper.toResponse(contextRepository.save(context));
     }
@@ -61,10 +56,6 @@ public class ContextService {
     public ContextResponseDto updateContext(UUID id, UpdateContextRequestDto request) {
         Context context = findContext(id);
         String normalizedName = contextNameNormalizer.normalize(request.name());
-
-        if (contextRepository.existsByNameAndIdNot(normalizedName, id)) {
-            throw new ContextAlreadyExistsException("context name already exists");
-        }
 
         context.setName(normalizedName);
         return contextMapper.toResponse(contextRepository.save(context));

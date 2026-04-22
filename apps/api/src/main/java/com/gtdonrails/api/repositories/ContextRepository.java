@@ -15,8 +15,4 @@ public interface ContextRepository extends JpaRepository<Context, UUID> {
     Optional<Context> findByIdAndDeletedAtIsNull(UUID id);
 
     List<Context> findAllByIdInAndDeletedAtIsNull(Collection<UUID> ids);
-
-    boolean existsByName(String name);
-
-    boolean existsByNameAndIdNot(String name, UUID id);
 }

@@ -1,6 +1,6 @@
 create table contexts (
     id blob primary key,
-    name text not null unique,
+    name text not null,
     created_at timestamp not null,
     updated_at timestamp not null,
     deleted_at timestamp,

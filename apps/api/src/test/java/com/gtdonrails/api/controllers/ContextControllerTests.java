@@ -63,7 +63,7 @@ class ContextControllerTests {
     }
 
     @Test
-    void rejectsDuplicateContextName() throws Exception {
+    void allowsDuplicateContextName() throws Exception {
         contextRepository.save(new Context("home"));
 
         mockMvc.perform(post("/contexts")
@@ -73,9 +73,12 @@ class ContextControllerTests {
                       "name": "home"
                     }
                     """))
-            .andExpect(status().isConflict())
-            .andExpect(jsonPath("$.title").value("Data conflict"))
-            .andExpect(jsonPath("$.detail").value("context name already exists"));
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.name").value("home"));
+
+        mockMvc.perform(get("/contexts"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(2)));
     }
 
     @Test
