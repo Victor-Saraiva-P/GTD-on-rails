@@ -208,7 +208,8 @@ body {
 }
 
 .list-pane--active .list-pane__icon {
-  filter: none;
+  filter: brightness(0) saturate(100%) invert(50%) sepia(37%) saturate(855%)
+    hue-rotate(314deg) brightness(97%) contrast(90%);
 }
 
 .list-pane__body {
