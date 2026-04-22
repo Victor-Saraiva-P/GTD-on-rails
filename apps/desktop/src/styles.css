@@ -103,6 +103,14 @@ body {
   overflow: hidden;
 }
 
+.stuff-detail-layout {
+  min-height: 0;
+  height: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  overflow: hidden;
+}
+
 .list-pane {
   position: relative;
   min-width: 0;

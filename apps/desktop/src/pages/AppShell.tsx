@@ -1,11 +1,14 @@
 import { useMemo } from "react";
+import { useInboxWorkspaceController } from "../features/inbox/useInboxWorkspaceController";
 import { useActiveScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
 import type { KeybindDefinition } from "../features/keybinds/types";
 import { ContextsPage } from "./ContextsPage";
 import { InboxPage } from "./InboxPage";
+import { StuffDetailPage } from "./StuffDetailPage";
 
 export function AppShell() {
   const { activeScreen, setActiveScreen } = useActiveScreen();
+  const inboxController = useInboxWorkspaceController();
 
   const navigationBindings = useMemo<KeybindDefinition[]>(
     () => [
@@ -35,5 +38,9 @@ export function AppShell() {
     return <ContextsPage />;
   }
 
-  return <InboxPage />;
+  if (activeScreen === "stuff-detail") {
+    return <StuffDetailPage controller={inboxController} />;
+  }
+
+  return <InboxPage controller={inboxController} />;
 }

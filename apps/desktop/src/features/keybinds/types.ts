@@ -1,4 +1,4 @@
-export type ScreenId = "inbox" | "contexts";
+export type ScreenId = "inbox" | "contexts" | "stuff-detail";
 
 export type FocusZoneId = "inbox-list" | "stuff-detail" | "context-list" | "context-detail";
 

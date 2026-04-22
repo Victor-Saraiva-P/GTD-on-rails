@@ -2,7 +2,7 @@ import type { PropsWithChildren } from "react";
 
 type ListPaneProps = PropsWithChildren<{
   title: string;
-  panelIndex: number;
+  panelIndex?: number;
   meta?: string;
   active?: boolean;
   bodyClassName?: string;
@@ -27,7 +27,7 @@ export function ListPane({
           {meta ? <span className="list-pane__meta">({meta})</span> : null}
         </div>
 
-        <span className="list-pane__panel-index">[Panel {panelIndex}]</span>
+        {panelIndex ? <span className="list-pane__panel-index">[Panel {panelIndex}]</span> : null}
       </header>
 
       <div className={bodyClassName ? `list-pane__body ${bodyClassName}` : "list-pane__body"}>
