@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "scripts": {
-    "dev": "./gradlew bootRun",
+    "dev": "./gradlew bootRun --args='--spring.profiles.active=dev'",
     "build": "./gradlew build",
     "test": "./gradlew test",
     "unitTest": "./gradlew unitTest",
