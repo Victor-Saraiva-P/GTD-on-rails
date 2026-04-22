@@ -250,6 +250,32 @@ body {
   color: #9b9b9b;
 }
 
+.pane-state {
+  margin: 0;
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+  color: #9b9b9b;
+  line-height: 1.45;
+}
+
+.pane-state__action {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: #2e2e2e;
+  color: #d4d4d4;
+  font: inherit;
+  cursor: pointer;
+}
+
+.pane-state__action:hover,
+.pane-state__action:focus-visible {
+  border-color: rgba(193, 145, 56, 0.24);
+  outline: none;
+}
+
 .leader-menu {
   position: fixed;
   right: clamp(16px, 2vw, 28px);

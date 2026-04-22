@@ -2,6 +2,7 @@ package com.gtdonrails.api.controllers;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -69,5 +70,12 @@ class InboxControllerTests {
             .andExpect(jsonPath("$[0].title").value("Newer item"))
             .andExpect(jsonPath("$[1].id").value(olderItem.getId().toString()))
             .andExpect(jsonPath("$[1].title").value("Older item"));
+    }
+
+    @Test
+    void allowsDesktopDevOrigin() throws Exception {
+        mockMvc.perform(get("/inbox").header("Origin", "http://127.0.0.1:1420"))
+            .andExpect(status().isOk())
+            .andExpect(header().string("Access-Control-Allow-Origin", "http://127.0.0.1:1420"));
     }
 }
