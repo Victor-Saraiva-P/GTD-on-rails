@@ -1,6 +1,7 @@
 package com.gtdonrails.api.controllers;
 
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -54,7 +55,8 @@ class InboxControllerTests {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$", hasSize(1)))
             .andExpect(jsonPath("$[0].id").value(visibleItem.getId().toString()))
-            .andExpect(jsonPath("$[0].title").value("Visible item"));
+            .andExpect(jsonPath("$[0].title").value("Visible item"))
+            .andExpect(jsonPath("$[0].createdAt", notNullValue()));
     }
 
     @Test

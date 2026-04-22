@@ -21,6 +21,7 @@ public class ItemMapper {
             item.getTitle().value(),
             item.getBody() == null ? null : item.getBody().value(),
             item.getStatus().name(),
+            item.getCreatedAt(),
             item.getContexts().stream()
                 .filter(context -> !context.isDeleted())
                 .sorted(Comparator.comparing(context -> context.getName().toLowerCase()))

@@ -6,10 +6,7 @@ type InboxStuffResponse = {
   title: string;
   body: string | null;
   status: string;
-  contexts: Array<{
-    id: string;
-    name: string;
-  }>;
+  createdAt: string;
 };
 
 export async function fetchInboxStuffs(): Promise<Stuff[]> {
@@ -26,8 +23,7 @@ export async function createStuff(): Promise<Stuff> {
     },
     body: JSON.stringify({
       title: "New stuff",
-      body: null,
-      contextIds: []
+      body: null
     })
   });
 
@@ -68,8 +64,7 @@ async function updateStuff(
     },
     body: JSON.stringify({
       title: payload.title,
-      body: payload.body,
-      contextIds: item.contexts.map((context) => context.id)
+      body: payload.body
     })
   });
 
@@ -82,6 +77,6 @@ function toStuff(item: InboxStuffResponse): Stuff {
     title: item.title,
     body: item.body,
     status: item.status,
-    contexts: item.contexts
+    createdAt: item.createdAt
   };
 }

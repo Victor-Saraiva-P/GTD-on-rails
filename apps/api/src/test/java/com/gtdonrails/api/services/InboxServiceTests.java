@@ -3,6 +3,7 @@ package com.gtdonrails.api.services;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.when;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -46,12 +47,14 @@ class InboxServiceTests {
             "Older item",
             null,
             "STUFF",
+            Instant.now(),
             List.of());
         ItemResponseDto newerResponse = new ItemResponseDto(
             UUID.randomUUID(),
             "Newer item",
             "Body",
             "STUFF",
+            Instant.now(),
             List.of());
 
         when(itemRepository.findAllByStatusAndDeletedAtIsNullOrderByCreatedAtDesc(ItemStatus.STUFF))

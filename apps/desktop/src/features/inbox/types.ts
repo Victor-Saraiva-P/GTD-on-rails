@@ -3,12 +3,7 @@ export type Stuff = {
   title: string;
   body: string | null;
   status: string;
-  contexts: StuffContext[];
-};
-
-export type StuffContext = {
-  id: string;
-  name: string;
+  createdAt: string;
 };
 
 export function getStuffBodyLines(body: string | null): string[] {
@@ -21,4 +16,11 @@ export function getStuffBodyLines(body: string | null): string[] {
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => line.replace(/^[-*•]\s+/, ""));
+}
+
+export function formatStuffCreatedAt(createdAt: string): string {
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short"
+  }).format(new Date(createdAt));
 }

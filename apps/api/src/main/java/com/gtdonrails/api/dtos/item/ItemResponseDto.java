@@ -1,5 +1,6 @@
 package com.gtdonrails.api.dtos.item;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -10,6 +11,7 @@ public record ItemResponseDto(
     String title,
     String body,
     String status,
+    Instant createdAt,
     List<ContextResponseDto> contexts
 ) {
 }

@@ -8,6 +8,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -72,6 +73,7 @@ class ItemServiceTests {
             "Capture idea",
             null,
             "STUFF",
+            Instant.now(),
             List.of());
 
         when(itemRepository.findByIdAndDeletedAtIsNull(itemId)).thenReturn(Optional.of(item));
@@ -102,6 +104,7 @@ class ItemServiceTests {
             "Capture idea later",
             "line 1\nline 2",
             "STUFF",
+            Instant.now(),
             List.of());
         when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(itemMapper.toResponse(any(Item.class))).thenReturn(expectedResponse);
@@ -129,6 +132,7 @@ class ItemServiceTests {
             "Capture idea",
             null,
             "STUFF",
+            Instant.now(),
             List.of(
                 new ContextResponseDto(notebookId, "notebook"),
                 new ContextResponseDto(streetId, "street")));
@@ -156,6 +160,7 @@ class ItemServiceTests {
             "Capture idea",
             null,
             "STUFF",
+            Instant.now(),
             List.of());
         when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(itemMapper.toResponse(any(Item.class))).thenReturn(expectedResponse);
@@ -212,6 +217,7 @@ class ItemServiceTests {
             "New title",
             null,
             "STUFF",
+            Instant.now(),
             List.of());
 
         when(itemRepository.findByIdAndDeletedAtIsNull(itemId)).thenReturn(Optional.of(existingItem));
@@ -242,6 +248,7 @@ class ItemServiceTests {
             "New title",
             null,
             "STUFF",
+            Instant.now(),
             List.of(new ContextResponseDto(homeId, "home")));
 
         when(itemRepository.findByIdAndDeletedAtIsNull(itemId)).thenReturn(Optional.of(existingItem));
@@ -271,6 +278,7 @@ class ItemServiceTests {
             "New title later",
             "line 1\nline 2",
             "STUFF",
+            Instant.now(),
             List.of());
 
         when(itemRepository.findByIdAndDeletedAtIsNull(itemId)).thenReturn(Optional.of(existingItem));
@@ -315,6 +323,37 @@ class ItemServiceTests {
 
         assertEquals("title is required", exception.getMessage());
         verify(itemRepository, never()).save(any(Item.class));
+    }
+
+    @Test
+    void updateItemPreservesContextsWhenContextIdsAreOmitted() {
+        UUID itemId = UUID.randomUUID();
+        Item existingItem = new Item(new Title("Old title"), null);
+        Context office = new Context("office");
+        existingItem.addContext(office);
+        ItemResponseDto expectedResponse = new ItemResponseDto(
+            itemId,
+            "New title",
+            null,
+            "STUFF",
+            Instant.now(),
+            List.of(new ContextResponseDto(UUID.randomUUID(), "office")));
+
+        when(itemRepository.findByIdAndDeletedAtIsNull(itemId)).thenReturn(Optional.of(existingItem));
+        when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(itemMapper.toResponse(any(Item.class))).thenReturn(expectedResponse);
+
+        ItemResponseDto response = itemService.updateItem(itemId, new UpdateItemRequestDto(
+            "New title",
+            null,
+            null));
+
+        verify(itemRepository).save(itemCaptor.capture());
+        Item savedItem = itemCaptor.getValue();
+        assertEquals(1, savedItem.getContexts().size());
+        assertEquals("office", savedItem.getContexts().iterator().next().getName());
+        assertEquals(expectedResponse, response);
+        verify(contextRepository, never()).findAllByIdInAndDeletedAtIsNull(any());
     }
 
     // deleteItem

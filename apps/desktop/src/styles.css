@@ -244,6 +244,12 @@ body {
   gap: 14px;
 }
 
+.detail-card__meta {
+  margin: 0;
+  color: #9b9b9b;
+  font-size: 0.85rem;
+}
+
 .detail-card__textarea {
   width: 100%;
   min-height: clamp(220px, 42vh, 520px);

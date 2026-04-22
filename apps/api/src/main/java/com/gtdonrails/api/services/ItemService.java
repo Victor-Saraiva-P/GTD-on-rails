@@ -65,7 +65,11 @@ public class ItemService {
 
         item.setTitle(title);
         item.setBody(body);
-        item.replaceContexts(findContextsOrThrow(request.contextIds()));
+
+        if (request.contextIds() != null) {
+            item.replaceContexts(findContextsOrThrow(request.contextIds()));
+        }
+
         return itemMapper.toResponse(itemRepository.save(item));
     }
 

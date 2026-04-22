@@ -1,6 +1,7 @@
 package com.gtdonrails.api.controllers;
 
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -64,6 +65,7 @@ class ItemControllerTests {
             .andExpect(jsonPath("$.title").value("Capture rent receipt"))
             .andExpect(jsonPath("$.body").value("Need to process later"))
             .andExpect(jsonPath("$.status").value("STUFF"))
+            .andExpect(jsonPath("$.createdAt", notNullValue()))
             .andExpect(jsonPath("$.contexts", hasSize(0)));
     }
 
@@ -96,7 +98,8 @@ class ItemControllerTests {
             .andExpect(jsonPath("$.id").value(item.getId().toString()))
             .andExpect(jsonPath("$.title").value("Capture idea"))
             .andExpect(jsonPath("$.body").value("Need to process later"))
-            .andExpect(jsonPath("$.status").value("STUFF"));
+            .andExpect(jsonPath("$.status").value("STUFF"))
+            .andExpect(jsonPath("$.createdAt", notNullValue()));
     }
 
     @Test
@@ -132,6 +135,7 @@ class ItemControllerTests {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.title").value("New title"))
             .andExpect(jsonPath("$.body").value("New body"))
+            .andExpect(jsonPath("$.createdAt", notNullValue()))
             .andExpect(jsonPath("$.contexts", hasSize(0)));
     }
 
@@ -150,6 +154,29 @@ class ItemControllerTests {
                     }
                     """.formatted(office.getId())))
             .andExpect(status().isOk())
+            .andExpect(jsonPath("$.contexts", hasSize(1)))
+            .andExpect(jsonPath("$.contexts[0].name").value("office"))
+            .andExpect(jsonPath("$.createdAt", notNullValue()));
+    }
+
+    @Test
+    void preservesExistingContextsWhenContextIdsAreOmittedOnUpdate() throws Exception {
+        Context office = contextRepository.save(new Context("office"));
+        Item item = itemRepository.save(new Item(new Title("Old title"), null));
+        item.addContext(office);
+        item = itemRepository.save(item);
+
+        mockMvc.perform(put("/items/{id}", item.getId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "title": "Updated title",
+                      "body": "Updated body"
+                    }
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.title").value("Updated title"))
+            .andExpect(jsonPath("$.body").value("Updated body"))
             .andExpect(jsonPath("$.contexts", hasSize(1)))
             .andExpect(jsonPath("$.contexts[0].name").value("office"));
     }
