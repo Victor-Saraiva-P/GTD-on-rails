@@ -647,7 +647,6 @@ body {
   font-family: var(--font-mono);
   font-size: 0.72rem;
   letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
 .inbox-detail__title {

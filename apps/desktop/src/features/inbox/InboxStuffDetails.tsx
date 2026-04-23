@@ -19,6 +19,7 @@ export function InboxStuffDetails({
   onCancelEditing
 }: InboxStuffDetailsProps) {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const createdAtLabel = `created: ${formatStuffCreatedAt(item.createdAt).toLowerCase()}`;
 
   useEffect(() => {
     if (!editing) {
@@ -40,8 +41,8 @@ export function InboxStuffDetails({
   if (editing) {
     return (
       <div className="inbox-detail">
-        <p className="inbox-detail__meta">Created: {formatStuffCreatedAt(item.createdAt)}</p>
         <h1 className="inbox-detail__title">{item.title}</h1>
+        <p className="inbox-detail__meta">{createdAtLabel}</p>
         <div className="inbox-detail__divider" />
         <textarea
           ref={textareaRef}
@@ -67,8 +68,8 @@ export function InboxStuffDetails({
 
   return (
     <div className="inbox-detail">
-      <p className="inbox-detail__meta">Created: {formatStuffCreatedAt(item.createdAt)}</p>
       <h1 className="inbox-detail__title">{item.title}</h1>
+      <p className="inbox-detail__meta">{createdAtLabel}</p>
       <div className="inbox-detail__divider" />
       {item.body ? (
         <pre className="inbox-detail__body" aria-label="Selected item details">
