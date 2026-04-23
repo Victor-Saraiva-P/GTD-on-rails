@@ -5,6 +5,7 @@
 *.ipr
 *.iws
 node_modules/
+.pnpm-store/
 .turbo/
 dist/
 build/
@@ -13,5 +14,13 @@ out/
 *.log
 .env
 .env.*
+!.env.example
+!**/.env.example
 infra/postgres-data/
 apps/desktop/src-tauri/gen/
+gtd-assets/
+apps/api/gtd-assets/
+dev-gtd-on-rails/
+apps/api/dev-gtd-on-rails/
+.gtd-assets-sync/
+apps/api/.gtd-assets-sync/

@@ -9,6 +9,18 @@
       "dependsOn": ["^build"],
       "outputs": []
     },
+    "test": {
+      "dependsOn": ["^test"],
+      "outputs": []
+    },
+    "unitTest": {
+      "dependsOn": ["^unitTest"],
+      "outputs": []
+    },
+    "integrationTest": {
+      "dependsOn": ["^integrationTest"],
+      "outputs": []
+    },
     "lint": {
       "dependsOn": ["^lint"],
       "outputs": []

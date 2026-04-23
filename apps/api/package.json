@@ -3,10 +3,12 @@
   "private": true,
   "version": "0.1.0",
   "scripts": {
-    "dev": "./gradlew bootRun",
+    "dev": "./gradlew bootRun --args='--spring.profiles.active=dev'",
     "build": "./gradlew build",
-    "lint": "./gradlew test",
-    "check": "./gradlew test"
+    "test": "./gradlew test",
+    "unitTest": "./gradlew unitTest",
+    "integrationTest": "./gradlew integrationTest",
+    "lint": "./gradlew check",
+    "check": "./gradlew check"
   }
 }
-
