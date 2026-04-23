@@ -62,9 +62,9 @@ body {
   align-items: stretch;
   justify-content: flex-start;
   gap: 0;
-  background: rgba(var(--list-accent-rgb), 0.94);
-  border-top: 1px solid rgba(var(--list-accent-rgb), 0.8);
-  color: #1b1312;
+  background: #171717;
+  border-top: 0;
+  color: #8f8a86;
   font-family: var(--font-mono);
   font-weight: 700;
 }
@@ -78,6 +78,7 @@ body {
   padding: 0 12px;
   background: transparent;
   font-size: 0.82rem;
+  transform: translateY(-2px);
 }
 
 .list-workspace__brand-version {
@@ -86,11 +87,13 @@ body {
 }
 
 .list-workspace__current {
-  border-left: 1px solid rgba(27, 19, 18, 0.18);
+  background: rgba(var(--list-accent-rgb), 0.94);
+  border-left: 0;
+  color: #1b1312;
 }
 
 .inbox-terminal-layout {
-  padding: 20px 10px 12px;
+  padding: 20px 10px 16px;
   min-height: 0;
   height: 100%;
   display: grid;
@@ -100,7 +103,7 @@ body {
 }
 
 .stuff-detail-layout {
-  padding: 20px 10px 12px;
+  padding: 20px 10px 16px;
   min-height: 0;
   height: 100%;
   display: grid;
@@ -852,13 +855,13 @@ body {
   }
 
   .inbox-terminal-layout {
-    padding: 16px 8px 8px;
+    padding: 16px 8px 10px;
     grid-template-columns: 1fr;
     grid-template-rows: minmax(260px, 42vh) minmax(260px, 1fr);
   }
 
   .stuff-detail-layout {
-    padding: 16px 8px 8px;
+    padding: 16px 8px 10px;
   }
 
   .list-pane {
