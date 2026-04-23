@@ -359,11 +359,7 @@ export function InboxPage({ controller }: InboxPageProps) {
   const listMeta = `${stuffs.length} ${stuffs.length === 1 ? "item" : "items"}`;
 
   return (
-    <ListWorkspace
-      theme={inboxListTheme}
-      currentIconSrc={inboxListTheme.iconSrc}
-      currentLabel={inboxListTheme.label}
-    >
+    <ListWorkspace theme={inboxListTheme} currentLabel={inboxListTheme.label}>
       <section className="inbox-terminal-layout" aria-label="Inbox">
         <ListPane
           title="Inbox"
@@ -371,7 +367,6 @@ export function InboxPage({ controller }: InboxPageProps) {
           panelIndex={1}
           active={activeZone === "inbox-list"}
           bodyClassName="list-pane__body--flush"
-          iconSrc={inboxListTheme.iconSrc}
           className="inbox-pane inbox-pane--list"
         >
           {listBody}
@@ -382,7 +377,6 @@ export function InboxPage({ controller }: InboxPageProps) {
           panelIndex={2}
           active={activeZone === "stuff-detail"}
           bodyClassName="list-pane__body--detail"
-          iconSrc="/inbox/stuff icon.png"
           className="inbox-pane inbox-pane--detail"
         >
           {detailBody}

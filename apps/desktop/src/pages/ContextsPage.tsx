@@ -371,11 +371,7 @@ export function ContextsPage() {
   const detailMeta = `${relatedItems.length} ${relatedItems.length === 1 ? "item" : "items"}`;
 
   return (
-    <ListWorkspace
-      theme={contextsListTheme}
-      currentIconSrc={contextsListTheme.iconSrc}
-      currentLabel={contextsListTheme.label}
-    >
+    <ListWorkspace theme={contextsListTheme} currentLabel={contextsListTheme.label}>
       <section className="inbox-terminal-layout" aria-label="Contexts">
         <ListPane
           title="Contexts"
@@ -383,7 +379,6 @@ export function ContextsPage() {
           panelIndex={1}
           active={activeZone === "context-list"}
           bodyClassName="list-pane__body--flush"
-          iconSrc={contextsListTheme.iconSrc}
           className="contexts-pane"
         >
           {listBody}
@@ -395,7 +390,6 @@ export function ContextsPage() {
           panelIndex={2}
           active={activeZone === "context-detail"}
           bodyClassName="list-pane__body--detail"
-          iconSrc={contextsListTheme.iconSrc}
           className="contexts-pane"
         >
           {detailBody}

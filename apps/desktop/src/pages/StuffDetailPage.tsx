@@ -140,17 +140,12 @@ export function StuffDetailPage({ controller }: StuffDetailPageProps) {
   })();
 
   return (
-    <ListWorkspace
-      theme={stuffDetailListTheme}
-      currentIconSrc={stuffDetailListTheme.iconSrc}
-      currentLabel={stuffDetailListTheme.label}
-    >
+    <ListWorkspace theme={stuffDetailListTheme} currentLabel={stuffDetailListTheme.label}>
       <section className="stuff-detail-layout" aria-label="Stuff detail">
         <ListPane
           title="Stuff Detail"
           active
           bodyClassName="list-pane__body--detail"
-          iconSrc={stuffDetailListTheme.iconSrc}
         >
           {detailBody}
         </ListPane>

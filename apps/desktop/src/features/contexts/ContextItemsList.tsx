@@ -10,7 +10,9 @@ export function ContextItemsList({ items }: ContextItemsListProps) {
       {items.map((item) => (
         <li key={item.id} className="tree-list__item">
           <div className="tree-entry context-item-entry">
-            <img src="/inbox/stuff icon.png" alt="" className="tree-entry__icon" />
+            <span className="tree-entry__glyph tree-entry__glyph--stuff" aria-hidden="true">
+              S
+            </span>
             <span className="tree-entry__label">{item.title}</span>
             <span className="context-item-entry__status">{item.status}</span>
           </div>

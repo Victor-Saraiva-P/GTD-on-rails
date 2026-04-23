@@ -5,13 +5,11 @@ import type { ListTheme } from "../features/lists/listThemes";
 type ListWorkspaceProps = PropsWithChildren<{
   theme: ListTheme;
   currentLabel: string;
-  currentIconSrc: string;
 }>;
 
 export function ListWorkspace({
   theme,
   currentLabel,
-  currentIconSrc,
   children
 }: ListWorkspaceProps) {
   const style = {
@@ -30,7 +28,6 @@ export function ListWorkspace({
         </div>
 
         <div className="list-workspace__current">
-          <img src={currentIconSrc} alt="" className="list-workspace__current-icon" />
           <span>{currentLabel}</span>
         </div>
       </footer>

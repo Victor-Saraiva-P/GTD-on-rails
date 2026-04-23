@@ -1,4 +1,3 @@
-import { contextsListTheme } from "../lists/listThemes";
 import { useRef } from "react";
 import type { ContextItem } from "./types";
 
@@ -31,11 +30,6 @@ export function ContextsListItem({
     return (
       <li className="tree-list__item">
         <div className="tree-entry tree-entry--active context-tree-entry">
-          <img
-            src={contextsListTheme.iconSrc}
-            alt=""
-            className="tree-entry__icon context-tree-entry__icon"
-          />
           <input
             value={editingName}
             className="tree-entry__input"
@@ -82,11 +76,6 @@ export function ContextsListItem({
           }
         }}
       >
-        <img
-          src={contextsListTheme.iconSrc}
-          alt=""
-          className="tree-entry__icon context-tree-entry__icon"
-        />
         <span className="tree-entry__label">{item.name}</span>
       </button>
     </li>

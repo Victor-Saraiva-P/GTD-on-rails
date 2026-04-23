@@ -30,7 +30,9 @@ export function InboxListStuff({
       <li className="tree-list__item">
         <div className="tree-entry tree-entry--active">
           <span className="tree-entry__marker">{selected ? "●" : "○"}</span>
-          <img src="/inbox/stuff icon.png" alt="" className="tree-entry__icon" />
+          <span className="tree-entry__glyph tree-entry__glyph--stuff" aria-hidden="true">
+            S
+          </span>
           <input
             value={editingTitle}
             className="tree-entry__input"
@@ -69,7 +71,9 @@ export function InboxListStuff({
         }}
       >
         <span className="tree-entry__marker">{selected ? "●" : "○"}</span>
-        <img src="/inbox/stuff icon.png" alt="" className="tree-entry__icon" />
+        <span className="tree-entry__glyph tree-entry__glyph--stuff" aria-hidden="true">
+          S
+        </span>
         <span className="tree-entry__label">{item.title}</span>
       </button>
     </li>
