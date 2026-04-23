@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { KeybindProvider } from "./features/keybinds/KeybindProvider";
+import { SyncStatusProvider } from "./features/sync-status/SyncStatusProvider";
 import { AppShell } from "./pages/AppShell";
 import "./styles.css";
 
@@ -13,7 +14,9 @@ if (!app) {
 ReactDOM.createRoot(app).render(
   <React.StrictMode>
     <KeybindProvider>
-      <AppShell />
+      <SyncStatusProvider>
+        <AppShell />
+      </SyncStatusProvider>
     </KeybindProvider>
   </React.StrictMode>
 );

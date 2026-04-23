@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ApiRequestError } from "../../lib/api/apiClient";
+import { useSyncStatus } from "../sync-status/SyncStatusProvider";
 import {
   createContext,
   deleteContext,
@@ -38,6 +39,7 @@ function toErrorMessage(error: unknown): string {
 }
 
 export function useContextsQuery(): ContextsQueryState {
+  const { triggerSyncStatusPolling } = useSyncStatus();
   const [contexts, setContexts] = useState<ContextItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
@@ -97,6 +99,7 @@ export function useContextsQuery(): ContextsQueryState {
 
         setContexts((currentContexts) => [createdContext, ...currentContexts]);
         setErrorMessage(null);
+        triggerSyncStatusPolling();
 
         return createdContext;
       } finally {
@@ -110,6 +113,7 @@ export function useContextsQuery(): ContextsQueryState {
         await deleteContext(id);
         setContexts((currentContexts) => currentContexts.filter((context) => context.id !== id));
         setErrorMessage(null);
+        triggerSyncStatusPolling();
       } finally {
         setIsDeleting(false);
       }
@@ -126,6 +130,7 @@ export function useContextsQuery(): ContextsQueryState {
           )
         );
         setErrorMessage(null);
+        triggerSyncStatusPolling();
 
         return updatedContext;
       } finally {
@@ -144,6 +149,7 @@ export function useContextsQuery(): ContextsQueryState {
           )
         );
         setErrorMessage(null);
+        triggerSyncStatusPolling();
 
         return updatedContext;
       } finally {
@@ -162,6 +168,7 @@ export function useContextsQuery(): ContextsQueryState {
           )
         );
         setErrorMessage(null);
+        triggerSyncStatusPolling();
 
         return updatedContext;
       } finally {

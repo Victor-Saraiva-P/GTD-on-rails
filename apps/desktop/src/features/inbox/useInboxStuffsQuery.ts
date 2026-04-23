@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ApiRequestError } from "../../lib/api/apiClient";
+import { useSyncStatus } from "../sync-status/SyncStatusProvider";
 import { createStuff, deleteStuff, fetchInboxStuffs, updateStuffBody, updateStuffTitle } from "./api";
 import type { Stuff } from "./types";
 
@@ -30,6 +31,7 @@ function toErrorMessage(error: unknown): string {
 }
 
 export function useInboxStuffsQuery(): InboxStuffsQueryState {
+  const { triggerSyncStatusPolling } = useSyncStatus();
   const [stuffs, setStuffs] = useState<Stuff[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
@@ -89,6 +91,7 @@ export function useInboxStuffsQuery(): InboxStuffsQueryState {
 
         setStuffs((currentStuffs) => [createdStuff, ...currentStuffs]);
         setErrorMessage(null);
+        triggerSyncStatusPolling();
 
         return createdStuff;
       } finally {
@@ -102,6 +105,7 @@ export function useInboxStuffsQuery(): InboxStuffsQueryState {
         await deleteStuff(id);
         setStuffs((currentStuffs) => currentStuffs.filter((stuff) => stuff.id !== id));
         setErrorMessage(null);
+        triggerSyncStatusPolling();
       } finally {
         setIsDeleting(false);
       }
@@ -118,6 +122,7 @@ export function useInboxStuffsQuery(): InboxStuffsQueryState {
           )
         );
         setErrorMessage(null);
+        triggerSyncStatusPolling();
 
         return updatedStuff;
       } finally {
@@ -136,6 +141,7 @@ export function useInboxStuffsQuery(): InboxStuffsQueryState {
           )
         );
         setErrorMessage(null);
+        triggerSyncStatusPolling();
 
         return updatedStuff;
       } finally {

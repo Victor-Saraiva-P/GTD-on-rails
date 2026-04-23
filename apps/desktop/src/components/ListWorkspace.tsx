@@ -1,6 +1,7 @@
 import type { CSSProperties, PropsWithChildren } from "react";
 import { appMetadata } from "../config/appMetadata";
 import type { ListTheme } from "../features/lists/listThemes";
+import { SyncStatusIndicators } from "../features/sync-status/SyncStatusIndicators";
 
 type ListWorkspaceProps = PropsWithChildren<{
   theme: ListTheme;
@@ -30,6 +31,8 @@ export function ListWorkspace({
         <div className="list-workspace__current">
           <span>{currentLabel}</span>
         </div>
+
+        <SyncStatusIndicators />
       </footer>
     </main>
   );
