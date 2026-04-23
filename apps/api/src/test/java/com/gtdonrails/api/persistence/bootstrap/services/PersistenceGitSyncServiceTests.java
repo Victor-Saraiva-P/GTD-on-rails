@@ -1,4 +1,4 @@
-package com.gtdonrails.api.persistence.bootstrap;
+package com.gtdonrails.api.persistence.bootstrap.services;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.io.IOException;
@@ -8,6 +8,11 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 
+import com.gtdonrails.api.persistence.bootstrap.model.PersistenceChangeType;
+import com.gtdonrails.api.persistence.bootstrap.model.PersistenceSyncState;
+import com.gtdonrails.api.persistence.bootstrap.model.PersistenceSyncStatus;
+import com.gtdonrails.api.persistence.bootstrap.properties.PersistenceBootstrapProperties;
+import com.gtdonrails.api.persistence.bootstrap.properties.PersistenceSyncProperties;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;

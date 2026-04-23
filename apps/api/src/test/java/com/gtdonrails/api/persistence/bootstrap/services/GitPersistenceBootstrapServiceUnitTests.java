@@ -1,4 +1,4 @@
-package com.gtdonrails.api.persistence.bootstrap;
+package com.gtdonrails.api.persistence.bootstrap.services;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.nio.file.Path;
 
+import com.gtdonrails.api.persistence.bootstrap.properties.PersistenceBootstrapProperties;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;

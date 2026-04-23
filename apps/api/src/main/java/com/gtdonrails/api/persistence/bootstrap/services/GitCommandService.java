@@ -1,4 +1,4 @@
-package com.gtdonrails.api.persistence.bootstrap;
+package com.gtdonrails.api.persistence.bootstrap.services;
 
 import java.io.IOException;
 import java.nio.file.Path;

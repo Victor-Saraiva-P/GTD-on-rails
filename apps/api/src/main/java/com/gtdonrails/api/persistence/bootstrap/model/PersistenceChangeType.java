@@ -1,4 +1,4 @@
-package com.gtdonrails.api.persistence.bootstrap;
+package com.gtdonrails.api.persistence.bootstrap.model;
 
 public enum PersistenceChangeType {
     CREATE_ITEM("feat(data): create item"),

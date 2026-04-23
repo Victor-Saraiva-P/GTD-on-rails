@@ -1,4 +1,4 @@
-package com.gtdonrails.api.persistence.bootstrap;
+package com.gtdonrails.api.persistence.bootstrap.services;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -13,6 +13,10 @@ import static org.mockito.Mockito.when;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import com.gtdonrails.api.persistence.bootstrap.model.PersistenceChangeType;
+import com.gtdonrails.api.persistence.bootstrap.model.PersistenceSyncState;
+import com.gtdonrails.api.persistence.bootstrap.properties.PersistenceBootstrapProperties;
+import com.gtdonrails.api.persistence.bootstrap.properties.PersistenceSyncProperties;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;

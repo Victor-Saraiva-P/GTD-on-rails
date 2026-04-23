@@ -1,4 +1,4 @@
-package com.gtdonrails.api.persistence.bootstrap;
+package com.gtdonrails.api.persistence.bootstrap.services;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -7,6 +7,11 @@ import java.time.Instant;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import com.gtdonrails.api.persistence.bootstrap.model.PersistenceChangeType;
+import com.gtdonrails.api.persistence.bootstrap.model.PersistenceSyncState;
+import com.gtdonrails.api.persistence.bootstrap.model.PersistenceSyncStatus;
+import com.gtdonrails.api.persistence.bootstrap.properties.PersistenceBootstrapProperties;
+import com.gtdonrails.api.persistence.bootstrap.properties.PersistenceSyncProperties;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

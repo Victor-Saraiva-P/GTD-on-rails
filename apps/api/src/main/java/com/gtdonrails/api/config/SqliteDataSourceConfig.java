@@ -2,10 +2,10 @@ package com.gtdonrails.api.config;
 
 import javax.sql.DataSource;
 
-import com.gtdonrails.api.persistence.bootstrap.GitPersistenceBootstrapService;
-import com.gtdonrails.api.persistence.bootstrap.PersistenceBootstrapProperties;
-import com.gtdonrails.api.persistence.bootstrap.PersistenceGitSyncService;
-import com.gtdonrails.api.persistence.bootstrap.PersistenceSyncProperties;
+import com.gtdonrails.api.persistence.bootstrap.properties.PersistenceBootstrapProperties;
+import com.gtdonrails.api.persistence.bootstrap.properties.PersistenceSyncProperties;
+import com.gtdonrails.api.persistence.bootstrap.services.GitPersistenceBootstrapService;
+import com.gtdonrails.api.persistence.bootstrap.services.PersistenceGitSyncService;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;

@@ -1,4 +1,4 @@
-package com.gtdonrails.api.persistence.bootstrap;
+package com.gtdonrails.api.persistence.bootstrap.properties;
 
 import lombok.Getter;
 import lombok.Setter;
