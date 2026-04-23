@@ -18,7 +18,10 @@ class GitPersistenceBootstrapServiceUnitTests {
 
     @Test
     void resolvesSimpleSqlitePath() {
-        GitPersistenceBootstrapService service = new GitPersistenceBootstrapService(new PersistenceBootstrapProperties());
+        GitPersistenceBootstrapService service = new GitPersistenceBootstrapService(
+            new PersistenceBootstrapProperties(),
+            new GitCommandService()
+        );
 
         Path resolvedPath = service.resolveSqlitePath("jdbc:sqlite:./gtd-persistence/db/gtd-on-rails.db");
 
@@ -29,7 +32,10 @@ class GitPersistenceBootstrapServiceUnitTests {
 
     @Test
     void resolvesFilePrefixedSqlitePathWithoutQueryString() {
-        GitPersistenceBootstrapService service = new GitPersistenceBootstrapService(new PersistenceBootstrapProperties());
+        GitPersistenceBootstrapService service = new GitPersistenceBootstrapService(
+            new PersistenceBootstrapProperties(),
+            new GitCommandService()
+        );
 
         Path resolvedPath = service.resolveSqlitePath("jdbc:sqlite:file:./gtd-persistence/db/gtd-on-rails.db?mode=rw");
 
@@ -40,7 +46,10 @@ class GitPersistenceBootstrapServiceUnitTests {
 
     @Test
     void rejectsNonSqliteJdbcUrls() {
-        GitPersistenceBootstrapService service = new GitPersistenceBootstrapService(new PersistenceBootstrapProperties());
+        GitPersistenceBootstrapService service = new GitPersistenceBootstrapService(
+            new PersistenceBootstrapProperties(),
+            new GitCommandService()
+        );
 
         IllegalArgumentException exception = assertThrows(
             IllegalArgumentException.class,
@@ -54,7 +63,7 @@ class GitPersistenceBootstrapServiceUnitTests {
         PersistenceBootstrapProperties properties = new PersistenceBootstrapProperties();
         properties.setEnabled(false);
 
-        GitPersistenceBootstrapService service = new GitPersistenceBootstrapService(properties);
+        GitPersistenceBootstrapService service = new GitPersistenceBootstrapService(properties, new GitCommandService());
 
         assertDoesNotThrow(() -> service.ensureDatabaseAvailable("jdbc:sqlite:./gtd-persistence/db/gtd-on-rails.db"));
     }
@@ -66,7 +75,7 @@ class GitPersistenceBootstrapServiceUnitTests {
         Path cloneDirectory = tempDir.resolve("gtd-persistence");
         properties.setCloneDirectory(cloneDirectory.toString());
 
-        GitPersistenceBootstrapService service = new GitPersistenceBootstrapService(properties);
+        GitPersistenceBootstrapService service = new GitPersistenceBootstrapService(properties, new GitCommandService());
 
         IllegalStateException exception = assertThrows(
             IllegalStateException.class,

@@ -13,6 +13,8 @@ import com.gtdonrails.api.exceptions.context.ContextNotFoundException;
 import com.gtdonrails.api.mappers.ContextMapper;
 import com.gtdonrails.api.mappers.ItemMapper;
 import com.gtdonrails.api.normalizers.ContextNameNormalizer;
+import com.gtdonrails.api.persistence.bootstrap.PersistenceChangeType;
+import com.gtdonrails.api.persistence.bootstrap.PersistenceGitSyncService;
 import com.gtdonrails.api.repositories.ContextRepository;
 import com.gtdonrails.api.repositories.ItemRepository;
 import org.springframework.data.domain.PageRequest;
@@ -32,6 +34,7 @@ public class ContextService {
     private final ContextNameNormalizer contextNameNormalizer;
     private final AssetStorageService assetStorageService;
     private final AssetSyncService assetSyncService;
+    private final PersistenceGitSyncService persistenceGitSyncService;
 
     public ContextService(
         ContextRepository contextRepository,
@@ -40,7 +43,8 @@ public class ContextService {
         ItemMapper itemMapper,
         ContextNameNormalizer contextNameNormalizer,
         AssetStorageService assetStorageService,
-        AssetSyncService assetSyncService
+        AssetSyncService assetSyncService,
+        PersistenceGitSyncService persistenceGitSyncService
     ) {
         this.contextRepository = contextRepository;
         this.itemRepository = itemRepository;
@@ -49,6 +53,7 @@ public class ContextService {
         this.contextNameNormalizer = contextNameNormalizer;
         this.assetStorageService = assetStorageService;
         this.assetSyncService = assetSyncService;
+        this.persistenceGitSyncService = persistenceGitSyncService;
     }
 
     @Transactional(readOnly = true)
@@ -88,7 +93,9 @@ public class ContextService {
     public ContextResponseDto createContext(CreateContextRequestDto request) {
         String normalizedName = contextNameNormalizer.normalize(request.name());
         Context context = new Context(normalizedName);
-        return contextMapper.toResponse(contextRepository.save(context));
+        ContextResponseDto response = contextMapper.toResponse(contextRepository.save(context));
+        requestPersistenceSyncAfterCommit("context created", PersistenceChangeType.CREATE_CONTEXT);
+        return response;
     }
 
     @Transactional
@@ -97,7 +104,9 @@ public class ContextService {
         String normalizedName = contextNameNormalizer.normalize(request.name());
 
         context.setName(normalizedName);
-        return contextMapper.toResponse(contextRepository.save(context));
+        ContextResponseDto response = contextMapper.toResponse(contextRepository.save(context));
+        requestPersistenceSyncAfterCommit("context updated", PersistenceChangeType.UPDATE_CONTEXT);
+        return response;
     }
 
     @Transactional
@@ -108,6 +117,7 @@ public class ContextService {
         context.softDelete();
         contextRepository.save(context);
         requestAssetSyncAfterCommit("context deleted");
+        requestPersistenceSyncAfterCommit("context deleted", PersistenceChangeType.DELETE_CONTEXT);
     }
 
     @Transactional
@@ -123,6 +133,7 @@ public class ContextService {
         context.setIconAssetPath(iconAssetPath);
         ContextResponseDto response = contextMapper.toResponse(contextRepository.save(context));
         requestAssetSyncAfterCommit("context icon updated");
+        requestPersistenceSyncAfterCommit("context icon updated", PersistenceChangeType.UPDATE_CONTEXT_ICON);
         return response;
     }
 
@@ -134,6 +145,7 @@ public class ContextService {
 
         ContextResponseDto response = contextMapper.toResponse(contextRepository.save(context));
         requestAssetSyncAfterCommit("context icon deleted");
+        requestPersistenceSyncAfterCommit("context icon deleted", PersistenceChangeType.DELETE_CONTEXT_ICON);
         return response;
     }
 
@@ -143,15 +155,23 @@ public class ContextService {
     }
 
     private void requestAssetSyncAfterCommit(String reason) {
+        runAfterCommitOrNow(() -> assetSyncService.requestSync(reason));
+    }
+
+    private void requestPersistenceSyncAfterCommit(String reason, PersistenceChangeType changeType) {
+        runAfterCommitOrNow(() -> persistenceGitSyncService.requestSync(reason, changeType));
+    }
+
+    private void runAfterCommitOrNow(Runnable action) {
         if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            assetSyncService.requestSync(reason);
+            action.run();
             return;
         }
 
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                assetSyncService.requestSync(reason);
+                action.run();
             }
         });
     }

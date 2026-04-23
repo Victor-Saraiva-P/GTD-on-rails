@@ -28,7 +28,7 @@ class GitPersistenceBootstrapServiceTests {
         properties.setBranch("dev");
         properties.setCloneDirectory(cloneDirectory.toString());
 
-        GitPersistenceBootstrapService service = new GitPersistenceBootstrapService(properties);
+        GitPersistenceBootstrapService service = new GitPersistenceBootstrapService(properties, new GitCommandService());
         service.ensureDatabaseAvailable("jdbc:sqlite:" + databasePath);
 
         assertTrue(Files.exists(databasePath));
@@ -47,7 +47,7 @@ class GitPersistenceBootstrapServiceTests {
         properties.setBranch("tests");
         properties.setCloneDirectory(cloneDirectory.toString());
 
-        GitPersistenceBootstrapService service = new GitPersistenceBootstrapService(properties);
+        GitPersistenceBootstrapService service = new GitPersistenceBootstrapService(properties, new GitCommandService());
         service.ensureDatabaseAvailable("jdbc:sqlite:" + databasePath);
 
         assertTrue(Files.exists(databasePath));

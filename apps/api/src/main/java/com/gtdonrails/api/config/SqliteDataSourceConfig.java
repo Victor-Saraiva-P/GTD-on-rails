@@ -4,6 +4,8 @@ import javax.sql.DataSource;
 
 import com.gtdonrails.api.persistence.bootstrap.GitPersistenceBootstrapService;
 import com.gtdonrails.api.persistence.bootstrap.PersistenceBootstrapProperties;
+import com.gtdonrails.api.persistence.bootstrap.PersistenceGitSyncService;
+import com.gtdonrails.api.persistence.bootstrap.PersistenceSyncProperties;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -12,14 +14,20 @@ import org.springframework.core.env.Environment;
 import org.sqlite.SQLiteDataSource;
 
 @Configuration
-@EnableConfigurationProperties(PersistenceBootstrapProperties.class)
+@EnableConfigurationProperties({PersistenceBootstrapProperties.class, PersistenceSyncProperties.class})
 public class SqliteDataSourceConfig {
 
     @Bean
     @ConditionalOnProperty(name = "spring.datasource.url")
-    DataSource dataSource(Environment environment, GitPersistenceBootstrapService bootstrapService) {
+    DataSource dataSource(
+        Environment environment,
+        GitPersistenceBootstrapService bootstrapService,
+        PersistenceGitSyncService persistenceGitSyncService
+    ) {
         String jdbcUrl = environment.getRequiredProperty("spring.datasource.url");
         bootstrapService.ensureDatabaseAvailable(jdbcUrl);
+        persistenceGitSyncService.initialize(jdbcUrl);
+        persistenceGitSyncService.pullOnStartup();
 
         SQLiteDataSource dataSource = new SQLiteDataSource();
         dataSource.setUrl(jdbcUrl);

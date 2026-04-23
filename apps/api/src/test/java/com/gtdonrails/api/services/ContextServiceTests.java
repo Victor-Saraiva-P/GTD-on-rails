@@ -21,6 +21,8 @@ import com.gtdonrails.api.exceptions.context.ContextNotFoundException;
 import com.gtdonrails.api.mappers.ContextMapper;
 import com.gtdonrails.api.mappers.ItemMapper;
 import com.gtdonrails.api.normalizers.ContextNameNormalizer;
+import com.gtdonrails.api.persistence.bootstrap.PersistenceChangeType;
+import com.gtdonrails.api.persistence.bootstrap.PersistenceGitSyncService;
 import com.gtdonrails.api.repositories.ContextRepository;
 import com.gtdonrails.api.repositories.ItemRepository;
 import com.gtdonrails.api.types.Title;
@@ -60,6 +62,9 @@ class ContextServiceTests {
     @Mock
     private AssetSyncService assetSyncService;
 
+    @Mock
+    private PersistenceGitSyncService persistenceGitSyncService;
+
     private final ContextNameNormalizer contextNameNormalizer = new ContextNameNormalizer();
 
     @Captor
@@ -76,7 +81,8 @@ class ContextServiceTests {
             itemMapper,
             contextNameNormalizer,
             assetStorageService,
-            assetSyncService
+            assetSyncService,
+            persistenceGitSyncService
         );
     }
 
@@ -203,6 +209,7 @@ class ContextServiceTests {
         verify(contextRepository).save(contextCaptor.capture());
         assertEquals("home", contextCaptor.getValue().getName());
         assertEquals(expectedResponse, response);
+        verify(persistenceGitSyncService).requestSync("context created", PersistenceChangeType.CREATE_CONTEXT);
     }
 
     @Test
@@ -233,6 +240,7 @@ class ContextServiceTests {
         verify(contextRepository).save(contextCaptor.capture());
         assertEquals("office", contextCaptor.getValue().getName());
         assertEquals(expectedResponse, response);
+        verify(persistenceGitSyncService).requestSync("context updated", PersistenceChangeType.UPDATE_CONTEXT);
     }
 
     @Test
@@ -306,6 +314,7 @@ class ContextServiceTests {
         contextService.deleteContext(contextId);
 
         verify(assetSyncService).requestSync("context deleted");
+        verify(persistenceGitSyncService).requestSync("context deleted", PersistenceChangeType.DELETE_CONTEXT);
     }
 
     @Test
@@ -326,6 +335,10 @@ class ContextServiceTests {
         assertEquals("contexts/home/icon.png", contextCaptor.getValue().getIconAssetPath());
         assertEquals(expectedResponse, response);
         verify(assetSyncService).requestSync("context icon updated");
+        verify(persistenceGitSyncService).requestSync(
+            "context icon updated",
+            PersistenceChangeType.UPDATE_CONTEXT_ICON
+        );
     }
 
     @Test
@@ -396,6 +409,10 @@ class ContextServiceTests {
         assertNull(contextCaptor.getValue().getIconAssetPath());
         assertEquals(expectedResponse, response);
         verify(assetSyncService).requestSync("context icon deleted");
+        verify(persistenceGitSyncService).requestSync(
+            "context icon deleted",
+            PersistenceChangeType.DELETE_CONTEXT_ICON
+        );
     }
 
     @Test
@@ -424,12 +441,33 @@ class ContextServiceTests {
             contextService.deleteContext(contextId);
 
             verify(assetSyncService, org.mockito.Mockito.never()).requestSync("context deleted");
+            verify(persistenceGitSyncService, org.mockito.Mockito.never())
+                .requestSync("context deleted", PersistenceChangeType.DELETE_CONTEXT);
 
             for (TransactionSynchronization synchronization : TransactionSynchronizationManager.getSynchronizations()) {
                 synchronization.afterCommit();
             }
 
             verify(assetSyncService).requestSync("context deleted");
+            verify(persistenceGitSyncService).requestSync("context deleted", PersistenceChangeType.DELETE_CONTEXT);
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
+
+    @Test
+    void doesNotRequestPersistenceSyncWithoutCommitWhenTransactionSynchronizationIsActive() {
+        UUID contextId = UUID.randomUUID();
+        Context context = new Context("home");
+
+        when(contextRepository.findByIdAndDeletedAtIsNull(contextId)).thenReturn(Optional.of(context));
+
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            contextService.deleteContext(contextId);
+
+            verify(persistenceGitSyncService, org.mockito.Mockito.never())
+                .requestSync("context deleted", PersistenceChangeType.DELETE_CONTEXT);
         } finally {
             TransactionSynchronizationManager.clearSynchronization();
         }

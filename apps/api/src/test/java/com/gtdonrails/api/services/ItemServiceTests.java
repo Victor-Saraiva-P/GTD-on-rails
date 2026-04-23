@@ -27,6 +27,8 @@ import com.gtdonrails.api.exceptions.context.ContextNotFoundException;
 import com.gtdonrails.api.exceptions.item.ItemNotFoundException;
 import com.gtdonrails.api.mappers.ItemMapper;
 import com.gtdonrails.api.normalizers.ItemTextNormalizer;
+import com.gtdonrails.api.persistence.bootstrap.PersistenceChangeType;
+import com.gtdonrails.api.persistence.bootstrap.PersistenceGitSyncService;
 import com.gtdonrails.api.repositories.ContextRepository;
 import com.gtdonrails.api.repositories.ItemRepository;
 import com.gtdonrails.api.types.Body;
@@ -39,6 +41,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @ExtendWith(MockitoExtension.class)
 @Tag("unit")
@@ -57,6 +61,9 @@ class ItemServiceTests {
     @Mock
     private ItemMapper itemMapper;
 
+    @Mock
+    private PersistenceGitSyncService persistenceGitSyncService;
+
     @Captor
     private ArgumentCaptor<Item> itemCaptor;
 
@@ -68,7 +75,8 @@ class ItemServiceTests {
             itemRepository,
             contextRepository,
             itemMapper,
-            new ItemTextNormalizer());
+            new ItemTextNormalizer(),
+            persistenceGitSyncService);
     }
 
     // getItem
@@ -135,6 +143,7 @@ class ItemServiceTests {
         assertEquals(energy("4.5"), savedItem.getEnergy());
         assertEquals(Duration.ofMinutes(90), savedItem.getTime());
         assertEquals(expectedResponse, response);
+        verify(persistenceGitSyncService).requestSync("item created", PersistenceChangeType.CREATE_ITEM);
     }
 
     @Test
@@ -307,6 +316,7 @@ class ItemServiceTests {
         assertEquals(energy("5.0"), savedItem.getEnergy());
         assertNull(savedItem.getTime());
         assertEquals(expectedResponse, response);
+        verify(persistenceGitSyncService).requestSync("item updated", PersistenceChangeType.UPDATE_ITEM);
     }
 
     @Test
@@ -422,6 +432,7 @@ class ItemServiceTests {
         Item savedItem = itemCaptor.getValue();
         assertEquals(existingItem, savedItem);
         assertEquals(true, savedItem.isDeleted());
+        verify(persistenceGitSyncService).requestSync("item deleted", PersistenceChangeType.DELETE_ITEM);
     }
 
     @Test
@@ -435,5 +446,57 @@ class ItemServiceTests {
 
         assertEquals("item not found", exception.getMessage());
         verify(itemRepository, never()).save(any(Item.class));
+    }
+
+    @Test
+    void createItemRequestsPersistenceSyncOnlyAfterCommitWhenTransactionSynchronizationIsActive() {
+        when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(itemMapper.toResponse(any(Item.class))).thenReturn(new ItemResponseDto(
+            UUID.randomUUID(),
+            "Capture idea",
+            null,
+            null,
+            null,
+            "STUFF",
+            Instant.now(),
+            List.of()));
+
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            itemService.createItem(new CreateItemRequestDto("Capture idea", null, null, null, null));
+
+            verify(persistenceGitSyncService, never()).requestSync("item created", PersistenceChangeType.CREATE_ITEM);
+
+            for (TransactionSynchronization synchronization : TransactionSynchronizationManager.getSynchronizations()) {
+                synchronization.afterCommit();
+            }
+
+            verify(persistenceGitSyncService).requestSync("item created", PersistenceChangeType.CREATE_ITEM);
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
+
+    @Test
+    void createItemDoesNotRequestPersistenceSyncWithoutCommitWhenTransactionSynchronizationIsActive() {
+        when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(itemMapper.toResponse(any(Item.class))).thenReturn(new ItemResponseDto(
+            UUID.randomUUID(),
+            "Capture idea",
+            null,
+            null,
+            null,
+            "STUFF",
+            Instant.now(),
+            List.of()));
+
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            itemService.createItem(new CreateItemRequestDto("Capture idea", null, null, null, null));
+
+            verify(persistenceGitSyncService, never()).requestSync("item created", PersistenceChangeType.CREATE_ITEM);
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
     }
 }

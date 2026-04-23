@@ -18,9 +18,14 @@ public class GitPersistenceBootstrapService {
     private static final Logger logger = LoggerFactory.getLogger(GitPersistenceBootstrapService.class);
 
     private final PersistenceBootstrapProperties properties;
+    private final GitCommandService gitCommandService;
 
-    public GitPersistenceBootstrapService(PersistenceBootstrapProperties properties) {
+    public GitPersistenceBootstrapService(
+        PersistenceBootstrapProperties properties,
+        GitCommandService gitCommandService
+    ) {
         this.properties = properties;
+        this.gitCommandService = gitCommandService;
     }
 
     public void ensureDatabaseAvailable(String jdbcUrl) {
@@ -92,15 +97,16 @@ public class GitPersistenceBootstrapService {
             cloneDirectory.getFileName() + ".tmp-" + UUID.randomUUID());
 
         try {
-            runGitCommand(parentDirectory != null ? parentDirectory : Path.of(".").toAbsolutePath().normalize(),
-                "clone",
-                "--depth",
-                "1",
-                "--branch",
-                properties.getBranch(),
-                "--single-branch",
-                properties.getRepositoryUrl(),
-                tempCloneDirectory.toString());
+            try {
+                gitCommandService.cloneBranch(
+                    parentDirectory != null ? parentDirectory : Path.of(".").toAbsolutePath().normalize(),
+                    properties.getRepositoryUrl(),
+                    properties.getBranch(),
+                    tempCloneDirectory
+                );
+            } catch (IllegalStateException exception) {
+                throw buildGitFailure(exception.getMessage());
+            }
 
             logger.info("Bootstrapping SQLite database from branch '{}'", properties.getBranch());
             Files.move(tempCloneDirectory, cloneDirectory, StandardCopyOption.ATOMIC_MOVE);
@@ -113,24 +119,7 @@ public class GitPersistenceBootstrapService {
         }
     }
 
-    private void runGitCommand(Path workingDirectory, String... arguments) throws IOException, InterruptedException {
-        String[] command = new String[arguments.length + 1];
-        command[0] = "git";
-        System.arraycopy(arguments, 0, command, 1, arguments.length);
-
-        Process process = new ProcessBuilder(command)
-            .directory(workingDirectory.toFile())
-            .redirectErrorStream(true)
-            .start();
-
-        String output = new String(process.getInputStream().readAllBytes());
-        int exitCode = process.waitFor();
-        if (exitCode != 0) {
-            throw buildGitFailure(output.trim());
-        }
-    }
-
-    private IllegalStateException buildGitFailure(String output) {
+    IllegalStateException buildGitFailure(String output) {
         String repositoryUrl = properties.getRepositoryUrl();
 
         if (output.contains("Repository not found")
