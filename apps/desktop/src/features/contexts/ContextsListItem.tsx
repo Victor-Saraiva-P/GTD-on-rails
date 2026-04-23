@@ -1,4 +1,5 @@
 import { useRef } from "react";
+import { buildApiUrlWithVersion } from "../../config/env";
 import type { ContextItem } from "./types";
 
 type ContextsListItemProps = {
@@ -31,9 +32,18 @@ export function ContextsListItem({
       <li className="tree-list__item">
         <div className="tree-entry tree-entry--active context-tree-entry">
           <span className="tree-entry__marker">{selected ? "●" : "○"}</span>
-          <span className="tree-entry__glyph tree-entry__glyph--context" aria-hidden="true">
-            C
-          </span>
+          {item.iconUrl ? (
+            <img
+              src={buildApiUrlWithVersion(item.iconUrl, item.iconRevision)}
+              alt=""
+              className="tree-entry__icon"
+              draggable={false}
+            />
+          ) : (
+            <span className="tree-entry__glyph tree-entry__glyph--context" aria-hidden="true">
+              C
+            </span>
+          )}
           <input
             value={editingName}
             className="tree-entry__input"
@@ -81,9 +91,18 @@ export function ContextsListItem({
         }}
       >
         <span className="tree-entry__marker">{selected ? "●" : "○"}</span>
-        <span className="tree-entry__glyph tree-entry__glyph--context" aria-hidden="true">
-          C
-        </span>
+        {item.iconUrl ? (
+          <img
+            src={buildApiUrlWithVersion(item.iconUrl, item.iconRevision)}
+            alt=""
+            className="tree-entry__icon"
+            draggable={false}
+          />
+        ) : (
+          <span className="tree-entry__glyph tree-entry__glyph--context" aria-hidden="true">
+            C
+          </span>
+        )}
         <span className="tree-entry__label">{item.name}</span>
       </button>
     </li>

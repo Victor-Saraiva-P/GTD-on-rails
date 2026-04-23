@@ -29,3 +29,13 @@ export function buildApiUrl(pathname: string): string {
 
   return `${apiBaseUrl}${normalizedPathname}`;
 }
+
+export function buildApiUrlWithVersion(pathname: string, version?: number): string {
+  const url = new URL(buildApiUrl(pathname));
+
+  if (version !== undefined) {
+    url.searchParams.set("v", String(version));
+  }
+
+  return url.toString();
+}

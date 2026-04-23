@@ -553,6 +553,9 @@ dependencies = [
 name = "desktop"
 version = "0.1.0"
 dependencies = [
+ "base64 0.22.1",
+ "gdk-pixbuf",
+ "gtk",
  "serde",
  "serde_json",
  "tauri",

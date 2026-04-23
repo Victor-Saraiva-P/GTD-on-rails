@@ -5,7 +5,8 @@ const zoneLabels = {
   "inbox-list": "Inbox list",
   "stuff-detail": "Stuff detail",
   "context-list": "Contexts list",
-  "context-detail": "Context detail"
+  "context-detail": "Context detail",
+  "context-icon-editor": "Context icon editor"
 };
 
 export function LeaderMenu() {

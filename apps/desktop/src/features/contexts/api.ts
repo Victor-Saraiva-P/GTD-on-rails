@@ -4,6 +4,7 @@ import type { ContextItem, ContextRelatedItem } from "./types";
 type ContextResponse = {
   id: string;
   name: string;
+  iconUrl?: string;
 };
 
 type ContextRelatedItemResponse = {
@@ -14,8 +15,9 @@ type ContextRelatedItemResponse = {
 
 export async function fetchContexts(): Promise<ContextItem[]> {
   const response = await apiJson<ContextResponse[]>("/contexts");
+  const iconRevision = Date.now();
 
-  return response.map(toContextItem);
+  return response.map((context) => toContextItem(context, iconRevision));
 }
 
 export async function createContext(): Promise<ContextItem> {
@@ -52,6 +54,26 @@ export async function deleteContext(id: string): Promise<void> {
   });
 }
 
+export async function updateContextIcon(id: string, file: File): Promise<ContextItem> {
+  const body = new FormData();
+  body.append("file", file);
+
+  const response = await apiJson<ContextResponse>(`/contexts/${id}/icon`, {
+    method: "PUT",
+    body
+  });
+
+  return toContextItem(response);
+}
+
+export async function deleteContextIcon(id: string): Promise<ContextItem> {
+  const response = await apiJson<ContextResponse>(`/contexts/${id}/icon`, {
+    method: "DELETE"
+  });
+
+  return toContextItem(response);
+}
+
 export async function fetchContextItems(id: string, limit: number): Promise<ContextRelatedItem[]> {
   const searchParams = new URLSearchParams({
     limit: String(limit)
@@ -63,10 +85,12 @@ export async function fetchContextItems(id: string, limit: number): Promise<Cont
   return response.map(toContextRelatedItem);
 }
 
-function toContextItem(context: ContextResponse): ContextItem {
+function toContextItem(context: ContextResponse, iconRevision = Date.now()): ContextItem {
   return {
     id: context.id,
-    name: context.name
+    name: context.name,
+    iconUrl: context.iconUrl,
+    iconRevision: context.iconUrl ? iconRevision : undefined
   };
 }
 

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ListPane } from "../components/ListPane";
 import { ListWorkspace } from "../components/ListWorkspace";
+import { ContextIconEditor } from "../features/contexts/ContextIconEditor";
 import { ContextItemsPane } from "../features/contexts/ContextItemsPane";
 import { ContextsList } from "../features/contexts/ContextsList";
 import { CONTEXT_RELATED_ITEMS_LIMIT } from "../features/contexts/constants";
@@ -25,11 +26,14 @@ export function ContextsPage() {
     reload,
     createContext,
     deleteContext,
-    updateContextName
+    deleteContextIcon,
+    updateContextName,
+    updateContextIcon
   } = useContextsQuery();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
+  const [isIconEditorOpen, setIsIconEditorOpen] = useState(false);
   const selectedItem =
     contexts.find((context) => context.id === selectedId) ??
     (contexts.length > 0 ? contexts[0] : null);
@@ -53,6 +57,7 @@ export function ContextsPage() {
       setSelectedId(null);
       setEditingId(null);
       setEditingName("");
+      setIsIconEditorOpen(false);
       return;
     }
 
@@ -65,6 +70,20 @@ export function ContextsPage() {
       setEditingName("");
     }
   }, [contexts, editingId, selectedId]);
+
+  const openSelectedContextIconEditor = () => {
+    if (!selectedItem) {
+      return;
+    }
+
+    setIsIconEditorOpen(true);
+    setActiveZone("context-icon-editor");
+  };
+
+  const closeSelectedContextIconEditor = () => {
+    setIsIconEditorOpen(false);
+    setActiveZone("context-list");
+  };
 
   const selectNextContext = () => {
     if (contexts.length === 0) {
@@ -209,6 +228,34 @@ export function ContextsPage() {
         }
       },
       {
+        id: "contexts.edit-icon-list",
+        key: "e",
+        description: "Edit context icon",
+        screen: "contexts" as const,
+        zone: "context-list" as const,
+        handler: () => {
+          if (isLoading || isCreating || isDeleting || isUpdating || editingId !== null || !selectedItem) {
+            return;
+          }
+
+          openSelectedContextIconEditor();
+        }
+      },
+      {
+        id: "contexts.edit-icon-detail",
+        key: "e",
+        description: "Edit context icon",
+        screen: "contexts" as const,
+        zone: "context-detail" as const,
+        handler: () => {
+          if (isLoading || isCreating || isDeleting || isUpdating || editingId !== null || !selectedItem) {
+            return;
+          }
+
+          openSelectedContextIconEditor();
+        }
+      },
+      {
         id: "contexts.move-down",
         key: "j",
         description: "Move down",
@@ -275,6 +322,23 @@ export function ContextsPage() {
         screen: "contexts" as const,
         zone: "context-detail" as const,
         handler: () => undefined
+      },
+      {
+        id: "contexts.close-icon-editor",
+        key: "Escape",
+        description: "Close icon editor",
+        screen: "contexts" as const,
+        zone: "context-icon-editor" as const,
+        handler: () => closeSelectedContextIconEditor()
+      },
+      {
+        id: "contexts.which-key-icon-editor",
+        key: "k",
+        description: "Show available keybinds",
+        leader: true,
+        screen: "contexts" as const,
+        zone: "context-icon-editor" as const,
+        handler: () => undefined
       }
     ],
     [
@@ -282,6 +346,7 @@ export function ContextsPage() {
       editingId,
       isCreating,
       isDeleting,
+      isIconEditorOpen,
       isLoading,
       isUpdating,
       selectedIndex,
@@ -395,6 +460,19 @@ export function ContextsPage() {
           {detailBody}
         </ListPane>
       </section>
+      {isIconEditorOpen && selectedItem ? (
+        <ContextIconEditor
+          context={selectedItem}
+          isBusy={isUpdating}
+          onClose={closeSelectedContextIconEditor}
+          onUpload={async (file) => {
+            await updateContextIcon(selectedItem.id, file);
+          }}
+          onDelete={async () => {
+            await deleteContextIcon(selectedItem.id);
+          }}
+        />
+      ) : null}
       <LeaderMenu />
     </ListWorkspace>
   );

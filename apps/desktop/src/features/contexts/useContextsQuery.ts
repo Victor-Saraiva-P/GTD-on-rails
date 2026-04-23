@@ -3,7 +3,9 @@ import { ApiRequestError } from "../../lib/api/apiClient";
 import {
   createContext,
   deleteContext,
+  deleteContextIcon,
   fetchContexts,
+  updateContextIcon,
   updateContextName
 } from "./api";
 import type { ContextItem } from "./types";
@@ -18,6 +20,8 @@ type ContextsQueryState = {
   createContext: () => Promise<ContextItem>;
   deleteContext: (id: string) => Promise<void>;
   updateContextName: (id: string, name: string) => Promise<ContextItem>;
+  updateContextIcon: (id: string, file: File) => Promise<ContextItem>;
+  deleteContextIcon: (id: string) => Promise<ContextItem>;
   reload: () => void;
 };
 
@@ -115,6 +119,42 @@ export function useContextsQuery(): ContextsQueryState {
 
       try {
         const updatedContext = await updateContextName(id, name);
+
+        setContexts((currentContexts) =>
+          currentContexts.map((currentContext) =>
+            currentContext.id === updatedContext.id ? updatedContext : currentContext
+          )
+        );
+        setErrorMessage(null);
+
+        return updatedContext;
+      } finally {
+        setIsUpdating(false);
+      }
+    },
+    updateContextIcon: async (id: string, file: File) => {
+      setIsUpdating(true);
+
+      try {
+        const updatedContext = await updateContextIcon(id, file);
+
+        setContexts((currentContexts) =>
+          currentContexts.map((currentContext) =>
+            currentContext.id === updatedContext.id ? updatedContext : currentContext
+          )
+        );
+        setErrorMessage(null);
+
+        return updatedContext;
+      } finally {
+        setIsUpdating(false);
+      }
+    },
+    deleteContextIcon: async (id: string) => {
+      setIsUpdating(true);
+
+      try {
+        const updatedContext = await deleteContextIcon(id);
 
         setContexts((currentContexts) =>
           currentContexts.map((currentContext) =>

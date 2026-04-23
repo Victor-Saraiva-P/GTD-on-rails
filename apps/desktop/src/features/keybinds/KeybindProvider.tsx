@@ -57,6 +57,10 @@ export function KeybindProvider({ children }: PropsWithChildren) {
         return;
       }
 
+      if (event.ctrlKey || event.metaKey || event.altKey) {
+        return;
+      }
+
       if (isLeaderMenuOpen) {
         if (event.key === "Escape") {
           event.preventDefault();

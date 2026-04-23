@@ -1,6 +1,11 @@
 export type ScreenId = "inbox" | "contexts" | "stuff-detail";
 
-export type FocusZoneId = "inbox-list" | "stuff-detail" | "context-list" | "context-detail";
+export type FocusZoneId =
+  | "inbox-list"
+  | "stuff-detail"
+  | "context-list"
+  | "context-detail"
+  | "context-icon-editor";
 
 export type KeybindDefinition = {
   id: string;
