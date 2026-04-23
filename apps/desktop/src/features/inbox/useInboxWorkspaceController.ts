@@ -1,6 +1,19 @@
 import { useEffect, useState } from "react";
 import { useActiveZone } from "../keybinds/hooks";
 import { useInboxStuffsQuery } from "./useInboxStuffsQuery";
+import type { Stuff } from "./types";
+
+const DRAFT_STUFF_ID = "__draft_stuff__";
+
+function buildDraftStuff(): Stuff {
+  return {
+    id: DRAFT_STUFF_ID,
+    title: "",
+    body: null,
+    status: "INBOX",
+    createdAt: new Date().toISOString()
+  };
+}
 
 export function useInboxWorkspaceController() {
   const {
@@ -16,6 +29,7 @@ export function useInboxWorkspaceController() {
     updateStuffBody,
     updateStuffTitle
   } = useInboxStuffsQuery();
+  const [draftStuff, setDraftStuff] = useState<Stuff | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
@@ -23,14 +37,15 @@ export function useInboxWorkspaceController() {
   const [editingBody, setEditingBody] = useState("");
   const [pendingBodyEditId, setPendingBodyEditId] = useState<string | null>(null);
   const { activeZone, setActiveZone } = useActiveZone();
+  const visibleStuffs = draftStuff ? [draftStuff, ...stuffs] : stuffs;
   const selectedItem =
-    stuffs.find((item) => item.id === selectedId) ?? (stuffs.length > 0 ? stuffs[0] : null);
+    visibleStuffs.find((item) => item.id === selectedId) ?? (visibleStuffs.length > 0 ? visibleStuffs[0] : null);
   const selectedIndex = selectedItem
-    ? stuffs.findIndex((item) => item.id === selectedItem.id)
+    ? visibleStuffs.findIndex((item) => item.id === selectedItem.id)
     : -1;
 
   useEffect(() => {
-    if (stuffs.length === 0) {
+    if (visibleStuffs.length === 0) {
       setSelectedId(null);
       setEditingId(null);
       setEditingTitle("");
@@ -40,52 +55,53 @@ export function useInboxWorkspaceController() {
       return;
     }
 
-    if (!selectedId || !stuffs.some((item) => item.id === selectedId)) {
-      setSelectedId(stuffs[0].id);
+    if (!selectedId || !visibleStuffs.some((item) => item.id === selectedId)) {
+      setSelectedId(visibleStuffs[0].id);
     }
 
-    if (editingId && !stuffs.some((item) => item.id === editingId)) {
+    if (editingId && !visibleStuffs.some((item) => item.id === editingId)) {
       setEditingId(null);
       setEditingTitle("");
     }
 
-    if (editingBodyId && !stuffs.some((item) => item.id === editingBodyId)) {
+    if (editingBodyId && !visibleStuffs.some((item) => item.id === editingBodyId)) {
       setEditingBodyId(null);
       setEditingBody("");
     }
 
-    if (pendingBodyEditId && !stuffs.some((item) => item.id === pendingBodyEditId)) {
+    if (pendingBodyEditId && !visibleStuffs.some((item) => item.id === pendingBodyEditId)) {
       setPendingBodyEditId(null);
     }
-  }, [editingBodyId, editingId, pendingBodyEditId, selectedId, stuffs]);
+  }, [draftStuff, editingBodyId, editingId, pendingBodyEditId, selectedId, visibleStuffs]);
 
   const selectNextStuff = () => {
-    if (stuffs.length === 0) {
+    if (visibleStuffs.length === 0) {
       return;
     }
 
-    const nextIndex = Math.min(selectedIndex + 1, stuffs.length - 1);
-    setSelectedId(stuffs[nextIndex].id);
+    const nextIndex = Math.min(selectedIndex + 1, visibleStuffs.length - 1);
+    setSelectedId(visibleStuffs[nextIndex].id);
   };
 
   const selectPreviousStuff = () => {
-    if (stuffs.length === 0) {
+    if (visibleStuffs.length === 0) {
       return;
     }
 
     const previousIndex = Math.max(selectedIndex - 1, 0);
-    setSelectedId(stuffs[previousIndex].id);
+    setSelectedId(visibleStuffs[previousIndex].id);
   };
 
   const createNewStuff = async () => {
-    const createdStuff = await createStuff();
+    const nextDraft = buildDraftStuff();
 
-    setSelectedId(createdStuff.id);
-    setEditingId(createdStuff.id);
+    setDraftStuff(nextDraft);
+    setSelectedId(nextDraft.id);
+    setEditingId(nextDraft.id);
     setEditingTitle("");
     setEditingBodyId(null);
     setEditingBody("");
-    setPendingBodyEditId(createdStuff.id);
+    setPendingBodyEditId(nextDraft.id);
     setActiveZone("inbox-list");
   };
 
@@ -109,11 +125,16 @@ export function useInboxWorkspaceController() {
     }
 
     setEditingId(selectedItem.id);
-    setEditingTitle(selectedItem.title);
-    setPendingBodyEditId(null);
+    setEditingTitle(selectedItem.id === DRAFT_STUFF_ID ? "" : selectedItem.title);
+    setPendingBodyEditId(selectedItem.id === DRAFT_STUFF_ID ? selectedItem.id : null);
   };
 
   const cancelEditingSelectedStuff = () => {
+    if (editingId === DRAFT_STUFF_ID) {
+      setDraftStuff(null);
+      setSelectedId(stuffs[0]?.id ?? null);
+    }
+
     setEditingId(null);
     setEditingTitle("");
     setPendingBodyEditId(null);
@@ -142,12 +163,31 @@ export function useInboxWorkspaceController() {
     const shouldContinueToBody = pendingBodyEditId === selectedItem.id;
 
     if (!normalizedTitle) {
+      if (selectedItem.id === DRAFT_STUFF_ID) {
+        setDraftStuff(null);
+        setSelectedId(stuffs[0]?.id ?? null);
+      }
+
+      setEditingId(null);
+      setEditingTitle("");
+      if (shouldContinueToBody) {
+        setActiveZone("inbox-list");
+      }
+      setPendingBodyEditId(null);
+      return;
+    }
+
+    if (selectedItem.id === DRAFT_STUFF_ID) {
+      const createdStuff = await createStuff(normalizedTitle);
+
+      setDraftStuff(null);
+      setSelectedId(createdStuff.id);
       setEditingId(null);
       setEditingTitle("");
       if (shouldContinueToBody) {
         setActiveZone("stuff-detail");
-        setEditingBodyId(selectedItem.id);
-        setEditingBody(selectedItem.body ?? "");
+        setEditingBodyId(createdStuff.id);
+        setEditingBody(createdStuff.body ?? "");
       }
       setPendingBodyEditId(null);
       return;
@@ -230,7 +270,7 @@ export function useInboxWorkspaceController() {
     cancelEditingSelectedStuffBody,
     commitEditingSelectedStuff,
     commitEditingSelectedStuffBody,
-    stuffs
+    stuffs: visibleStuffs
   };
 }
 

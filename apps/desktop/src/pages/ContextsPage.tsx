@@ -7,10 +7,20 @@ import { ContextsList } from "../features/contexts/ContextsList";
 import { CONTEXT_RELATED_ITEMS_LIMIT } from "../features/contexts/constants";
 import { useContextItemsQuery } from "../features/contexts/useContextItemsQuery";
 import { useContextsQuery } from "../features/contexts/useContextsQuery";
+import type { ContextItem } from "../features/contexts/types";
 import { LeaderMenu } from "../features/keybinds/LeaderMenu";
 import { contextsListTheme } from "../features/lists/listThemes";
 import { useActiveZone, useKeybindScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
 import type { KeybindDefinition } from "../features/keybinds/types";
+
+const DRAFT_CONTEXT_ID = "__draft_context__";
+
+function buildDraftContext(): ContextItem {
+  return {
+    id: DRAFT_CONTEXT_ID,
+    name: ""
+  };
+}
 
 export function ContextsPage() {
   useKeybindScreen("contexts");
@@ -30,15 +40,17 @@ export function ContextsPage() {
     updateContextName,
     updateContextIcon
   } = useContextsQuery();
+  const [draftContext, setDraftContext] = useState<ContextItem | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
   const [isIconEditorOpen, setIsIconEditorOpen] = useState(false);
+  const visibleContexts = draftContext ? [draftContext, ...contexts] : contexts;
   const selectedItem =
-    contexts.find((context) => context.id === selectedId) ??
-    (contexts.length > 0 ? contexts[0] : null);
+    visibleContexts.find((context) => context.id === selectedId) ??
+    (visibleContexts.length > 0 ? visibleContexts[0] : null);
   const selectedPosition = selectedItem
-    ? contexts.findIndex((context) => context.id === selectedItem.id) + 1
+    ? visibleContexts.findIndex((context) => context.id === selectedItem.id) + 1
     : 0;
   const selectedIndex = selectedPosition - 1;
   const {
@@ -46,14 +58,17 @@ export function ContextsPage() {
     isLoading: isLoadingRelatedItems,
     errorMessage: relatedItemsErrorMessage,
     reload: reloadRelatedItems
-  } = useContextItemsQuery(selectedItem?.id ?? null, CONTEXT_RELATED_ITEMS_LIMIT);
+  } = useContextItemsQuery(
+    selectedItem && selectedItem.id !== DRAFT_CONTEXT_ID ? selectedItem.id : null,
+    CONTEXT_RELATED_ITEMS_LIMIT
+  );
 
   useEffect(() => {
     setActiveZone("context-list");
   }, [setActiveZone]);
 
   useEffect(() => {
-    if (contexts.length === 0) {
+    if (visibleContexts.length === 0) {
       setSelectedId(null);
       setEditingId(null);
       setEditingName("");
@@ -61,15 +76,15 @@ export function ContextsPage() {
       return;
     }
 
-    if (!selectedId || !contexts.some((context) => context.id === selectedId)) {
-      setSelectedId(contexts[0].id);
+    if (!selectedId || !visibleContexts.some((context) => context.id === selectedId)) {
+      setSelectedId(visibleContexts[0].id);
     }
 
-    if (editingId && !contexts.some((context) => context.id === editingId)) {
+    if (editingId && !visibleContexts.some((context) => context.id === editingId)) {
       setEditingId(null);
       setEditingName("");
     }
-  }, [contexts, editingId, selectedId]);
+  }, [editingId, selectedId, visibleContexts]);
 
   const openSelectedContextIconEditor = () => {
     if (!selectedItem) {
@@ -86,28 +101,29 @@ export function ContextsPage() {
   };
 
   const selectNextContext = () => {
-    if (contexts.length === 0) {
+    if (visibleContexts.length === 0) {
       return;
     }
 
-    const nextIndex = Math.min(selectedIndex + 1, contexts.length - 1);
-    setSelectedId(contexts[nextIndex].id);
+    const nextIndex = Math.min(selectedIndex + 1, visibleContexts.length - 1);
+    setSelectedId(visibleContexts[nextIndex].id);
   };
 
   const selectPreviousContext = () => {
-    if (contexts.length === 0) {
+    if (visibleContexts.length === 0) {
       return;
     }
 
     const previousIndex = Math.max(selectedIndex - 1, 0);
-    setSelectedId(contexts[previousIndex].id);
+    setSelectedId(visibleContexts[previousIndex].id);
   };
 
   const createNewContext = async () => {
-    const createdContext = await createContext();
+    const nextDraft = buildDraftContext();
 
-    setSelectedId(createdContext.id);
-    setEditingId(createdContext.id);
+    setDraftContext(nextDraft);
+    setSelectedId(nextDraft.id);
+    setEditingId(nextDraft.id);
     setEditingName("");
     setActiveZone("context-list");
   };
@@ -129,10 +145,15 @@ export function ContextsPage() {
     }
 
     setEditingId(selectedItem.id);
-    setEditingName(selectedItem.name);
+    setEditingName(selectedItem.id === DRAFT_CONTEXT_ID ? "" : selectedItem.name);
   };
 
   const cancelEditingSelectedContext = () => {
+    if (editingId === DRAFT_CONTEXT_ID) {
+      setDraftContext(null);
+      setSelectedId(contexts[0]?.id ?? null);
+    }
+
     setEditingId(null);
     setEditingName("");
   };
@@ -145,6 +166,21 @@ export function ContextsPage() {
     const normalizedName = editingName.trim();
 
     if (!normalizedName) {
+      if (selectedItem.id === DRAFT_CONTEXT_ID) {
+        setDraftContext(null);
+        setSelectedId(contexts[0]?.id ?? null);
+      }
+
+      setEditingId(null);
+      setEditingName("");
+      return;
+    }
+
+    if (selectedItem.id === DRAFT_CONTEXT_ID) {
+      const createdContext = await createContext(normalizedName);
+
+      setDraftContext(null);
+      setSelectedId(createdContext.id);
       setEditingId(null);
       setEditingName("");
       return;
@@ -290,7 +326,7 @@ export function ContextsPage() {
         screen: "contexts" as const,
         zone: "context-list" as const,
         handler: () => {
-          if (contexts.length === 0 || editingId !== null) {
+          if (visibleContexts.length === 0 || editingId !== null) {
             return;
           }
 
@@ -342,7 +378,7 @@ export function ContextsPage() {
       }
     ],
     [
-      contexts.length,
+      visibleContexts.length,
       editingId,
       isCreating,
       isDeleting,
@@ -374,13 +410,13 @@ export function ContextsPage() {
       );
     }
 
-    if (contexts.length === 0) {
+    if (visibleContexts.length === 0) {
       return <p className="pane-state">No contexts yet.</p>;
     }
 
     return (
       <ContextsList
-        items={contexts}
+        items={visibleContexts}
         selectedId={selectedItem?.id ?? ""}
         editingId={editingId}
         editingName={editingName}
@@ -410,6 +446,10 @@ export function ContextsPage() {
       return <p className="pane-state">Select a context to inspect its related items.</p>;
     }
 
+    if (selectedItem.id === DRAFT_CONTEXT_ID) {
+      return <p className="pane-state">Save the context name to inspect its related items.</p>;
+    }
+
     if (isLoadingRelatedItems) {
       return <p className="pane-state">Loading related items...</p>;
     }
@@ -432,7 +472,7 @@ export function ContextsPage() {
     return <ContextItemsPane context={selectedItem} items={relatedItems} />;
   })();
 
-  const listMeta = `${contexts.length} ${contexts.length === 1 ? "item" : "items"}`;
+  const listMeta = `${visibleContexts.length} ${visibleContexts.length === 1 ? "item" : "items"}`;
   const detailMeta = `${relatedItems.length} ${relatedItems.length === 1 ? "item" : "items"}`;
 
   return (

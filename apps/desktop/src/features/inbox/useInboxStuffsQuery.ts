@@ -10,7 +10,7 @@ type InboxStuffsQueryState = {
   isDeleting: boolean;
   isUpdating: boolean;
   errorMessage: string | null;
-  createStuff: () => Promise<Stuff>;
+  createStuff: (title: string, body?: string | null) => Promise<Stuff>;
   deleteStuff: (id: string) => Promise<void>;
   updateStuffBody: (item: Stuff, body: string | null) => Promise<Stuff>;
   updateStuffTitle: (item: Stuff, title: string) => Promise<Stuff>;
@@ -81,11 +81,11 @@ export function useInboxStuffsQuery(): InboxStuffsQueryState {
     isDeleting,
     isUpdating,
     errorMessage,
-    createStuff: async () => {
+    createStuff: async (title: string, body: string | null = null) => {
       setIsCreating(true);
 
       try {
-        const createdStuff = await createStuff();
+        const createdStuff = await createStuff(title, body);
 
         setStuffs((currentStuffs) => [createdStuff, ...currentStuffs]);
         setErrorMessage(null);

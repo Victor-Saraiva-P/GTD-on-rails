@@ -15,15 +15,15 @@ export async function fetchInboxStuffs(): Promise<Stuff[]> {
   return response.map(toStuff);
 }
 
-export async function createStuff(): Promise<Stuff> {
+export async function createStuff(title: string, body: string | null = null): Promise<Stuff> {
   const response = await apiJson<InboxStuffResponse>("/items", {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
-      title: "New stuff",
-      body: null
+      title,
+      body
     })
   });
 

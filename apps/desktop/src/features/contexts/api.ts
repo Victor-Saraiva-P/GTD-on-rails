@@ -20,14 +20,14 @@ export async function fetchContexts(): Promise<ContextItem[]> {
   return response.map((context) => toContextItem(context, iconRevision));
 }
 
-export async function createContext(): Promise<ContextItem> {
+export async function createContext(name: string): Promise<ContextItem> {
   const response = await apiJson<ContextResponse>("/contexts", {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
-      name: "New context"
+      name
     })
   });
 

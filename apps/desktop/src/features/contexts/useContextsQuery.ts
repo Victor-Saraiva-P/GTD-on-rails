@@ -17,7 +17,7 @@ type ContextsQueryState = {
   isDeleting: boolean;
   isUpdating: boolean;
   errorMessage: string | null;
-  createContext: () => Promise<ContextItem>;
+  createContext: (name: string) => Promise<ContextItem>;
   deleteContext: (id: string) => Promise<void>;
   updateContextName: (id: string, name: string) => Promise<ContextItem>;
   updateContextIcon: (id: string, file: File) => Promise<ContextItem>;
@@ -89,11 +89,11 @@ export function useContextsQuery(): ContextsQueryState {
     isDeleting,
     isUpdating,
     errorMessage,
-    createContext: async () => {
+    createContext: async (name: string) => {
       setIsCreating(true);
 
       try {
-        const createdContext = await createContext();
+        const createdContext = await createContext(name);
 
         setContexts((currentContexts) => [createdContext, ...currentContexts]);
         setErrorMessage(null);
