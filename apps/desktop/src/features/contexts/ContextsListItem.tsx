@@ -30,6 +30,10 @@ export function ContextsListItem({
     return (
       <li className="tree-list__item">
         <div className="tree-entry tree-entry--active context-tree-entry">
+          <span className="tree-entry__marker">{selected ? "●" : "○"}</span>
+          <span className="tree-entry__glyph tree-entry__glyph--context" aria-hidden="true">
+            C
+          </span>
           <input
             value={editingName}
             className="tree-entry__input"
@@ -76,6 +80,10 @@ export function ContextsListItem({
           }
         }}
       >
+        <span className="tree-entry__marker">{selected ? "●" : "○"}</span>
+        <span className="tree-entry__glyph tree-entry__glyph--context" aria-hidden="true">
+          C
+        </span>
         <span className="tree-entry__label">{item.name}</span>
       </button>
     </li>

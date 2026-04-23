@@ -500,6 +500,10 @@ body {
   color: var(--list-accent);
 }
 
+.tree-entry__glyph--context {
+  color: var(--list-accent);
+}
+
 .tree-entry__label,
 .detail-card__title {
   font-size: 0.95rem;

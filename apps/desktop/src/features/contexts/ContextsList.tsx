@@ -25,7 +25,7 @@ export function ContextsList({
   onCancelEditing
 }: ContextsListProps) {
   return (
-    <ol className="tree-list" aria-label="Contexts">
+    <ol className="tree-list tree-list--inbox" aria-label="Contexts">
       {items.map((item) => (
         <ContextsListItem
           key={item.id}
