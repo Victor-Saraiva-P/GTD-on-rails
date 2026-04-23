@@ -21,11 +21,11 @@ public class SqliteDataSourceConfig {
     @ConditionalOnProperty(name = "spring.datasource.url")
     DataSource dataSource(
         Environment environment,
-        GitPersistenceBootstrapService bootstrapService,
+        GitPersistenceBootstrapService gitPersistenceBootstrapService,
         PersistenceGitSyncService persistenceGitSyncService
     ) {
         String jdbcUrl = environment.getRequiredProperty("spring.datasource.url");
-        bootstrapService.ensureDatabaseAvailable(jdbcUrl);
+        gitPersistenceBootstrapService.ensureDatabaseAvailable(jdbcUrl);
         persistenceGitSyncService.initialize(jdbcUrl);
         persistenceGitSyncService.pullOnStartup();
 

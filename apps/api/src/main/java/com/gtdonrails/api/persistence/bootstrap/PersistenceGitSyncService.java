@@ -18,8 +18,8 @@ public class PersistenceGitSyncService {
 
     private static final Logger logger = LoggerFactory.getLogger(PersistenceGitSyncService.class);
 
-    private final PersistenceBootstrapProperties bootstrapProperties;
-    private final PersistenceSyncProperties syncProperties;
+    private final PersistenceBootstrapProperties persistenceBootstrapProperties;
+    private final PersistenceSyncProperties persistenceSyncProperties;
     private final GitCommandService gitCommandService;
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
 
@@ -32,18 +32,18 @@ public class PersistenceGitSyncService {
     private volatile String lastError;
 
     public PersistenceGitSyncService(
-        PersistenceBootstrapProperties bootstrapProperties,
-        PersistenceSyncProperties syncProperties,
+        PersistenceBootstrapProperties persistenceBootstrapProperties,
+        PersistenceSyncProperties persistenceSyncProperties,
         GitCommandService gitCommandService
     ) {
-        this.bootstrapProperties = bootstrapProperties;
-        this.syncProperties = syncProperties;
+        this.persistenceBootstrapProperties = persistenceBootstrapProperties;
+        this.persistenceSyncProperties = persistenceSyncProperties;
         this.gitCommandService = gitCommandService;
-        this.state = syncProperties.isEnabled() ? PersistenceSyncState.IDLE : PersistenceSyncState.DISABLED;
+        this.state = persistenceSyncProperties.isEnabled() ? PersistenceSyncState.IDLE : PersistenceSyncState.DISABLED;
     }
 
     public void initialize(String jdbcUrl) {
-        if (!syncProperties.isEnabled()) {
+        if (!persistenceSyncProperties.isEnabled()) {
             state = PersistenceSyncState.DISABLED;
             repositoryDirectory = null;
             databasePath = null;
@@ -51,7 +51,7 @@ public class PersistenceGitSyncService {
         }
 
         Path resolvedDatabasePath = resolveSqlitePath(jdbcUrl);
-        Path resolvedRepositoryDirectory = Path.of(bootstrapProperties.getCloneDirectory()).toAbsolutePath().normalize();
+        Path resolvedRepositoryDirectory = Path.of(persistenceBootstrapProperties.getCloneDirectory()).toAbsolutePath().normalize();
 
         if (!resolvedDatabasePath.startsWith(resolvedRepositoryDirectory)) {
             throw new IllegalStateException("Datasource path must point inside the configured clone directory");
@@ -70,7 +70,7 @@ public class PersistenceGitSyncService {
     }
 
     public void pullOnStartup() {
-        if (!syncProperties.isEnabled()) {
+        if (!persistenceSyncProperties.isEnabled()) {
             state = PersistenceSyncState.DISABLED;
             return;
         }
@@ -88,7 +88,7 @@ public class PersistenceGitSyncService {
     }
 
     public void requestSync(String reason, PersistenceChangeType changeType) {
-        if (!syncProperties.isEnabled()) {
+        if (!persistenceSyncProperties.isEnabled()) {
             state = PersistenceSyncState.DISABLED;
             return;
         }
@@ -97,7 +97,7 @@ public class PersistenceGitSyncService {
     }
 
     public void requestPull(String reason) {
-        if (!syncProperties.isEnabled()) {
+        if (!persistenceSyncProperties.isEnabled()) {
             state = PersistenceSyncState.DISABLED;
             return;
         }
@@ -121,8 +121,8 @@ public class PersistenceGitSyncService {
             gitCommandService.commit(
                 repository,
                 changeType.commitMessage(),
-                syncProperties.getCommitAuthorName(),
-                syncProperties.getCommitAuthorEmail()
+                persistenceSyncProperties.getCommitAuthorName(),
+                persistenceSyncProperties.getCommitAuthorEmail()
             );
             gitCommandService.pullFastForwardOnly(repository);
             gitCommandService.push(repository);

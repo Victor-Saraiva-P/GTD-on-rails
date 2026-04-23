@@ -30,11 +30,11 @@ public class AssetStorageService {
         "webp", MediaType.valueOf("image/webp")
     );
 
-    private final AssetsProperties properties;
+    private final AssetsProperties assetsProperties;
     private final AssetPathNormalizer assetPathNormalizer;
 
-    public AssetStorageService(AssetsProperties properties, AssetPathNormalizer assetPathNormalizer) {
-        this.properties = properties;
+    public AssetStorageService(AssetsProperties assetsProperties, AssetPathNormalizer assetPathNormalizer) {
+        this.assetsProperties = assetsProperties;
         this.assetPathNormalizer = assetPathNormalizer;
     }
 
@@ -95,9 +95,9 @@ public class AssetStorageService {
             return null;
         }
 
-        String basePath = properties.getPublicBasePath().endsWith("/")
-            ? properties.getPublicBasePath().substring(0, properties.getPublicBasePath().length() - 1)
-            : properties.getPublicBasePath();
+        String basePath = assetsProperties.getPublicBasePath().endsWith("/")
+            ? assetsProperties.getPublicBasePath().substring(0, assetsProperties.getPublicBasePath().length() - 1)
+            : assetsProperties.getPublicBasePath();
         return basePath + "/" + relativePath;
     }
 
@@ -142,7 +142,7 @@ public class AssetStorageService {
     }
 
     private Path localDirectory() {
-        return Path.of(properties.getLocalDirectory()).toAbsolutePath().normalize();
+        return Path.of(assetsProperties.getLocalDirectory()).toAbsolutePath().normalize();
     }
 
     private String extensionOf(String filename) {

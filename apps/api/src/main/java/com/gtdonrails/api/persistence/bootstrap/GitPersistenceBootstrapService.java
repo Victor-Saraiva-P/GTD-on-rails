@@ -17,32 +17,32 @@ public class GitPersistenceBootstrapService {
 
     private static final Logger logger = LoggerFactory.getLogger(GitPersistenceBootstrapService.class);
 
-    private final PersistenceBootstrapProperties properties;
+    private final PersistenceBootstrapProperties persistenceBootstrapProperties;
     private final GitCommandService gitCommandService;
 
     public GitPersistenceBootstrapService(
-        PersistenceBootstrapProperties properties,
+        PersistenceBootstrapProperties persistenceBootstrapProperties,
         GitCommandService gitCommandService
     ) {
-        this.properties = properties;
+        this.persistenceBootstrapProperties = persistenceBootstrapProperties;
         this.gitCommandService = gitCommandService;
     }
 
     public void ensureDatabaseAvailable(String jdbcUrl) {
         Path databasePath = resolveSqlitePath(jdbcUrl);
-        if (Files.exists(databasePath) || !properties.isEnabled()) {
+        if (Files.exists(databasePath) || !persistenceBootstrapProperties.isEnabled()) {
             return;
         }
 
-        if (!StringUtils.hasText(properties.getRepositoryUrl())) {
+        if (!StringUtils.hasText(persistenceBootstrapProperties.getRepositoryUrl())) {
             throw new IllegalStateException("Missing gtd.persistence.bootstrap.repository-url");
         }
 
-        if (!StringUtils.hasText(properties.getBranch())) {
+        if (!StringUtils.hasText(persistenceBootstrapProperties.getBranch())) {
             throw new IllegalStateException("Missing gtd.persistence.bootstrap.branch");
         }
 
-        if (!StringUtils.hasText(properties.getCloneDirectory())) {
+        if (!StringUtils.hasText(persistenceBootstrapProperties.getCloneDirectory())) {
             throw new IllegalStateException("Missing gtd.persistence.bootstrap.clone-directory");
         }
 
@@ -75,7 +75,7 @@ public class GitPersistenceBootstrapService {
     }
 
     private void cloneRepositoryIfNeeded(Path databasePath) throws IOException, InterruptedException {
-        Path cloneDirectory = Path.of(properties.getCloneDirectory()).toAbsolutePath().normalize();
+        Path cloneDirectory = Path.of(persistenceBootstrapProperties.getCloneDirectory()).toAbsolutePath().normalize();
         if (!databasePath.startsWith(cloneDirectory)) {
             throw new IllegalStateException("Datasource path must point inside the configured clone directory");
         }
@@ -100,15 +100,15 @@ public class GitPersistenceBootstrapService {
             try {
                 gitCommandService.cloneBranch(
                     parentDirectory != null ? parentDirectory : Path.of(".").toAbsolutePath().normalize(),
-                    properties.getRepositoryUrl(),
-                    properties.getBranch(),
+                    persistenceBootstrapProperties.getRepositoryUrl(),
+                    persistenceBootstrapProperties.getBranch(),
                     tempCloneDirectory
                 );
             } catch (IllegalStateException exception) {
                 throw buildGitFailure(exception.getMessage());
             }
 
-            logger.info("Bootstrapping SQLite database from branch '{}'", properties.getBranch());
+            logger.info("Bootstrapping SQLite database from branch '{}'", persistenceBootstrapProperties.getBranch());
             Files.move(tempCloneDirectory, cloneDirectory, StandardCopyOption.ATOMIC_MOVE);
 
             if (!Files.exists(databasePath)) {
@@ -120,7 +120,7 @@ public class GitPersistenceBootstrapService {
     }
 
     IllegalStateException buildGitFailure(String output) {
-        String repositoryUrl = properties.getRepositoryUrl();
+        String repositoryUrl = persistenceBootstrapProperties.getRepositoryUrl();
 
         if (output.contains("Repository not found")
             || output.contains("Authentication failed")

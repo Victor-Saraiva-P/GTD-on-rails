@@ -16,14 +16,14 @@ public class RcloneAssetSyncService {
 
     private static final Logger logger = LoggerFactory.getLogger(RcloneAssetSyncService.class);
 
-    private final AssetsProperties properties;
+    private final AssetsProperties assetsProperties;
 
-    public RcloneAssetSyncService(AssetsProperties properties) {
-        this.properties = properties;
+    public RcloneAssetSyncService(AssetsProperties assetsProperties) {
+        this.assetsProperties = assetsProperties;
     }
 
     public boolean isEnabled() {
-        return properties.getRclone().isEnabled();
+        return assetsProperties.getRclone().isEnabled();
     }
 
     public void bisync(Path localDirectory) {
@@ -32,7 +32,7 @@ public class RcloneAssetSyncService {
         }
 
         List<String> arguments = new ArrayList<>(List.of("bisync", localDirectory.toString(), remote()));
-        if (properties.getSync().isForce()) {
+        if (assetsProperties.getSync().isForce()) {
             arguments.add("--force");
         }
 
@@ -48,7 +48,7 @@ public class RcloneAssetSyncService {
     }
 
     private String remote() {
-        String remote = properties.getRclone().getRemote();
+        String remote = assetsProperties.getRclone().getRemote();
         if (!StringUtils.hasText(remote)) {
             throw new IllegalStateException("Missing gtd.assets.rclone.remote");
         }
@@ -58,7 +58,7 @@ public class RcloneAssetSyncService {
 
     private void runRclone(List<String> arguments) {
         List<String> command = new ArrayList<>();
-        command.add(properties.getRclone().getCommand());
+        command.add(assetsProperties.getRclone().getCommand());
         command.addAll(arguments);
 
         try {

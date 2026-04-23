@@ -24,7 +24,7 @@ public class AssetSyncService implements ApplicationRunner {
 
     private static final Logger logger = LoggerFactory.getLogger(AssetSyncService.class);
 
-    private final AssetsProperties properties;
+    private final AssetsProperties assetsProperties;
     private final RcloneAssetSyncService rcloneAssetSyncService;
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
     private final AtomicBoolean running = new AtomicBoolean(false);
@@ -36,8 +36,8 @@ public class AssetSyncService implements ApplicationRunner {
     private volatile Instant lastSuccessfulSyncAt;
     private volatile String lastError;
 
-    public AssetSyncService(AssetsProperties properties, RcloneAssetSyncService rcloneAssetSyncService) {
-        this.properties = properties;
+    public AssetSyncService(AssetsProperties assetsProperties, RcloneAssetSyncService rcloneAssetSyncService) {
+        this.assetsProperties = assetsProperties;
         this.rcloneAssetSyncService = rcloneAssetSyncService;
     }
 
@@ -142,14 +142,14 @@ public class AssetSyncService implements ApplicationRunner {
     }
 
     private Path localDirectory() {
-        return Path.of(properties.getLocalDirectory()).toAbsolutePath().normalize();
+        return Path.of(assetsProperties.getLocalDirectory()).toAbsolutePath().normalize();
     }
 
     private Path baselineMarkerPath() {
-        return Path.of(properties.getSync().getStateDirectory())
+        return Path.of(assetsProperties.getSync().getStateDirectory())
             .toAbsolutePath()
             .normalize()
-            .resolve(properties.getSync().getBaselineMarker());
+            .resolve(assetsProperties.getSync().getBaselineMarker());
     }
 
     private boolean baselineExists() {
