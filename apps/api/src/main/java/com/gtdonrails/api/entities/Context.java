@@ -31,6 +31,9 @@ public class Context extends AuditableEntity {
     @Column(nullable = false, length = MAX_NAME_LENGTH)
     private String name;
 
+    @Column(name = "icon_asset_path")
+    private String iconAssetPath;
+
     @ManyToMany(mappedBy = "contexts")
     private Set<Item> items = new HashSet<>();
 
@@ -50,6 +53,10 @@ public class Context extends AuditableEntity {
         }
 
         this.name = name;
+    }
+
+    public void setIconAssetPath(String iconAssetPath) {
+        this.iconAssetPath = iconAssetPath;
     }
 
     @PrePersist

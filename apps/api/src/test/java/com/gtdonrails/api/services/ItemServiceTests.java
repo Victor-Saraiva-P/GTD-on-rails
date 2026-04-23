@@ -152,8 +152,8 @@ class ItemServiceTests {
             "STUFF",
             Instant.now(),
             List.of(
-                new ContextResponseDto(notebookId, "notebook"),
-                new ContextResponseDto(streetId, "street")));
+                new ContextResponseDto(notebookId, "notebook", null),
+                new ContextResponseDto(streetId, "street", null)));
 
         when(contextRepository.findAllByIdInAndDeletedAtIsNull(any()))
             .thenReturn(List.of(notebook, street));
@@ -285,7 +285,7 @@ class ItemServiceTests {
             null,
             "STUFF",
             Instant.now(),
-            List.of(new ContextResponseDto(homeId, "home")));
+            List.of(new ContextResponseDto(homeId, "home", null)));
 
         when(itemRepository.findByIdAndDeletedAtIsNull(itemId)).thenReturn(Optional.of(existingItem));
         when(contextRepository.findAllByIdInAndDeletedAtIsNull(any()))
@@ -385,7 +385,7 @@ class ItemServiceTests {
             null,
             "STUFF",
             Instant.now(),
-            List.of(new ContextResponseDto(UUID.randomUUID(), "office")));
+            List.of(new ContextResponseDto(UUID.randomUUID(), "office", null)));
 
         when(itemRepository.findByIdAndDeletedAtIsNull(itemId)).thenReturn(Optional.of(existingItem));
         when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));

@@ -4,6 +4,7 @@ import java.util.UUID;
 
 public record ContextResponseDto(
     UUID id,
-    String name
+    String name,
+    String iconUrl
 ) {
 }

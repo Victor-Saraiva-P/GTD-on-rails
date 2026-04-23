@@ -3,6 +3,7 @@ package com.gtdonrails.api.controllers;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -20,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -118,6 +120,61 @@ class ContextControllerTests {
                     """))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.name").value("office"));
+    }
+
+    @Test
+    void uploadsContextIcon() throws Exception {
+        Context context = contextRepository.save(new Context("home"));
+        MockMultipartFile file = new MockMultipartFile(
+            "file",
+            "home.png",
+            "image/png",
+            new byte[] {1, 2, 3}
+        );
+
+        mockMvc.perform(multipart("/contexts/{id}/icon", context.getId())
+                .file(file)
+                .with(request -> {
+                    request.setMethod("PUT");
+                    return request;
+                }))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.iconUrl").value("/assets/contexts/" + context.getId() + "/icon.png"));
+
+        mockMvc.perform(get("/assets/contexts/{id}/icon.png", context.getId()))
+            .andExpect(status().isOk())
+            .andExpect(header().string("Content-Type", "image/png"));
+    }
+
+    @Test
+    void rejectsInvalidContextIconType() throws Exception {
+        Context context = contextRepository.save(new Context("home"));
+        MockMultipartFile file = new MockMultipartFile(
+            "file",
+            "home.txt",
+            MediaType.TEXT_PLAIN_VALUE,
+            "not an icon".getBytes()
+        );
+
+        mockMvc.perform(multipart("/contexts/{id}/icon", context.getId())
+                .file(file)
+                .with(request -> {
+                    request.setMethod("PUT");
+                    return request;
+                }))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.detail").value("icon file must be PNG, SVG or WebP"));
+    }
+
+    @Test
+    void deletesContextIcon() throws Exception {
+        Context context = new Context("home");
+        context.setIconAssetPath("contexts/00000000-0000-0000-0000-000000000001/icon.png");
+        context = contextRepository.save(context);
+
+        mockMvc.perform(delete("/contexts/{id}/icon", context.getId()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.iconUrl").doesNotExist());
     }
 
     @Test

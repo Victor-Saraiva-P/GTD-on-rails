@@ -20,8 +20,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @Validated
@@ -63,6 +65,19 @@ public class ContextController {
     @PutMapping("/{id}")
     public ContextResponseDto updateContext(@PathVariable UUID id, @Valid @RequestBody UpdateContextRequestDto request) {
         return contextService.updateContext(id, request);
+    }
+
+    @PutMapping("/{id}/icon")
+    public ContextResponseDto updateContextIcon(
+        @PathVariable UUID id,
+        @RequestPart("file") MultipartFile file
+    ) {
+        return contextService.updateContextIcon(id, file);
+    }
+
+    @DeleteMapping("/{id}/icon")
+    public ContextResponseDto deleteContextIcon(@PathVariable UUID id) {
+        return contextService.deleteContextIcon(id);
     }
 
     @DeleteMapping("/{id}")
