@@ -20,8 +20,6 @@ import com.gtdonrails.api.repositories.ItemRepository;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 @Service
@@ -35,6 +33,7 @@ public class ContextService {
     private final AssetStorageService assetStorageService;
     private final AssetSyncService assetSyncService;
     private final PersistenceGitSyncService persistenceGitSyncService;
+    private final AfterCommitExecutor afterCommitExecutor;
 
     public ContextService(
         ContextRepository contextRepository,
@@ -43,9 +42,8 @@ public class ContextService {
         ItemMapper itemMapper,
         ContextNameNormalizer contextNameNormalizer,
         AssetStorageService assetStorageService,
-        AssetSyncService assetSyncService,
-        PersistenceGitSyncService persistenceGitSyncService
-    ) {
+        AssetSyncService assetSyncService, PersistenceGitSyncService persistenceGitSyncService,
+        AfterCommitExecutor afterCommitExecutor) {
         this.contextRepository = contextRepository;
         this.itemRepository = itemRepository;
         this.contextMapper = contextMapper;
@@ -54,6 +52,7 @@ public class ContextService {
         this.assetStorageService = assetStorageService;
         this.assetSyncService = assetSyncService;
         this.persistenceGitSyncService = persistenceGitSyncService;
+        this.afterCommitExecutor = afterCommitExecutor;
     }
 
     @Transactional(readOnly = true)
@@ -155,24 +154,10 @@ public class ContextService {
     }
 
     private void requestAssetSyncAfterCommit(String reason) {
-        runAfterCommitOrNow(() -> assetSyncService.requestSync(reason));
+        afterCommitExecutor.run(() -> assetSyncService.requestSync(reason));
     }
 
     private void requestPersistenceSyncAfterCommit(String reason, PersistenceChangeType changeType) {
-        runAfterCommitOrNow(() -> persistenceGitSyncService.requestSync(reason, changeType));
-    }
-
-    private void runAfterCommitOrNow(Runnable action) {
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            action.run();
-            return;
-        }
-
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                action.run();
-            }
-        });
+        afterCommitExecutor.run(() -> persistenceGitSyncService.requestSync(reason, changeType));
     }
 }

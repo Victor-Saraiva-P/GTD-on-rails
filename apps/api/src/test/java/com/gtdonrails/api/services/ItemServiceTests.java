@@ -76,7 +76,8 @@ class ItemServiceTests {
             contextRepository,
             itemMapper,
             new ItemTextNormalizer(),
-            persistenceGitSyncService);
+            persistenceGitSyncService,
+            new AfterCommitExecutor());
     }
 
     // getItem

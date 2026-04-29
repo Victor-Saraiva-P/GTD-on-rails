@@ -82,7 +82,8 @@ class ContextServiceTests {
             contextNameNormalizer,
             assetStorageService,
             assetSyncService,
-            persistenceGitSyncService
+            persistenceGitSyncService,
+            new AfterCommitExecutor()
         );
     }
 

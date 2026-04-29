@@ -23,8 +23,6 @@ import com.gtdonrails.api.types.Body;
 import com.gtdonrails.api.types.Title;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 public class ItemService {
@@ -34,19 +32,22 @@ public class ItemService {
     private final ItemMapper itemMapper;
     private final ItemTextNormalizer itemTextNormalizer;
     private final PersistenceGitSyncService persistenceGitSyncService;
+    private final AfterCommitExecutor afterCommitExecutor;
 
     public ItemService(
         ItemRepository itemRepository,
         ContextRepository contextRepository,
         ItemMapper itemMapper,
         ItemTextNormalizer itemTextNormalizer,
-        PersistenceGitSyncService persistenceGitSyncService
+        PersistenceGitSyncService persistenceGitSyncService,
+        AfterCommitExecutor afterCommitExecutor
     ) {
         this.itemRepository = itemRepository;
         this.contextRepository = contextRepository;
         this.itemMapper = itemMapper;
         this.itemTextNormalizer = itemTextNormalizer;
         this.persistenceGitSyncService = persistenceGitSyncService;
+        this.afterCommitExecutor = afterCommitExecutor;
     }
 
     @Transactional(readOnly = true)
@@ -122,16 +123,6 @@ public class ItemService {
     }
 
     private void requestPersistenceSyncAfterCommit(String reason, PersistenceChangeType changeType) {
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            persistenceGitSyncService.requestSync(reason, changeType);
-            return;
-        }
-
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                persistenceGitSyncService.requestSync(reason, changeType);
-            }
-        });
+        afterCommitExecutor.run(() -> persistenceGitSyncService.requestSync(reason, changeType));
     }
 }
