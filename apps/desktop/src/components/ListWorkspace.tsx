@@ -8,32 +8,35 @@ type ListWorkspaceProps = PropsWithChildren<{
   currentLabel: string;
 }>;
 
-export function ListWorkspace({
-  theme,
-  currentLabel,
-  children
-}: ListWorkspaceProps) {
-  const style = {
+function buildWorkspaceStyle(theme: ListTheme): CSSProperties {
+  return {
     "--list-accent": theme.accentColor,
     "--list-accent-rgb": theme.accentColorRgb
   } as CSSProperties;
+}
 
+function ListWorkspaceFooter({ currentLabel }: Pick<ListWorkspaceProps, "currentLabel">) {
   return (
-    <main className="list-workspace" style={style}>
+    <footer className="list-workspace__footer" aria-label="Current list">
+      <div className="list-workspace__brand">
+        <span>{appMetadata.name}</span>
+        <span className="list-workspace__brand-version">v{appMetadata.version}</span>
+      </div>
+
+      <div className="list-workspace__current">
+        <span>{currentLabel}</span>
+      </div>
+
+      <SyncStatusIndicators />
+    </footer>
+  );
+}
+
+export function ListWorkspace({ theme, currentLabel, children }: ListWorkspaceProps) {
+  return (
+    <main className="list-workspace" style={buildWorkspaceStyle(theme)}>
       <div className="list-workspace__viewport">{children}</div>
-
-      <footer className="list-workspace__footer" aria-label="Current list">
-        <div className="list-workspace__brand">
-          <span>{appMetadata.name}</span>
-          <span className="list-workspace__brand-version">v{appMetadata.version}</span>
-        </div>
-
-        <div className="list-workspace__current">
-          <span>{currentLabel}</span>
-        </div>
-
-        <SyncStatusIndicators />
-      </footer>
+      <ListWorkspaceFooter currentLabel={currentLabel} />
     </main>
   );
 }

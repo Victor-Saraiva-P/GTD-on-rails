@@ -6,31 +6,31 @@ import { ContextsPage } from "./ContextsPage";
 import { InboxPage } from "./InboxPage";
 import { StuffDetailPage } from "./StuffDetailPage";
 
+function buildNavigationBindings(setActiveScreen: (screen: "contexts" | "inbox" | "stuff-detail") => void) {
+  return [
+    {
+      id: "navigation.open-contexts",
+      key: "C",
+      description: "Open contexts",
+      leader: true,
+      sequence: ["C"],
+      handler: () => setActiveScreen("contexts")
+    },
+    {
+      id: "navigation.open-inbox",
+      key: "i",
+      description: "Open inbox",
+      leader: true,
+      sequence: ["i"],
+      handler: () => setActiveScreen("inbox")
+    }
+  ] satisfies KeybindDefinition[];
+}
+
 export function AppShell() {
   const { activeScreen, setActiveScreen } = useActiveScreen();
   const inboxController = useInboxWorkspaceController();
-
-  const navigationBindings = useMemo<KeybindDefinition[]>(
-    () => [
-      {
-        id: "navigation.open-contexts",
-        key: "C",
-        description: "Open contexts",
-        leader: true,
-        sequence: ["C"],
-        handler: () => setActiveScreen("contexts")
-      },
-      {
-        id: "navigation.open-inbox",
-        key: "i",
-        description: "Open inbox",
-        leader: true,
-        sequence: ["i"],
-        handler: () => setActiveScreen("inbox")
-      }
-    ],
-    [setActiveScreen]
-  );
+  const navigationBindings = useMemo(() => buildNavigationBindings(setActiveScreen), [setActiveScreen]);
 
   useRegisterKeybinds(navigationBindings);
 

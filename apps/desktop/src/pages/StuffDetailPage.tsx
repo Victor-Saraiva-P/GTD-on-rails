@@ -5,150 +5,116 @@ import { InboxStuffDetails } from "../features/inbox/InboxStuffDetails";
 import type { InboxWorkspaceController } from "../features/inbox/useInboxWorkspaceController";
 import { LeaderMenu } from "../features/keybinds/LeaderMenu";
 import { useActiveScreen, useKeybindScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
-import type { KeybindDefinition } from "../features/keybinds/types";
+import type { KeybindDefinition, ScreenId } from "../features/keybinds/types";
 import { stuffDetailListTheme } from "../features/lists/listThemes";
 
 type StuffDetailPageProps = {
   controller: InboxWorkspaceController;
 };
 
-export function StuffDetailPage({ controller }: StuffDetailPageProps) {
-  useKeybindScreen("stuff-detail");
+function stuffDetailBinding(id: string, key: string, description: string, handler: () => void, leader = false): KeybindDefinition {
+  return { description, handler, id, key, leader, screen: "stuff-detail", zone: "stuff-detail" };
+}
 
+function canEditStuffBody(controller: InboxWorkspaceController): boolean {
+  return !controller.isLoading && !controller.isCreating && !controller.isDeleting && !controller.isUpdating && !controller.editingBodyId && Boolean(controller.selectedItem);
+}
+
+function editStuffBodyFromKeybind(controller: InboxWorkspaceController) {
+  if (canEditStuffBody(controller)) {
+    controller.startEditingSelectedStuffBody();
+  }
+}
+
+function backToInboxFromKeybind(controller: InboxWorkspaceController, setActiveScreen: (screen: ScreenId) => void) {
+  if (!controller.editingBodyId) {
+    controller.setActiveZone("inbox-list");
+    setActiveScreen("inbox");
+  }
+}
+
+function buildStuffDetailBindings(controller: InboxWorkspaceController, setActiveScreen: (screen: ScreenId) => void) {
+  return [
+    stuffDetailBinding("stuff-detail-page.edit-body", "Enter", "Edit selected body", () => editStuffBodyFromKeybind(controller)),
+    stuffDetailBinding("stuff-detail-page.back-to-inbox", "Escape", "Back to inbox", () => backToInboxFromKeybind(controller, setActiveScreen)),
+    stuffDetailBinding("stuff-detail-page.which-key", "k", "Show available keybinds", () => undefined, true)
+  ];
+}
+
+function useStuffDetailBindings(controller: InboxWorkspaceController) {
   const { setActiveScreen } = useActiveScreen();
-  const {
-    editingBody,
-    editingBodyId,
-    errorMessage,
-    isCreating,
-    isDeleting,
-    isLoading,
-    isUpdating,
-    reload,
-    selectedItem,
-    setActiveZone,
-    setEditingBody,
-    commitEditingSelectedStuffBody,
-    startEditingSelectedStuffBody
-  } = controller;
-
-  useEffect(() => {
-    setActiveZone("stuff-detail");
-  }, [setActiveZone]);
-
-  const bindings = useMemo<KeybindDefinition[]>(
-    () => [
-      {
-        id: "stuff-detail-page.edit-body",
-        key: "Enter",
-        description: "Edit selected body",
-        screen: "stuff-detail" as const,
-        zone: "stuff-detail" as const,
-        handler: () => {
-          if (
-            isLoading ||
-            isCreating ||
-            isDeleting ||
-            isUpdating ||
-            editingBodyId !== null ||
-            !selectedItem
-          ) {
-            return;
-          }
-
-          startEditingSelectedStuffBody();
-        }
-      },
-      {
-        id: "stuff-detail-page.back-to-inbox",
-        key: "Escape",
-        description: "Back to inbox",
-        screen: "stuff-detail" as const,
-        zone: "stuff-detail" as const,
-        handler: () => {
-          if (editingBodyId !== null) {
-            return;
-          }
-
-          setActiveZone("inbox-list");
-          setActiveScreen("inbox");
-        }
-      },
-      {
-        id: "stuff-detail-page.which-key",
-        key: "k",
-        description: "Show available keybinds",
-        leader: true,
-        screen: "stuff-detail" as const,
-        zone: "stuff-detail" as const,
-        handler: () => undefined
-      }
-    ],
-    [
-      editingBodyId,
-      isCreating,
-      isDeleting,
-      isLoading,
-      isUpdating,
-      selectedItem,
-      setActiveScreen,
-      setActiveZone,
-      startEditingSelectedStuffBody
-    ]
-  );
+  const bindings = useMemo(() => buildStuffDetailBindings(controller, setActiveScreen), [controller, setActiveScreen]);
 
   useRegisterKeybinds(bindings);
+}
 
-  const detailBody = (() => {
-    if (isLoading) {
-      return <p className="pane-state">Loading stuff details...</p>;
-    }
+function useStuffDetailZone(controller: InboxWorkspaceController) {
+  useEffect(() => {
+    controller.setActiveZone("stuff-detail");
+  }, [controller]);
+}
 
-    if (errorMessage) {
-      return (
-        <div className="pane-state">
-          <p>{errorMessage}</p>
-          <button type="button" className="pane-state__action" onClick={reload}>
-            Retry
-          </button>
-        </div>
-      );
-    }
+function commitStuffBody(controller: InboxWorkspaceController) {
+  void controller.commitEditingSelectedStuffBody().catch((error: unknown) => {
+    console.error("Failed to update stuff body", error);
+  });
+}
 
-    if (!selectedItem) {
-      return <p className="pane-state">Select a stuff in inbox to inspect its details.</p>;
-    }
+function RetryState({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div className="pane-state">
+      <p>{message}</p>
+      <button type="button" className="pane-state__action" onClick={onRetry}>
+        Retry
+      </button>
+    </div>
+  );
+}
 
-    return (
-      <InboxStuffDetails
-        item={selectedItem}
-        editing={editingBodyId === selectedItem.id}
-        editingBody={editingBody}
-        onEditingBodyChange={setEditingBody}
-        onCommitEditing={() => {
-          void commitEditingSelectedStuffBody().catch((error: unknown) => {
-            console.error("Failed to update stuff body", error);
-          });
-        }}
-        onCancelEditing={() => {
-          void commitEditingSelectedStuffBody().catch((error: unknown) => {
-            console.error("Failed to update stuff body", error);
-          });
-        }}
-      />
-    );
-  })();
+function StuffDetailReady({ controller }: StuffDetailPageProps) {
+  const selectedItem = controller.selectedItem;
+
+  return selectedItem ? (
+    <InboxStuffDetails
+      item={selectedItem}
+      editing={controller.editingBodyId === selectedItem.id}
+      editingBody={controller.editingBody}
+      onEditingBodyChange={controller.setEditingBody}
+      onCommitEditing={() => commitStuffBody(controller)}
+      onCancelEditing={() => commitStuffBody(controller)}
+    />
+  ) : null;
+}
+
+function StuffDetailBody({ controller }: StuffDetailPageProps) {
+  if (controller.isLoading) {
+    return <p className="pane-state">Loading stuff details...</p>;
+  }
+
+  if (controller.errorMessage) {
+    return <RetryState message={controller.errorMessage} onRetry={controller.reload} />;
+  }
+
+  return controller.selectedItem ? <StuffDetailReady controller={controller} /> : <p className="pane-state">Select a stuff in inbox to inspect its details.</p>;
+}
+
+function StuffDetailPane({ controller }: StuffDetailPageProps) {
+  return (
+    <ListPane title="Stuff Detail" active bodyClassName="list-pane__body--detail">
+      <StuffDetailBody controller={controller} />
+    </ListPane>
+  );
+}
+
+export function StuffDetailPage({ controller }: StuffDetailPageProps) {
+  useKeybindScreen("stuff-detail");
+  useStuffDetailZone(controller);
+  useStuffDetailBindings(controller);
 
   return (
     <ListWorkspace theme={stuffDetailListTheme} currentLabel={stuffDetailListTheme.label}>
       <section className="stuff-detail-layout" aria-label="Stuff detail">
-        <ListPane
-          title="Stuff Detail"
-          active
-          bodyClassName="list-pane__body--detail"
-        >
-          {detailBody}
-        </ListPane>
+        <StuffDetailPane controller={controller} />
       </section>
       <LeaderMenu />
     </ListWorkspace>

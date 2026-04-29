@@ -117,46 +117,80 @@ type SyncIndicatorProps = {
   icon: "drive" | "github";
 };
 
-function SyncIndicator({ ariaLabel, title, visual, icon }: SyncIndicatorProps) {
-  const style = {
+function syncIndicatorClassName(visual: IndicatorVisual): string {
+  return `sync-status__item sync-status__item--${visual.tone}${visual.pulse ? " sync-status__item--pulse" : ""}${visual.spin ? " sync-status__item--spin" : ""}`;
+}
+
+function syncIndicatorStyle(visual: IndicatorVisual): CSSProperties {
+  return {
     "--sync-status-rotation": visual.spin ? "360deg" : "0deg"
   } as CSSProperties;
+}
 
+function SyncIndicatorIcon({ icon }: Pick<SyncIndicatorProps, "icon">) {
+  return icon === "drive" ? <GoogleDriveIcon /> : <GitHubIcon />;
+}
+
+function SyncIndicator({ ariaLabel, title, visual, icon }: SyncIndicatorProps) {
   return (
     <span
-      className={`sync-status__item sync-status__item--${visual.tone}${visual.pulse ? " sync-status__item--pulse" : ""}${visual.spin ? " sync-status__item--spin" : ""}`}
+      className={syncIndicatorClassName(visual)}
       aria-label={ariaLabel}
       role="img"
       title={title}
-      style={style}
+      style={syncIndicatorStyle(visual)}
     >
-      {icon === "drive" ? <GoogleDriveIcon /> : <GitHubIcon />}
+      <SyncIndicatorIcon icon={icon} />
     </span>
+  );
+}
+
+function loadingVisual(visual: IndicatorVisual, isLoading: boolean): IndicatorVisual {
+  return isLoading ? { label: "Loading", tone: "unknown", pulse: true } : visual;
+}
+
+type SyncStatusIndicatorRowProps = {
+  failedBeforeStatus: boolean;
+  isLoading: boolean;
+  status: ReturnType<typeof useSyncStatus>["status"];
+};
+
+function DriveStatusIndicator({ failedBeforeStatus, isLoading, status }: SyncStatusIndicatorRowProps) {
+  const visual = assetVisual(status?.assets.state ?? null);
+
+  return (
+    <SyncIndicator
+      ariaLabel={`Rclone sync ${visual.label.toLowerCase()}`}
+      title={describeAssetStatus(status?.assets ?? null, failedBeforeStatus)}
+      visual={loadingVisual(visual, isLoading)}
+      icon="drive"
+    />
+  );
+}
+
+function GitStatusIndicator({ failedBeforeStatus, isLoading, status }: SyncStatusIndicatorRowProps) {
+  const visual = persistenceVisual(status?.persistence.state ?? null);
+
+  return (
+    <SyncIndicator
+      ariaLabel={`Git persistence sync ${visual.label.toLowerCase()}`}
+      title={describePersistenceStatus(status?.persistence ?? null, failedBeforeStatus)}
+      visual={loadingVisual(visual, isLoading)}
+      icon="github"
+    />
   );
 }
 
 export function SyncStatusIndicators() {
   const { isLoading, isPolling, lastFetchFailed, status } = useSyncStatus();
-  const assetState = status?.assets.state ?? null;
-  const persistenceState = status?.persistence.state ?? null;
-  const asset = assetVisual(assetState);
-  const persistence = persistenceVisual(persistenceState);
   const groupLabel = isPolling ? "Synchronization in progress" : "Synchronization status";
+  const failedBeforeStatus = lastFetchFailed && !status;
+  const loadingBeforeStatus = isLoading && !status;
 
   return (
     <div className="sync-status" aria-label={groupLabel}>
-      <SyncIndicator
-        ariaLabel={`Rclone sync ${asset.label.toLowerCase()}`}
-        title={describeAssetStatus(status?.assets ?? null, lastFetchFailed && !status)}
-        visual={isLoading && !status ? { label: "Loading", tone: "unknown", pulse: true } : asset}
-        icon="drive"
-      />
-      <SyncIndicator
-        ariaLabel={`Git persistence sync ${persistence.label.toLowerCase()}`}
-        title={describePersistenceStatus(status?.persistence ?? null, lastFetchFailed && !status)}
-        visual={isLoading && !status ? { label: "Loading", tone: "unknown", pulse: true } : persistence}
-        icon="github"
-      />
+      <DriveStatusIndicator failedBeforeStatus={failedBeforeStatus} isLoading={loadingBeforeStatus} status={status} />
+      <GitStatusIndicator failedBeforeStatus={failedBeforeStatus} isLoading={loadingBeforeStatus} status={status} />
     </div>
   );
 }

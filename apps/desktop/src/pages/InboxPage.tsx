@@ -4,384 +4,235 @@ import { ListWorkspace } from "../components/ListWorkspace";
 import { InboxList } from "../features/inbox/InboxList";
 import { InboxStuffDetails } from "../features/inbox/InboxStuffDetails";
 import type { InboxWorkspaceController } from "../features/inbox/useInboxWorkspaceController";
-import type { KeybindDefinition } from "../features/keybinds/types";
 import { LeaderMenu } from "../features/keybinds/LeaderMenu";
+import { useActiveScreen, useKeybindScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
+import type { FocusZoneId, KeybindDefinition, ScreenId } from "../features/keybinds/types";
 import { inboxListTheme } from "../features/lists/listThemes";
-import {
-  useActiveScreen,
-  useActiveZone,
-  useKeybindScreen,
-  useRegisterKeybinds
-} from "../features/keybinds/hooks";
 
 type InboxPageProps = {
   controller: InboxWorkspaceController;
 };
 
-export function InboxPage({ controller }: InboxPageProps) {
-  useKeybindScreen("inbox");
+function inboxBinding(
+  id: string,
+  key: string,
+  description: string,
+  zone: FocusZoneId,
+  handler: () => void,
+  leader = false,
+  sequence?: string[]
+): KeybindDefinition {
+  return { description, handler, id, key, leader, screen: "inbox", sequence, zone };
+}
 
+function canRunInboxAction(controller: InboxWorkspaceController): boolean {
+  return !controller.isLoading && !controller.isCreating && !controller.isDeleting && !controller.isUpdating;
+}
+
+function canEditInbox(controller: InboxWorkspaceController): boolean {
+  return canRunInboxAction(controller) && !controller.editingId && !controller.editingBodyId;
+}
+
+function canEditSelectedStuff(controller: InboxWorkspaceController): boolean {
+  return canEditInbox(controller) && Boolean(controller.selectedItem);
+}
+
+function runInboxAsyncAction(canRun: boolean, action: () => Promise<void>, message: string) {
+  if (canRun) {
+    void action().catch((error: unknown) => console.error(message, error));
+  }
+}
+
+function createStuffFromKeybind(controller: InboxWorkspaceController) {
+  runInboxAsyncAction(canEditInbox(controller), controller.createNewStuff, "Failed to create stuff");
+}
+
+function deleteStuffFromKeybind(controller: InboxWorkspaceController) {
+  runInboxAsyncAction(canEditSelectedStuff(controller), controller.deleteSelectedStuff, "Failed to delete stuff");
+}
+
+function editTitleFromKeybind(controller: InboxWorkspaceController) {
+  if (canEditSelectedStuff(controller)) {
+    controller.startEditingSelectedStuff();
+  }
+}
+
+function moveInboxSelection(controller: InboxWorkspaceController, direction: "next" | "previous") {
+  if (!controller.editingId && !controller.editingBodyId) {
+    direction === "next" ? controller.selectNextStuff() : controller.selectPreviousStuff();
+  }
+}
+
+function focusStuffDetail(controller: InboxWorkspaceController) {
+  if (controller.stuffs.length > 0 && !controller.editingId && !controller.editingBodyId) {
+    controller.setActiveZone("stuff-detail");
+  }
+}
+
+function editBodyFromKeybind(controller: InboxWorkspaceController) {
+  if (canEditSelectedStuff(controller)) {
+    controller.startEditingSelectedStuffBody();
+  }
+}
+
+function focusInboxList(controller: InboxWorkspaceController) {
+  if (!controller.editingBodyId) {
+    controller.setActiveZone("inbox-list");
+  }
+}
+
+function openStuffDetailScreen(controller: InboxWorkspaceController, setActiveScreen: (screen: ScreenId) => void) {
+  if (controller.selectedItem && !controller.editingBodyId) {
+    setActiveScreen("stuff-detail");
+  }
+}
+
+function buildInboxBindings(controller: InboxWorkspaceController, setActiveScreen: (screen: ScreenId) => void) {
+  return [
+    inboxBinding("inbox.create-stuff", "a", "Add new stuff", "inbox-list", () => createStuffFromKeybind(controller)),
+    inboxBinding("inbox.delete-stuff-list", "d", "Delete selected stuff", "inbox-list", () => deleteStuffFromKeybind(controller)),
+    inboxBinding("inbox.delete-stuff-detail", "d", "Delete selected stuff", "stuff-detail", () => deleteStuffFromKeybind(controller)),
+    inboxBinding("inbox.edit-title", "Enter", "Edit selected title", "inbox-list", () => editTitleFromKeybind(controller)),
+    inboxBinding("inbox.move-down", "j", "Move down", "inbox-list", () => moveInboxSelection(controller, "next")),
+    inboxBinding("inbox.move-up", "k", "Move up", "inbox-list", () => moveInboxSelection(controller, "previous")),
+    inboxBinding("inbox.focus-detail", "l", "Focus stuff detail", "inbox-list", () => focusStuffDetail(controller)),
+    inboxBinding("inbox.edit-body", "Enter", "Edit selected body", "stuff-detail", () => editBodyFromKeybind(controller)),
+    inboxBinding("inbox.focus-list", "h", "Focus inbox list", "stuff-detail", () => focusInboxList(controller)),
+    inboxBinding("inbox.open-detail-screen", "Enter", "Open full stuff detail", "stuff-detail", () => openStuffDetailScreen(controller, setActiveScreen), true, ["Enter"]),
+    inboxBinding("inbox.which-key-list", "k", "Show available keybinds", "inbox-list", () => undefined, true),
+    inboxBinding("inbox.which-key-detail", "k", "Show available keybinds", "stuff-detail", () => undefined, true)
+  ];
+}
+
+function useInboxBindings(controller: InboxWorkspaceController) {
   const { setActiveScreen } = useActiveScreen();
-  const {
-    activeZone,
-    createNewStuff,
-    deleteSelectedStuff,
-    editingBody,
-    editingBodyId,
-    editingId,
-    editingTitle,
-    errorMessage,
-    isCreating,
-    isDeleting,
-    isLoading,
-    isUpdating,
-    reload,
-    selectedItem,
-    setActiveZone,
-    setEditingBody,
-    setEditingTitle,
-    setPendingBodyEditId,
-    setSelectedId,
-    selectNextStuff,
-    selectPreviousStuff,
-    startEditingSelectedStuff,
-    startEditingSelectedStuffBody,
-    cancelEditingSelectedStuff,
-    cancelEditingSelectedStuffBody,
-    commitEditingSelectedStuff,
-    commitEditingSelectedStuffBody,
-    stuffs
-  } = controller;
-
-  useEffect(() => {
-    if (activeZone !== "inbox-list" && activeZone !== "stuff-detail") {
-      setActiveZone("inbox-list");
-    }
-  }, [activeZone, setActiveZone]);
-
-  const bindings = useMemo<KeybindDefinition[]>(
-    () => [
-      {
-        id: "inbox.create-stuff",
-        key: "a",
-        description: "Add new stuff",
-        screen: "inbox" as const,
-        zone: "inbox-list" as const,
-        handler: () => {
-          if (
-            isLoading ||
-            isCreating ||
-            isDeleting ||
-            isUpdating ||
-            editingId !== null ||
-            editingBodyId !== null
-          ) {
-            return;
-          }
-
-          void createNewStuff().catch((error: unknown) => {
-            console.error("Failed to create stuff", error);
-          });
-        }
-      },
-      {
-        id: "inbox.delete-stuff-list",
-        key: "d",
-        description: "Delete selected stuff",
-        screen: "inbox" as const,
-        zone: "inbox-list" as const,
-        handler: () => {
-          if (
-            isLoading ||
-            isCreating ||
-            isDeleting ||
-            isUpdating ||
-            editingId !== null ||
-            editingBodyId !== null ||
-            !selectedItem
-          ) {
-            return;
-          }
-
-          void deleteSelectedStuff().catch((error: unknown) => {
-            console.error("Failed to delete stuff", error);
-          });
-        }
-      },
-      {
-        id: "inbox.delete-stuff-detail",
-        key: "d",
-        description: "Delete selected stuff",
-        screen: "inbox" as const,
-        zone: "stuff-detail" as const,
-        handler: () => {
-          if (
-            isLoading ||
-            isCreating ||
-            isDeleting ||
-            isUpdating ||
-            editingId !== null ||
-            editingBodyId !== null ||
-            !selectedItem
-          ) {
-            return;
-          }
-
-          void deleteSelectedStuff().catch((error: unknown) => {
-            console.error("Failed to delete stuff", error);
-          });
-        }
-      },
-      {
-        id: "inbox.edit-title",
-        key: "Enter",
-        description: "Edit selected title",
-        screen: "inbox" as const,
-        zone: "inbox-list" as const,
-        handler: () => {
-          if (
-            isLoading ||
-            isCreating ||
-            isDeleting ||
-            isUpdating ||
-            editingId !== null ||
-            editingBodyId !== null ||
-            !selectedItem
-          ) {
-            return;
-          }
-
-          startEditingSelectedStuff();
-        }
-      },
-      {
-        id: "inbox.move-down",
-        key: "j",
-        description: "Move down",
-        screen: "inbox" as const,
-        zone: "inbox-list" as const,
-        handler: () => {
-          if (editingId !== null || editingBodyId !== null) {
-            return;
-          }
-
-          selectNextStuff();
-        }
-      },
-      {
-        id: "inbox.move-up",
-        key: "k",
-        description: "Move up",
-        screen: "inbox" as const,
-        zone: "inbox-list" as const,
-        handler: () => {
-          if (editingId !== null || editingBodyId !== null) {
-            return;
-          }
-
-          selectPreviousStuff();
-        }
-      },
-      {
-        id: "inbox.focus-detail",
-        key: "l",
-        description: "Focus stuff detail",
-        screen: "inbox" as const,
-        zone: "inbox-list" as const,
-        handler: () => {
-          if (stuffs.length === 0 || editingId !== null || editingBodyId !== null) {
-            return;
-          }
-
-          setActiveZone("stuff-detail");
-        }
-      },
-      {
-        id: "inbox.edit-body",
-        key: "Enter",
-        description: "Edit selected body",
-        screen: "inbox" as const,
-        zone: "stuff-detail" as const,
-        handler: () => {
-          if (
-            isLoading ||
-            isCreating ||
-            isDeleting ||
-            isUpdating ||
-            editingId !== null ||
-            editingBodyId !== null ||
-            !selectedItem
-          ) {
-            return;
-          }
-
-          startEditingSelectedStuffBody();
-        }
-      },
-      {
-        id: "inbox.focus-list",
-        key: "h",
-        description: "Focus inbox list",
-        screen: "inbox" as const,
-        zone: "stuff-detail" as const,
-        handler: () => {
-          if (editingBodyId !== null) {
-            return;
-          }
-
-          setActiveZone("inbox-list");
-        }
-      },
-      {
-        id: "inbox.open-detail-screen",
-        key: "Enter",
-        description: "Open full stuff detail",
-        leader: true,
-        sequence: ["Enter"],
-        screen: "inbox" as const,
-        zone: "stuff-detail" as const,
-        handler: () => {
-          if (!selectedItem || editingBodyId !== null) {
-            return;
-          }
-
-          setActiveScreen("stuff-detail");
-        }
-      },
-      {
-        id: "inbox.which-key-list",
-        key: "k",
-        description: "Show available keybinds",
-        leader: true,
-        screen: "inbox" as const,
-        zone: "inbox-list" as const,
-        handler: () => undefined
-      },
-      {
-        id: "inbox.which-key-detail",
-        key: "k",
-        description: "Show available keybinds",
-        leader: true,
-        screen: "inbox" as const,
-        zone: "stuff-detail" as const,
-        handler: () => undefined
-      }
-    ],
-    [
-      editingId,
-      editingBodyId,
-      isCreating,
-      isDeleting,
-      isLoading,
-      isUpdating,
-      selectedItem,
-      setActiveScreen,
-      setActiveZone,
-      stuffs.length
-    ]
-  );
+  const bindings = useMemo(() => buildInboxBindings(controller, setActiveScreen), [controller, setActiveScreen]);
 
   useRegisterKeybinds(bindings);
+}
 
-  const listBody = (() => {
-    if (isLoading) {
-      return <p className="pane-state">Loading inbox...</p>;
+function useInboxZone(controller: InboxWorkspaceController) {
+  useEffect(() => {
+    if (controller.activeZone !== "inbox-list" && controller.activeZone !== "stuff-detail") {
+      controller.setActiveZone("inbox-list");
     }
+  }, [controller]);
+}
 
-    if (errorMessage) {
-      return (
-        <div className="pane-state">
-          <p>{errorMessage}</p>
-          <button type="button" className="pane-state__action" onClick={reload}>
-            Retry
-          </button>
-        </div>
-      );
-    }
+function commitStuffTitle(controller: InboxWorkspaceController) {
+  void controller.commitEditingSelectedStuff().catch((error: unknown) => {
+    console.error("Failed to update stuff title", error);
+  });
+}
 
-    if (stuffs.length === 0) {
-      return <p className="pane-state">Inbox is empty.</p>;
-    }
+function commitStuffBody(controller: InboxWorkspaceController) {
+  void controller.commitEditingSelectedStuffBody().catch((error: unknown) => {
+    console.error("Failed to update stuff body", error);
+  });
+}
 
-    return (
-      <InboxList
-        items={stuffs}
-        selectedId={selectedItem?.id ?? ""}
-        editingId={editingId}
-        editingTitle={editingTitle}
-        onSelect={setSelectedId}
-        onEditingTitleChange={setEditingTitle}
-        onStartEditing={startEditingSelectedStuff}
-        onCommitEditing={() => {
-          void commitEditingSelectedStuff().catch((error: unknown) => {
-            console.error("Failed to update stuff title", error);
-          });
-        }}
-        onCommitEditingAndContinue={() => {
-          void commitEditingSelectedStuff().catch((error: unknown) => {
-            console.error("Failed to update stuff title", error);
-          });
-        }}
-        onCancelEditing={cancelEditingSelectedStuff}
-      />
-    );
-  })();
+function RetryState({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div className="pane-state">
+      <p>{message}</p>
+      <button type="button" className="pane-state__action" onClick={onRetry}>
+        Retry
+      </button>
+    </div>
+  );
+}
 
-  const detailBody = (() => {
-    if (isLoading) {
-      return <p className="pane-state">Loading stuff details...</p>;
-    }
+function InboxListReady({ controller }: InboxPageProps) {
+  return (
+    <InboxList
+      items={controller.stuffs}
+      selectedId={controller.selectedItem?.id ?? ""}
+      editingId={controller.editingId}
+      editingTitle={controller.editingTitle}
+      onSelect={controller.setSelectedId}
+      onEditingTitleChange={controller.setEditingTitle}
+      onStartEditing={controller.startEditingSelectedStuff}
+      onCommitEditing={() => commitStuffTitle(controller)}
+      onCommitEditingAndContinue={() => commitStuffTitle(controller)}
+      onCancelEditing={controller.cancelEditingSelectedStuff}
+    />
+  );
+}
 
-    if (errorMessage) {
-      return <p className="pane-state">Stuff details are unavailable while inbox loading fails.</p>;
-    }
+function InboxListBody({ controller }: InboxPageProps) {
+  if (controller.isLoading) {
+    return <p className="pane-state">Loading inbox...</p>;
+  }
 
-    if (!selectedItem) {
-      return <p className="pane-state">Select a stuff to inspect its details.</p>;
-    }
+  if (controller.errorMessage) {
+    return <RetryState message={controller.errorMessage} onRetry={controller.reload} />;
+  }
 
-    return (
-      <InboxStuffDetails
-        item={selectedItem}
-        editing={editingBodyId === selectedItem.id}
-        editingBody={editingBody}
-        onEditingBodyChange={setEditingBody}
-        onCommitEditing={() => {
-          void commitEditingSelectedStuffBody().catch((error: unknown) => {
-            console.error("Failed to update stuff body", error);
-          });
-        }}
-        onCancelEditing={cancelEditingSelectedStuffBody}
-      />
-    );
-  })();
+  return controller.stuffs.length === 0 ? <p className="pane-state">Inbox is empty.</p> : <InboxListReady controller={controller} />;
+}
 
-  const listMeta = `${stuffs.length} ${stuffs.length === 1 ? "item" : "items"}`;
+function InboxDetailReady({ controller }: InboxPageProps) {
+  const selectedItem = controller.selectedItem;
+
+  return selectedItem ? (
+    <InboxStuffDetails
+      item={selectedItem}
+      editing={controller.editingBodyId === selectedItem.id}
+      editingBody={controller.editingBody}
+      onEditingBodyChange={controller.setEditingBody}
+      onCommitEditing={() => commitStuffBody(controller)}
+      onCancelEditing={controller.cancelEditingSelectedStuffBody}
+    />
+  ) : null;
+}
+
+function InboxDetailBody({ controller }: InboxPageProps) {
+  if (controller.isLoading) {
+    return <p className="pane-state">Loading stuff details...</p>;
+  }
+
+  if (controller.errorMessage) {
+    return <p className="pane-state">Stuff details are unavailable while inbox loading fails.</p>;
+  }
+
+  return controller.selectedItem ? <InboxDetailReady controller={controller} /> : <p className="pane-state">Select a stuff to inspect its details.</p>;
+}
+
+function InboxListPane({ controller }: InboxPageProps) {
+  const listMeta = `${controller.stuffs.length} ${controller.stuffs.length === 1 ? "item" : "items"}`;
+
+  return (
+    <ListPane title="Inbox" meta={listMeta} panelIndex={1} active={controller.activeZone === "inbox-list"} bodyClassName="list-pane__body--flush" className="inbox-pane inbox-pane--list">
+      <InboxListBody controller={controller} />
+    </ListPane>
+  );
+}
+
+function InboxDetailPane({ controller }: InboxPageProps) {
+  return (
+    <ListPane title="Stuff Detail" panelIndex={2} active={controller.activeZone === "stuff-detail"} bodyClassName="list-pane__body--detail" className="inbox-pane inbox-pane--detail">
+      <InboxDetailBody controller={controller} />
+    </ListPane>
+  );
+}
+
+function InboxPanes({ controller }: InboxPageProps) {
+  return (
+    <section className="inbox-terminal-layout" aria-label="Inbox">
+      <InboxListPane controller={controller} />
+      <InboxDetailPane controller={controller} />
+    </section>
+  );
+}
+
+export function InboxPage({ controller }: InboxPageProps) {
+  useKeybindScreen("inbox");
+  useInboxZone(controller);
+  useInboxBindings(controller);
 
   return (
     <ListWorkspace theme={inboxListTheme} currentLabel={inboxListTheme.label}>
-      <section className="inbox-terminal-layout" aria-label="Inbox">
-        <ListPane
-          title="Inbox"
-          meta={listMeta}
-          panelIndex={1}
-          active={activeZone === "inbox-list"}
-          bodyClassName="list-pane__body--flush"
-          className="inbox-pane inbox-pane--list"
-        >
-          {listBody}
-        </ListPane>
-
-        <ListPane
-          title="Stuff Detail"
-          panelIndex={2}
-          active={activeZone === "stuff-detail"}
-          bodyClassName="list-pane__body--detail"
-          className="inbox-pane inbox-pane--detail"
-        >
-          {detailBody}
-        </ListPane>
-      </section>
+      <InboxPanes controller={controller} />
       <LeaderMenu />
     </ListWorkspace>
   );

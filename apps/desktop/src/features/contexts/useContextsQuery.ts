@@ -2,12 +2,12 @@ import { useEffect, useState } from "react";
 import { ApiRequestError } from "../../lib/api/apiClient";
 import { useSyncStatus } from "../sync-status/SyncStatusProvider";
 import {
-  createContext,
-  deleteContext,
-  deleteContextIcon,
+  createContext as createContextRequest,
+  deleteContext as deleteContextRequest,
+  deleteContextIcon as deleteContextIconRequest,
   fetchContexts,
-  updateContextIcon,
-  updateContextName
+  updateContextIcon as updateContextIconRequest,
+  updateContextName as updateContextNameRequest
 } from "./api";
 import type { ContextItem } from "./types";
 
@@ -38,143 +38,143 @@ function toErrorMessage(error: unknown): string {
   return "Failed to load contexts";
 }
 
-export function useContextsQuery(): ContextsQueryState {
-  const { triggerSyncStatusPolling } = useSyncStatus();
+function useContextsLoadState() {
   const [contexts, setContexts] = useState<ContextItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isCreating, setIsCreating] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [isUpdating, setIsUpdating] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
 
+  return { contexts, errorMessage, isLoading, reloadToken, setContexts, setErrorMessage, setIsLoading, setReloadToken };
+}
+
+function useContextsMutationState() {
+  const [isCreating, setIsCreating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  return { isCreating, isDeleting, isUpdating, setIsCreating, setIsDeleting, setIsUpdating };
+}
+
+type ContextsLoadState = ReturnType<typeof useContextsLoadState>;
+type ContextsMutationState = ReturnType<typeof useContextsMutationState>;
+
+function startContextsLoad(state: ContextsLoadState) {
+  state.setIsLoading(true);
+  state.setErrorMessage(null);
+}
+
+function failContextsLoad(state: ContextsLoadState, error: unknown) {
+  state.setContexts([]);
+  state.setErrorMessage(toErrorMessage(error));
+}
+
+async function loadContexts(state: ContextsLoadState, isCancelled: () => boolean) {
+  startContextsLoad(state);
+
+  try {
+    const nextContexts = await fetchContexts();
+
+    if (!isCancelled()) {
+      state.setContexts(nextContexts);
+    }
+  } catch (error) {
+    if (!isCancelled()) {
+      failContextsLoad(state, error);
+    }
+  } finally {
+    if (!isCancelled()) {
+      state.setIsLoading(false);
+    }
+  }
+}
+
+function useContextsLoader(state: ContextsLoadState) {
   useEffect(() => {
     let cancelled = false;
 
-    async function loadContexts() {
-      setIsLoading(true);
-      setErrorMessage(null);
-
-      try {
-        const nextContexts = await fetchContexts();
-
-        if (cancelled) {
-          return;
-        }
-
-        setContexts(nextContexts);
-      } catch (error) {
-        if (cancelled) {
-          return;
-        }
-
-        setContexts([]);
-        setErrorMessage(toErrorMessage(error));
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
-      }
-    }
-
-    void loadContexts();
+    void loadContexts(state, () => cancelled);
 
     return () => {
       cancelled = true;
     };
-  }, [reloadToken]);
+  }, [state.reloadToken]);
+}
+
+function completeContextMutation(state: ContextsLoadState, triggerSyncStatusPolling: () => void) {
+  state.setErrorMessage(null);
+  triggerSyncStatusPolling();
+}
+
+function replaceContext(currentContexts: ContextItem[], updatedContext: ContextItem): ContextItem[] {
+  return currentContexts.map((context) =>
+    context.id === updatedContext.id ? updatedContext : context
+  );
+}
+
+async function createContextItem(name: string, state: ContextsLoadState, mutations: ContextsMutationState, triggerSyncStatusPolling: () => void) {
+  mutations.setIsCreating(true);
+
+  try {
+    const createdContext = await createContextRequest(name);
+    state.setContexts((currentContexts) => [createdContext, ...currentContexts]);
+    completeContextMutation(state, triggerSyncStatusPolling);
+    return createdContext;
+  } finally {
+    mutations.setIsCreating(false);
+  }
+}
+
+async function deleteContextItem(id: string, state: ContextsLoadState, mutations: ContextsMutationState, triggerSyncStatusPolling: () => void) {
+  mutations.setIsDeleting(true);
+
+  try {
+    await deleteContextRequest(id);
+    state.setContexts((currentContexts) => currentContexts.filter((context) => context.id !== id));
+    completeContextMutation(state, triggerSyncStatusPolling);
+  } finally {
+    mutations.setIsDeleting(false);
+  }
+}
+
+async function updateContextItem(updateRequest: () => Promise<ContextItem>, state: ContextsLoadState, mutations: ContextsMutationState, triggerSyncStatusPolling: () => void) {
+  mutations.setIsUpdating(true);
+
+  try {
+    const updatedContext = await updateRequest();
+    state.setContexts((currentContexts) => replaceContext(currentContexts, updatedContext));
+    completeContextMutation(state, triggerSyncStatusPolling);
+    return updatedContext;
+  } finally {
+    mutations.setIsUpdating(false);
+  }
+}
+
+function useContextsMutations(state: ContextsLoadState, mutations: ContextsMutationState) {
+  const { triggerSyncStatusPolling } = useSyncStatus();
 
   return {
-    contexts,
-    isLoading,
-    isCreating,
-    isDeleting,
-    isUpdating,
-    errorMessage,
-    createContext: async (name: string) => {
-      setIsCreating(true);
+    createContext: (name: string) => createContextItem(name, state, mutations, triggerSyncStatusPolling),
+    deleteContext: (id: string) => deleteContextItem(id, state, mutations, triggerSyncStatusPolling),
+    deleteContextIcon: (id: string) => updateContextItem(() => deleteContextIconRequest(id), state, mutations, triggerSyncStatusPolling),
+    updateContextIcon: (id: string, file: File) => updateContextItem(() => updateContextIconRequest(id, file), state, mutations, triggerSyncStatusPolling),
+    updateContextName: (id: string, name: string) => updateContextItem(() => updateContextNameRequest(id, name), state, mutations, triggerSyncStatusPolling)
+  };
+}
 
-      try {
-        const createdContext = await createContext(name);
+export function useContextsQuery(): ContextsQueryState {
+  const state = useContextsLoadState();
+  const mutations = useContextsMutationState();
+  const actions = useContextsMutations(state, mutations);
 
-        setContexts((currentContexts) => [createdContext, ...currentContexts]);
-        setErrorMessage(null);
-        triggerSyncStatusPolling();
-
-        return createdContext;
-      } finally {
-        setIsCreating(false);
-      }
-    },
-    deleteContext: async (id: string) => {
-      setIsDeleting(true);
-
-      try {
-        await deleteContext(id);
-        setContexts((currentContexts) => currentContexts.filter((context) => context.id !== id));
-        setErrorMessage(null);
-        triggerSyncStatusPolling();
-      } finally {
-        setIsDeleting(false);
-      }
-    },
-    updateContextName: async (id: string, name: string) => {
-      setIsUpdating(true);
-
-      try {
-        const updatedContext = await updateContextName(id, name);
-
-        setContexts((currentContexts) =>
-          currentContexts.map((currentContext) =>
-            currentContext.id === updatedContext.id ? updatedContext : currentContext
-          )
-        );
-        setErrorMessage(null);
-        triggerSyncStatusPolling();
-
-        return updatedContext;
-      } finally {
-        setIsUpdating(false);
-      }
-    },
-    updateContextIcon: async (id: string, file: File) => {
-      setIsUpdating(true);
-
-      try {
-        const updatedContext = await updateContextIcon(id, file);
-
-        setContexts((currentContexts) =>
-          currentContexts.map((currentContext) =>
-            currentContext.id === updatedContext.id ? updatedContext : currentContext
-          )
-        );
-        setErrorMessage(null);
-        triggerSyncStatusPolling();
-
-        return updatedContext;
-      } finally {
-        setIsUpdating(false);
-      }
-    },
-    deleteContextIcon: async (id: string) => {
-      setIsUpdating(true);
-
-      try {
-        const updatedContext = await deleteContextIcon(id);
-
-        setContexts((currentContexts) =>
-          currentContexts.map((currentContext) =>
-            currentContext.id === updatedContext.id ? updatedContext : currentContext
-          )
-        );
-        setErrorMessage(null);
-        triggerSyncStatusPolling();
-
-        return updatedContext;
-      } finally {
-        setIsUpdating(false);
-      }
-    },
-    reload: () => setReloadToken((value) => value + 1)
+  useContextsLoader(state);
+  return {
+    ...actions,
+    contexts: state.contexts,
+    errorMessage: state.errorMessage,
+    isCreating: mutations.isCreating,
+    isDeleting: mutations.isDeleting,
+    isLoading: state.isLoading,
+    isUpdating: mutations.isUpdating,
+    reload: () => state.setReloadToken((value) => value + 1)
   };
 }

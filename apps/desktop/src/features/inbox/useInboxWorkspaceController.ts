@@ -15,263 +15,361 @@ function buildDraftStuff(): Stuff {
   };
 }
 
-export function useInboxWorkspaceController() {
-  const {
-    stuffs,
-    isLoading,
-    isCreating,
-    isDeleting,
-    isUpdating,
-    errorMessage,
-    reload,
-    createStuff,
-    deleteStuff,
-    updateStuffBody,
-    updateStuffTitle
-  } = useInboxStuffsQuery();
+type InboxQuery = ReturnType<typeof useInboxStuffsQuery>;
+type InboxModel = ReturnType<typeof useInboxWorkspaceModel>;
+type InboxActions = ReturnType<typeof useInboxWorkspaceActions>;
+
+function useDraftStuffState() {
   const [draftStuff, setDraftStuff] = useState<Stuff | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  return { draftStuff, setDraftStuff };
+}
+
+function useTitleEditState() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
+
+  return { editingId, editingTitle, setEditingId, setEditingTitle };
+}
+
+function useBodyEditState() {
   const [editingBodyId, setEditingBodyId] = useState<string | null>(null);
   const [editingBody, setEditingBody] = useState("");
+
+  return { editingBody, editingBodyId, setEditingBody, setEditingBodyId };
+}
+
+function usePendingBodyEditState() {
   const [pendingBodyEditId, setPendingBodyEditId] = useState<string | null>(null);
-  const { activeZone, setActiveZone } = useActiveZone();
-  const visibleStuffs = draftStuff ? [draftStuff, ...stuffs] : stuffs;
-  const selectedItem =
-    visibleStuffs.find((item) => item.id === selectedId) ?? (visibleStuffs.length > 0 ? visibleStuffs[0] : null);
-  const selectedIndex = selectedItem
-    ? visibleStuffs.findIndex((item) => item.id === selectedItem.id)
-    : -1;
 
+  return { pendingBodyEditId, setPendingBodyEditId };
+}
+
+function visibleStuffsWithDraft(draftStuff: Stuff | null, stuffs: Stuff[]): Stuff[] {
+  return draftStuff ? [draftStuff, ...stuffs] : stuffs;
+}
+
+function selectedStuff(visibleStuffs: Stuff[], selectedId: string | null): Stuff | null {
+  return visibleStuffs.find((item) => item.id === selectedId) ?? visibleStuffs[0] ?? null;
+}
+
+function selectedStuffIndex(visibleStuffs: Stuff[], selectedItem: Stuff | null): number {
+  return selectedItem ? visibleStuffs.findIndex((item) => item.id === selectedItem.id) : -1;
+}
+
+type SelectionCursor = {
+  selectedIndex: number;
+  setSelectedId: (id: string | null) => void;
+  visibleStuffs: Stuff[];
+};
+
+function selectStuffByOffset(selection: SelectionCursor, offset: number) {
+  if (selection.visibleStuffs.length === 0) {
+    return;
+  }
+
+  const nextIndex = Math.min(Math.max(selection.selectedIndex + offset, 0), selection.visibleStuffs.length - 1);
+  selection.setSelectedId(selection.visibleStuffs[nextIndex].id);
+}
+
+type InboxSelection = ReturnType<typeof useInboxSelection>;
+
+function useInboxSelection(stuffs: Stuff[], draftStuff: Stuff | null) {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const visibleStuffs = visibleStuffsWithDraft(draftStuff, stuffs);
+  const selectedItem = selectedStuff(visibleStuffs, selectedId);
+  const selectedIndex = selectedStuffIndex(visibleStuffs, selectedItem);
+  const selection = { selectedIndex, setSelectedId, visibleStuffs };
+
+  return { ...selection, selectedId, selectedItem, selectNextStuff: () => selectStuffByOffset(selection, 1), selectPreviousStuff: () => selectStuffByOffset(selection, -1) };
+}
+
+function clearTitleEdit(model: InboxModel) {
+  model.titleEdit.setEditingId(null);
+  model.titleEdit.setEditingTitle("");
+}
+
+function clearBodyEdit(model: InboxModel) {
+  model.bodyEdit.setEditingBodyId(null);
+  model.bodyEdit.setEditingBody("");
+}
+
+function clearPendingBodyEdit(model: InboxModel) {
+  model.pending.setPendingBodyEditId(null);
+}
+
+function clearAllEditing(model: InboxModel) {
+  clearTitleEdit(model);
+  clearBodyEdit(model);
+  clearPendingBodyEdit(model);
+}
+
+function hasVisibleStuff(model: InboxModel, id: string): boolean {
+  return model.selection.visibleStuffs.some((item) => item.id === id);
+}
+
+function pruneEmptyInbox(model: InboxModel) {
+  model.selection.setSelectedId(null);
+  clearAllEditing(model);
+}
+
+function pruneMissingSelection(model: InboxModel) {
+  if (!model.selection.selectedId || !hasVisibleStuff(model, model.selection.selectedId)) {
+    model.selection.setSelectedId(model.selection.visibleStuffs[0].id);
+  }
+}
+
+function pruneMissingTitleEdit(model: InboxModel) {
+  if (model.titleEdit.editingId && !hasVisibleStuff(model, model.titleEdit.editingId)) {
+    clearTitleEdit(model);
+  }
+}
+
+function pruneMissingBodyEdit(model: InboxModel) {
+  if (model.bodyEdit.editingBodyId && !hasVisibleStuff(model, model.bodyEdit.editingBodyId)) {
+    clearBodyEdit(model);
+  }
+}
+
+function pruneMissingPendingBodyEdit(model: InboxModel) {
+  const pendingId = model.pending.pendingBodyEditId;
+
+  if (pendingId && !hasVisibleStuff(model, pendingId)) {
+    clearPendingBodyEdit(model);
+  }
+}
+
+function pruneInboxState(model: InboxModel) {
+  if (model.selection.visibleStuffs.length === 0) {
+    pruneEmptyInbox(model);
+    return;
+  }
+
+  pruneMissingSelection(model);
+  pruneMissingTitleEdit(model);
+  pruneMissingBodyEdit(model);
+  pruneMissingPendingBodyEdit(model);
+}
+
+function usePruneInboxState(model: InboxModel) {
   useEffect(() => {
-    if (visibleStuffs.length === 0) {
-      setSelectedId(null);
-      setEditingId(null);
-      setEditingTitle("");
-      setEditingBodyId(null);
-      setEditingBody("");
-      setPendingBodyEditId(null);
-      return;
-    }
+    pruneInboxState(model);
+  }, [model.bodyEdit.editingBodyId, model.draft.draftStuff, model.pending.pendingBodyEditId, model.selection.selectedId, model.selection.visibleStuffs, model.titleEdit.editingId]);
+}
 
-    if (!selectedId || !visibleStuffs.some((item) => item.id === selectedId)) {
-      setSelectedId(visibleStuffs[0].id);
-    }
+function startBodyEdit(model: InboxModel, item: Stuff) {
+  model.bodyEdit.setEditingBodyId(item.id);
+  model.bodyEdit.setEditingBody(item.body ?? "");
+}
 
-    if (editingId && !visibleStuffs.some((item) => item.id === editingId)) {
-      setEditingId(null);
-      setEditingTitle("");
-    }
+function startBodyEditInDetail(model: InboxModel, item: Stuff) {
+  model.zone.setActiveZone("stuff-detail");
+  startBodyEdit(model, item);
+}
 
-    if (editingBodyId && !visibleStuffs.some((item) => item.id === editingBodyId)) {
-      setEditingBodyId(null);
-      setEditingBody("");
-    }
+function createNewStuffAction(model: InboxModel) {
+  const nextDraft = buildDraftStuff();
 
-    if (pendingBodyEditId && !visibleStuffs.some((item) => item.id === pendingBodyEditId)) {
-      setPendingBodyEditId(null);
-    }
-  }, [draftStuff, editingBodyId, editingId, pendingBodyEditId, selectedId, visibleStuffs]);
+  model.draft.setDraftStuff(nextDraft);
+  model.selection.setSelectedId(nextDraft.id);
+  model.titleEdit.setEditingId(nextDraft.id);
+  model.titleEdit.setEditingTitle("");
+  clearBodyEdit(model);
+  model.pending.setPendingBodyEditId(nextDraft.id);
+  model.zone.setActiveZone("inbox-list");
+}
 
-  const selectNextStuff = () => {
-    if (visibleStuffs.length === 0) {
-      return;
-    }
+async function deleteSelectedStuffAction(model: InboxModel) {
+  if (!model.selection.selectedItem) {
+    return;
+  }
 
-    const nextIndex = Math.min(selectedIndex + 1, visibleStuffs.length - 1);
-    setSelectedId(visibleStuffs[nextIndex].id);
-  };
+  await model.query.deleteStuff(model.selection.selectedItem.id);
+  clearAllEditing(model);
+  model.zone.setActiveZone("inbox-list");
+}
 
-  const selectPreviousStuff = () => {
-    if (visibleStuffs.length === 0) {
-      return;
-    }
+function startEditingSelectedStuffAction(model: InboxModel) {
+  const selectedItem = model.selection.selectedItem;
 
-    const previousIndex = Math.max(selectedIndex - 1, 0);
-    setSelectedId(visibleStuffs[previousIndex].id);
-  };
+  if (!selectedItem) {
+    return;
+  }
 
-  const createNewStuff = async () => {
-    const nextDraft = buildDraftStuff();
+  model.titleEdit.setEditingId(selectedItem.id);
+  model.titleEdit.setEditingTitle(selectedItem.id === DRAFT_STUFF_ID ? "" : selectedItem.title);
+  model.pending.setPendingBodyEditId(selectedItem.id === DRAFT_STUFF_ID ? selectedItem.id : null);
+}
 
-    setDraftStuff(nextDraft);
-    setSelectedId(nextDraft.id);
-    setEditingId(nextDraft.id);
-    setEditingTitle("");
-    setEditingBodyId(null);
-    setEditingBody("");
-    setPendingBodyEditId(nextDraft.id);
-    setActiveZone("inbox-list");
-  };
+function cancelEditingSelectedStuffAction(model: InboxModel) {
+  if (model.titleEdit.editingId === DRAFT_STUFF_ID) {
+    model.draft.setDraftStuff(null);
+    model.selection.setSelectedId(model.query.stuffs[0]?.id ?? null);
+  }
 
-  const deleteSelectedStuff = async () => {
-    if (!selectedItem) {
-      return;
-    }
+  clearTitleEdit(model);
+  clearPendingBodyEdit(model);
+}
 
-    await deleteStuff(selectedItem.id);
-    setEditingId(null);
-    setEditingTitle("");
-    setEditingBodyId(null);
-    setEditingBody("");
-    setPendingBodyEditId(null);
-    setActiveZone("inbox-list");
-  };
+function startEditingSelectedStuffBodyAction(model: InboxModel) {
+  if (model.selection.selectedItem) {
+    startBodyEdit(model, model.selection.selectedItem);
+  }
+}
 
-  const startEditingSelectedStuff = () => {
-    if (!selectedItem) {
-      return;
-    }
+function discardTitleEdit(model: InboxModel, selectedItem: Stuff, shouldContinueToBody: boolean) {
+  if (selectedItem.id === DRAFT_STUFF_ID) {
+    model.draft.setDraftStuff(null);
+    model.selection.setSelectedId(model.query.stuffs[0]?.id ?? null);
+  }
 
-    setEditingId(selectedItem.id);
-    setEditingTitle(selectedItem.id === DRAFT_STUFF_ID ? "" : selectedItem.title);
-    setPendingBodyEditId(selectedItem.id === DRAFT_STUFF_ID ? selectedItem.id : null);
-  };
+  clearTitleEdit(model);
+  clearPendingBodyEdit(model);
 
-  const cancelEditingSelectedStuff = () => {
-    if (editingId === DRAFT_STUFF_ID) {
-      setDraftStuff(null);
-      setSelectedId(stuffs[0]?.id ?? null);
-    }
+  if (shouldContinueToBody) {
+    model.zone.setActiveZone("inbox-list");
+  }
+}
 
-    setEditingId(null);
-    setEditingTitle("");
-    setPendingBodyEditId(null);
-  };
+function finishTitleEdit(model: InboxModel, item: Stuff, shouldContinueToBody: boolean) {
+  model.selection.setSelectedId(item.id);
+  clearTitleEdit(model);
+  clearPendingBodyEdit(model);
 
-  const startEditingSelectedStuffBody = () => {
-    if (!selectedItem) {
-      return;
-    }
+  if (shouldContinueToBody) {
+    startBodyEditInDetail(model, item);
+  }
+}
 
-    setEditingBodyId(selectedItem.id);
-    setEditingBody(selectedItem.body ?? "");
-  };
+async function commitDraftStuff(model: InboxModel, title: string, shouldContinueToBody: boolean) {
+  const createdStuff = await model.query.createStuff(title);
 
-  const cancelEditingSelectedStuffBody = () => {
-    setEditingBodyId(null);
-    setEditingBody("");
-  };
+  model.draft.setDraftStuff(null);
+  finishTitleEdit(model, createdStuff, shouldContinueToBody);
+}
 
-  const commitEditingSelectedStuff = async () => {
-    if (!selectedItem || editingId !== selectedItem.id) {
-      return;
-    }
+async function commitEditingSelectedStuffAction(model: InboxModel) {
+  const selectedItem = model.selection.selectedItem;
 
-    const normalizedTitle = editingTitle.trim();
-    const shouldContinueToBody = pendingBodyEditId === selectedItem.id;
+  if (!selectedItem || model.titleEdit.editingId !== selectedItem.id) {
+    return;
+  }
 
-    if (!normalizedTitle) {
-      if (selectedItem.id === DRAFT_STUFF_ID) {
-        setDraftStuff(null);
-        setSelectedId(stuffs[0]?.id ?? null);
-      }
+  const normalizedTitle = model.titleEdit.editingTitle.trim();
+  const shouldContinueToBody = model.pending.pendingBodyEditId === selectedItem.id;
 
-      setEditingId(null);
-      setEditingTitle("");
-      if (shouldContinueToBody) {
-        setActiveZone("inbox-list");
-      }
-      setPendingBodyEditId(null);
-      return;
-    }
+  if (!normalizedTitle) {
+    discardTitleEdit(model, selectedItem, shouldContinueToBody);
+    return;
+  }
 
-    if (selectedItem.id === DRAFT_STUFF_ID) {
-      const createdStuff = await createStuff(normalizedTitle);
+  await commitNormalizedTitle(model, selectedItem, normalizedTitle, shouldContinueToBody);
+}
 
-      setDraftStuff(null);
-      setSelectedId(createdStuff.id);
-      setEditingId(null);
-      setEditingTitle("");
-      if (shouldContinueToBody) {
-        setActiveZone("stuff-detail");
-        setEditingBodyId(createdStuff.id);
-        setEditingBody(createdStuff.body ?? "");
-      }
-      setPendingBodyEditId(null);
-      return;
-    }
+async function commitNormalizedTitle(
+  model: InboxModel,
+  selectedItem: Stuff,
+  normalizedTitle: string,
+  shouldContinueToBody: boolean
+) {
+  if (selectedItem.id === DRAFT_STUFF_ID) {
+    await commitDraftStuff(model, normalizedTitle, shouldContinueToBody);
+    return;
+  }
 
-    if (normalizedTitle === selectedItem.title) {
-      setEditingId(null);
-      setEditingTitle("");
-      if (shouldContinueToBody) {
-        setActiveZone("stuff-detail");
-        setEditingBodyId(selectedItem.id);
-        setEditingBody(selectedItem.body ?? "");
-      }
-      setPendingBodyEditId(null);
-      return;
-    }
+  if (normalizedTitle === selectedItem.title) {
+    finishTitleEdit(model, selectedItem, shouldContinueToBody);
+    return;
+  }
 
-    const updatedStuff = await updateStuffTitle(selectedItem, normalizedTitle);
+  const updatedStuff = await model.query.updateStuffTitle(selectedItem, normalizedTitle);
+  finishTitleEdit(model, updatedStuff, shouldContinueToBody);
+}
 
-    setSelectedId(updatedStuff.id);
-    setEditingId(null);
-    setEditingTitle("");
-    if (shouldContinueToBody) {
-      setActiveZone("stuff-detail");
-      setEditingBodyId(updatedStuff.id);
-      setEditingBody(updatedStuff.body ?? "");
-    }
-    setPendingBodyEditId(null);
-  };
+function nextBodyValue(editingBody: string): string | null {
+  return editingBody.trim() ? editingBody : null;
+}
 
-  const commitEditingSelectedStuffBody = async () => {
-    if (!selectedItem || editingBodyId !== selectedItem.id) {
-      return;
-    }
+async function commitEditingSelectedStuffBodyAction(model: InboxModel) {
+  const selectedItem = model.selection.selectedItem;
 
-    const normalizedBody = editingBody.trim();
-    const nextBody = normalizedBody ? editingBody : null;
+  if (!selectedItem || model.bodyEdit.editingBodyId !== selectedItem.id) {
+    return;
+  }
 
-    if ((selectedItem.body ?? null) === nextBody) {
-      setEditingBodyId(null);
-      setEditingBody("");
-      return;
-    }
+  const nextBody = nextBodyValue(model.bodyEdit.editingBody);
 
-    const updatedStuff = await updateStuffBody(selectedItem, nextBody);
+  if ((selectedItem.body ?? null) === nextBody) {
+    clearBodyEdit(model);
+    return;
+  }
 
-    setSelectedId(updatedStuff.id);
-    setEditingBodyId(null);
-    setEditingBody("");
-    setPendingBodyEditId(null);
-  };
+  const updatedStuff = await model.query.updateStuffBody(selectedItem, nextBody);
+  model.selection.setSelectedId(updatedStuff.id);
+  clearBodyEdit(model);
+  clearPendingBodyEdit(model);
+}
 
+function useInboxWorkspaceActions(model: InboxModel) {
   return {
-    activeZone,
-    createNewStuff,
-    deleteSelectedStuff,
-    editingBody,
-    editingBodyId,
-    editingId,
-    editingTitle,
-    errorMessage,
-    isCreating,
-    isDeleting,
-    isLoading,
-    isUpdating,
-    reload,
-    selectedId,
-    selectedIndex,
-    selectedItem,
-    setActiveZone,
-    setEditingBody,
-    setEditingTitle,
-    setPendingBodyEditId,
-    setSelectedId,
-    selectNextStuff,
-    selectPreviousStuff,
-    startEditingSelectedStuff,
-    startEditingSelectedStuffBody,
-    cancelEditingSelectedStuff,
-    cancelEditingSelectedStuffBody,
-    commitEditingSelectedStuff,
-    commitEditingSelectedStuffBody,
-    stuffs: visibleStuffs
+    cancelEditingSelectedStuff: () => cancelEditingSelectedStuffAction(model),
+    cancelEditingSelectedStuffBody: () => clearBodyEdit(model),
+    commitEditingSelectedStuff: () => commitEditingSelectedStuffAction(model),
+    commitEditingSelectedStuffBody: () => commitEditingSelectedStuffBodyAction(model),
+    createNewStuff: () => Promise.resolve(createNewStuffAction(model)),
+    deleteSelectedStuff: () => deleteSelectedStuffAction(model),
+    selectNextStuff: model.selection.selectNextStuff,
+    selectPreviousStuff: model.selection.selectPreviousStuff,
+    startEditingSelectedStuff: () => startEditingSelectedStuffAction(model),
+    startEditingSelectedStuffBody: () => startEditingSelectedStuffBodyAction(model)
   };
+}
+
+function useInboxWorkspaceModel() {
+  const query = useInboxStuffsQuery();
+  const draft = useDraftStuffState();
+  const selection = useInboxSelection(query.stuffs, draft.draftStuff);
+  const titleEdit = useTitleEditState();
+  const bodyEdit = useBodyEditState();
+  const pending = usePendingBodyEditState();
+  const zone = useActiveZone();
+
+  return { bodyEdit, draft, pending, query, selection, titleEdit, zone };
+}
+
+function controllerEditState(model: InboxModel) {
+  return { editingBody: model.bodyEdit.editingBody, editingBodyId: model.bodyEdit.editingBodyId, editingId: model.titleEdit.editingId, editingTitle: model.titleEdit.editingTitle };
+}
+
+function controllerQueryState(query: InboxQuery) {
+  return { errorMessage: query.errorMessage, isCreating: query.isCreating, isDeleting: query.isDeleting, isLoading: query.isLoading, isUpdating: query.isUpdating, reload: query.reload };
+}
+
+function controllerSelectionState(model: InboxModel) {
+  return { selectedId: model.selection.selectedId, selectedIndex: model.selection.selectedIndex, selectedItem: model.selection.selectedItem, stuffs: model.selection.visibleStuffs };
+}
+
+function buildInboxWorkspaceController(model: InboxModel, actions: InboxActions) {
+  return {
+    ...actions,
+    ...controllerEditState(model),
+    ...controllerQueryState(model.query),
+    ...controllerSelectionState(model),
+    activeZone: model.zone.activeZone,
+    setActiveZone: model.zone.setActiveZone,
+    setEditingBody: model.bodyEdit.setEditingBody,
+    setEditingTitle: model.titleEdit.setEditingTitle,
+    setPendingBodyEditId: model.pending.setPendingBodyEditId,
+    setSelectedId: model.selection.setSelectedId
+  };
+}
+
+export function useInboxWorkspaceController() {
+  const model = useInboxWorkspaceModel();
+  const actions = useInboxWorkspaceActions(model);
+
+  usePruneInboxState(model);
+  return buildInboxWorkspaceController(model, actions);
 }
 
 export type InboxWorkspaceController = ReturnType<typeof useInboxWorkspaceController>;

@@ -14,34 +14,34 @@ type InboxListProps = {
   onCancelEditing: () => void;
 };
 
-export function InboxList({
-  items,
+type InboxListItemProps = Omit<InboxListProps, "items"> & {
+  item: Stuff;
+};
+
+function InboxListItem({
+  item,
   selectedId,
   editingId,
-  editingTitle,
-  onSelect,
-  onEditingTitleChange,
-  onStartEditing,
-  onCommitEditing,
-  onCommitEditingAndContinue,
-  onCancelEditing
+  ...props
+}: InboxListItemProps) {
+  return (
+    <InboxListStuff
+      item={item}
+      selected={item.id === selectedId}
+      editing={item.id === editingId}
+      {...props}
+    />
+  );
+}
+
+export function InboxList({
+  items,
+  ...itemProps
 }: InboxListProps) {
   return (
     <ol className="tree-list tree-list--inbox" aria-label="Inbox items">
       {items.map((item) => (
-        <InboxListStuff
-          key={item.id}
-          item={item}
-          selected={item.id === selectedId}
-          editing={item.id === editingId}
-          editingTitle={editingTitle}
-          onSelect={onSelect}
-          onEditingTitleChange={onEditingTitleChange}
-          onStartEditing={onStartEditing}
-          onCommitEditing={onCommitEditing}
-          onCommitEditingAndContinue={onCommitEditingAndContinue}
-          onCancelEditing={onCancelEditing}
-        />
+        <InboxListItem key={item.id} item={item} {...itemProps} />
       ))}
     </ol>
   );

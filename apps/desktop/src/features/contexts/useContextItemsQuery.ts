@@ -22,62 +22,96 @@ function toErrorMessage(error: unknown): string {
   return "Failed to load related items";
 }
 
-export function useContextItemsQuery(
-  contextId: string | null,
-  limit: number
-): ContextItemsQueryState {
+function useContextItemsState() {
   const [items, setItems] = useState<ContextRelatedItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
 
+  return { errorMessage, isLoading, items, reloadToken, setErrorMessage, setIsLoading, setItems, setReloadToken };
+}
+
+type ContextItemsState = ReturnType<typeof useContextItemsState>;
+
+function resetContextItems(state: ContextItemsState) {
+  state.setItems([]);
+  state.setErrorMessage(null);
+  state.setIsLoading(false);
+}
+
+function startContextItemsLoad(state: ContextItemsState) {
+  state.setIsLoading(true);
+  state.setErrorMessage(null);
+}
+
+function failContextItemsLoad(state: ContextItemsState, error: unknown) {
+  state.setItems([]);
+  state.setErrorMessage(toErrorMessage(error));
+}
+
+function finishContextItemsLoad(state: ContextItemsState, isCancelled: () => boolean) {
+  if (!isCancelled()) {
+    state.setIsLoading(false);
+  }
+}
+
+async function loadContextItems(
+  state: ContextItemsState,
+  contextId: string | null,
+  limit: number,
+  isCancelled: () => boolean
+) {
+  if (!contextId) {
+    resetContextItems(state);
+    return;
+  }
+
+  startContextItemsLoad(state);
+  await loadContextItemsFromApi(state, contextId, limit, isCancelled);
+}
+
+async function loadContextItemsFromApi(
+  state: ContextItemsState,
+  contextId: string,
+  limit: number,
+  isCancelled: () => boolean
+) {
+  try {
+    const nextItems = await fetchContextItems(contextId, limit);
+
+    if (!isCancelled()) {
+      state.setItems(nextItems);
+    }
+  } catch (error) {
+    if (!isCancelled()) {
+      failContextItemsLoad(state, error);
+    }
+  } finally {
+    finishContextItemsLoad(state, isCancelled);
+  }
+}
+
+function useContextItemsLoader(state: ContextItemsState, contextId: string | null, limit: number) {
   useEffect(() => {
     let cancelled = false;
 
-    async function loadContextItems() {
-      if (!contextId) {
-        setItems([]);
-        setErrorMessage(null);
-        setIsLoading(false);
-        return;
-      }
-
-      setIsLoading(true);
-      setErrorMessage(null);
-
-      try {
-        const nextItems = await fetchContextItems(contextId, limit);
-
-        if (cancelled) {
-          return;
-        }
-
-        setItems(nextItems);
-      } catch (error) {
-        if (cancelled) {
-          return;
-        }
-
-        setItems([]);
-        setErrorMessage(toErrorMessage(error));
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
-      }
-    }
-
-    void loadContextItems();
+    void loadContextItems(state, contextId, limit, () => cancelled);
 
     return () => {
       cancelled = true;
     };
-  }, [contextId, limit, reloadToken]);
+  }, [contextId, limit, state.reloadToken]);
+}
+
+export function useContextItemsQuery(contextId: string | null, limit: number): ContextItemsQueryState {
+  const state = useContextItemsState();
+
+  useContextItemsLoader(state, contextId, limit);
 
   return {
-    items,
-    isLoading,
-    errorMessage,
-    reload: () => setReloadToken((value) => value + 1)
+    errorMessage: state.errorMessage,
+    isLoading: state.isLoading,
+    items: state.items,
+    reload: () => state.setReloadToken((value) => value + 1)
   };
 }

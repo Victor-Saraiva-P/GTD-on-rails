@@ -13,32 +13,34 @@ type ContextsListProps = {
   onCancelEditing: () => void;
 };
 
-export function ContextsList({
-  items,
+type ContextsListRowProps = Omit<ContextsListProps, "items"> & {
+  item: ContextItem;
+};
+
+function ContextsListRow({
+  item,
   selectedId,
   editingId,
-  editingName,
-  onSelect,
-  onEditingNameChange,
-  onStartEditing,
-  onCommitEditing,
-  onCancelEditing
+  ...props
+}: ContextsListRowProps) {
+  return (
+    <ContextsListItem
+      item={item}
+      selected={item.id === selectedId}
+      editing={item.id === editingId}
+      {...props}
+    />
+  );
+}
+
+export function ContextsList({
+  items,
+  ...itemProps
 }: ContextsListProps) {
   return (
     <ol className="tree-list tree-list--inbox" aria-label="Contexts">
       {items.map((item) => (
-        <ContextsListItem
-          key={item.id}
-          item={item}
-          selected={item.id === selectedId}
-          editing={item.id === editingId}
-          editingName={editingName}
-          onSelect={onSelect}
-          onEditingNameChange={onEditingNameChange}
-          onStartEditing={onStartEditing}
-          onCommitEditing={onCommitEditing}
-          onCancelEditing={onCancelEditing}
-        />
+        <ContextsListRow key={item.id} item={item} {...itemProps} />
       ))}
     </ol>
   );

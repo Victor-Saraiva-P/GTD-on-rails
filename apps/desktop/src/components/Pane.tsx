@@ -9,27 +9,28 @@ type PaneProps = PropsWithChildren<{
   active?: boolean;
 }>;
 
-export function Pane({
-  iconSrc,
-  label,
-  status,
-  bodyClassName,
-  wrapLabel = false,
-  active = false,
-  children
-}: PaneProps) {
-  return (
-    <div className={`pane${active ? " pane--active" : ""}`}>
-      <header className={`pane__header${wrapLabel ? " pane__header--wrap" : ""}`}>
-        <span className={`pane__tab${wrapLabel ? " pane__tab--wrap" : ""}`}>
-          <img src={iconSrc} alt="" className="pane__tab-icon" />
-          <span className={`pane__tab-label${wrapLabel ? " pane__tab-label--wrap" : ""}`}>
-            {label}
-          </span>
-        </span>
-        {status ? <div className="pane__status">{status}</div> : null}
-      </header>
+function paneClassName(active: boolean): string {
+  return `pane${active ? " pane--active" : ""}`;
+}
 
+function PaneHeader({ iconSrc, label, status, wrapLabel = false }: Omit<PaneProps, "children">) {
+  return (
+    <header className={`pane__header${wrapLabel ? " pane__header--wrap" : ""}`}>
+      <span className={`pane__tab${wrapLabel ? " pane__tab--wrap" : ""}`}>
+        <img src={iconSrc} alt="" className="pane__tab-icon" />
+        <span className={`pane__tab-label${wrapLabel ? " pane__tab-label--wrap" : ""}`}>
+          {label}
+        </span>
+      </span>
+      {status ? <div className="pane__status">{status}</div> : null}
+    </header>
+  );
+}
+
+export function Pane({ bodyClassName, active = false, children, ...headerProps }: PaneProps) {
+  return (
+    <div className={paneClassName(active)}>
+      <PaneHeader {...headerProps} />
       <div className={bodyClassName ? `pane__body ${bodyClassName}` : "pane__body"}>{children}</div>
     </div>
   );
