@@ -28,11 +28,11 @@ class AssetStorageServiceTests {
 
     @Test
     void rejectsParentDirectoryTraversal() {
-        AssetStorageService service = service();
+        AssetStorageService assetStorageService = newAssetStorageService();
 
         IllegalArgumentException exception = assertThrows(
             IllegalArgumentException.class,
-            () -> service.loadAsResource("../application.properties")
+            () -> assetStorageService.loadAsResource("../application.properties")
         );
 
         assertEquals("asset path is invalid", exception.getMessage());
@@ -40,11 +40,11 @@ class AssetStorageServiceTests {
 
     @Test
     void rejectsAbsolutePaths() {
-        AssetStorageService service = service();
+        AssetStorageService assetStorageService = newAssetStorageService();
 
         IllegalArgumentException exception = assertThrows(
             IllegalArgumentException.class,
-            () -> service.loadAsResource(tempDir.resolve("secret.txt").toString())
+            () -> assetStorageService.loadAsResource(tempDir.resolve("secret.txt").toString())
         );
 
         assertEquals("asset path is invalid", exception.getMessage());
@@ -54,9 +54,9 @@ class AssetStorageServiceTests {
     void storesContextIconInExpectedPath() throws IOException {
         UUID contextId = UUID.randomUUID();
         MockMultipartFile file = new MockMultipartFile("file", "icon.png", "image/png", new byte[] {1, 2, 3});
-        AssetStorageService service = service();
+        AssetStorageService assetStorageService = newAssetStorageService();
 
-        String relativePath = service.storeContextIcon(contextId, file);
+        String relativePath = assetStorageService.storeContextIcon(contextId, file);
 
         assertEquals("contexts/" + contextId + "/icon.png", relativePath);
         Path storedFile = tempDir.resolve("assets").resolve(relativePath);
@@ -68,11 +68,11 @@ class AssetStorageServiceTests {
     void rejectsEmptyContextIcon() {
         UUID contextId = UUID.randomUUID();
         MockMultipartFile file = new MockMultipartFile("file", "icon.png", "image/png", new byte[0]);
-        AssetStorageService service = service();
+        AssetStorageService assetStorageService = newAssetStorageService();
 
         IllegalArgumentException exception = assertThrows(
             IllegalArgumentException.class,
-            () -> service.storeContextIcon(contextId, file)
+            () -> assetStorageService.storeContextIcon(contextId, file)
         );
 
         assertEquals("icon file is required", exception.getMessage());
@@ -82,11 +82,11 @@ class AssetStorageServiceTests {
     void rejectsInvalidContextIconType() {
         UUID contextId = UUID.randomUUID();
         MockMultipartFile file = new MockMultipartFile("file", "icon.txt", "text/plain", new byte[] {1});
-        AssetStorageService service = service();
+        AssetStorageService assetStorageService = newAssetStorageService();
 
         IllegalArgumentException exception = assertThrows(
             IllegalArgumentException.class,
-            () -> service.storeContextIcon(contextId, file)
+            () -> assetStorageService.storeContextIcon(contextId, file)
         );
 
         assertEquals("icon file must be PNG, SVG or WebP", exception.getMessage());
@@ -97,9 +97,9 @@ class AssetStorageServiceTests {
         Path assetFile = tempDir.resolve("assets/contexts/context-id/icon.png");
         Files.createDirectories(assetFile.getParent());
         Files.writeString(assetFile, "icon");
-        AssetStorageService service = service();
+        AssetStorageService assetStorageService = newAssetStorageService();
 
-        service.deleteAsset("contexts/context-id/icon.png");
+        assetStorageService.deleteAsset("contexts/context-id/icon.png");
 
         assertFalse(Files.exists(assetFile));
     }
@@ -109,9 +109,9 @@ class AssetStorageServiceTests {
         Path assetFile = tempDir.resolve("assets/contexts/context-id/icon.png");
         Files.createDirectories(assetFile.getParent());
         Files.writeString(assetFile, "icon");
-        AssetStorageService service = service();
+        AssetStorageService assetStorageService = newAssetStorageService();
 
-        var resource = service.loadAsResource("contexts/context-id/icon.png");
+        var resource = assetStorageService.loadAsResource("contexts/context-id/icon.png");
 
         assertNotNull(resource);
         assertTrue(resource.exists());
@@ -124,37 +124,37 @@ class AssetStorageServiceTests {
         Path assetDirectory = tempDir.resolve("assets");
         Files.createDirectories(assetDirectory);
         Files.createSymbolicLink(assetDirectory.resolve("secret-link.txt"), secretFile);
-        AssetStorageService service = service();
+        AssetStorageService assetStorageService = newAssetStorageService();
 
-        assertThrows(IllegalArgumentException.class, () -> service.loadAsResource("secret-link.txt"));
+        assertThrows(IllegalArgumentException.class, () -> assetStorageService.loadAsResource("secret-link.txt"));
     }
 
     @Test
     void resolvesKnownMediaType() {
-        AssetStorageService service = service();
+        AssetStorageService assetStorageService = newAssetStorageService();
 
-        assertEquals(MediaType.IMAGE_PNG, service.mediaType("contexts/context-id/icon.png"));
+        assertEquals(MediaType.IMAGE_PNG, assetStorageService.mediaType("contexts/context-id/icon.png"));
     }
 
     @Test
     void fallsBackToOctetStreamForUnknownMediaType() {
-        AssetStorageService service = service();
+        AssetStorageService assetStorageService = newAssetStorageService();
 
-        assertEquals(MediaType.APPLICATION_OCTET_STREAM, service.mediaType("contexts/context-id/icon.bin"));
+        assertEquals(MediaType.APPLICATION_OCTET_STREAM, assetStorageService.mediaType("contexts/context-id/icon.bin"));
     }
 
     @Test
     void buildsPublicUrl() {
-        AssetStorageService service = service();
+        AssetStorageService assetStorageService = newAssetStorageService();
 
-        assertEquals("/assets/contexts/context-id/icon.png", service.publicUrl("contexts/context-id/icon.png"));
+        assertEquals("/assets/contexts/context-id/icon.png", assetStorageService.publicUrl("contexts/context-id/icon.png"));
     }
 
     @Test
     void returnsNullPublicUrlWhenRelativePathIsBlank() {
-        AssetStorageService service = service();
+        AssetStorageService assetStorageService = newAssetStorageService();
 
-        assertNull(service.publicUrl(" "));
+        assertNull(assetStorageService.publicUrl(" "));
     }
 
     private AssetsProperties properties() {
@@ -163,7 +163,7 @@ class AssetStorageServiceTests {
         return properties;
     }
 
-    private AssetStorageService service() {
+    private AssetStorageService newAssetStorageService() {
         return new AssetStorageService(properties(), new AssetPathNormalizer());
     }
 }
