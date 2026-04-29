@@ -1,0 +1,158 @@
+@media (max-width: 1100px) {
+  .workspace {
+    padding: 10px;
+  }
+
+  .inbox-layout {
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .pane {
+    min-height: clamp(340px, 60vh, 680px);
+  }
+
+  .list-pane__title {
+    font-size: 1.18rem;
+  }
+
+  .list-pane__meta,
+  .list-pane__panel-index {
+    font-size: 0.9rem;
+  }
+
+  .pane__header {
+    padding: 0 10px;
+  }
+
+  .pane__status {
+    gap: 8px;
+    font-size: 0.8rem;
+  }
+
+  .tree-entry {
+    padding: 4px 6px;
+  }
+
+  .tree-entry__label,
+  .detail-card__title,
+  .detail-list__item {
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-aspect-ratio: 3/4), (max-width: 700px) {
+  .inbox-layout {
+    grid-template-columns: 1fr;
+    width: min(100%, 920px);
+  }
+
+  .pane {
+    min-height: clamp(220px, 42vh, 420px);
+  }
+
+  .inbox-terminal-layout {
+    padding: 16px 8px 10px;
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(260px, 42vh) minmax(260px, 1fr);
+  }
+
+  .stuff-detail-layout {
+    padding: 16px 8px 10px;
+  }
+
+  .list-pane {
+    border-bottom-width: 1px;
+  }
+
+  .list-pane:last-child {
+    border-bottom: 0;
+  }
+
+  .list-pane__header {
+    min-height: 54px;
+    padding: 0 16px;
+  }
+
+  .list-pane__title {
+    font-size: 1rem;
+  }
+
+  .list-pane__panel-index {
+    display: none;
+  }
+
+  .list-pane__body--detail {
+    padding: 18px 16px 22px;
+  }
+
+  .tree-list--inbox .tree-entry {
+    padding-inline: 16px;
+  }
+
+  .list-workspace__footer {
+    flex-wrap: wrap;
+    min-height: auto;
+  }
+
+  .list-workspace__brand,
+  .list-workspace__current {
+    width: 100%;
+    justify-content: flex-start;
+    min-height: 40px;
+  }
+}
+
+@media (max-width: 640px) {
+  .workspace {
+    padding: 8px;
+  }
+
+  .pane__header {
+    min-height: 38px;
+    padding: 0 8px;
+  }
+
+  .pane__tab {
+    max-width: min(100%, calc(100% - 56px));
+    min-height: 26px;
+    padding: 0 8px;
+    font-size: 0.86rem;
+  }
+
+  .pane__status {
+    font-size: 0.76rem;
+  }
+
+  .pane__body {
+    padding: 8px 4px 6px;
+  }
+
+  .pane__body--detail {
+    padding-inline: 8px;
+  }
+
+  .tree-entry {
+    align-items: flex-start;
+    min-height: 36px;
+    padding-block: 4px;
+  }
+
+  .leader-menu {
+    left: 8px;
+    right: 8px;
+    width: auto;
+    bottom: 8px;
+  }
+
+  .tree-entry__marker,
+  .tree-entry__icon {
+    margin-top: 3px;
+  }
+
+  .tree-entry__label,
+  .detail-card__title,
+  .detail-list__item {
+    font-size: 0.88rem;
+  }
+}
