@@ -26,6 +26,7 @@ public class PersistenceGitSyncService {
     private final PersistenceBootstrapProperties persistenceBootstrapProperties;
     private final PersistenceSyncProperties persistenceSyncProperties;
     private final GitCommandService gitCommandService;
+    private final SqliteJdbcUrlResolver sqliteJdbcUrlResolver;
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
 
     private volatile Path repositoryDirectory;
@@ -39,11 +40,13 @@ public class PersistenceGitSyncService {
     public PersistenceGitSyncService(
         PersistenceBootstrapProperties persistenceBootstrapProperties,
         PersistenceSyncProperties persistenceSyncProperties,
-        GitCommandService gitCommandService
+        GitCommandService gitCommandService,
+        SqliteJdbcUrlResolver sqliteJdbcUrlResolver
     ) {
         this.persistenceBootstrapProperties = persistenceBootstrapProperties;
         this.persistenceSyncProperties = persistenceSyncProperties;
         this.gitCommandService = gitCommandService;
+        this.sqliteJdbcUrlResolver = sqliteJdbcUrlResolver;
         this.state = persistenceSyncProperties.isEnabled() ? PersistenceSyncState.IDLE : PersistenceSyncState.DISABLED;
     }
 
@@ -53,7 +56,7 @@ public class PersistenceGitSyncService {
             return;
         }
 
-        Path resolvedDatabasePath = resolveSqlitePath(jdbcUrl);
+        Path resolvedDatabasePath = sqliteJdbcUrlResolver.resolve(jdbcUrl);
         Path resolvedRepositoryDirectory = Path.of(persistenceBootstrapProperties.getCloneDirectory()).toAbsolutePath().normalize();
 
         requireInitializedPaths(resolvedDatabasePath, resolvedRepositoryDirectory);
@@ -199,24 +202,6 @@ public class PersistenceGitSyncService {
         }
 
         return repositoryDirectory;
-    }
-
-    private Path resolveSqlitePath(String jdbcUrl) {
-        if (jdbcUrl == null || !jdbcUrl.startsWith("jdbc:sqlite:")) {
-            throw new IllegalArgumentException("Only jdbc:sqlite URLs are supported");
-        }
-
-        String pathPart = jdbcUrl.substring("jdbc:sqlite:".length());
-        if (pathPart.startsWith("file:")) {
-            pathPart = pathPart.substring("file:".length());
-        }
-
-        int queryIndex = pathPart.indexOf('?');
-        if (queryIndex >= 0) {
-            pathPart = pathPart.substring(0, queryIndex);
-        }
-
-        return Path.of(pathPart).toAbsolutePath().normalize();
     }
 
     @PreDestroy

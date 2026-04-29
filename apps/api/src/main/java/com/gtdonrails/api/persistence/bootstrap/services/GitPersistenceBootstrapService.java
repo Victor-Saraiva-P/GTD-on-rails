@@ -21,17 +21,20 @@ public class GitPersistenceBootstrapService {
 
     private final PersistenceBootstrapProperties persistenceBootstrapProperties;
     private final GitCommandService gitCommandService;
+    private final SqliteJdbcUrlResolver sqliteJdbcUrlResolver;
 
     public GitPersistenceBootstrapService(
         PersistenceBootstrapProperties persistenceBootstrapProperties,
-        GitCommandService gitCommandService
+        GitCommandService gitCommandService,
+        SqliteJdbcUrlResolver sqliteJdbcUrlResolver
     ) {
         this.persistenceBootstrapProperties = persistenceBootstrapProperties;
         this.gitCommandService = gitCommandService;
+        this.sqliteJdbcUrlResolver = sqliteJdbcUrlResolver;
     }
 
     public void ensureDatabaseAvailable(String jdbcUrl) {
-        Path databasePath = resolveSqlitePath(jdbcUrl);
+        Path databasePath = sqliteJdbcUrlResolver.resolve(jdbcUrl);
         if (Files.exists(databasePath) || !persistenceBootstrapProperties.isEnabled()) {
             return;
         }
@@ -61,24 +64,6 @@ public class GitPersistenceBootstrapService {
         if (!StringUtils.hasText(value)) {
             throw new IllegalStateException("Missing " + propertyName);
         }
-    }
-
-    Path resolveSqlitePath(String jdbcUrl) {
-        if (!StringUtils.hasText(jdbcUrl) || !jdbcUrl.startsWith("jdbc:sqlite:")) {
-            throw new IllegalArgumentException("Only jdbc:sqlite URLs are supported");
-        }
-
-        String pathPart = jdbcUrl.substring("jdbc:sqlite:".length());
-        if (pathPart.startsWith("file:")) {
-            pathPart = pathPart.substring("file:".length());
-        }
-
-        int queryIndex = pathPart.indexOf('?');
-        if (queryIndex >= 0) {
-            pathPart = pathPart.substring(0, queryIndex);
-        }
-
-        return Path.of(pathPart).toAbsolutePath().normalize();
     }
 
     private void cloneRepositoryIfNeeded(Path databasePath) throws IOException, InterruptedException {

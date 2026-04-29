@@ -69,7 +69,8 @@ class PersistenceGitSyncServiceTests {
 
         GitPersistenceBootstrapService bootstrapService = new GitPersistenceBootstrapService(
             properties,
-            new GitCommandService()
+            new GitCommandService(),
+            new SqliteJdbcUrlResolver()
         );
         bootstrapService.ensureDatabaseAvailable("jdbc:sqlite:" + databasePath);
         return new RuntimePersistence(properties, cloneDirectory, databasePath);
@@ -111,7 +112,8 @@ class PersistenceGitSyncServiceTests {
         PersistenceGitSyncService syncService = new PersistenceGitSyncService(
             bootstrapProperties,
             syncProperties,
-            new GitCommandService()
+            new GitCommandService(),
+            new SqliteJdbcUrlResolver()
         );
         syncService.initialize("jdbc:sqlite:" + databasePath);
         return syncService;

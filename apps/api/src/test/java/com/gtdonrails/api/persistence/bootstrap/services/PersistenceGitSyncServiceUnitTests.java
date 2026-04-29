@@ -151,7 +151,8 @@ class PersistenceGitSyncServiceUnitTests {
         PersistenceGitSyncService service = new PersistenceGitSyncService(
             bootstrapProperties,
             syncProperties,
-            gitCommandService
+            gitCommandService,
+            new SqliteJdbcUrlResolver()
         );
         service.initialize("jdbc:sqlite:" + databasePath);
         return service;
