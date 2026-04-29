@@ -6,6 +6,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Comparator;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import com.gtdonrails.api.persistence.bootstrap.properties.PersistenceBootstrapProperties;
 import org.slf4j.Logger;
@@ -172,7 +173,7 @@ public class GitPersistenceBootstrapService {
             return;
         }
 
-        try (var stream = Files.walk(directory)) {
+        try (Stream<Path> stream = Files.walk(directory)) {
             stream.sorted(Comparator.reverseOrder())
                 .forEach(path -> {
                     try {

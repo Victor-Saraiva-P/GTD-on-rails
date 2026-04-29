@@ -17,6 +17,7 @@ import com.gtdonrails.api.normalizers.AssetPathNormalizer;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 
@@ -111,7 +112,7 @@ class AssetStorageServiceTests {
         Files.writeString(assetFile, "icon");
         AssetStorageService assetStorageService = newAssetStorageService();
 
-        var resource = assetStorageService.loadAsResource("contexts/context-id/icon.png");
+        Resource resource = assetStorageService.loadAsResource("contexts/context-id/icon.png");
 
         assertNotNull(resource);
         assertTrue(resource.exists());
