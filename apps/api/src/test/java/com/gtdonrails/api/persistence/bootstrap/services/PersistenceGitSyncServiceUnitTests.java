@@ -57,6 +57,15 @@ class PersistenceGitSyncServiceUnitTests {
         service.syncNow("manual", PersistenceChangeType.UPDATE_CONTEXT);
 
         InOrder inOrder = inOrder(gitCommandService);
+        verifySyncCommandOrder(service, gitCommandService, inOrder);
+        assertEquals(PersistenceSyncState.IDLE, service.status().state());
+    }
+
+    private void verifySyncCommandOrder(
+        PersistenceGitSyncService service,
+        GitCommandService gitCommandService,
+        InOrder inOrder
+    ) throws Exception {
         inOrder.verify(gitCommandService).statusPorcelain(service.repositoryDirectory());
         inOrder.verify(gitCommandService).addAll(service.repositoryDirectory());
         inOrder.verify(gitCommandService).commit(
@@ -67,7 +76,6 @@ class PersistenceGitSyncServiceUnitTests {
         );
         inOrder.verify(gitCommandService).pullFastForwardOnly(service.repositoryDirectory());
         inOrder.verify(gitCommandService).push(service.repositoryDirectory());
-        assertEquals(PersistenceSyncState.IDLE, service.status().state());
     }
 
     @Test
@@ -134,17 +142,12 @@ class PersistenceGitSyncServiceUnitTests {
     }
 
     private PersistenceGitSyncService createService(GitCommandService gitCommandService, boolean enabled) throws Exception {
-        Path cloneDirectory = tempDir.resolve("gtd-persistence");
-        Path databasePath = cloneDirectory.resolve("db/gtd-on-rails.db");
-        Files.createDirectories(databasePath.getParent());
-        Files.writeString(databasePath, "seed");
-
+        Path databasePath = createRuntimeDatabase();
         PersistenceBootstrapProperties bootstrapProperties = new PersistenceBootstrapProperties();
-        bootstrapProperties.setCloneDirectory(cloneDirectory.toString());
+        bootstrapProperties.setCloneDirectory(databasePath.getParent().getParent().toString());
 
         PersistenceSyncProperties syncProperties = new PersistenceSyncProperties();
         syncProperties.setEnabled(enabled);
-
         PersistenceGitSyncService service = new PersistenceGitSyncService(
             bootstrapProperties,
             syncProperties,
@@ -152,5 +155,12 @@ class PersistenceGitSyncServiceUnitTests {
         );
         service.initialize("jdbc:sqlite:" + databasePath);
         return service;
+    }
+
+    private Path createRuntimeDatabase() throws Exception {
+        Path databasePath = tempDir.resolve("gtd-persistence/db/gtd-on-rails.db");
+        Files.createDirectories(databasePath.getParent());
+        Files.writeString(databasePath, "seed");
+        return databasePath;
     }
 }

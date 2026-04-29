@@ -26,74 +26,79 @@ class PersistenceGitSyncServiceTests {
     @Test
     void syncCreatesCommitAndPushesToRemote() throws Exception {
         Path remoteRepository = createBareRepository("remote.git");
-        seedRemoteRepository(remoteRepository, "dev", "initial");
-
-        Path cloneDirectory = tempDir.resolve("runtime/gtd-persistence");
-        Path databasePath = cloneDirectory.resolve("db/gtd-on-rails.db");
-
-        PersistenceBootstrapProperties bootstrapProperties = new PersistenceBootstrapProperties();
-        bootstrapProperties.setRepositoryUrl(remoteRepository.toString());
-        bootstrapProperties.setBranch("dev");
-        bootstrapProperties.setCloneDirectory(cloneDirectory.toString());
-
-        GitPersistenceBootstrapService bootstrapService = new GitPersistenceBootstrapService(
-            bootstrapProperties,
-            new GitCommandService()
+        RuntimePersistence runtimePersistence = bootstrapRuntimePersistence(remoteRepository);
+        PersistenceGitSyncService syncService = createSyncService(
+            runtimePersistence.bootstrapProperties(),
+            runtimePersistence.databasePath()
         );
-        bootstrapService.ensureDatabaseAvailable("jdbc:sqlite:" + databasePath);
 
-        PersistenceGitSyncService syncService = createSyncService(bootstrapProperties, databasePath);
-
-        Files.writeString(databasePath, "changed locally");
+        Files.writeString(runtimePersistence.databasePath(), "changed locally");
         syncService.requestSync("item updated", PersistenceChangeType.UPDATE_ITEM);
         waitForIdle(syncService);
 
         assertEquals(PersistenceSyncState.IDLE, syncService.status().state());
-        List<String> localLogMessages = new GitCommandService().logMessages(cloneDirectory);
+        List<String> localLogMessages = new GitCommandService().logMessages(runtimePersistence.cloneDirectory());
         assertEquals(List.of("feat(data): update item", "seed dev"), localLogMessages.subList(0, 2));
-
-        Path verificationClone = tempDir.resolve("verification");
-        runGit(tempDir, "clone", "--branch", "dev", remoteRepository.toString(), verificationClone.toString());
-        assertEquals("changed locally", Files.readString(verificationClone.resolve("db/gtd-on-rails.db")));
-        List<String> remoteLogMessages = new GitCommandService().logMessages(verificationClone);
-        assertEquals(List.of("feat(data): update item", "seed dev"), remoteLogMessages.subList(0, 2));
+        assertRemoteDatabaseContent(remoteRepository, "changed locally");
     }
 
     @Test
     void scheduledPullBringsRemoteChangesWhenCloneIsClean() throws Exception {
         Path remoteRepository = createBareRepository("remote.git");
-        seedRemoteRepository(remoteRepository, "dev", "initial");
-
-        Path cloneDirectory = tempDir.resolve("runtime/gtd-persistence");
-        Path databasePath = cloneDirectory.resolve("db/gtd-on-rails.db");
-
-        PersistenceBootstrapProperties bootstrapProperties = new PersistenceBootstrapProperties();
-        bootstrapProperties.setRepositoryUrl(remoteRepository.toString());
-        bootstrapProperties.setBranch("dev");
-        bootstrapProperties.setCloneDirectory(cloneDirectory.toString());
-
-        GitPersistenceBootstrapService bootstrapService = new GitPersistenceBootstrapService(
-            bootstrapProperties,
-            new GitCommandService()
+        RuntimePersistence runtimePersistence = bootstrapRuntimePersistence(remoteRepository);
+        PersistenceGitSyncService syncService = createSyncService(
+            runtimePersistence.bootstrapProperties(),
+            runtimePersistence.databasePath()
         );
-        bootstrapService.ensureDatabaseAvailable("jdbc:sqlite:" + databasePath);
 
-        PersistenceGitSyncService syncService = createSyncService(bootstrapProperties, databasePath);
-
-        Path writerClone = tempDir.resolve("writer");
-        runGit(tempDir, "clone", "--branch", "dev", remoteRepository.toString(), writerClone.toString());
-        Files.writeString(writerClone.resolve("db/gtd-on-rails.db"), "updated remotely");
-        runGit(writerClone, "config", "user.name", "Codex Test");
-        runGit(writerClone, "config", "user.email", "codex@example.com");
-        runGit(writerClone, "commit", "-am", "remote update");
-        runGit(writerClone, "push", "origin", "dev");
+        commitRemoteDatabaseChange(remoteRepository, "updated remotely");
 
         syncService.requestPull("scheduled");
         waitForIdle(syncService);
 
-        assertEquals("updated remotely", Files.readString(databasePath));
-        List<String> pulledLogMessages = new GitCommandService().logMessages(cloneDirectory);
+        assertEquals("updated remotely", Files.readString(runtimePersistence.databasePath()));
+        List<String> pulledLogMessages = new GitCommandService().logMessages(runtimePersistence.cloneDirectory());
         assertEquals(List.of("remote update", "seed dev"), pulledLogMessages.subList(0, 2));
+    }
+
+    private RuntimePersistence bootstrapRuntimePersistence(Path remoteRepository) throws Exception {
+        seedRemoteRepository(remoteRepository, "dev", "initial");
+        Path cloneDirectory = tempDir.resolve("runtime/gtd-persistence");
+        Path databasePath = cloneDirectory.resolve("db/gtd-on-rails.db");
+        PersistenceBootstrapProperties properties = bootstrapProperties(remoteRepository, cloneDirectory);
+
+        GitPersistenceBootstrapService bootstrapService = new GitPersistenceBootstrapService(
+            properties,
+            new GitCommandService()
+        );
+        bootstrapService.ensureDatabaseAvailable("jdbc:sqlite:" + databasePath);
+        return new RuntimePersistence(properties, cloneDirectory, databasePath);
+    }
+
+    private PersistenceBootstrapProperties bootstrapProperties(Path remoteRepository, Path cloneDirectory) {
+        PersistenceBootstrapProperties properties = new PersistenceBootstrapProperties();
+        properties.setRepositoryUrl(remoteRepository.toString());
+        properties.setBranch("dev");
+        properties.setCloneDirectory(cloneDirectory.toString());
+        return properties;
+    }
+
+    private void commitRemoteDatabaseChange(Path remoteRepository, String content) throws Exception {
+        Path writerClone = tempDir.resolve("writer");
+        runGit(tempDir, "clone", "--branch", "dev", remoteRepository.toString(), writerClone.toString());
+        Files.writeString(writerClone.resolve("db/gtd-on-rails.db"), content);
+        runGit(writerClone, "config", "user.name", "Codex Test");
+        runGit(writerClone, "config", "user.email", "codex@example.com");
+        runGit(writerClone, "commit", "-am", "remote update");
+        runGit(writerClone, "push", "origin", "dev");
+    }
+
+    private void assertRemoteDatabaseContent(Path remoteRepository, String expectedContent) throws Exception {
+        Path verificationClone = tempDir.resolve("verification");
+        runGit(tempDir, "clone", "--branch", "dev", remoteRepository.toString(), verificationClone.toString());
+        assertEquals(expectedContent, Files.readString(verificationClone.resolve("db/gtd-on-rails.db")));
+        List<String> remoteLogMessages = new GitCommandService().logMessages(verificationClone);
+        assertEquals(List.of("feat(data): update item", "seed dev"), remoteLogMessages.subList(0, 2));
     }
 
     private PersistenceGitSyncService createSyncService(
@@ -167,5 +172,12 @@ class PersistenceGitSyncServiceTests {
         if (exitCode != 0) {
             throw new IllegalStateException(output.trim());
         }
+    }
+
+    private record RuntimePersistence(
+        PersistenceBootstrapProperties bootstrapProperties,
+        Path cloneDirectory,
+        Path databasePath
+    ) {
     }
 }

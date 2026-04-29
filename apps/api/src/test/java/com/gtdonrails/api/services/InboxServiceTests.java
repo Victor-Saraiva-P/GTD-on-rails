@@ -43,24 +43,8 @@ class InboxServiceTests {
     void listStuffReturnsMappedItems() {
         Item olderItem = new Item(new Title("Older item"), null);
         Item newerItem = new Item(new Title("Newer item"), new Body("Body"));
-        ItemResponseDto olderResponse = new ItemResponseDto(
-            UUID.randomUUID(),
-            "Older item",
-            null,
-            new BigDecimal("1.0"),
-            null,
-            "STUFF",
-            Instant.now(),
-            List.of());
-        ItemResponseDto newerResponse = new ItemResponseDto(
-            UUID.randomUUID(),
-            "Newer item",
-            "Body",
-            new BigDecimal("2.5"),
-            null,
-            "STUFF",
-            Instant.now(),
-            List.of());
+        ItemResponseDto olderResponse = itemResponse("Older item", null, "1.0");
+        ItemResponseDto newerResponse = itemResponse("Newer item", "Body", "2.5");
 
         when(itemRepository.findAllByStatusAndDeletedAtIsNullOrderByCreatedAtDesc(ItemStatus.STUFF))
             .thenReturn(List.of(newerItem, olderItem));
@@ -80,5 +64,17 @@ class InboxServiceTests {
         List<ItemResponseDto> response = inboxService.listStuff();
 
         assertEquals(List.of(), response);
+    }
+
+    private ItemResponseDto itemResponse(String title, String body, String energy) {
+        return new ItemResponseDto(
+            UUID.randomUUID(),
+            title,
+            body,
+            new BigDecimal(energy),
+            null,
+            "STUFF",
+            Instant.now(),
+            List.of());
     }
 }

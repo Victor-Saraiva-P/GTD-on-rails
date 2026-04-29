@@ -84,15 +84,7 @@ class ItemServiceTests {
     void getItemReturnsMappedItem() {
         UUID itemId = UUID.randomUUID();
         Item item = new Item(new Title("Capture idea"), null);
-        ItemResponseDto expectedResponse = new ItemResponseDto(
-            itemId,
-            "Capture idea",
-            null,
-            null,
-            null,
-            "STUFF",
-            Instant.now(),
-            List.of());
+        ItemResponseDto expectedResponse = itemResponse(itemId, "Capture idea");
 
         when(itemRepository.findByIdAndDeletedAtIsNull(itemId)).thenReturn(Optional.of(item));
         when(itemMapper.toResponse(item)).thenReturn(expectedResponse);
@@ -117,17 +109,8 @@ class ItemServiceTests {
     // createItem
     @Test
     void createItemNormalizesAndSavesItem() {
-        ItemResponseDto expectedResponse = new ItemResponseDto(
-            UUID.randomUUID(),
-            "Capture idea later",
-            "line 1\nline 2",
-            energy("4.5"),
-            new ItemTimeDto(1, 30),
-            "STUFF",
-            Instant.now(),
-            List.of());
-        when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(itemMapper.toResponse(any(Item.class))).thenReturn(expectedResponse);
+        ItemResponseDto expectedResponse = itemResponse("Capture idea later", "line 1\nline 2");
+        stubSavedItemResponse(expectedResponse);
 
         ItemResponseDto response = itemService.createItem(new CreateItemRequestDto(
             " Capture\tidea\r\nlater ",
@@ -136,12 +119,7 @@ class ItemServiceTests {
             new ItemTimeRequestDto(1L, 30),
             null));
 
-        verify(itemRepository).save(itemCaptor.capture());
-        Item savedItem = itemCaptor.getValue();
-        assertEquals("Capture idea later", savedItem.getTitle().value());
-        assertEquals("line 1\nline 2", savedItem.getBody().value());
-        assertEquals(energy("4.5"), savedItem.getEnergy());
-        assertEquals(Duration.ofMinutes(90), savedItem.getTime());
+        assertSavedTimedItem("Capture idea later", "line 1\nline 2", "4.5", Duration.ofMinutes(90));
         assertEquals(expectedResponse, response);
         verify(persistenceGitSyncService).requestSync("item created", PersistenceChangeType.CREATE_ITEM);
     }
@@ -152,49 +130,22 @@ class ItemServiceTests {
         UUID streetId = UUID.randomUUID();
         Context notebook = new Context("notebook");
         Context street = new Context("street");
-        ItemResponseDto expectedResponse = new ItemResponseDto(
-            UUID.randomUUID(),
-            "Capture idea",
-            null,
-            energy("2.0"),
-            null,
-            "STUFF",
-            Instant.now(),
-            List.of(
-                new ContextResponseDto(notebookId, "notebook", null),
-                new ContextResponseDto(streetId, "street", null)));
+        ItemResponseDto expectedResponse = itemResponseWithContexts(notebookId, streetId);
 
         when(contextRepository.findAllByIdInAndDeletedAtIsNull(any()))
             .thenReturn(List.of(notebook, street));
-        when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(itemMapper.toResponse(any(Item.class))).thenReturn(expectedResponse);
+        stubSavedItemResponse(expectedResponse);
 
-        ItemResponseDto response = itemService.createItem(new CreateItemRequestDto(
-            "Capture idea",
-            null,
-            energy("2.0"),
-            null,
-            List.of(notebookId, streetId)));
+        ItemResponseDto response = itemService.createItem(createItemWithContextsRequest(notebookId, streetId));
 
-        verify(itemRepository).save(itemCaptor.capture());
-        Item savedItem = itemCaptor.getValue();
-        assertEquals(2, savedItem.getContexts().size());
+        assertEquals(2, capturedSavedItem().getContexts().size());
         assertEquals(expectedResponse, response);
     }
 
     @Test
     void createItemSavesNullBodyWhenNormalizedBodyIsAbsent() {
-        ItemResponseDto expectedResponse = new ItemResponseDto(
-            UUID.randomUUID(),
-            "Capture idea",
-            null,
-            null,
-            null,
-            "STUFF",
-            Instant.now(),
-            List.of());
-        when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(itemMapper.toResponse(any(Item.class))).thenReturn(expectedResponse);
+        ItemResponseDto expectedResponse = itemResponse("Capture idea", null);
+        stubSavedItemResponse(expectedResponse);
 
         ItemResponseDto response = itemService.createItem(new CreateItemRequestDto(
             " Capture idea ",
@@ -203,8 +154,7 @@ class ItemServiceTests {
             null,
             null));
 
-        verify(itemRepository).save(itemCaptor.capture());
-        Item savedItem = itemCaptor.getValue();
+        Item savedItem = capturedSavedItem();
         assertEquals("Capture idea", savedItem.getTitle().value());
         assertNull(savedItem.getBody());
         assertNull(savedItem.getEnergy());
@@ -249,33 +199,14 @@ class ItemServiceTests {
     void updateItemClearsBodyWhenNormalizedBodyIsAbsent() {
         UUID itemId = UUID.randomUUID();
         Item existingItem = new Item(new Title("Old title"), new Body("Old body"));
-        ItemResponseDto expectedResponse = new ItemResponseDto(
-            itemId,
-            "New title",
-            null,
-            energy("3.0"),
-            null,
-            "STUFF",
-            Instant.now(),
-            List.of());
+        ItemResponseDto expectedResponse = itemResponse(itemId, "New title");
 
         when(itemRepository.findByIdAndDeletedAtIsNull(itemId)).thenReturn(Optional.of(existingItem));
-        when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(itemMapper.toResponse(any(Item.class))).thenReturn(expectedResponse);
+        stubSavedItemResponse(expectedResponse);
 
-        ItemResponseDto response = itemService.updateItem(itemId, new UpdateItemRequestDto(
-            " New title ",
-            "   ",
-            energy("3.0"),
-            null,
-            null));
+        ItemResponseDto response = itemService.updateItem(itemId, clearBodyUpdateRequest());
 
-        verify(itemRepository).save(itemCaptor.capture());
-        Item savedItem = itemCaptor.getValue();
-        assertEquals("New title", savedItem.getTitle().value());
-        assertNull(savedItem.getBody());
-        assertEquals(energy("3.0"), savedItem.getEnergy());
-        assertNull(savedItem.getTime());
+        assertSavedItemClearedBody();
         assertEquals(expectedResponse, response);
     }
 
@@ -283,38 +214,18 @@ class ItemServiceTests {
     void updateItemReplacesContexts() {
         UUID itemId = UUID.randomUUID();
         UUID homeId = UUID.randomUUID();
-        Item existingItem = new Item(new Title("Old title"), null);
-        existingItem.addContext(new Context("old"));
+        Item existingItem = oldItemWithContext();
         Context home = new Context("home");
-        ItemResponseDto expectedResponse = new ItemResponseDto(
-            itemId,
-            "New title",
-            null,
-            energy("5.0"),
-            null,
-            "STUFF",
-            Instant.now(),
-            List.of(new ContextResponseDto(homeId, "home", null)));
+        ItemResponseDto expectedResponse = itemResponseWithContext(itemId, homeId);
 
         when(itemRepository.findByIdAndDeletedAtIsNull(itemId)).thenReturn(Optional.of(existingItem));
         when(contextRepository.findAllByIdInAndDeletedAtIsNull(any()))
             .thenReturn(List.of(home));
-        when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(itemMapper.toResponse(any(Item.class))).thenReturn(expectedResponse);
+        stubSavedItemResponse(expectedResponse);
 
-        ItemResponseDto response = itemService.updateItem(itemId, new UpdateItemRequestDto(
-            "New title",
-            null,
-            energy("5.0"),
-            null,
-            List.of(homeId)));
+        ItemResponseDto response = itemService.updateItem(itemId, updateItemWithContextRequest(homeId));
 
-        verify(itemRepository).save(itemCaptor.capture());
-        Item savedItem = itemCaptor.getValue();
-        assertEquals(1, savedItem.getContexts().size());
-        assertEquals("home", savedItem.getContexts().iterator().next().getName());
-        assertEquals(energy("5.0"), savedItem.getEnergy());
-        assertNull(savedItem.getTime());
+        assertSavedItemHasHomeContext();
         assertEquals(expectedResponse, response);
         verify(persistenceGitSyncService).requestSync("item updated", PersistenceChangeType.UPDATE_ITEM);
     }
@@ -323,19 +234,10 @@ class ItemServiceTests {
     void updateItemNormalizesAndUpdatesItem() {
         UUID itemId = UUID.randomUUID();
         Item existingItem = new Item(new Title("Old title"), null);
-        ItemResponseDto expectedResponse = new ItemResponseDto(
-            itemId,
-            "New title later",
-            "line 1\nline 2",
-            energy("7.5"),
-            new ItemTimeDto(2, 15),
-            "STUFF",
-            Instant.now(),
-            List.of());
+        ItemResponseDto expectedResponse = itemResponse(itemId, "New title later", "line 1\nline 2");
 
         when(itemRepository.findByIdAndDeletedAtIsNull(itemId)).thenReturn(Optional.of(existingItem));
-        when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(itemMapper.toResponse(any(Item.class))).thenReturn(expectedResponse);
+        stubSavedItemResponse(expectedResponse);
 
         ItemResponseDto response = itemService.updateItem(itemId, new UpdateItemRequestDto(
             " New\t title\r\nlater ",
@@ -344,12 +246,7 @@ class ItemServiceTests {
             new ItemTimeRequestDto(2L, 15),
             null));
 
-        verify(itemRepository).save(itemCaptor.capture());
-        Item savedItem = itemCaptor.getValue();
-        assertEquals("New  title later", savedItem.getTitle().value());
-        assertEquals("line 1\nline 2", savedItem.getBody().value());
-        assertEquals(energy("7.5"), savedItem.getEnergy());
-        assertEquals(Duration.ofMinutes(135), savedItem.getTime());
+        assertSavedTimedItem("New  title later", "line 1\nline 2", "7.5", Duration.ofMinutes(135));
         assertEquals(expectedResponse, response);
     }
 
@@ -387,33 +284,14 @@ class ItemServiceTests {
         Item existingItem = new Item(new Title("Old title"), null);
         Context office = new Context("office");
         existingItem.addContext(office);
-        ItemResponseDto expectedResponse = new ItemResponseDto(
-            itemId,
-            "New title",
-            null,
-            null,
-            null,
-            "STUFF",
-            Instant.now(),
-            List.of(new ContextResponseDto(UUID.randomUUID(), "office", null)));
+        ItemResponseDto expectedResponse = itemResponseWithOffice(itemId);
 
         when(itemRepository.findByIdAndDeletedAtIsNull(itemId)).thenReturn(Optional.of(existingItem));
-        when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(itemMapper.toResponse(any(Item.class))).thenReturn(expectedResponse);
+        stubSavedItemResponse(expectedResponse);
 
-        ItemResponseDto response = itemService.updateItem(itemId, new UpdateItemRequestDto(
-            "New title",
-            null,
-            null,
-            null,
-            null));
+        ItemResponseDto response = itemService.updateItem(itemId, updateItemWithoutContextsRequest());
 
-        verify(itemRepository).save(itemCaptor.capture());
-        Item savedItem = itemCaptor.getValue();
-        assertEquals(1, savedItem.getContexts().size());
-        assertEquals("office", savedItem.getContexts().iterator().next().getName());
-        assertNull(savedItem.getEnergy());
-        assertNull(savedItem.getTime());
+        assertSavedItemKeptOfficeContext();
         assertEquals(expectedResponse, response);
         verify(contextRepository, never()).findAllByIdInAndDeletedAtIsNull(any());
     }
@@ -450,16 +328,7 @@ class ItemServiceTests {
 
     @Test
     void createItemRequestsPersistenceSyncOnlyAfterCommitWhenTransactionSynchronizationIsActive() {
-        when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(itemMapper.toResponse(any(Item.class))).thenReturn(new ItemResponseDto(
-            UUID.randomUUID(),
-            "Capture idea",
-            null,
-            null,
-            null,
-            "STUFF",
-            Instant.now(),
-            List.of()));
+        stubSavedItemResponse(itemResponse("Capture idea", null));
 
         TransactionSynchronizationManager.initSynchronization();
         try {
@@ -479,16 +348,7 @@ class ItemServiceTests {
 
     @Test
     void createItemDoesNotRequestPersistenceSyncWithoutCommitWhenTransactionSynchronizationIsActive() {
-        when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(itemMapper.toResponse(any(Item.class))).thenReturn(new ItemResponseDto(
-            UUID.randomUUID(),
-            "Capture idea",
-            null,
-            null,
-            null,
-            "STUFF",
-            Instant.now(),
-            List.of()));
+        stubSavedItemResponse(itemResponse("Capture idea", null));
 
         TransactionSynchronizationManager.initSynchronization();
         try {
@@ -498,5 +358,127 @@ class ItemServiceTests {
         } finally {
             TransactionSynchronizationManager.clearSynchronization();
         }
+    }
+
+    private ItemResponseDto itemResponse(String title, String body) {
+        return itemResponse(UUID.randomUUID(), title, body);
+    }
+
+    private ItemResponseDto itemResponse(UUID id, String title) {
+        return itemResponse(id, title, null);
+    }
+
+    private ItemResponseDto itemResponse(UUID id, String title, String body) {
+        return new ItemResponseDto(id, title, body, null, null, "STUFF", Instant.now(), List.of());
+    }
+
+    private ItemResponseDto itemResponseWithContexts(UUID notebookId, UUID streetId) {
+        return new ItemResponseDto(
+            UUID.randomUUID(),
+            "Capture idea",
+            null,
+            energy("2.0"),
+            null,
+            "STUFF",
+            Instant.now(),
+            List.of(
+                new ContextResponseDto(notebookId, "notebook", null),
+                new ContextResponseDto(streetId, "street", null)));
+    }
+
+    private ItemResponseDto itemResponseWithContext(UUID itemId, UUID contextId) {
+        return new ItemResponseDto(
+            itemId,
+            "New title",
+            null,
+            energy("5.0"),
+            null,
+            "STUFF",
+            Instant.now(),
+            List.of(new ContextResponseDto(contextId, "home", null)));
+    }
+
+    private ItemResponseDto itemResponseWithOffice(UUID itemId) {
+        return new ItemResponseDto(
+            itemId,
+            "New title",
+            null,
+            null,
+            null,
+            "STUFF",
+            Instant.now(),
+            List.of(new ContextResponseDto(UUID.randomUUID(), "office", null)));
+    }
+
+    private void stubSavedItemResponse(ItemResponseDto expectedResponse) {
+        when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(itemMapper.toResponse(any(Item.class))).thenReturn(expectedResponse);
+    }
+
+    private CreateItemRequestDto createItemWithContextsRequest(UUID notebookId, UUID streetId) {
+        return new CreateItemRequestDto(
+            "Capture idea",
+            null,
+            energy("2.0"),
+            null,
+            List.of(notebookId, streetId));
+    }
+
+    private UpdateItemRequestDto updateItemWithContextRequest(UUID homeId) {
+        return new UpdateItemRequestDto("New title", null, energy("5.0"), null, List.of(homeId));
+    }
+
+    private UpdateItemRequestDto updateItemWithoutContextsRequest() {
+        return new UpdateItemRequestDto("New title", null, null, null, null);
+    }
+
+    private UpdateItemRequestDto clearBodyUpdateRequest() {
+        return new UpdateItemRequestDto(" New title ", "   ", energy("3.0"), null, null);
+    }
+
+    private Item oldItemWithContext() {
+        Item item = new Item(new Title("Old title"), null);
+        item.addContext(new Context("old"));
+        return item;
+    }
+
+    private Item capturedSavedItem() {
+        verify(itemRepository).save(itemCaptor.capture());
+        return itemCaptor.getValue();
+    }
+
+    private void assertSavedTimedItem(String title, String body, String energyValue, Duration time) {
+        Item savedItem = capturedSavedItem();
+        assertEquals(title, savedItem.getTitle().value());
+        assertEquals(body, savedItem.getBody().value());
+        assertEquals(energy(energyValue), savedItem.getEnergy());
+        assertEquals(time, savedItem.getTime());
+    }
+
+    private void assertSavedItemClearedBody() {
+        Item savedItem = capturedSavedItem();
+        assertEquals("New title", savedItem.getTitle().value());
+        assertNull(savedItem.getBody());
+        assertEquals(energy("3.0"), savedItem.getEnergy());
+        assertNull(savedItem.getTime());
+    }
+
+    private void assertSavedItemHasHomeContext() {
+        Item savedItem = capturedSavedItem();
+        assertSavedItemHasContext(savedItem, "home");
+        assertEquals(energy("5.0"), savedItem.getEnergy());
+        assertNull(savedItem.getTime());
+    }
+
+    private void assertSavedItemHasContext(Item savedItem, String name) {
+        assertEquals(1, savedItem.getContexts().size());
+        assertEquals(name, savedItem.getContexts().iterator().next().getName());
+    }
+
+    private void assertSavedItemKeptOfficeContext() {
+        Item savedItem = capturedSavedItem();
+        assertSavedItemHasContext(savedItem, "office");
+        assertNull(savedItem.getEnergy());
+        assertNull(savedItem.getTime());
     }
 }

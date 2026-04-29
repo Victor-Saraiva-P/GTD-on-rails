@@ -64,21 +64,23 @@ class GitPersistenceBootstrapServiceTests {
         runGit(repository, "config", "user.name", "Codex Test");
         runGit(repository, "config", "user.email", "codex@example.com");
 
-        Files.writeString(repository.resolve("db/gtd-on-rails.db"), "main");
-        runGit(repository, "add", "db/gtd-on-rails.db");
-        runGit(repository, "commit", "-m", "main db");
-
-        runGit(repository, "checkout", "-b", "dev");
-        Files.writeString(repository.resolve("db/gtd-on-rails.db"), "dev");
-        runGit(repository, "commit", "-am", "dev db");
-
-        runGit(repository, "checkout", "main");
-        runGit(repository, "checkout", "-b", "tests");
-        Files.writeString(repository.resolve("db/gtd-on-rails.db"), "tests");
-        runGit(repository, "commit", "-am", "tests db");
-
+        commitDatabaseContent(repository, "main", "main db");
+        createDatabaseBranch(repository, "dev", "dev");
+        createDatabaseBranch(repository, "tests", "tests");
         runGit(repository, "checkout", "main");
         return repository;
+    }
+
+    private void createDatabaseBranch(Path repository, String branch, String content) throws Exception {
+        runGit(repository, "checkout", "main");
+        runGit(repository, "checkout", "-b", branch);
+        commitDatabaseContent(repository, content, branch + " db");
+    }
+
+    private void commitDatabaseContent(Path repository, String content, String message) throws Exception {
+        Files.writeString(repository.resolve("db/gtd-on-rails.db"), content);
+        runGit(repository, "add", "db/gtd-on-rails.db");
+        runGit(repository, "commit", "-m", message);
     }
 
     private void runGit(Path workingDirectory, String... arguments) throws IOException, InterruptedException {

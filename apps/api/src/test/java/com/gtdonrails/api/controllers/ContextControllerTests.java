@@ -24,6 +24,7 @@ import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
@@ -125,25 +126,13 @@ class ContextControllerTests {
     @Test
     void uploadsContextIcon() throws Exception {
         Context context = contextRepository.save(new Context("home"));
-        MockMultipartFile file = new MockMultipartFile(
-            "file",
-            "home.png",
-            "image/png",
-            new byte[] {1, 2, 3}
-        );
+        MockMultipartFile file = pngIconFile();
 
-        mockMvc.perform(multipart("/contexts/{id}/icon", context.getId())
-                .file(file)
-                .with(request -> {
-                    request.setMethod("PUT");
-                    return request;
-                }))
+        putContextIcon(context, file)
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.iconUrl").value("/assets/contexts/" + context.getId() + "/icon.png"));
 
-        mockMvc.perform(get("/assets/contexts/{id}/icon.png", context.getId()))
-            .andExpect(status().isOk())
-            .andExpect(header().string("Content-Type", "image/png"));
+        assertContextIconIsServed(context);
     }
 
     @Test
@@ -216,23 +205,18 @@ class ContextControllerTests {
     void listsItemsForContextOrderedByMostRecentlyUpdatedFirst() throws Exception {
         Context context = contextRepository.save(new Context("home"));
 
-        Item oldest = new Item(new Title("Oldest item"), null);
-        oldest.addContext(context);
-        itemRepository.saveAndFlush(oldest);
-
+        Item oldest = saveContextItem(context, "Oldest item");
         Thread.sleep(5);
-
-        Item middle = new Item(new Title("Middle item"), null);
-        middle.addContext(context);
-        itemRepository.saveAndFlush(middle);
-
+        saveContextItem(context, "Middle item");
         Thread.sleep(5);
+        Item newest = saveContextItem(context, "Newest item");
 
-        Item newest = new Item(new Title("Newest item"), null);
-        newest.addContext(context);
-        itemRepository.saveAndFlush(newest);
+        ResultActions result = mockMvc.perform(get("/contexts/{id}/items", context.getId()));
+        assertContextItemsOrderedByNewestFirst(result, newest);
+    }
 
-        mockMvc.perform(get("/contexts/{id}/items", context.getId()))
+    private void assertContextItemsOrderedByNewestFirst(ResultActions result, Item newest) throws Exception {
+        result
             .andExpect(status().isOk())
             .andExpect(jsonPath("$", hasSize(3)))
             .andExpect(jsonPath("$[0].id").value(newest.getId().toString()))
@@ -247,15 +231,9 @@ class ContextControllerTests {
     void listsOnlyLimitedNumberOfItemsForContext() throws Exception {
         Context context = contextRepository.save(new Context("home"));
 
-        Item older = new Item(new Title("Older item"), null);
-        older.addContext(context);
-        itemRepository.saveAndFlush(older);
-
+        saveContextItem(context, "Older item");
         Thread.sleep(5);
-
-        Item newer = new Item(new Title("Newer item"), null);
-        newer.addContext(context);
-        itemRepository.saveAndFlush(newer);
+        saveContextItem(context, "Newer item");
 
         mockMvc.perform(get("/contexts/{id}/items", context.getId())
                 .param("limit", "1"))
@@ -280,5 +258,30 @@ class ContextControllerTests {
                 .param("limit", "0"))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.detail").value("limit must be greater than 0"));
+    }
+
+    private MockMultipartFile pngIconFile() {
+        return new MockMultipartFile("file", "home.png", "image/png", new byte[] {1, 2, 3});
+    }
+
+    private ResultActions putContextIcon(Context context, MockMultipartFile file) throws Exception {
+        return mockMvc.perform(multipart("/contexts/{id}/icon", context.getId())
+            .file(file)
+            .with(request -> {
+                request.setMethod("PUT");
+                return request;
+            }));
+    }
+
+    private void assertContextIconIsServed(Context context) throws Exception {
+        mockMvc.perform(get("/assets/contexts/{id}/icon.png", context.getId()))
+            .andExpect(status().isOk())
+            .andExpect(header().string("Content-Type", "image/png"));
+    }
+
+    private Item saveContextItem(Context context, String title) {
+        Item item = new Item(new Title(title), null);
+        item.addContext(context);
+        return itemRepository.saveAndFlush(item);
     }
 }

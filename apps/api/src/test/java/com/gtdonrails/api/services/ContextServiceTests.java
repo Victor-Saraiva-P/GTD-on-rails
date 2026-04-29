@@ -137,16 +137,8 @@ class ContextServiceTests {
         Context context = new Context("home");
         Item newerItem = new Item(new Title("Newer item"), null);
         Item olderItem = new Item(new Title("Older item"), null);
-        ContextItemResponseDto newerResponse = new ContextItemResponseDto(
-            UUID.randomUUID(),
-            "Newer item",
-            "STUFF"
-        );
-        ContextItemResponseDto olderResponse = new ContextItemResponseDto(
-            UUID.randomUUID(),
-            "Older item",
-            "STUFF"
-        );
+        ContextItemResponseDto newerResponse = contextItemResponse("Newer item");
+        ContextItemResponseDto olderResponse = contextItemResponse("Older item");
 
         when(contextRepository.findByIdAndDeletedAtIsNull(contextId)).thenReturn(Optional.of(context));
         when(itemRepository.findAllByContexts_IdAndDeletedAtIsNullOrderByUpdatedAtDesc(contextId))
@@ -164,11 +156,7 @@ class ContextServiceTests {
         UUID contextId = UUID.randomUUID();
         Context context = new Context("home");
         Item limitedItem = new Item(new Title("Limited item"), null);
-        ContextItemResponseDto limitedResponse = new ContextItemResponseDto(
-            UUID.randomUUID(),
-            "Limited item",
-            "STUFF"
-        );
+        ContextItemResponseDto limitedResponse = contextItemResponse("Limited item");
 
         when(contextRepository.findByIdAndDeletedAtIsNull(contextId)).thenReturn(Optional.of(context));
         when(itemRepository.findAllByContexts_IdAndDeletedAtIsNullOrderByUpdatedAtDesc(
@@ -321,24 +309,19 @@ class ContextServiceTests {
     void updateContextIconStoresIconAndUpdatesContext() {
         UUID contextId = UUID.randomUUID();
         Context context = new Context("home");
-        MockMultipartFile file = new MockMultipartFile("file", "icon.png", "image/png", new byte[] {1, 2, 3});
+        MockMultipartFile file = pngIconFile();
         ContextResponseDto expectedResponse = new ContextResponseDto(contextId, "home", "/assets/contexts/home/icon.png");
 
         when(contextRepository.findByIdAndDeletedAtIsNull(contextId)).thenReturn(Optional.of(context));
         when(assetStorageService.storeContextIcon(contextId, file)).thenReturn("contexts/home/icon.png");
-        when(contextRepository.save(any(Context.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(contextMapper.toResponse(any(Context.class))).thenReturn(expectedResponse);
+        stubSavedContextResponse(expectedResponse);
 
         ContextResponseDto response = contextService.updateContextIcon(contextId, file);
 
-        verify(contextRepository).save(contextCaptor.capture());
-        assertEquals("contexts/home/icon.png", contextCaptor.getValue().getIconAssetPath());
+        assertEquals("contexts/home/icon.png", capturedSavedContext().getIconAssetPath());
         assertEquals(expectedResponse, response);
         verify(assetSyncService).requestSync("context icon updated");
-        verify(persistenceGitSyncService).requestSync(
-            "context icon updated",
-            PersistenceChangeType.UPDATE_CONTEXT_ICON
-        );
+        verifyContextIconPersistenceSync();
     }
 
     @Test
@@ -399,20 +382,15 @@ class ContextServiceTests {
         ContextResponseDto expectedResponse = new ContextResponseDto(contextId, "home", null);
 
         when(contextRepository.findByIdAndDeletedAtIsNull(contextId)).thenReturn(Optional.of(context));
-        when(contextRepository.save(any(Context.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(contextMapper.toResponse(any(Context.class))).thenReturn(expectedResponse);
+        stubSavedContextResponse(expectedResponse);
 
         ContextResponseDto response = contextService.deleteContextIcon(contextId);
 
         verify(assetStorageService).deleteAsset("contexts/home/icon.png");
-        verify(contextRepository).save(contextCaptor.capture());
-        assertNull(contextCaptor.getValue().getIconAssetPath());
+        assertNull(capturedSavedContext().getIconAssetPath());
         assertEquals(expectedResponse, response);
         verify(assetSyncService).requestSync("context icon deleted");
-        verify(persistenceGitSyncService).requestSync(
-            "context icon deleted",
-            PersistenceChangeType.DELETE_CONTEXT_ICON
-        );
+        verifyContextIconDeletedPersistenceSync();
     }
 
     @Test
@@ -436,20 +414,65 @@ class ContextServiceTests {
 
         when(contextRepository.findByIdAndDeletedAtIsNull(contextId)).thenReturn(Optional.of(context));
 
-        TransactionSynchronizationManager.initSynchronization();
-        try {
+        withTransactionSynchronization(() -> {
             contextService.deleteContext(contextId);
 
-            verify(assetSyncService, org.mockito.Mockito.never()).requestSync("context deleted");
-            verify(persistenceGitSyncService, org.mockito.Mockito.never())
-                .requestSync("context deleted", PersistenceChangeType.DELETE_CONTEXT);
-
-            for (TransactionSynchronization synchronization : TransactionSynchronizationManager.getSynchronizations()) {
-                synchronization.afterCommit();
-            }
+            verifyContextDeletedSyncNotRequested();
+            runRegisteredAfterCommitCallbacks();
 
             verify(assetSyncService).requestSync("context deleted");
             verify(persistenceGitSyncService).requestSync("context deleted", PersistenceChangeType.DELETE_CONTEXT);
+        });
+    }
+
+    private ContextItemResponseDto contextItemResponse(String title) {
+        return new ContextItemResponseDto(UUID.randomUUID(), title, "STUFF");
+    }
+
+    private MockMultipartFile pngIconFile() {
+        return new MockMultipartFile("file", "icon.png", "image/png", new byte[] {1, 2, 3});
+    }
+
+    private void stubSavedContextResponse(ContextResponseDto expectedResponse) {
+        when(contextRepository.save(any(Context.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(contextMapper.toResponse(any(Context.class))).thenReturn(expectedResponse);
+    }
+
+    private Context capturedSavedContext() {
+        verify(contextRepository).save(contextCaptor.capture());
+        return contextCaptor.getValue();
+    }
+
+    private void verifyContextIconPersistenceSync() {
+        verify(persistenceGitSyncService).requestSync(
+            "context icon updated",
+            PersistenceChangeType.UPDATE_CONTEXT_ICON
+        );
+    }
+
+    private void verifyContextIconDeletedPersistenceSync() {
+        verify(persistenceGitSyncService).requestSync(
+            "context icon deleted",
+            PersistenceChangeType.DELETE_CONTEXT_ICON
+        );
+    }
+
+    private void verifyContextDeletedSyncNotRequested() {
+        verify(assetSyncService, org.mockito.Mockito.never()).requestSync("context deleted");
+        verify(persistenceGitSyncService, org.mockito.Mockito.never())
+            .requestSync("context deleted", PersistenceChangeType.DELETE_CONTEXT);
+    }
+
+    private void runRegisteredAfterCommitCallbacks() {
+        for (TransactionSynchronization synchronization : TransactionSynchronizationManager.getSynchronizations()) {
+            synchronization.afterCommit();
+        }
+    }
+
+    private void withTransactionSynchronization(Runnable action) {
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            action.run();
         } finally {
             TransactionSynchronizationManager.clearSynchronization();
         }
