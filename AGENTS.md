@@ -1,57 +1,50 @@
-# Repository Guidelines
+## Code style
 
-## Estrutura Do Projeto
+- Functions: at most 20 lines. Split if longer.
+- Files: under 500 lines. Split by responsibility.
+- One thing per function, one responsibility per module (SRP).
+- Names: specific and unique. Avoid `data`, `handler`, `Manager`.
+  Prefer names that return <5 grep hits in the codebase.
+- Types: explicit. No `any`, no `Dict`, no untyped functions.
+- No code duplication. Extract shared logic into a function/module.
+- Early returns over nested ifs. Max 2 levels of indentation.
+- Exception messages must include the offending value and expected shape.
 
-Este repositório é um monorepo minimalista.
+## Comments
 
-- `apps/desktop`: shell desktop com Vite e Tauri 2. O frontend fica em `src/`; a parte Rust/Tauri fica em `src-tauri/`.
-- `apps/api`: backend Spring Boot. Código em `src/main/java`; recursos em `src/main/resources`; testes em `src/test/java`.
-- `packages/`: espaço reservado para bibliotecas compartilhadas.
-- `infra/compose.yaml`: infraestrutura local para PostgreSQL e API.
-- `docs/`: documentação de arquitetura e infraestrutura.
+- Keep your own comments. Don't strip them on refactor — they carry
+  intent and provenance.
+- Write WHY, not WHAT. Skip `// increment counter` above `i++`.
+- Docstrings on public functions: intent + one usage example.
+- Reference issue numbers / commit SHAs when a line exists because
+  of a specific bug or upstream constraint.
 
-## Comandos De Build, Teste E Desenvolvimento
+## Tests
 
-Execute a partir da raiz, salvo quando indicado.
+- Tests run with a single command: `<project-specific>`.
+- Every new function gets a test. Bug fixes get a regression test.
+- Mock external I/O (API, DB, filesystem) with named fake classes,
+  not inline stubs.
+- Tests must be F.I.R.S.T: fast, independent, repeatable,
+  self-validating, timely.
 
-- `pnpm install`: instala as dependências do workspace.
-- `pnpm dev`: sobe o app desktop em modo de desenvolvimento com Tauri.
-- `pnpm build`: gera o bundle web do desktop via Turbo.
-- `pnpm lint`: roda checagens de TypeScript do desktop.
-- `pnpm check`: executa validações do workspace.
-- `./gradlew test` em `apps/api`: roda os testes do backend.
-- `./gradlew bootRun` em `apps/api`: sobe a API localmente.
-- `docker compose -f infra/compose.yaml up`: sobe PostgreSQL e a API em container.
+## Dependencies
 
-## Estilo De Código E Convenções De Nomes
+- Inject dependencies through constructor/parameter, not global/import.
+- Wrap third-party libs behind a thin interface owned by this project.
 
-Siga o `.editorconfig`: UTF-8, LF, newline final, 2 espaços por padrão e 4 espaços para arquivos Java, Groovy e Kotlin.
+## Structure
 
-- TypeScript: use `camelCase` para variáveis e funções, `PascalCase` para classes.
-- Java: mantenha o pacote em `com.gtdonrails.api`; use `PascalCase` para classes e `camelCase` para membros.
-- Prefira nomes descritivos como `ApiApplication.java` e `vite.config.ts`.
+- Follow the Java/Spring boot and Typescript/React conventions.
+- Prefer small focused modules over god files.
+- Predictable paths: controller/model/view, src/lib/test, etc.
 
-## Diretrizes De Testes
+## Formatting
 
-- O backend usa JUnit através do starter de testes do Spring Boot.
-- Classes de teste Java devem usar o sufixo `*Tests`.
-- No desktop, a validação atual passa por `pnpm lint` e `pnpm check`.
-- Ao adicionar comportamento no backend, adicione testes junto.
+- Use the language default formatter (`cargo fmt`, `gofmt`, `prettier`,
+  `black`, `rubocop -A`). Don't discuss style beyond that.
 
-## Commits E Pull Requests
+## Logging
 
-Use mensagens curtas no estilo Conventional Commits, como no histórico:
-
-- `feat: adiciona os esqueletos de desktop e api`
-- `chore: inicializa a estrutura do monorepo`
-
-Pull requests devem incluir:
-
-- resumo claro da mudança
-- áreas impactadas, como `apps/desktop`, `apps/api` ou `infra`
-- validações executadas
-- screenshots apenas quando houver mudança visual no desktop
-
-## Notas De Ambiente
-
-Builds do Tauri no Linux exigem bibliotecas nativas do WebKitGTK. Se `cargo check` falhar em `apps/desktop/src-tauri`, verifique a instalação de `webkit2gtk-4.1` e `javascriptcoregtk-4.1`.
+- Structured JSON when logging for debugging / observability.
+- Plain text only for user-facing CLI output.
