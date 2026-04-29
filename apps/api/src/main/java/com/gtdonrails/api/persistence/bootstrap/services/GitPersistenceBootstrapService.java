@@ -160,13 +160,15 @@ public class GitPersistenceBootstrapService {
 
         try (Stream<Path> stream = Files.walk(directory)) {
             stream.sorted(Comparator.reverseOrder())
-                .forEach(path -> {
-                    try {
-                        Files.deleteIfExists(path);
-                    } catch (IOException exception) {
-                        throw new IllegalStateException("Failed to clean temporary bootstrap directory", exception);
-                    }
-                });
+                .forEach(this::deleteTemporaryPath);
+        }
+    }
+
+    private void deleteTemporaryPath(Path path) {
+        try {
+            Files.deleteIfExists(path);
+        } catch (IOException exception) {
+            throw new IllegalStateException("Failed to clean temporary bootstrap directory", exception);
         }
     }
 }
