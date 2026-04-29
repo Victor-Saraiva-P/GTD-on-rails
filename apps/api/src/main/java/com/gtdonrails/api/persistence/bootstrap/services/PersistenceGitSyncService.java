@@ -49,29 +49,37 @@ public class PersistenceGitSyncService {
 
     public void initialize(String jdbcUrl) {
         if (!persistenceSyncProperties.isEnabled()) {
-            state = PersistenceSyncState.DISABLED;
-            repositoryDirectory = null;
-            databasePath = null;
+            disableSync();
             return;
         }
 
         Path resolvedDatabasePath = resolveSqlitePath(jdbcUrl);
         Path resolvedRepositoryDirectory = Path.of(persistenceBootstrapProperties.getCloneDirectory()).toAbsolutePath().normalize();
 
+        requireInitializedPaths(resolvedDatabasePath, resolvedRepositoryDirectory);
+        repositoryDirectory = resolvedRepositoryDirectory;
+        databasePath = resolvedDatabasePath;
+    }
+
+    private void disableSync() {
+        state = PersistenceSyncState.DISABLED;
+        repositoryDirectory = null;
+        databasePath = null;
+    }
+
+    private void requireInitializedPaths(Path resolvedDatabasePath, Path resolvedRepositoryDirectory) {
         if (!resolvedDatabasePath.startsWith(resolvedRepositoryDirectory)) {
             throw new IllegalStateException("Datasource path must point inside the configured clone directory");
         }
 
-        if (!Files.exists(resolvedRepositoryDirectory)) {
-            throw new IllegalStateException("Persistence clone directory does not exist: " + resolvedRepositoryDirectory);
-        }
+        requirePathExists(resolvedRepositoryDirectory, "Persistence clone directory does not exist: ");
+        requirePathExists(resolvedDatabasePath, "Persistence database file does not exist: ");
+    }
 
-        if (!Files.exists(resolvedDatabasePath)) {
-            throw new IllegalStateException("Persistence database file does not exist: " + resolvedDatabasePath);
+    private void requirePathExists(Path path, String messagePrefix) {
+        if (!Files.exists(path)) {
+            throw new IllegalStateException(messagePrefix + path);
         }
-
-        repositoryDirectory = resolvedRepositoryDirectory;
-        databasePath = resolvedDatabasePath;
     }
 
     public void pullOnStartup() {
@@ -153,21 +161,28 @@ public class PersistenceGitSyncService {
 
         try {
             task.run();
-            lastSuccessfulSyncAt = Instant.now();
-            lastError = null;
-            state = PersistenceSyncState.IDLE;
+            markTaskSucceeded();
         } catch (IllegalStateException | IOException exception) {
-            lastError = exception.getMessage();
-            state = PersistenceSyncState.FAILED;
+            markTaskFailed(exception);
             logger.warn("Persistence Git sync failed ({})", reason, exception);
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
-            lastError = exception.getMessage();
-            state = PersistenceSyncState.FAILED;
+            markTaskFailed(exception);
             logger.warn("Persistence Git sync interrupted ({})", reason, exception);
         } finally {
             lastFinishedAt = Instant.now();
         }
+    }
+
+    private void markTaskSucceeded() {
+        lastSuccessfulSyncAt = Instant.now();
+        lastError = null;
+        state = PersistenceSyncState.IDLE;
+    }
+
+    private void markTaskFailed(Exception exception) {
+        lastError = exception.getMessage();
+        state = PersistenceSyncState.FAILED;
     }
 
     private Path requiredRepositoryDirectory() {

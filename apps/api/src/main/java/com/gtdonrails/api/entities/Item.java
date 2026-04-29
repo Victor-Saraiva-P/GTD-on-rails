@@ -107,18 +107,23 @@ public class Item extends AuditableEntity {
         }
 
         BigDecimal normalizedEnergy = energy.stripTrailingZeros();
-
-        if (normalizedEnergy.scale() > ENERGY_SCALE) {
-            throw new IllegalArgumentException("energy must have up to 1 decimal place");
-        }
-
+        requireAllowedEnergyScale(normalizedEnergy);
         normalizedEnergy = energy.setScale(ENERGY_SCALE);
-
-        if (normalizedEnergy.compareTo(MIN_ENERGY) < 0 || normalizedEnergy.compareTo(MAX_ENERGY) > 0) {
-            throw new IllegalArgumentException("energy must be between 0.0 and 10.0");
-        }
+        requireEnergyInRange(normalizedEnergy);
 
         this.energy = normalizedEnergy;
+    }
+
+    private void requireAllowedEnergyScale(BigDecimal energy) {
+        if (energy.scale() > ENERGY_SCALE) {
+            throw new IllegalArgumentException("energy must have up to 1 decimal place");
+        }
+    }
+
+    private void requireEnergyInRange(BigDecimal energy) {
+        if (energy.compareTo(MIN_ENERGY) < 0 || energy.compareTo(MAX_ENERGY) > 0) {
+            throw new IllegalArgumentException("energy must be between 0.0 and 10.0");
+        }
     }
 
     public void setTime(Duration time) {

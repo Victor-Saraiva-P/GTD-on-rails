@@ -8,6 +8,7 @@ import com.gtdonrails.api.exceptions.shared.ConflictException;
 import java.net.URI;
 import java.time.Instant;
 
+import jakarta.validation.ConstraintViolation;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import lombok.extern.slf4j.Slf4j;
@@ -99,7 +100,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         HttpStatus status = HttpStatus.BAD_REQUEST;
         String detail = ex.getConstraintViolations()
             .stream()
-            .map(violation -> violation.getMessage())
+            .map(ConstraintViolation::getMessage)
             .distinct()
             .reduce((first, second) -> first + "\n" + second)
             .orElse(ex.getMessage());
@@ -161,24 +162,29 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         @NonNull HttpStatusCode status,
         @NonNull WebRequest request) {
 
+        String detail = validationFailureDetail(ex);
+        ProblemDetail problemDetail =
+            createProblemDetail(
+                status, "Invalid data", "/invalid-data", detail, request);
+
+        log.warn("Validation failed: {}", detail);
+        return handleExceptionInternal(ex, problemDetail, headers, status, request);
+    }
+
+    private String validationFailureDetail(MethodArgumentNotValidException ex) {
         StringBuilder detail = new StringBuilder("One or more fields are invalid:\n");
         ex.getBindingResult()
             .getFieldErrors()
-            .forEach(
-                fieldError ->
-                    detail
-                        .append("- Field '")
-                        .append(fieldError.getField())
-                        .append("': ")
-                        .append(fieldError.getDefaultMessage())
-                        .append("\n"));
+            .forEach(fieldError -> appendFieldError(detail, fieldError.getField(), fieldError.getDefaultMessage()));
+        return detail.toString().trim();
+    }
 
-        ProblemDetail problemDetail =
-            createProblemDetail(
-                status, "Invalid data", "/invalid-data", detail.toString().trim(), request);
-
-        log.warn("Validation failed: {}", detail.toString().trim());
-        return handleExceptionInternal(ex, problemDetail, headers, status, request);
+    private void appendFieldError(StringBuilder detail, String field, String message) {
+        detail.append("- Field '")
+            .append(field)
+            .append("': ")
+            .append(message)
+            .append("\n");
     }
 
     @Override

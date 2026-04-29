@@ -63,15 +63,7 @@ public class GitCommandService {
 
     protected String run(Path workingDirectory, Map<String, String> environment, String... arguments)
         throws IOException, InterruptedException {
-        String[] command = new String[arguments.length + 1];
-        command[0] = "git";
-        System.arraycopy(arguments, 0, command, 1, arguments.length);
-
-        ProcessBuilder processBuilder = new ProcessBuilder(command)
-            .directory(workingDirectory.toFile())
-            .redirectErrorStream(true);
-        processBuilder.environment().putAll(environment);
-
+        ProcessBuilder processBuilder = buildProcess(workingDirectory, environment, arguments);
         Process process = processBuilder.start();
         String output = new String(process.getInputStream().readAllBytes());
         int exitCode = process.waitFor();
@@ -80,6 +72,22 @@ public class GitCommandService {
         }
 
         return output.trim();
+    }
+
+    private ProcessBuilder buildProcess(
+        Path workingDirectory,
+        Map<String, String> environment,
+        String... arguments
+    ) {
+        String[] command = new String[arguments.length + 1];
+        command[0] = "git";
+        System.arraycopy(arguments, 0, command, 1, arguments.length);
+
+        ProcessBuilder processBuilder = new ProcessBuilder(command)
+            .directory(workingDirectory.toFile())
+            .redirectErrorStream(true);
+        processBuilder.environment().putAll(environment);
+        return processBuilder;
     }
 
     public String runRaw(Path workingDirectory, String... arguments) throws IOException, InterruptedException {

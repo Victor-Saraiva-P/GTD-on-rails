@@ -61,6 +61,11 @@ public class RcloneAssetSyncService {
         command.add(assetsProperties.getRclone().getCommand());
         command.addAll(arguments);
 
+        executeRcloneCommand(command);
+        logger.info("rclone command completed: {}", String.join(" ", arguments));
+    }
+
+    private void executeRcloneCommand(List<String> command) {
         try {
             Process process = new ProcessBuilder(command)
                 .redirectErrorStream(true)
@@ -77,8 +82,6 @@ public class RcloneAssetSyncService {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("rclone command interrupted", exception);
         }
-
-        logger.info("rclone command completed: {}", String.join(" ", arguments));
     }
 
 }

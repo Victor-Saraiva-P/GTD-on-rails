@@ -116,16 +116,8 @@ public class AssetSyncService implements ApplicationRunner {
         logger.info("Starting asset {} sync ({})", bootstrap ? "bootstrap" : "bisync", reason);
 
         try {
-            if (bootstrap) {
-                rcloneAssetSyncService.bootstrapBisync(localDirectory());
-                writeBaselineMarker();
-            } else {
-                rcloneAssetSyncService.bisync(localDirectory());
-            }
-
-            lastSuccessfulSyncAt = Instant.now();
-            lastError = null;
-            state = pending.get() ? AssetSyncState.PENDING : AssetSyncState.SYNCED;
+            runRcloneSync(bootstrap);
+            markSyncSucceeded();
         } catch (RuntimeException | IOException exception) {
             lastError = exception.getMessage();
             state = AssetSyncState.FAILED;
@@ -133,6 +125,22 @@ public class AssetSyncService implements ApplicationRunner {
         } finally {
             lastFinishedAt = Instant.now();
         }
+    }
+
+    private void runRcloneSync(boolean bootstrap) throws IOException {
+        if (bootstrap) {
+            rcloneAssetSyncService.bootstrapBisync(localDirectory());
+            writeBaselineMarker();
+            return;
+        }
+
+        rcloneAssetSyncService.bisync(localDirectory());
+    }
+
+    private void markSyncSucceeded() {
+        lastSuccessfulSyncAt = Instant.now();
+        lastError = null;
+        state = pending.get() ? AssetSyncState.PENDING : AssetSyncState.SYNCED;
     }
 
     private void writeBaselineMarker() throws IOException {

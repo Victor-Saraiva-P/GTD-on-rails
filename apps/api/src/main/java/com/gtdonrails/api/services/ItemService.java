@@ -70,14 +70,7 @@ public class ItemService {
     @Transactional
     public ItemResponseDto updateItem(UUID id, UpdateItemRequestDto request) {
         Item item = findItem(id);
-        Title title = new Title(itemTextNormalizer.normalizeTitle(request.title()));
-        String normalizedBodyValue = itemTextNormalizer.normalizeBody(request.body());
-        Body body = normalizedBodyValue == null ? null : new Body(normalizedBodyValue);
-
-        item.setTitle(title);
-        item.setBody(body);
-        item.setEnergy(request.energy());
-        item.setTime(request.time() == null ? null : request.time().toDuration());
+        updateItemFields(item, request);
 
         if (request.contextIds() != null) {
             item.replaceContexts(findContextsOrThrow(request.contextIds()));
@@ -86,6 +79,17 @@ public class ItemService {
         ItemResponseDto response = itemMapper.toResponse(itemRepository.save(item));
         requestPersistenceSyncAfterCommit("item updated", PersistenceChangeType.UPDATE_ITEM);
         return response;
+    }
+
+    private void updateItemFields(Item item, UpdateItemRequestDto request) {
+        Title title = new Title(itemTextNormalizer.normalizeTitle(request.title()));
+        String normalizedBodyValue = itemTextNormalizer.normalizeBody(request.body());
+        Body body = normalizedBodyValue == null ? null : new Body(normalizedBodyValue);
+
+        item.setTitle(title);
+        item.setBody(body);
+        item.setEnergy(request.energy());
+        item.setTime(request.time() == null ? null : request.time().toDuration());
     }
 
     @Transactional

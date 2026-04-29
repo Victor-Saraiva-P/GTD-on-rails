@@ -35,18 +35,11 @@ public class GitPersistenceBootstrapService {
             return;
         }
 
-        if (!StringUtils.hasText(persistenceBootstrapProperties.getRepositoryUrl())) {
-            throw new IllegalStateException("Missing gtd.persistence.bootstrap.repository-url");
-        }
+        requireBootstrapConfiguration();
+        cloneRepositoryOrThrow(databasePath);
+    }
 
-        if (!StringUtils.hasText(persistenceBootstrapProperties.getBranch())) {
-            throw new IllegalStateException("Missing gtd.persistence.bootstrap.branch");
-        }
-
-        if (!StringUtils.hasText(persistenceBootstrapProperties.getCloneDirectory())) {
-            throw new IllegalStateException("Missing gtd.persistence.bootstrap.clone-directory");
-        }
-
+    private void cloneRepositoryOrThrow(Path databasePath) {
         try {
             cloneRepositoryIfNeeded(databasePath);
         } catch (IOException exception) {
@@ -54,6 +47,18 @@ public class GitPersistenceBootstrapService {
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("Failed to bootstrap SQLite database from Git repository", exception);
+        }
+    }
+
+    private void requireBootstrapConfiguration() {
+        requireText(persistenceBootstrapProperties.getRepositoryUrl(), "gtd.persistence.bootstrap.repository-url");
+        requireText(persistenceBootstrapProperties.getBranch(), "gtd.persistence.bootstrap.branch");
+        requireText(persistenceBootstrapProperties.getCloneDirectory(), "gtd.persistence.bootstrap.clone-directory");
+    }
+
+    private void requireText(String value, String propertyName) {
+        if (!StringUtils.hasText(value)) {
+            throw new IllegalStateException("Missing " + propertyName);
         }
     }
 
@@ -77,46 +82,69 @@ public class GitPersistenceBootstrapService {
 
     private void cloneRepositoryIfNeeded(Path databasePath) throws IOException, InterruptedException {
         Path cloneDirectory = Path.of(persistenceBootstrapProperties.getCloneDirectory()).toAbsolutePath().normalize();
+        requireDatabaseInsideClone(databasePath, cloneDirectory);
+        if (cloneDirectoryHasDatabase(databasePath, cloneDirectory)) {
+            return;
+        }
+
+        Path parentDirectory = ensureParentDirectory(cloneDirectory);
+        Path tempCloneDirectory = cloneDirectory.resolveSibling(
+            cloneDirectory.getFileName() + ".tmp-" + UUID.randomUUID());
+
+        try {
+            cloneBranch(parentDirectory, tempCloneDirectory);
+            moveCloneIntoPlace(tempCloneDirectory, cloneDirectory, databasePath);
+        } finally {
+            deleteRecursively(tempCloneDirectory);
+        }
+    }
+
+    private void requireDatabaseInsideClone(Path databasePath, Path cloneDirectory) {
         if (!databasePath.startsWith(cloneDirectory)) {
             throw new IllegalStateException("Datasource path must point inside the configured clone directory");
         }
+    }
 
-        if (Files.exists(cloneDirectory)) {
-            if (Files.exists(databasePath)) {
-                return;
-            }
+    private boolean cloneDirectoryHasDatabase(Path databasePath, Path cloneDirectory) {
+        if (!Files.exists(cloneDirectory)) {
+            return false;
+        }
 
+        if (!Files.exists(databasePath)) {
             throw new IllegalStateException("Clone directory already exists but database file is missing: " + cloneDirectory);
         }
 
+        return true;
+    }
+
+    private Path ensureParentDirectory(Path cloneDirectory) throws IOException {
         Path parentDirectory = cloneDirectory.getParent();
         if (parentDirectory != null) {
             Files.createDirectories(parentDirectory);
         }
 
-        Path tempCloneDirectory = cloneDirectory.resolveSibling(
-            cloneDirectory.getFileName() + ".tmp-" + UUID.randomUUID());
+        return parentDirectory;
+    }
 
+    private void cloneBranch(Path parentDirectory, Path tempCloneDirectory) throws IOException, InterruptedException {
         try {
-            try {
-                gitCommandService.cloneBranch(
-                    parentDirectory != null ? parentDirectory : Path.of(".").toAbsolutePath().normalize(),
-                    persistenceBootstrapProperties.getRepositoryUrl(),
-                    persistenceBootstrapProperties.getBranch(),
-                    tempCloneDirectory
-                );
-            } catch (IllegalStateException exception) {
-                throw buildGitFailure(exception.getMessage());
-            }
+            gitCommandService.cloneBranch(
+                parentDirectory != null ? parentDirectory : Path.of(".").toAbsolutePath().normalize(),
+                persistenceBootstrapProperties.getRepositoryUrl(),
+                persistenceBootstrapProperties.getBranch(),
+                tempCloneDirectory
+            );
+        } catch (IllegalStateException exception) {
+            throw buildGitFailure(exception.getMessage());
+        }
+    }
 
-            logger.info("Bootstrapping SQLite database from branch '{}'", persistenceBootstrapProperties.getBranch());
-            Files.move(tempCloneDirectory, cloneDirectory, StandardCopyOption.ATOMIC_MOVE);
+    private void moveCloneIntoPlace(Path tempCloneDirectory, Path cloneDirectory, Path databasePath) throws IOException {
+        logger.info("Bootstrapping SQLite database from branch '{}'", persistenceBootstrapProperties.getBranch());
+        Files.move(tempCloneDirectory, cloneDirectory, StandardCopyOption.ATOMIC_MOVE);
 
-            if (!Files.exists(databasePath)) {
-                throw new IllegalStateException("Database file not found in cloned repository: " + databasePath);
-            }
-        } finally {
-            deleteRecursively(tempCloneDirectory);
+        if (!Files.exists(databasePath)) {
+            throw new IllegalStateException("Database file not found in cloned repository: " + databasePath);
         }
     }
 

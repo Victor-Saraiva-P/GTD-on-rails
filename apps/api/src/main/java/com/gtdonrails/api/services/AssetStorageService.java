@@ -47,6 +47,11 @@ public class AssetStorageService {
         String relativePath = "contexts/" + contextId + "/icon." + extension;
         Path destination = resolveRelativePath(relativePath);
 
+        writeAssetFile(file, destination);
+        return relativePath;
+    }
+
+    private void writeAssetFile(MultipartFile file, Path destination) {
         try {
             Files.createDirectories(destination.getParent());
             try (InputStream inputStream = file.getInputStream()) {
@@ -55,8 +60,6 @@ public class AssetStorageService {
         } catch (IOException exception) {
             throw new IllegalStateException("Failed to store context icon", exception);
         }
-
-        return relativePath;
     }
 
     public void deleteAsset(String relativePath) {
