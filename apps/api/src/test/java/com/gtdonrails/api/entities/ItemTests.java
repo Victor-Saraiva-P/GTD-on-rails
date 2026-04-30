@@ -18,7 +18,6 @@ import org.junit.jupiter.api.Test;
 @Tag("unit")
 class ItemTests {
 
-    // title
     @Test
     void setTitleUpdatesTitle() {
         Item item = new Item(new Title("Capture idea"), null);
@@ -39,7 +38,6 @@ class ItemTests {
         assertEquals("item title value 'null' is invalid; expected Title", exception.getMessage());
     }
 
-    // body
     @Test
     void setBodyAllowsNull() {
         Item item = new Item(new Title("Capture idea"), paragraphBody("Details"));
@@ -49,7 +47,6 @@ class ItemTests {
         assertNull(item.getBody());
     }
 
-    // energy
     @Test
     void constructorWithoutEnergySetsNullEnergy() {
         Item item = new Item(new Title("Capture idea"), null);
@@ -117,7 +114,6 @@ class ItemTests {
         assertEquals("energy value '10.1' is invalid; expected between 0.0 and 10.0", exception.getMessage());
     }
 
-    // time
     @Test
     void constructorWithoutTimeSetsNullTime() {
         Item item = new Item(new Title("Capture idea"), null);
@@ -165,7 +161,6 @@ class ItemTests {
         assertEquals("time value 'PT30S' is invalid; expected whole-minute Duration", exception.getMessage());
     }
 
-    // contexts
     @Test
     void addContextAddsContextToItem() {
         Item item = new Item(new Title("Capture idea"), null);
@@ -198,7 +193,6 @@ class ItemTests {
         assertFalse(item.getContexts().contains(context));
     }
 
-    // status
     @Test
     void setsStatusToStuffWhenItemIsPersisted() {
         Item item = new Item(new Title("Capture idea"), null);

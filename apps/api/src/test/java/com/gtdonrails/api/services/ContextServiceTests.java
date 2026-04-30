@@ -87,7 +87,6 @@ class ContextServiceTests {
         );
     }
 
-    // listContexts
     @Test
     void listContextsReturnsMappedContexts() {
         Context home = new Context("home");
@@ -104,7 +103,6 @@ class ContextServiceTests {
         assertEquals(List.of(homeResponse, streetResponse), response);
     }
 
-    // getContext
     @Test
     void getContextReturnsMappedContext() {
         UUID contextId = UUID.randomUUID();
@@ -185,7 +183,6 @@ class ContextServiceTests {
         assertEquals("context not found", exception.getMessage());
     }
 
-    // createContext
     @Test
     void createContextSavesContext() {
         ContextResponseDto expectedResponse = new ContextResponseDto(UUID.randomUUID(), "home", null);
@@ -248,7 +245,6 @@ class ContextServiceTests {
         assertEquals("office room", contextCaptor.getValue().getName());
     }
 
-    // deleteContext
     @Test
     void deleteContextSoftDeletesContext() {
         UUID contextId = UUID.randomUUID();

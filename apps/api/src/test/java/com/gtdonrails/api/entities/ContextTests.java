@@ -13,7 +13,6 @@ import org.junit.jupiter.api.Test;
 @Tag("unit")
 class ContextTests {
 
-    // name
     @Test
     void setNameUpdatesName() {
         Context context = new Context("notebook");
@@ -44,7 +43,6 @@ class ContextTests {
             exception.getMessage());
     }
 
-    // items
     @Test
     void tracksItemsThroughItemRelation() {
         Context context = new Context("street");
@@ -55,7 +53,6 @@ class ContextTests {
         assertTrue(context.getItems().contains(item));
     }
 
-    // lifecycle
     @Test
     void prePersistInitializesAuditTimestamps() {
         Context context = new Context("street");

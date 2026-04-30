@@ -1,9 +1,7 @@
 package com.gtdonrails.api.services;
 
 import static com.gtdonrails.api.types.BodyFixtures.paragraphBody;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -80,7 +78,6 @@ class ItemServiceTests {
             new AfterCommitExecutor());
     }
 
-    // getItem
     @Test
     void getItemReturnsMappedItem() {
         UUID itemId = UUID.randomUUID();
@@ -107,7 +104,6 @@ class ItemServiceTests {
         assertEquals("item not found", exception.getMessage());
     }
 
-    // createItem
     @Test
     void createItemNormalizesAndSavesItem() {
         Body body = paragraphBody("line 1\nline 2");
@@ -196,7 +192,6 @@ class ItemServiceTests {
         verify(itemRepository, never()).save(any(Item.class));
     }
 
-    // updateItem
     @Test
     void updateItemClearsBodyWhenBodyIsAbsent() {
         UUID itemId = UUID.randomUUID();
@@ -296,7 +291,6 @@ class ItemServiceTests {
         verify(contextRepository, never()).findAllByIdInAndDeletedAtIsNull(any());
     }
 
-    // deleteItem
     @Test
     void deleteItemSoftDeletesAndSavesItem() {
         UUID itemId = UUID.randomUUID();
@@ -309,7 +303,7 @@ class ItemServiceTests {
         verify(itemRepository).save(itemCaptor.capture());
         Item savedItem = itemCaptor.getValue();
         assertEquals(existingItem, savedItem);
-        assertEquals(true, savedItem.isDeleted());
+        assertTrue(savedItem.isDeleted());
         verify(persistenceGitSyncService).requestSync("item deleted", PersistenceChangeType.DELETE_ITEM);
     }
 
