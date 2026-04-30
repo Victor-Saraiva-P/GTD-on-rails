@@ -43,12 +43,22 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @Value("${api.base-url:/errors}")
     private String apiBasePath = "/errors";
 
+    /**
+     * Converts missing item errors into a resource-not-found problem response.
+     *
+     * <p>Example: {@code globalExceptionHandler.handleItemNotFoundException(exception, request)}.</p>
+     */
     @ExceptionHandler(ItemNotFoundException.class)
     public ResponseEntity<Object> handleItemNotFoundException(
         ItemNotFoundException ex, WebRequest request) {
         return handleResourceNotFoundException(ex, request, "Item not found");
     }
 
+    /**
+     * Converts missing context errors into a resource-not-found problem response.
+     *
+     * <p>Example: {@code globalExceptionHandler.handleContextNotFoundException(exception, request)}.</p>
+     */
     @ExceptionHandler(ContextNotFoundException.class)
     public ResponseEntity<Object> handleContextNotFoundException(
         ContextNotFoundException ex, WebRequest request) {
@@ -70,6 +80,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return handleExceptionInternal(ex, problemDetail, new HttpHeaders(), status, request);
     }
 
+    /**
+     * Converts domain conflict errors into a data-conflict problem response.
+     *
+     * <p>Example: {@code globalExceptionHandler.handleConflictException(exception, request)}.</p>
+     */
     @ExceptionHandler(ConflictException.class)
     public ResponseEntity<Object> handleConflictException(
         ConflictException ex, WebRequest request) {
@@ -82,6 +97,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return handleExceptionInternal(ex, problemDetail, new HttpHeaders(), status, request);
     }
 
+    /**
+     * Converts domain validation errors into an invalid-operation problem response.
+     *
+     * <p>Example: {@code globalExceptionHandler.handleBusinessException(exception, request)}.</p>
+     */
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<Object> handleBusinessException(
         BusinessException ex, WebRequest request) {
@@ -94,6 +114,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return handleExceptionInternal(ex, problemDetail, new HttpHeaders(), status, request);
     }
 
+    /**
+     * Converts method-level validation failures into an invalid-data problem response.
+     *
+     * <p>Example: {@code globalExceptionHandler.handleConstraintViolationException(exception, request)}.</p>
+     */
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<Object> handleConstraintViolationException(
         ConstraintViolationException ex, WebRequest request) {
@@ -112,6 +137,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return handleExceptionInternal(ex, problemDetail, new HttpHeaders(), status, request);
     }
 
+    /**
+     * Converts database constraint failures into a data-conflict problem response.
+     *
+     * <p>Example: {@code globalExceptionHandler.handleDataIntegrityViolationException(exception, request)}.</p>
+     */
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<Object> handleDataIntegrityViolationException(
         DataIntegrityViolationException ex, WebRequest request) {
@@ -128,6 +158,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return handleExceptionInternal(ex, problemDetail, new HttpHeaders(), status, request);
     }
 
+    /**
+     * Converts application state failures into a system-error problem response.
+     *
+     * <p>Example: {@code globalExceptionHandler.handleIllegalStateException(exception, request)}.</p>
+     */
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<Object> handleIllegalStateException(
         IllegalStateException ex, WebRequest request) {
@@ -140,6 +175,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return handleExceptionInternal(ex, problemDetail, new HttpHeaders(), status, request);
     }
 
+    /**
+     * Converts unexpected failures into a generic system-error problem response.
+     *
+     * <p>Example: {@code globalExceptionHandler.handleGenericException(exception, request)}.</p>
+     */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Object> handleGenericException(Exception ex, WebRequest request) {
         HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
@@ -155,6 +195,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return handleExceptionInternal(ex, problemDetail, new HttpHeaders(), status, request);
     }
 
+    /**
+     * Converts request-body validation failures into field-level problem details.
+     *
+     * <p>Example: {@code globalExceptionHandler.handleMethodArgumentNotValid(exception, headers, status, request)}.</p>
+     */
     @Override
     protected ResponseEntity<Object> handleMethodArgumentNotValid(
         @NonNull MethodArgumentNotValidException ex,
@@ -193,6 +238,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             .append("\n");
     }
 
+    /**
+     * Converts invalid URL parameter types into invalid-parameter problem details.
+     *
+     * <p>Example: {@code globalExceptionHandler.handleTypeMismatch(exception, headers, status, request)}.</p>
+     */
     @Override
     protected ResponseEntity<Object> handleTypeMismatch(
         @NonNull TypeMismatchException ex,
@@ -212,6 +262,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return handleExceptionInternal(ex, problemDetail, headers, status, request);
     }
 
+    /**
+     * Converts malformed request bodies into invalid-data problem details.
+     *
+     * <p>Example: {@code globalExceptionHandler.handleHttpMessageNotReadable(exception, headers, status, request)}.</p>
+     */
     @Override
     protected ResponseEntity<Object> handleHttpMessageNotReadable(
         @NonNull HttpMessageNotReadableException ex,
@@ -226,6 +281,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return handleExceptionInternal(ex, problemDetail, headers, status, request);
     }
 
+    /**
+     * Converts unknown API paths into invalid-uri problem details.
+     *
+     * <p>Example: {@code globalExceptionHandler.handleNoResourceFoundException(exception, headers, status, request)}.</p>
+     */
     @Override
     protected ResponseEntity<Object> handleNoResourceFoundException(
         @NonNull NoResourceFoundException ex,
@@ -243,6 +303,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return handleExceptionInternal(ex, problemDetail, headers, status, request);
     }
 
+    /**
+     * Converts missing header errors into invalid-data problem details.
+     *
+     * <p>Example: {@code globalExceptionHandler.handleMissingRequestHeaderException(exception, request)}.</p>
+     */
     @ExceptionHandler(MissingRequestHeaderException.class)
     public ResponseEntity<Object> handleMissingRequestHeaderException(
         MissingRequestHeaderException ex, WebRequest request) {
@@ -258,6 +323,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return handleExceptionInternal(ex, problemDetail, new HttpHeaders(), status, request);
     }
 
+    /**
+     * Converts missing cookie errors into invalid-data problem details.
+     *
+     * <p>Example: {@code globalExceptionHandler.handleMissingRequestCookieException(exception, request)}.</p>
+     */
     @ExceptionHandler(MissingRequestCookieException.class)
     public ResponseEntity<Object> handleMissingRequestCookieException(
         MissingRequestCookieException ex, WebRequest request) {
@@ -273,6 +343,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return handleExceptionInternal(ex, problemDetail, new HttpHeaders(), status, request);
     }
 
+    /**
+     * Converts argument validation errors into invalid-data problem details.
+     *
+     * <p>Example: {@code globalExceptionHandler.handleIllegalArgumentException(exception, request)}.</p>
+     */
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Object> handleIllegalArgumentException(
         IllegalArgumentException ex, WebRequest request) {
@@ -284,6 +359,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return handleExceptionInternal(ex, problemDetail, new HttpHeaders(), status, request);
     }
 
+    /**
+     * Ensures every framework-generated error body is returned as Problem Details.
+     *
+     * <p>Example: {@code globalExceptionHandler.handleExceptionInternal(exception, body, headers, status, request)}.</p>
+     */
     @Override
     protected ResponseEntity<Object> handleExceptionInternal(
         @NonNull Exception ex,

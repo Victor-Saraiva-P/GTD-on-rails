@@ -16,6 +16,11 @@ public enum RichTextMark {
         this.value = value;
     }
 
+    /**
+     * Parses a JSON mark value into a supported rich-text mark.
+     *
+     * <p>Example: {@code RichTextMark.from("bold")}.</p>
+     */
     @JsonCreator
     public static RichTextMark from(String value) {
         for (RichTextMark mark : values()) {
@@ -28,11 +33,21 @@ public enum RichTextMark {
             "rich text mark '" + value + "' is invalid; expected one of " + allowedValues());
     }
 
+    /**
+     * Returns the JSON value used for this rich-text mark.
+     *
+     * <p>Example: {@code RichTextMark.BOLD.value()}.</p>
+     */
     @JsonValue
     public String value() {
         return value;
     }
 
+    /**
+     * Lists supported JSON mark values for validation messages.
+     *
+     * <p>Example: {@code RichTextMark.allowedValues()}.</p>
+     */
     public static String allowedValues() {
         return java.util.Arrays.stream(values())
             .map(RichTextMark::value)

@@ -92,6 +92,11 @@ public class Item extends AuditableEntity {
         setTime(time);
     }
 
+    /**
+     * Replaces the required item title after enforcing the title value object.
+     *
+     * <p>Example: {@code item.setTitle(new Title("Capture idea"))}.</p>
+     */
     public void setTitle(Title title) {
         if (title == null) {
             throw new IllegalArgumentException("item title value 'null' is invalid; expected Title");
@@ -100,6 +105,11 @@ public class Item extends AuditableEntity {
         this.title = title;
     }
 
+    /**
+     * Stores optional energy after normalizing scale and validating range.
+     *
+     * <p>Example: {@code item.setEnergy(new BigDecimal("4.5"))}.</p>
+     */
     public void setEnergy(BigDecimal energy) {
         if (energy == null) {
             this.energy = null;
@@ -128,6 +138,11 @@ public class Item extends AuditableEntity {
         }
     }
 
+    /**
+     * Stores optional time estimates when they use whole-minute precision.
+     *
+     * <p>Example: {@code item.setTime(Duration.ofMinutes(90))}.</p>
+     */
     public void setTime(Duration time) {
         if (time == null) {
             this.time = null;
@@ -147,6 +162,11 @@ public class Item extends AuditableEntity {
         this.time = time;
     }
 
+    /**
+     * Adds a context and keeps both sides of the item-context relation aligned.
+     *
+     * <p>Example: {@code item.addContext(context)}.</p>
+     */
     public void addContext(Context context) {
         if (context == null) {
             throw new IllegalArgumentException("context value 'null' is invalid; expected Context");
@@ -156,6 +176,11 @@ public class Item extends AuditableEntity {
         context.getItems().add(this);
     }
 
+    /**
+     * Removes a context and keeps both sides of the item-context relation aligned.
+     *
+     * <p>Example: {@code item.removeContext(context)}.</p>
+     */
     public void removeContext(Context context) {
         if (context == null) {
             return;
@@ -165,6 +190,11 @@ public class Item extends AuditableEntity {
         context.getItems().remove(this);
     }
 
+    /**
+     * Replaces all contexts while preserving bidirectional relation consistency.
+     *
+     * <p>Example: {@code item.replaceContexts(Set.of(homeContext))}.</p>
+     */
     public void replaceContexts(Set<Context> contexts) {
         Set<Context> currentContexts = new HashSet<>(this.contexts);
 

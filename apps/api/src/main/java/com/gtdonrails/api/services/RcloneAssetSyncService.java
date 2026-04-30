@@ -22,10 +22,20 @@ public class RcloneAssetSyncService {
         this.assetsProperties = assetsProperties;
     }
 
+    /**
+     * Reports whether rclone asset synchronization is configured on.
+     *
+     * <p>Example: {@code rcloneAssetSyncService.isEnabled()}.</p>
+     */
     public boolean isEnabled() {
         return assetsProperties.getRclone().isEnabled();
     }
 
+    /**
+     * Runs an incremental rclone bisync for the local asset directory.
+     *
+     * <p>Example: {@code rcloneAssetSyncService.bisync(localDirectory)}.</p>
+     */
     public void bisync(Path localDirectory) {
         if (!isEnabled()) {
             return;
@@ -39,6 +49,11 @@ public class RcloneAssetSyncService {
         runRclone(arguments);
     }
 
+    /**
+     * Runs the initial rclone bisync resync from remote path to local path.
+     *
+     * <p>Example: {@code rcloneAssetSyncService.bootstrapBisync(localDirectory)}.</p>
+     */
     public void bootstrapBisync(Path localDirectory) {
         if (!isEnabled()) {
             return;

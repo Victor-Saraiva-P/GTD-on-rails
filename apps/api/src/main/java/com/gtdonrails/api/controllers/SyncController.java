@@ -22,6 +22,11 @@ public class SyncController {
         this.persistenceGitSyncService = persistenceGitSyncService;
     }
 
+    /**
+     * Handles sync status requests for persistence and assets.
+     *
+     * <p>Example: {@code GET /sync/status}.</p>
+     */
     @GetMapping("/status")
     public SyncStatusDto getStatus() {
         return new SyncStatusDto(assetSyncService.status(), persistenceGitSyncService.status());

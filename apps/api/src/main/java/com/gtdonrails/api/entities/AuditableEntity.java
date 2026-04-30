@@ -19,14 +19,29 @@ public abstract class AuditableEntity {
     @Column(name = "deleted_at")
     private Instant deletedAt;
 
+    /**
+     * Marks an entity as deleted without removing its row.
+     *
+     * <p>Example: {@code item.softDelete()}.</p>
+     */
     public void softDelete() {
         this.deletedAt = Instant.now();
     }
 
+    /**
+     * Clears a previous soft-delete marker.
+     *
+     * <p>Example: {@code item.restore()}.</p>
+     */
     public void restore() {
         this.deletedAt = null;
     }
 
+    /**
+     * Reports whether the entity is currently soft deleted.
+     *
+     * <p>Example: {@code item.isDeleted()}.</p>
+     */
     public boolean isDeleted() {
         return deletedAt != null;
     }

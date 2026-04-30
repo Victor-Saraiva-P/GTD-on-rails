@@ -22,6 +22,11 @@ public class TestResetController {
         this.itemRepository = itemRepository;
     }
 
+    /**
+     * Clears mutable test data so integration tests can start from a known state.
+     *
+     * <p>Example: {@code POST /test/reset}.</p>
+     */
     @PostMapping("/reset")
     @Transactional
     public ResponseEntity<Void> reset() {

@@ -55,6 +55,11 @@ public class ContextService {
         this.afterCommitExecutor = afterCommitExecutor;
     }
 
+    /**
+     * Lists active contexts ordered for context picker display.
+     *
+     * <p>Example: {@code contextService.listContexts()}.</p>
+     */
     @Transactional(readOnly = true)
     public List<ContextResponseDto> listContexts() {
         return contextRepository.findAllByDeletedAtIsNullOrderByNameAsc()
@@ -63,11 +68,21 @@ public class ContextService {
             .toList();
     }
 
+    /**
+     * Returns one active context as an API response.
+     *
+     * <p>Example: {@code contextService.getContext(contextId)}.</p>
+     */
     @Transactional(readOnly = true)
     public ContextResponseDto getContext(UUID id) {
         return contextMapper.toResponse(findContext(id));
     }
 
+    /**
+     * Lists active items assigned to a context, optionally capped for previews.
+     *
+     * <p>Example: {@code contextService.listContextItems(contextId, 10)}.</p>
+     */
     @Transactional(readOnly = true)
     public List<ContextItemResponseDto> listContextItems(UUID id, Integer limit) {
         findContext(id);
@@ -88,6 +103,11 @@ public class ContextService {
             .toList();
     }
 
+    /**
+     * Creates a context after normalizing the requested name.
+     *
+     * <p>Example: {@code contextService.createContext(request)}.</p>
+     */
     @Transactional
     public ContextResponseDto createContext(CreateContextRequestDto request) {
         String normalizedName = contextNameNormalizer.normalize(request.name());
@@ -97,6 +117,11 @@ public class ContextService {
         return response;
     }
 
+    /**
+     * Renames an active context after applying context-name normalization.
+     *
+     * <p>Example: {@code contextService.updateContext(contextId, request)}.</p>
+     */
     @Transactional
     public ContextResponseDto updateContext(UUID id, UpdateContextRequestDto request) {
         Context context = findContext(id);
@@ -108,6 +133,11 @@ public class ContextService {
         return response;
     }
 
+    /**
+     * Soft deletes a context and clears item and asset references before sync.
+     *
+     * <p>Example: {@code contextService.deleteContext(contextId)}.</p>
+     */
     @Transactional
     public void deleteContext(UUID id) {
         Context context = findContext(id);
@@ -119,6 +149,11 @@ public class ContextService {
         requestPersistenceSyncAfterCommit("context deleted", PersistenceChangeType.DELETE_CONTEXT);
     }
 
+    /**
+     * Stores a replacement context icon and removes the previous asset.
+     *
+     * <p>Example: {@code contextService.updateContextIcon(contextId, file)}.</p>
+     */
     @Transactional
     public ContextResponseDto updateContextIcon(UUID id, MultipartFile file) {
         Context context = findContext(id);
@@ -136,6 +171,11 @@ public class ContextService {
         return response;
     }
 
+    /**
+     * Removes the current context icon and schedules asset persistence sync.
+     *
+     * <p>Example: {@code contextService.deleteContextIcon(contextId)}.</p>
+     */
     @Transactional
     public ContextResponseDto deleteContextIcon(UUID id) {
         Context context = findContext(id);

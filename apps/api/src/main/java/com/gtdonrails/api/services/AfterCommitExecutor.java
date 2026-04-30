@@ -7,6 +7,11 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 @Service
 public class AfterCommitExecutor {
 
+    /**
+     * Runs an action after transaction commit, or immediately outside a transaction.
+     *
+     * <p>Example: {@code afterCommitExecutor.run(syncAction)}.</p>
+     */
     public void run(Runnable action) {
         if (!TransactionSynchronizationManager.isSynchronizationActive()) {
             action.run();

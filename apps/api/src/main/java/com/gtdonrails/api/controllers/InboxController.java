@@ -18,6 +18,11 @@ public class InboxController {
         this.inboxService = inboxService;
     }
 
+    /**
+     * Handles inbox requests for items still classified as stuff.
+     *
+     * <p>Example: {@code GET /inbox}.</p>
+     */
     @GetMapping
     public List<ItemResponseDto> listStuff() {
         return inboxService.listStuff();

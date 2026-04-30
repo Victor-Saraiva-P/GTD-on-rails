@@ -5,6 +5,11 @@ import org.springframework.stereotype.Component;
 @Component
 public class ItemTextNormalizer {
 
+    /**
+     * Normalizes title input into printable single-line text.
+     *
+     * <p>Example: {@code itemTextNormalizer.normalizeTitle(" Capture\tidea ")}.</p>
+     */
     public String normalizeTitle(String value) {
         if (value == null) {
             return null;
@@ -15,6 +20,11 @@ public class ItemTextNormalizer {
         return normalized;
     }
 
+    /**
+     * Normalizes body input while preserving printable line breaks.
+     *
+     * <p>Example: {@code itemTextNormalizer.normalizeBody(" line 1\r\nline 2 ")}.</p>
+     */
     public String normalizeBody(String value) {
         if (value == null) {
             return null;

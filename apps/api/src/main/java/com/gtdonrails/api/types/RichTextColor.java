@@ -19,6 +19,11 @@ public enum RichTextColor {
         this.value = value;
     }
 
+    /**
+     * Parses a JSON color value into a supported rich-text color.
+     *
+     * <p>Example: {@code RichTextColor.from("blue")}.</p>
+     */
     @JsonCreator
     public static RichTextColor from(String value) {
         if (value == null || value.isBlank()) {
@@ -36,11 +41,21 @@ public enum RichTextColor {
             "rich text color '" + value + "' is invalid; expected one of " + allowedValues());
     }
 
+    /**
+     * Returns the JSON value used for this rich-text color.
+     *
+     * <p>Example: {@code RichTextColor.BLUE.value()}.</p>
+     */
     @JsonValue
     public String value() {
         return value;
     }
 
+    /**
+     * Lists supported JSON color values for validation messages.
+     *
+     * <p>Example: {@code RichTextColor.allowedValues()}.</p>
+     */
     public static String allowedValues() {
         return java.util.Arrays.stream(values())
             .map(RichTextColor::value)

@@ -11,14 +11,29 @@ import org.springframework.stereotype.Service;
 @Service
 public class GitCommandService {
 
+    /**
+     * Returns porcelain status output for a repository.
+     *
+     * <p>Example: {@code gitCommandService.statusPorcelain(repositoryDirectory)}.</p>
+     */
     public String statusPorcelain(Path repositoryDirectory) throws IOException, InterruptedException {
         return run(repositoryDirectory, Map.of(), "status", "--porcelain");
     }
 
+    /**
+     * Stages all repository changes for the next commit.
+     *
+     * <p>Example: {@code gitCommandService.addAll(repositoryDirectory)}.</p>
+     */
     public void addAll(Path repositoryDirectory) throws IOException, InterruptedException {
         run(repositoryDirectory, Map.of(), "add", "-A", ".");
     }
 
+    /**
+     * Creates a commit with the configured author identity.
+     *
+     * <p>Example: {@code gitCommandService.commit(repositoryDirectory, message, name, email)}.</p>
+     */
     public void commit(
         Path repositoryDirectory,
         String message,
@@ -33,14 +48,29 @@ public class GitCommandService {
         run(repositoryDirectory, environment, "commit", "-m", message);
     }
 
+    /**
+     * Pulls remote changes without creating merge commits.
+     *
+     * <p>Example: {@code gitCommandService.pullFastForwardOnly(repositoryDirectory)}.</p>
+     */
     public void pullFastForwardOnly(Path repositoryDirectory) throws IOException, InterruptedException {
         run(repositoryDirectory, Map.of(), "pull", "--ff-only");
     }
 
+    /**
+     * Pushes local commits to the configured upstream.
+     *
+     * <p>Example: {@code gitCommandService.push(repositoryDirectory)}.</p>
+     */
     public void push(Path repositoryDirectory) throws IOException, InterruptedException {
         run(repositoryDirectory, Map.of(), "push");
     }
 
+    /**
+     * Clones one branch into a target directory for persistence bootstrap.
+     *
+     * <p>Example: {@code gitCommandService.cloneBranch(workDir, repoUrl, "main", targetDir)}.</p>
+     */
     public void cloneBranch(
         Path workingDirectory,
         String repositoryUrl,
@@ -90,14 +120,29 @@ public class GitCommandService {
         return processBuilder;
     }
 
+    /**
+     * Runs an arbitrary Git command and returns trimmed output.
+     *
+     * <p>Example: {@code gitCommandService.runRaw(repositoryDirectory, "status")}.</p>
+     */
     public String runRaw(Path workingDirectory, String... arguments) throws IOException, InterruptedException {
         return run(workingDirectory, Map.of(), arguments);
     }
 
+    /**
+     * Returns the currently checked-out branch name.
+     *
+     * <p>Example: {@code gitCommandService.currentBranch(repositoryDirectory)}.</p>
+     */
     public String currentBranch(Path repositoryDirectory) throws IOException, InterruptedException {
         return run(repositoryDirectory, Map.of(), "rev-parse", "--abbrev-ref", "HEAD");
     }
 
+    /**
+     * Returns commit subjects from the repository log.
+     *
+     * <p>Example: {@code gitCommandService.logMessages(repositoryDirectory)}.</p>
+     */
     public List<String> logMessages(Path repositoryDirectory) throws IOException, InterruptedException {
         String output = run(repositoryDirectory, Map.of(), "log", "--pretty=%s");
         if (output.isBlank()) {

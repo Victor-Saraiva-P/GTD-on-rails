@@ -17,6 +17,11 @@ public record ItemTimeRequestDto(
     Integer minutes
 ) {
 
+    /**
+     * Converts request hour and minute fields into a Java duration.
+     *
+     * <p>Example: {@code new ItemTimeRequestDto(1L, 30).toDuration()}.</p>
+     */
     public Duration toDuration() {
         return Duration.ofHours(hours).plusMinutes(minutes);
     }

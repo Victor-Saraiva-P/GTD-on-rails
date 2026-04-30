@@ -8,6 +8,11 @@ import org.springframework.util.StringUtils;
 @Service
 public class SqliteJdbcUrlResolver {
 
+    /**
+     * Resolves a SQLite JDBC URL to an absolute normalized file path.
+     *
+     * <p>Example: {@code sqliteJdbcUrlResolver.resolve("jdbc:sqlite:data/app.db")}.</p>
+     */
     public Path resolve(String jdbcUrl) {
         if (!StringUtils.hasText(jdbcUrl) || !jdbcUrl.startsWith("jdbc:sqlite:")) {
             throw new IllegalArgumentException(

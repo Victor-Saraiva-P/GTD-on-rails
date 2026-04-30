@@ -5,6 +5,11 @@ import org.springframework.stereotype.Component;
 @Component
 public class ContextNameNormalizer {
 
+    /**
+     * Normalizes context names into printable trimmed text.
+     *
+     * <p>Example: {@code contextNameNormalizer.normalize(" home\toffice ")}.</p>
+     */
     public String normalize(String value) {
         if (value == null) {
             return null;

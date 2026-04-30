@@ -31,11 +31,21 @@ public class AssetsController {
         this.assetPathNormalizer = assetPathNormalizer;
     }
 
+    /**
+     * Handles asset sync status requests.
+     *
+     * <p>Example: {@code GET /assets/sync/status}.</p>
+     */
     @GetMapping("/sync/status")
     public AssetSyncStatusDto getSyncStatus() {
         return assetSyncService.status();
     }
 
+    /**
+     * Handles manual asset sync requests and reports the queued status.
+     *
+     * <p>Example: {@code POST /assets/sync}.</p>
+     */
     @PostMapping("/sync")
     public ResponseEntity<AssetSyncStatusDto> requestSync() {
         assetSyncService.requestManualSync();
@@ -45,6 +55,11 @@ public class AssetsController {
             .body(assetSyncService.status());
     }
 
+    /**
+     * Serves a stored asset after normalizing the captured path.
+     *
+     * <p>Example: {@code GET /assets/contexts/018f13b2-a7f3-7c44-8f1a-9f31f65a7fd2/icon.png}.</p>
+     */
     @GetMapping("/{*relativePath}")
     public ResponseEntity<Resource> getAsset(@PathVariable String relativePath) {
         String normalizedRelativePath = assetPathNormalizer.normalizeCapturedPath(relativePath);

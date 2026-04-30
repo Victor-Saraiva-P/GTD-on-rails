@@ -11,6 +11,11 @@ public class BodyConverter implements AttributeConverter<Body, String> {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
+    /**
+     * Serializes item body value objects into database JSON.
+     *
+     * <p>Example: {@code bodyConverter.convertToDatabaseColumn(body)}.</p>
+     */
     @Override
     public String convertToDatabaseColumn(Body attribute) {
         if (attribute == null) {
@@ -24,6 +29,11 @@ public class BodyConverter implements AttributeConverter<Body, String> {
         }
     }
 
+    /**
+     * Rehydrates item body value objects from stored database JSON.
+     *
+     * <p>Example: {@code bodyConverter.convertToEntityAttribute(json)}.</p>
+     */
     @Override
     public Body convertToEntityAttribute(String dbData) {
         if (dbData == null) {

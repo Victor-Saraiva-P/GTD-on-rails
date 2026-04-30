@@ -44,6 +44,11 @@ public class Context extends AuditableEntity {
         setName(name);
     }
 
+    /**
+     * Stores a validated context display name.
+     *
+     * <p>Example: {@code context.setName("home")}.</p>
+     */
     public void setName(String name) {
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("context name value '" + name + "' is invalid; expected non-blank text");
@@ -56,6 +61,11 @@ public class Context extends AuditableEntity {
         this.name = name;
     }
 
+    /**
+     * Stores the asset-relative path for a context icon.
+     *
+     * <p>Example: {@code context.setIconAssetPath("contexts/id/icon.png")}.</p>
+     */
     public void setIconAssetPath(String iconAssetPath) {
         this.iconAssetPath = iconAssetPath;
     }

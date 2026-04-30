@@ -38,6 +38,11 @@ public class AssetStorageService {
         this.assetPathNormalizer = assetPathNormalizer;
     }
 
+    /**
+     * Stores a context icon under the configured asset directory.
+     *
+     * <p>Example: {@code assetStorageService.storeContextIcon(contextId, file)}.</p>
+     */
     public String storeContextIcon(UUID contextId, MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("icon file value '" + file + "' is invalid; expected non-empty MultipartFile");
@@ -62,6 +67,11 @@ public class AssetStorageService {
         }
     }
 
+    /**
+     * Deletes an asset when the relative path is present.
+     *
+     * <p>Example: {@code assetStorageService.deleteAsset("contexts/id/icon.png")}.</p>
+     */
     public void deleteAsset(String relativePath) {
         if (!StringUtils.hasText(relativePath)) {
             return;
@@ -75,6 +85,11 @@ public class AssetStorageService {
 
     }
 
+    /**
+     * Loads a stored asset as a Spring resource for HTTP responses.
+     *
+     * <p>Example: {@code assetStorageService.loadAsResource("contexts/id/icon.png")}.</p>
+     */
     public Resource loadAsResource(String relativePath) {
         Path path = resolveRelativePath(relativePath);
         if (!Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)) {
@@ -89,11 +104,21 @@ public class AssetStorageService {
         }
     }
 
+    /**
+     * Resolves the HTTP media type for a stored asset path.
+     *
+     * <p>Example: {@code assetStorageService.mediaType("contexts/id/icon.png")}.</p>
+     */
     public MediaType mediaType(String relativePath) {
         String extension = extensionOf(relativePath);
         return MEDIA_TYPES.getOrDefault(extension, MediaType.APPLICATION_OCTET_STREAM);
     }
 
+    /**
+     * Builds the public URL for an asset-relative path.
+     *
+     * <p>Example: {@code assetStorageService.publicUrl("contexts/id/icon.png")}.</p>
+     */
     public String publicUrl(String relativePath) {
         if (!StringUtils.hasText(relativePath)) {
             return null;

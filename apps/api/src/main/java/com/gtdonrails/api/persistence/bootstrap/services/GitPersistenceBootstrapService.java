@@ -33,6 +33,11 @@ public class GitPersistenceBootstrapService {
         this.sqliteJdbcUrlResolver = sqliteJdbcUrlResolver;
     }
 
+    /**
+     * Clones the persistence repository when the configured SQLite database is missing.
+     *
+     * <p>Example: {@code gitPersistenceBootstrapService.ensureDatabaseAvailable(jdbcUrl)}.</p>
+     */
     public void ensureDatabaseAvailable(String jdbcUrl) {
         Path databasePath = sqliteJdbcUrlResolver.resolve(jdbcUrl);
         if (Files.exists(databasePath) || !persistenceBootstrapProperties.isEnabled()) {

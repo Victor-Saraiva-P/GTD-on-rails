@@ -49,11 +49,21 @@ public class ItemService {
         this.afterCommitExecutor = afterCommitExecutor;
     }
 
+    /**
+     * Returns one active item as an API response.
+     *
+     * <p>Example: {@code itemService.getItem(itemId)}.</p>
+     */
     @Transactional(readOnly = true)
     public ItemResponseDto getItem(UUID id) {
         return itemMapper.toResponse(findItem(id));
     }
 
+    /**
+     * Creates an item after normalizing request text and resolving contexts.
+     *
+     * <p>Example: {@code itemService.createItem(request)}.</p>
+     */
     @Transactional
     public ItemResponseDto createItem(CreateItemRequestDto request) {
         Title title = new Title(itemTextNormalizer.normalizeTitle(request.title()));
@@ -65,6 +75,11 @@ public class ItemService {
         return response;
     }
 
+    /**
+     * Updates an active item and replaces contexts only when context ids are provided.
+     *
+     * <p>Example: {@code itemService.updateItem(itemId, request)}.</p>
+     */
     @Transactional
     public ItemResponseDto updateItem(UUID id, UpdateItemRequestDto request) {
         Item item = findItem(id);
@@ -88,6 +103,11 @@ public class ItemService {
         item.setTime(request.time() == null ? null : request.time().toDuration());
     }
 
+    /**
+     * Soft deletes an active item and schedules persistence sync after commit.
+     *
+     * <p>Example: {@code itemService.deleteItem(itemId)}.</p>
+     */
     @Transactional
     public void deleteItem(UUID id) {
         Item item = findItem(id);

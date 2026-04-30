@@ -17,6 +17,11 @@ public class ItemMapper {
         this.contextMapper = contextMapper;
     }
 
+    /**
+     * Maps an item entity into the full item API response.
+     *
+     * <p>Example: {@code itemMapper.toResponse(item)}.</p>
+     */
     public ItemResponseDto toResponse(Item item) {
         return new ItemResponseDto(
             item.getId(),
@@ -34,6 +39,11 @@ public class ItemMapper {
         );
     }
 
+    /**
+     * Maps an item entity into the compact response used inside context views.
+     *
+     * <p>Example: {@code itemMapper.toContextItemResponse(item)}.</p>
+     */
     public ContextItemResponseDto toContextItemResponse(Item item) {
         return new ContextItemResponseDto(
             item.getId(),

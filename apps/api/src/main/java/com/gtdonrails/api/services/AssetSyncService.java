@@ -41,6 +41,11 @@ public class AssetSyncService implements ApplicationRunner {
         this.rcloneAssetSyncService = rcloneAssetSyncService;
     }
 
+    /**
+     * Initializes asset storage and queues startup sync when rclone is enabled.
+     *
+     * <p>Example: {@code assetSyncService.run(args)}.</p>
+     */
     @Override
     public void run(ApplicationArguments args) throws IOException {
         Files.createDirectories(localDirectory());
@@ -53,11 +58,21 @@ public class AssetSyncService implements ApplicationRunner {
         requestSync("startup");
     }
 
+    /**
+     * Queues the periodic asset sync requested by the scheduler.
+     *
+     * <p>Example: {@code assetSyncService.requestScheduledSync()}.</p>
+     */
     @Scheduled(fixedDelayString = "${gtd.assets.sync.interval-ms:300000}")
     public void requestScheduledSync() {
         requestSync("scheduled");
     }
 
+    /**
+     * Queues asset sync work while recording the reason for observability.
+     *
+     * <p>Example: {@code assetSyncService.requestSync("context icon updated")}.</p>
+     */
     public void requestSync(String reason) {
         if (!rcloneAssetSyncService.isEnabled()) {
             state = AssetSyncState.DISABLED;
@@ -68,10 +83,20 @@ public class AssetSyncService implements ApplicationRunner {
         submit(!baselineExists(), reason);
     }
 
+    /**
+     * Queues asset sync work requested directly by the API.
+     *
+     * <p>Example: {@code assetSyncService.requestManualSync()}.</p>
+     */
     public void requestManualSync() {
         requestSync("manual");
     }
 
+    /**
+     * Returns the latest asset sync state for status endpoints.
+     *
+     * <p>Example: {@code assetSyncService.status()}.</p>
+     */
     public AssetSyncStatusDto status() {
         return new AssetSyncStatusDto(
             state,

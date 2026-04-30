@@ -23,6 +23,11 @@ public class InboxService {
         this.itemMapper = itemMapper;
     }
 
+    /**
+     * Lists inbox items that are still in the GTD stuff state.
+     *
+     * <p>Example: {@code inboxService.listStuff()}.</p>
+     */
     @Transactional(readOnly = true)
     public List<ItemResponseDto> listStuff() {
         return itemRepository.findAllByStatusAndDeletedAtIsNullOrderByCreatedAtDesc(ItemStatus.STUFF)

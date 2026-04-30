@@ -19,6 +19,11 @@ public class CorsConfig implements WebMvcConfigurer {
             .toArray(String[]::new);
     }
 
+    /**
+     * Registers CORS mappings when origins are configured.
+     *
+     * <p>Example: {@code corsConfig.addCorsMappings(registry)}.</p>
+     */
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         if (allowedOrigins.length == 0) {

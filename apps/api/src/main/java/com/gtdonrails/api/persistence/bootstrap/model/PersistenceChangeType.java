@@ -16,6 +16,11 @@ public enum PersistenceChangeType {
         this.commitMessage = commitMessage;
     }
 
+    /**
+     * Returns the Git commit message used for this persistence change.
+     *
+     * <p>Example: {@code PersistenceChangeType.CREATE_ITEM.commitMessage()}.</p>
+     */
     public String commitMessage() {
         return commitMessage;
     }

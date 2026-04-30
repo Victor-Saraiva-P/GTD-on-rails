@@ -50,6 +50,11 @@ public class PersistenceGitSyncService {
         this.state = persistenceSyncProperties.isEnabled() ? PersistenceSyncState.IDLE : PersistenceSyncState.DISABLED;
     }
 
+    /**
+     * Captures repository and database paths required before persistence sync can run.
+     *
+     * <p>Example: {@code persistenceGitSyncService.initialize(jdbcUrl)}.</p>
+     */
     public void initialize(String jdbcUrl) {
         if (!persistenceSyncProperties.isEnabled()) {
             disableSync();
@@ -85,6 +90,11 @@ public class PersistenceGitSyncService {
         }
     }
 
+    /**
+     * Performs the startup pull and leaves later recovery to scheduled sync.
+     *
+     * <p>Example: {@code persistenceGitSyncService.pullOnStartup()}.</p>
+     */
     public void pullOnStartup() {
         if (!persistenceSyncProperties.isEnabled()) {
             state = PersistenceSyncState.DISABLED;
@@ -98,11 +108,21 @@ public class PersistenceGitSyncService {
         }
     }
 
+    /**
+     * Queues the periodic persistence pull requested by the scheduler.
+     *
+     * <p>Example: {@code persistenceGitSyncService.requestScheduledPull()}.</p>
+     */
     @Scheduled(fixedDelayString = "${gtd.persistence.sync.interval-ms:300000}")
     public void requestScheduledPull() {
         requestPull("scheduled");
     }
 
+    /**
+     * Queues a commit, pull, and push for local persistence changes.
+     *
+     * <p>Example: {@code persistenceGitSyncService.requestSync("item updated", PersistenceChangeType.UPDATE_ITEM)}.</p>
+     */
     public void requestSync(String reason, PersistenceChangeType changeType) {
         if (!persistenceSyncProperties.isEnabled()) {
             state = PersistenceSyncState.DISABLED;
@@ -112,6 +132,11 @@ public class PersistenceGitSyncService {
         executorService.submit(() -> syncNow(reason, changeType));
     }
 
+    /**
+     * Queues a pull-only persistence sync for remote changes.
+     *
+     * <p>Example: {@code persistenceGitSyncService.requestPull("manual")}.</p>
+     */
     public void requestPull(String reason) {
         if (!persistenceSyncProperties.isEnabled()) {
             state = PersistenceSyncState.DISABLED;
@@ -121,6 +146,11 @@ public class PersistenceGitSyncService {
         executorService.submit(() -> pullNow(reason));
     }
 
+    /**
+     * Returns the latest persistence sync state for status endpoints.
+     *
+     * <p>Example: {@code persistenceGitSyncService.status()}.</p>
+     */
     public PersistenceSyncStatus status() {
         return new PersistenceSyncStatus(state, lastStartedAt, lastFinishedAt, lastSuccessfulSyncAt, lastError);
     }

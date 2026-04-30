@@ -14,6 +14,11 @@ public class ContextMapper {
         this.assetStorageService = assetStorageService;
     }
 
+    /**
+     * Maps a context entity into the context API response.
+     *
+     * <p>Example: {@code contextMapper.toResponse(context)}.</p>
+     */
     public ContextResponseDto toResponse(Context context) {
         return new ContextResponseDto(
             context.getId(),
