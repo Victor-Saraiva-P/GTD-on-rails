@@ -40,7 +40,7 @@ public class AssetStorageService {
 
     public String storeContextIcon(UUID contextId, MultipartFile file) {
         if (file == null || file.isEmpty()) {
-            throw new IllegalArgumentException("icon file is required");
+            throw new IllegalArgumentException("icon file value '" + file + "' is invalid; expected non-empty MultipartFile");
         }
 
         String extension = validateIconFile(file);
@@ -78,7 +78,8 @@ public class AssetStorageService {
     public Resource loadAsResource(String relativePath) {
         Path path = resolveRelativePath(relativePath);
         if (!Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)) {
-            throw new IllegalArgumentException("asset not found");
+            throw new IllegalArgumentException(
+                "asset path value '" + relativePath + "' is invalid; expected existing regular file");
         }
 
         try {
@@ -107,12 +108,14 @@ public class AssetStorageService {
     private String validateIconFile(MultipartFile file) {
         String extension = extensionOf(file.getOriginalFilename());
         if (!ALLOWED_ICON_EXTENSIONS.contains(extension)) {
-            throw new IllegalArgumentException("icon file must be PNG, SVG or WebP");
+            throw new IllegalArgumentException(
+                "icon file extension '" + extension + "' is invalid; expected png, svg, or webp");
         }
 
         String contentType = file.getContentType();
         if (!isAllowedIconContentType(extension, contentType)) {
-            throw new IllegalArgumentException("icon file must be PNG, SVG or WebP");
+            throw new IllegalArgumentException(
+                "icon file content type '" + contentType + "' is invalid; expected image/" + extension);
         }
 
         return extension;
@@ -138,7 +141,8 @@ public class AssetStorageService {
         Path baseDirectory = localDirectory();
         Path resolvedPath = baseDirectory.resolve(normalizedRelativePath).normalize();
         if (!resolvedPath.startsWith(baseDirectory)) {
-            throw new IllegalArgumentException("asset path is invalid");
+            throw new IllegalArgumentException(
+                "asset path value '" + relativePath + "' is invalid; expected path inside " + baseDirectory);
         }
 
         return resolvedPath;

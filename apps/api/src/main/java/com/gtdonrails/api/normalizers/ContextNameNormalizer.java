@@ -19,7 +19,9 @@ public class ContextNameNormalizer {
         for (int index = 0; index < value.length(); index++) {
             char character = value.charAt(index);
             if (Character.isISOControl(character)) {
-                throw new IllegalArgumentException("context name contains unsupported control characters");
+                throw new IllegalArgumentException(
+                    "context name character U+" + String.format("%04X", (int) character)
+                        + " is invalid; expected printable text");
             }
         }
     }

@@ -152,7 +152,7 @@ class ContextControllerTests {
                     return request;
                 }))
             .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.detail").value("icon file must be PNG, SVG or WebP"));
+            .andExpect(jsonPath("$.detail").value("icon file extension 'txt' is invalid; expected png, svg, or webp"));
     }
 
     @Test

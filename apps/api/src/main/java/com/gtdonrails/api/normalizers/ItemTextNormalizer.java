@@ -33,7 +33,9 @@ public class ItemTextNormalizer {
         for (int index = 0; index < value.length(); index++) {
             char character = value.charAt(index);
             if (Character.isISOControl(character) && character != '\n' && character != '\t') {
-                throw new IllegalArgumentException(fieldName + " contains unsupported control characters");
+                throw new IllegalArgumentException(
+                    fieldName + " character U+" + String.format("%04X", (int) character)
+                        + " is invalid; expected printable text");
             }
         }
     }

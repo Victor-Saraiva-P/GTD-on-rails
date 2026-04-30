@@ -94,7 +94,7 @@ public class Item extends AuditableEntity {
 
     public void setTitle(Title title) {
         if (title == null) {
-            throw new IllegalArgumentException("title is required");
+            throw new IllegalArgumentException("item title value 'null' is invalid; expected Title");
         }
 
         this.title = title;
@@ -116,13 +116,15 @@ public class Item extends AuditableEntity {
 
     private void requireAllowedEnergyScale(BigDecimal energy) {
         if (energy.scale() > ENERGY_SCALE) {
-            throw new IllegalArgumentException("energy must have up to 1 decimal place");
+            throw new IllegalArgumentException(
+                "energy value '" + energy + "' is invalid; expected up to " + ENERGY_SCALE + " decimal place");
         }
     }
 
     private void requireEnergyInRange(BigDecimal energy) {
         if (energy.compareTo(MIN_ENERGY) < 0 || energy.compareTo(MAX_ENERGY) > 0) {
-            throw new IllegalArgumentException("energy must be between 0.0 and 10.0");
+            throw new IllegalArgumentException(
+                "energy value '" + energy + "' is invalid; expected between " + MIN_ENERGY_VALUE + " and " + MAX_ENERGY_VALUE);
         }
     }
 
@@ -133,11 +135,13 @@ public class Item extends AuditableEntity {
         }
 
         if (time.isNegative()) {
-            throw new IllegalArgumentException("time must be greater than or equal to " + MIN_TIME_VALUE);
+            throw new IllegalArgumentException(
+                "time value '" + time + "' is invalid; expected greater than or equal to " + MIN_TIME_VALUE);
         }
 
         if (time.getSeconds() % 60 != 0 || time.getNano() != 0) {
-            throw new IllegalArgumentException("time must be expressed in hours and minutes only");
+            throw new IllegalArgumentException(
+                "time value '" + time + "' is invalid; expected whole-minute Duration");
         }
 
         this.time = time;
@@ -145,7 +149,7 @@ public class Item extends AuditableEntity {
 
     public void addContext(Context context) {
         if (context == null) {
-            throw new IllegalArgumentException("context is required");
+            throw new IllegalArgumentException("context value 'null' is invalid; expected Context");
         }
 
         contexts.add(context);

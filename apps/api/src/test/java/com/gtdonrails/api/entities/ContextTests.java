@@ -29,7 +29,7 @@ class ContextTests {
             IllegalArgumentException.class,
             () -> new Context("   "));
 
-        assertEquals("context name is required", exception.getMessage());
+        assertEquals("context name value '   ' is invalid; expected non-blank text", exception.getMessage());
     }
 
     @Test
@@ -39,7 +39,8 @@ class ContextTests {
             () -> new Context("a".repeat(Context.MAX_NAME_LENGTH + 1)));
 
         assertEquals(
-            "context name exceeds max length of " + Context.MAX_NAME_LENGTH,
+            "context name length " + (Context.MAX_NAME_LENGTH + 1)
+                + " is invalid; expected at most " + Context.MAX_NAME_LENGTH + " characters",
             exception.getMessage());
     }
 

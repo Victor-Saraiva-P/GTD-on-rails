@@ -175,13 +175,19 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         StringBuilder detail = new StringBuilder("One or more fields are invalid:\n");
         ex.getBindingResult()
             .getFieldErrors()
-            .forEach(fieldError -> appendFieldError(detail, fieldError.getField(), fieldError.getDefaultMessage()));
+            .forEach(fieldError -> appendFieldError(
+                detail,
+                fieldError.getField(),
+                fieldError.getRejectedValue(),
+                fieldError.getDefaultMessage()));
         return detail.toString().trim();
     }
 
-    private void appendFieldError(StringBuilder detail, String field, String message) {
+    private void appendFieldError(StringBuilder detail, String field, Object rejectedValue, String message) {
         detail.append("- Field '")
             .append(field)
+            .append("' value '")
+            .append(rejectedValue)
             .append("': ")
             .append(message)
             .append("\n");

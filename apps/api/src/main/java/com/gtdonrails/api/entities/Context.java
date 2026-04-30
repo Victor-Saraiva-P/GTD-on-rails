@@ -46,10 +46,11 @@ public class Context extends AuditableEntity {
 
     public void setName(String name) {
         if (name == null || name.isBlank()) {
-            throw new IllegalArgumentException("context name is required");
+            throw new IllegalArgumentException("context name value '" + name + "' is invalid; expected non-blank text");
         }
         if (name.length() > MAX_NAME_LENGTH) {
-            throw new IllegalArgumentException("context name exceeds max length of " + MAX_NAME_LENGTH);
+            throw new IllegalArgumentException(
+                "context name length " + name.length() + " is invalid; expected at most " + MAX_NAME_LENGTH + " characters");
         }
 
         this.name = name;

@@ -10,7 +10,8 @@ public class SqliteJdbcUrlResolver {
 
     public Path resolve(String jdbcUrl) {
         if (!StringUtils.hasText(jdbcUrl) || !jdbcUrl.startsWith("jdbc:sqlite:")) {
-            throw new IllegalArgumentException("Only jdbc:sqlite URLs are supported");
+            throw new IllegalArgumentException(
+                "JDBC URL value '" + jdbcUrl + "' is invalid; expected jdbc:sqlite:<path>");
         }
 
         String sqlitePath = stripQueryString(stripFilePrefix(stripJdbcPrefix(jdbcUrl)));

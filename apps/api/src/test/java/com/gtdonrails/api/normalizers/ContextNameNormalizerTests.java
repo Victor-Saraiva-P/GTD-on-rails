@@ -32,6 +32,6 @@ class ContextNameNormalizerTests {
             IllegalArgumentException.class,
             () -> contextNameNormalizer.normalize("street\u0001home"));
 
-        assertEquals("context name contains unsupported control characters", exception.getMessage());
+        assertEquals("context name character U+0001 is invalid; expected printable text", exception.getMessage());
     }
 }

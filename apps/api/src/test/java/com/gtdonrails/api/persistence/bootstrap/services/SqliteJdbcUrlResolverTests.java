@@ -37,6 +37,6 @@ class SqliteJdbcUrlResolverTests {
             IllegalArgumentException.class,
             () -> resolver.resolve("jdbc:postgresql://localhost/test"));
 
-        assertEquals("Only jdbc:sqlite URLs are supported", exception.getMessage());
+        assertEquals("JDBC URL value 'jdbc:postgresql://localhost/test' is invalid; expected jdbc:sqlite:<path>", exception.getMessage());
     }
 }

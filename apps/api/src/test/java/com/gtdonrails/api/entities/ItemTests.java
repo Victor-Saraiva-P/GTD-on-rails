@@ -36,7 +36,7 @@ class ItemTests {
             IllegalArgumentException.class,
             () -> item.setTitle(null));
 
-        assertEquals("title is required", exception.getMessage());
+        assertEquals("item title value 'null' is invalid; expected Title", exception.getMessage());
     }
 
     // body
@@ -83,7 +83,7 @@ class ItemTests {
             IllegalArgumentException.class,
             () -> item.setEnergy(new BigDecimal("4.25")));
 
-        assertEquals("energy must have up to 1 decimal place", exception.getMessage());
+        assertEquals("energy value '4.25' is invalid; expected up to 1 decimal place", exception.getMessage());
     }
 
     @Test
@@ -103,7 +103,7 @@ class ItemTests {
             IllegalArgumentException.class,
             () -> item.setEnergy(new BigDecimal("-0.1")));
 
-        assertEquals("energy must be between 0.0 and 10.0", exception.getMessage());
+        assertEquals("energy value '-0.1' is invalid; expected between 0.0 and 10.0", exception.getMessage());
     }
 
     @Test
@@ -114,7 +114,7 @@ class ItemTests {
             IllegalArgumentException.class,
             () -> item.setEnergy(new BigDecimal("10.1")));
 
-        assertEquals("energy must be between 0.0 and 10.0", exception.getMessage());
+        assertEquals("energy value '10.1' is invalid; expected between 0.0 and 10.0", exception.getMessage());
     }
 
     // time
@@ -151,7 +151,7 @@ class ItemTests {
             IllegalArgumentException.class,
             () -> item.setTime(Duration.ofMinutes(-1)));
 
-        assertEquals("time must be greater than or equal to PT0M", exception.getMessage());
+        assertEquals("time value 'PT-1M' is invalid; expected greater than or equal to PT0M", exception.getMessage());
     }
 
     @Test
@@ -162,7 +162,7 @@ class ItemTests {
             IllegalArgumentException.class,
             () -> item.setTime(Duration.ofSeconds(30)));
 
-        assertEquals("time must be expressed in hours and minutes only", exception.getMessage());
+        assertEquals("time value 'PT30S' is invalid; expected whole-minute Duration", exception.getMessage());
     }
 
     // contexts
@@ -184,7 +184,7 @@ class ItemTests {
             IllegalArgumentException.class,
             () -> item.addContext(null));
 
-        assertEquals("context is required", exception.getMessage());
+        assertEquals("context value 'null' is invalid; expected Context", exception.getMessage());
     }
 
     @Test

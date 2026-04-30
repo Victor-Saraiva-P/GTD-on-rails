@@ -88,24 +88,11 @@ class ItemControllerTests {
 
     @Test
     void getsItem() throws Exception {
-        Item item = itemRepository.save(new Item(
-            new Title("Capture idea"),
-            paragraphBody("Need to process later"),
-            energy("2.0"),
-            Duration.ofMinutes(75)));
+        Item item = savedTimedItem("Capture idea", "Need to process later", "2.0", 75);
 
-        mockMvc.perform(get("/items/{id}", item.getId()))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.id").value(item.getId().toString()))
-            .andExpect(jsonPath("$.title").value("Capture idea"))
-            .andExpect(jsonPath("$.body.version").value(1))
-            .andExpect(jsonPath("$.body.blocks[0].type").value("paragraph"))
-            .andExpect(jsonPath("$.body.blocks[0].properties.richText[0].text").value("Need to process later"))
-            .andExpect(jsonPath("$.energy").value(2.0))
-            .andExpect(jsonPath("$.time.hours").value(1))
-            .andExpect(jsonPath("$.time.minutes").value(15))
-            .andExpect(jsonPath("$.status").value("STUFF"))
-            .andExpect(jsonPath("$.createdAt", notNullValue()));
+        ResultActions result = mockMvc.perform(get("/items/{id}", item.getId()));
+
+        assertFetchedItem(result, item);
     }
 
     @Test
@@ -142,23 +129,9 @@ class ItemControllerTests {
 
     @Test
     void updatesItem() throws Exception {
-        Item item = itemRepository.save(new Item(
-            new Title("Old title"),
-            paragraphBody("Old body"),
-            energy("1.0"),
-            Duration.ofMinutes(20)));
+        Item item = savedTimedItem("Old title", "Old body", "1.0", 20);
 
-        ResultActions result = updateItem(item, """
-            {
-              "title": "New title",
-              "body": %s,
-              "energy": 6.5,
-              "time": {
-                "hours": 2,
-                "minutes": 5
-              }
-            }
-            """.formatted(bodyJson("New body")));
+        ResultActions result = updateItem(item, updateItemJson());
 
         assertUpdatedItem(result);
     }
@@ -201,7 +174,7 @@ class ItemControllerTests {
                     """.formatted(bodyJson("Need to process later"))))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString(
-                "Field 'time.minutes': time.minutes must be less than or equal to 59")));
+                "Field 'time.minutes' value '60': time.minutes must be less than or equal to 59")));
     }
 
     @Test
@@ -250,6 +223,25 @@ class ItemControllerTests {
             .content(content));
     }
 
+    private Item savedTimedItem(String title, String body, String energyValue, long minutes) {
+        return itemRepository.save(new Item(
+            new Title(title),
+            paragraphBody(body),
+            energy(energyValue),
+            Duration.ofMinutes(minutes)));
+    }
+
+    private String updateItemJson() {
+        return """
+            {
+              "title": "New title",
+              "body": %s,
+              "energy": 6.5,
+              "time": { "hours": 2, "minutes": 5 }
+            }
+            """.formatted(bodyJson("New body"));
+    }
+
     private String itemWithContextsJson(Context home, Context street) {
         return """
             {
@@ -287,23 +279,28 @@ class ItemControllerTests {
 
     private String bodyJson(String text) {
         return """
-            {
-              "version": 1,
-              "blocks": [{
-                "id": "00000000-0000-0000-0000-000000000001",
-                "type": "paragraph",
-                "properties": {
-                  "richText": [{
-                    "text": "%s",
-                    "marks": [],
-                    "textColor": null,
-                    "backgroundColor": null,
-                    "link": null
-                  }]
-                }
-              }]
-            }
+            { "version": 1, "blocks": [{
+              "id": "00000000-0000-0000-0000-000000000001",
+              "type": "paragraph",
+              "properties": { "richText": [{
+                "text": "%s", "marks": [], "textColor": null, "backgroundColor": null, "link": null
+              }] }
+            }] }
             """.formatted(text);
+    }
+
+    private void assertFetchedItem(ResultActions result, Item item) throws Exception {
+        result.andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(item.getId().toString()))
+            .andExpect(jsonPath("$.title").value("Capture idea"))
+            .andExpect(jsonPath("$.body.version").value(1))
+            .andExpect(jsonPath("$.body.blocks[0].type").value("paragraph"))
+            .andExpect(jsonPath("$.body.blocks[0].properties.richText[0].text").value("Need to process later"))
+            .andExpect(jsonPath("$.energy").value(2.0))
+            .andExpect(jsonPath("$.time.hours").value(1))
+            .andExpect(jsonPath("$.time.minutes").value(15))
+            .andExpect(jsonPath("$.status").value("STUFF"))
+            .andExpect(jsonPath("$.createdAt", notNullValue()));
     }
 
     private void assertCreatedRentReceipt(ResultActions result) throws Exception {
@@ -335,7 +332,8 @@ class ItemControllerTests {
             .andExpect(jsonPath("$.title").value("Invalid data"))
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.type").value("https://gtdonrails.local/errors/invalid-data"))
-            .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("Field 'title': title is required")))
+            .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString(
+                "Field 'title' value '   ': expected non-blank text")))
             .andExpect(jsonPath("$.instance").value("/items"));
     }
 

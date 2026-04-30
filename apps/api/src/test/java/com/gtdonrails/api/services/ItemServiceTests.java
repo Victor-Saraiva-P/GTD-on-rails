@@ -172,7 +172,7 @@ class ItemServiceTests {
             IllegalArgumentException.class,
             () -> itemService.createItem(request));
 
-        assertEquals("title is required", exception.getMessage());
+        assertEquals("title value '' is invalid; expected non-blank text", exception.getMessage());
         verify(itemRepository, never()).save(any(Item.class));
     }
 
@@ -242,12 +242,7 @@ class ItemServiceTests {
         when(itemRepository.findByIdAndDeletedAtIsNull(itemId)).thenReturn(Optional.of(existingItem));
         stubSavedItemResponse(expectedResponse);
 
-        ItemResponseDto response = itemService.updateItem(itemId, new UpdateItemRequestDto(
-            " New\t title\r\nlater ",
-            body,
-            energy("7.5"),
-            new ItemTimeRequestDto(2L, 15),
-            null));
+        ItemResponseDto response = itemService.updateItem(itemId, normalizedUpdateRequest(body));
 
         assertSavedTimedItem("New  title later", body, "7.5", Duration.ofMinutes(135));
         assertEquals(expectedResponse, response);
@@ -279,7 +274,7 @@ class ItemServiceTests {
             () -> itemService.updateItem(itemId,
                 new UpdateItemRequestDto("   ", paragraphBody("Body"), energy("1.0"), null, null)));
 
-        assertEquals("title is required", exception.getMessage());
+        assertEquals("title value '' is invalid; expected non-blank text", exception.getMessage());
         verify(itemRepository, never()).save(any(Item.class));
     }
 
@@ -435,6 +430,15 @@ class ItemServiceTests {
 
     private UpdateItemRequestDto updateItemWithoutContextsRequest() {
         return new UpdateItemRequestDto("New title", null, null, null, null);
+    }
+
+    private UpdateItemRequestDto normalizedUpdateRequest(Body body) {
+        return new UpdateItemRequestDto(
+            " New\t title\r\nlater ",
+            body,
+            energy("7.5"),
+            new ItemTimeRequestDto(2L, 15),
+            null);
     }
 
     private UpdateItemRequestDto clearBodyUpdateRequest() {

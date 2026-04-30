@@ -10,7 +10,7 @@ public class AssetPathNormalizer {
 
     public String normalizeCapturedPath(String relativePath) {
         if (!StringUtils.hasText(relativePath)) {
-            throw new IllegalArgumentException("asset path is required");
+            throw new IllegalArgumentException("asset path value '" + relativePath + "' is invalid; expected relative path");
         }
 
         return normalize(relativePath.startsWith("/") ? relativePath.substring(1) : relativePath);
@@ -18,12 +18,13 @@ public class AssetPathNormalizer {
 
     public String normalize(String relativePath) {
         if (!StringUtils.hasText(relativePath)) {
-            throw new IllegalArgumentException("asset path is required");
+            throw new IllegalArgumentException("asset path value '" + relativePath + "' is invalid; expected relative path");
         }
 
         Path rawPath = Path.of(relativePath);
         if (rawPath.isAbsolute() || relativePath.contains("..")) {
-            throw new IllegalArgumentException("asset path is invalid");
+            throw new IllegalArgumentException(
+                "asset path value '" + relativePath + "' is invalid; expected relative path without parent traversal");
         }
 
         return relativePath;

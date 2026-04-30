@@ -15,7 +15,7 @@ class TitleTests {
             IllegalArgumentException.class,
             () -> new Title("   "));
 
-        assertEquals("title is required", exception.getMessage());
+        assertEquals("title value '   ' is invalid; expected non-blank text", exception.getMessage());
     }
 
     @Test
@@ -32,6 +32,6 @@ class TitleTests {
             IllegalArgumentException.class,
             () -> new Title("a".repeat(Title.MAX_LENGTH + 1)));
 
-        assertEquals("title exceeds max length of 200", exception.getMessage());
+        assertEquals("title value length 201 is invalid; expected at most 200 characters", exception.getMessage());
     }
 }

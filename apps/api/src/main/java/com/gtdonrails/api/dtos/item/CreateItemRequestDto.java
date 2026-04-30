@@ -16,8 +16,8 @@ import jakarta.validation.constraints.Size;
 import jakarta.validation.Valid;
 
 public record CreateItemRequestDto(
-    @NotBlank(message = "title is required")
-    @Size(max = Title.MAX_LENGTH, message = "title exceeds max length of " + Title.MAX_LENGTH)
+    @NotBlank(message = "expected non-blank text")
+    @Size(max = Title.MAX_LENGTH, message = "expected at most " + Title.MAX_LENGTH + " characters")
     String title,
 
     Body body,
@@ -25,12 +25,12 @@ public record CreateItemRequestDto(
     @DecimalMin(
         value = Item.MIN_ENERGY_VALUE,
         inclusive = true,
-        message = "energy must be between " + Item.MIN_ENERGY_VALUE + " and " + Item.MAX_ENERGY_VALUE)
+        message = "expected between " + Item.MIN_ENERGY_VALUE + " and " + Item.MAX_ENERGY_VALUE)
     @DecimalMax(
         value = Item.MAX_ENERGY_VALUE,
         inclusive = true,
-        message = "energy must be between " + Item.MIN_ENERGY_VALUE + " and " + Item.MAX_ENERGY_VALUE)
-    @Digits(integer = 2, fraction = Item.ENERGY_SCALE, message = "energy must have up to 1 decimal place")
+        message = "expected between " + Item.MIN_ENERGY_VALUE + " and " + Item.MAX_ENERGY_VALUE)
+    @Digits(integer = 2, fraction = Item.ENERGY_SCALE, message = "expected up to 1 decimal place")
     BigDecimal energy,
 
     @Valid
@@ -38,7 +38,7 @@ public record CreateItemRequestDto(
 
     @Size(
         max = Context.MAX_CONTEXTS_PER_ITEM,
-        message = "contextIds exceeds max size of " + Context.MAX_CONTEXTS_PER_ITEM)
+        message = "expected at most " + Context.MAX_CONTEXTS_PER_ITEM + " context IDs")
     List<UUID> contextIds
 ) {
 }

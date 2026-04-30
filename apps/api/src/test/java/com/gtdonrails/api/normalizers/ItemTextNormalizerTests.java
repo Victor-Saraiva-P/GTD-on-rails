@@ -34,6 +34,6 @@ class ItemTextNormalizerTests {
             IllegalArgumentException.class,
             () -> itemTextNormalizer.normalizeTitle("bad\u0001title"));
 
-        assertEquals("title contains unsupported control characters", exception.getMessage());
+        assertEquals("title character U+0001 is invalid; expected printable text", exception.getMessage());
     }
 }

@@ -25,7 +25,9 @@ class AssetPathNormalizerTests {
             () -> assetPathNormalizer.normalize("/tmp/secret.txt")
         );
 
-        assertEquals("asset path is invalid", exception.getMessage());
+        assertEquals(
+            "asset path value '/tmp/secret.txt' is invalid; expected relative path without parent traversal",
+            exception.getMessage());
     }
 
     @Test
@@ -42,7 +44,7 @@ class AssetPathNormalizerTests {
             () -> assetPathNormalizer.normalize(" ")
         );
 
-        assertEquals("asset path is required", exception.getMessage());
+        assertEquals("asset path value ' ' is invalid; expected relative path", exception.getMessage());
     }
 
     @Test
@@ -52,7 +54,9 @@ class AssetPathNormalizerTests {
             () -> assetPathNormalizer.normalize("../application.properties")
         );
 
-        assertEquals("asset path is invalid", exception.getMessage());
+        assertEquals(
+            "asset path value '../application.properties' is invalid; expected relative path without parent traversal",
+            exception.getMessage());
     }
 
     @Test
@@ -62,6 +66,8 @@ class AssetPathNormalizerTests {
             () -> assetPathNormalizer.normalize("contexts/../application.properties")
         );
 
-        assertEquals("asset path is invalid", exception.getMessage());
+        assertEquals(
+            "asset path value 'contexts/../application.properties' is invalid; expected relative path without parent traversal",
+            exception.getMessage());
     }
 }

@@ -36,7 +36,9 @@ class AssetStorageServiceTests {
             () -> assetStorageService.loadAsResource("../application.properties")
         );
 
-        assertEquals("asset path is invalid", exception.getMessage());
+        assertEquals(
+            "asset path value '../application.properties' is invalid; expected relative path without parent traversal",
+            exception.getMessage());
     }
 
     @Test
@@ -48,7 +50,9 @@ class AssetStorageServiceTests {
             () -> assetStorageService.loadAsResource(tempDir.resolve("secret.txt").toString())
         );
 
-        assertEquals("asset path is invalid", exception.getMessage());
+        assertEquals(
+            "asset path value '" + tempDir.resolve("secret.txt") + "' is invalid; expected relative path without parent traversal",
+            exception.getMessage());
     }
 
     @Test
@@ -76,7 +80,9 @@ class AssetStorageServiceTests {
             () -> assetStorageService.storeContextIcon(contextId, file)
         );
 
-        assertEquals("icon file is required", exception.getMessage());
+        assertEquals(
+            "icon file value '" + file + "' is invalid; expected non-empty MultipartFile",
+            exception.getMessage());
     }
 
     @Test
@@ -90,7 +96,7 @@ class AssetStorageServiceTests {
             () -> assetStorageService.storeContextIcon(contextId, file)
         );
 
-        assertEquals("icon file must be PNG, SVG or WebP", exception.getMessage());
+        assertEquals("icon file extension 'txt' is invalid; expected png, svg, or webp", exception.getMessage());
     }
 
     @Test

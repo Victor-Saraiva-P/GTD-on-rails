@@ -5,8 +5,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 public record CreateContextRequestDto(
-    @NotBlank(message = "context name is required")
-    @Size(max = Context.MAX_NAME_LENGTH, message = "context name exceeds max length of " + Context.MAX_NAME_LENGTH)
+    @NotBlank(message = "expected non-blank text")
+    @Size(max = Context.MAX_NAME_LENGTH, message = "expected at most " + Context.MAX_NAME_LENGTH + " characters")
     String name
 ) {
 }
