@@ -4,12 +4,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 public final class BodyFixtures {
-
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private BodyFixtures() {
     }
@@ -47,7 +42,6 @@ public final class BodyFixtures {
     }
 
     private static Map<String, Object> properties(ParagraphProperties paragraphProperties) {
-        return OBJECT_MAPPER.convertValue(paragraphProperties, new TypeReference<>() {
-        });
+        return paragraphProperties.toMap();
     }
 }

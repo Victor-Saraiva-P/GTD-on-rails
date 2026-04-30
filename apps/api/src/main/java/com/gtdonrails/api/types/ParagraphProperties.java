@@ -3,14 +3,13 @@ package com.gtdonrails.api.types;
 import java.util.List;
 import java.util.Map;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.gtdonrails.api.json.JacksonJsonCodec;
+import com.gtdonrails.api.json.JsonCodec;
+import com.gtdonrails.api.json.JsonCodecException;
 
 public record ParagraphProperties(List<RichTextRun> richText) {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final JsonCodec JSON_CODEC = new JacksonJsonCodec();
 
     public ParagraphProperties {
         if (richText == null || richText.isEmpty()) {
@@ -22,21 +21,16 @@ public record ParagraphProperties(List<RichTextRun> richText) {
     }
 
     /**
-     * Parses paragraph properties from flexible block JSON.
-     *
-     * <p>Example: {@code ParagraphProperties.from(block.properties())}.</p>
-     */
-    public static ParagraphProperties from(JsonNode properties) {
-        return fromJsonNode(properties);
-    }
-
-    /**
      * Parses paragraph properties from flexible block maps.
      *
      * <p>Example: {@code ParagraphProperties.from(block.properties())}.</p>
      */
     public static ParagraphProperties from(Map<String, Object> properties) {
-        return fromJsonNode(OBJECT_MAPPER.valueToTree(properties));
+        try {
+            return JSON_CODEC.convert(properties, ParagraphProperties.class);
+        } catch (JsonCodecException exception) {
+            throw validationException(properties, exception);
+        }
     }
 
     /**
@@ -45,25 +39,10 @@ public record ParagraphProperties(List<RichTextRun> richText) {
      * <p>Example: {@code properties.toMap()}.</p>
      */
     public Map<String, Object> toMap() {
-        return OBJECT_MAPPER.convertValue(this, new TypeReference<>() {
-        });
+        return JSON_CODEC.toMap(this);
     }
 
-    private static ParagraphProperties fromJsonNode(JsonNode properties) {
-        try {
-            return OBJECT_MAPPER.treeToValue(properties, ParagraphProperties.class);
-        } catch (IllegalArgumentException exception) {
-            throw exception;
-        } catch (JsonMappingException exception) {
-            throw validationException(properties, exception);
-        } catch (Exception exception) {
-            throw new IllegalArgumentException(
-                "paragraph properties '" + properties + "' are invalid; expected {richText:[...]}",
-                exception);
-        }
-    }
-
-    private static IllegalArgumentException validationException(JsonNode properties, JsonMappingException exception) {
+    private static IllegalArgumentException validationException(Map<String, Object> properties, JsonCodecException exception) {
         if (exception.getCause() instanceof IllegalArgumentException cause) {
             return cause;
         }

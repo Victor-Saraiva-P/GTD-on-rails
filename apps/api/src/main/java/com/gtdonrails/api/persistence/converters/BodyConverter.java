@@ -1,7 +1,8 @@
 package com.gtdonrails.api.persistence.converters;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.gtdonrails.api.json.JacksonJsonCodec;
+import com.gtdonrails.api.json.JsonCodec;
+import com.gtdonrails.api.json.JsonCodecException;
 import com.gtdonrails.api.types.Body;
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
@@ -9,7 +10,15 @@ import jakarta.persistence.Converter;
 @Converter
 public class BodyConverter implements AttributeConverter<Body, String> {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private final JsonCodec jsonCodec;
+
+    public BodyConverter() {
+        this(new JacksonJsonCodec());
+    }
+
+    BodyConverter(JsonCodec jsonCodec) {
+        this.jsonCodec = jsonCodec;
+    }
 
     /**
      * Serializes item body value objects into database JSON.
@@ -23,8 +32,8 @@ public class BodyConverter implements AttributeConverter<Body, String> {
         }
 
         try {
-            return OBJECT_MAPPER.writeValueAsString(attribute);
-        } catch (JsonProcessingException exception) {
+            return jsonCodec.write(attribute);
+        } catch (JsonCodecException exception) {
             throw new IllegalArgumentException("body could not be serialized; expected JSON document", exception);
         }
     }
@@ -41,8 +50,8 @@ public class BodyConverter implements AttributeConverter<Body, String> {
         }
 
         try {
-            return OBJECT_MAPPER.readValue(dbData, Body.class);
-        } catch (JsonProcessingException exception) {
+            return jsonCodec.read(dbData, Body.class);
+        } catch (JsonCodecException exception) {
             throw new IllegalArgumentException(
                 "body stored JSON '" + dbData + "' is invalid; expected Body JSON document",
                 exception);
