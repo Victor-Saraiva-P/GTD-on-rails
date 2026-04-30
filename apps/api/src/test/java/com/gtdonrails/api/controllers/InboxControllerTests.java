@@ -7,9 +7,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.time.Instant;
 
+import com.gtdonrails.api.entities.AuditableEntity;
 import com.gtdonrails.api.entities.Item;
 import com.gtdonrails.api.repositories.ContextRepository;
 import com.gtdonrails.api.repositories.ItemRepository;
@@ -71,9 +74,8 @@ class InboxControllerTests {
 
     @Test
     void listsStuffOrderedByCreatedAtDescending() throws Exception {
-        Item olderItem = itemRepository.saveAndFlush(new Item(new Title("Older item"), null, energy("1.0")));
-        Thread.sleep(5);
-        Item newerItem = itemRepository.saveAndFlush(new Item(new Title("Newer item"), null, energy("2.0")));
+        Item olderItem = saveItemCreatedAt("Older item", "1.0", Instant.parse("2026-01-01T10:00:00Z"));
+        Item newerItem = saveItemCreatedAt("Newer item", "2.0", Instant.parse("2026-01-01T10:01:00Z"));
 
         mockMvc.perform(get("/inbox"))
             .andExpect(status().isOk())
@@ -84,6 +86,19 @@ class InboxControllerTests {
             .andExpect(jsonPath("$[1].id").value(olderItem.getId().toString()))
             .andExpect(jsonPath("$[1].title").value("Older item"))
             .andExpect(jsonPath("$[1].energy").value(1.0));
+    }
+
+    private Item saveItemCreatedAt(String title, String energy, Instant createdAt) throws Exception {
+        Item item = new Item(new Title(title), null, energy(energy));
+        setAuditField(item, "createdAt", createdAt);
+        setAuditField(item, "updatedAt", createdAt);
+        return itemRepository.saveAndFlush(item);
+    }
+
+    private void setAuditField(Item item, String fieldName, Instant value) throws Exception {
+        Field field = AuditableEntity.class.getDeclaredField(fieldName);
+        field.setAccessible(true);
+        field.set(item, value);
     }
 
     @Test

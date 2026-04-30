@@ -10,6 +10,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.lang.reflect.Field;
+import java.time.Instant;
+
+import com.gtdonrails.api.entities.AuditableEntity;
 import com.gtdonrails.api.entities.Context;
 import com.gtdonrails.api.entities.Item;
 import com.gtdonrails.api.repositories.ContextRepository;
@@ -205,11 +209,9 @@ class ContextControllerTests {
     void listsItemsForContextOrderedByMostRecentlyUpdatedFirst() throws Exception {
         Context context = contextRepository.save(new Context("home"));
 
-        Item oldest = saveContextItem(context, "Oldest item");
-        Thread.sleep(5);
-        saveContextItem(context, "Middle item");
-        Thread.sleep(5);
-        Item newest = saveContextItem(context, "Newest item");
+        saveContextItem(context, "Oldest item", Instant.parse("2026-01-01T10:00:00Z"));
+        saveContextItem(context, "Middle item", Instant.parse("2026-01-01T10:01:00Z"));
+        Item newest = saveContextItem(context, "Newest item", Instant.parse("2026-01-01T10:02:00Z"));
 
         ResultActions result = mockMvc.perform(get("/contexts/{id}/items", context.getId()));
         assertContextItemsOrderedByNewestFirst(result, newest);
@@ -231,9 +233,8 @@ class ContextControllerTests {
     void listsOnlyLimitedNumberOfItemsForContext() throws Exception {
         Context context = contextRepository.save(new Context("home"));
 
-        saveContextItem(context, "Older item");
-        Thread.sleep(5);
-        saveContextItem(context, "Newer item");
+        saveContextItem(context, "Older item", Instant.parse("2026-01-01T10:00:00Z"));
+        saveContextItem(context, "Newer item", Instant.parse("2026-01-01T10:01:00Z"));
 
         mockMvc.perform(get("/contexts/{id}/items", context.getId())
                 .param("limit", "1"))
@@ -279,9 +280,17 @@ class ContextControllerTests {
             .andExpect(header().string("Content-Type", "image/png"));
     }
 
-    private Item saveContextItem(Context context, String title) {
+    private Item saveContextItem(Context context, String title, Instant updatedAt) throws Exception {
         Item item = new Item(new Title(title), null);
         item.addContext(context);
+        setAuditField(item, "createdAt", updatedAt);
+        setAuditField(item, "updatedAt", updatedAt);
         return itemRepository.saveAndFlush(item);
+    }
+
+    private void setAuditField(Item item, String fieldName, Instant value) throws Exception {
+        Field field = AuditableEntity.class.getDeclaredField(fieldName);
+        field.setAccessible(true);
+        field.set(item, value);
     }
 }
