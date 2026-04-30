@@ -1,5 +1,6 @@
 package com.gtdonrails.api.services;
 
+import static com.gtdonrails.api.types.BodyFixtures.paragraphBody;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.when;
 
@@ -42,9 +43,9 @@ class InboxServiceTests {
     @Test
     void listStuffReturnsMappedItems() {
         Item olderItem = new Item(new Title("Older item"), null);
-        Item newerItem = new Item(new Title("Newer item"), new Body("Body"));
+        Item newerItem = new Item(new Title("Newer item"), paragraphBody("Body"));
         ItemResponseDto olderResponse = itemResponse("Older item", null, "1.0");
-        ItemResponseDto newerResponse = itemResponse("Newer item", "Body", "2.5");
+        ItemResponseDto newerResponse = itemResponse("Newer item", paragraphBody("Body"), "2.5");
 
         when(itemRepository.findAllByStatusAndDeletedAtIsNullOrderByCreatedAtDesc(ItemStatus.STUFF))
             .thenReturn(List.of(newerItem, olderItem));
@@ -66,7 +67,7 @@ class InboxServiceTests {
         assertEquals(List.of(), response);
     }
 
-    private ItemResponseDto itemResponse(String title, String body, String energy) {
+    private ItemResponseDto itemResponse(String title, Body body, String energy) {
         return new ItemResponseDto(
             UUID.randomUUID(),
             title,

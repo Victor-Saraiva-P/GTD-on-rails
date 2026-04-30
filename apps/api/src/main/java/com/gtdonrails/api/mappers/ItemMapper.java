@@ -21,7 +21,7 @@ public class ItemMapper {
         return new ItemResponseDto(
             item.getId(),
             item.getTitle().value(),
-            item.getBody() == null ? null : item.getBody().value(),
+            item.getBody(),
             item.getEnergy(),
             toTimeDto(item),
             item.getStatus().name(),

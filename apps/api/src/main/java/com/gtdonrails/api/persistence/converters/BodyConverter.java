@@ -1,5 +1,7 @@
 package com.gtdonrails.api.persistence.converters;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gtdonrails.api.types.Body;
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
@@ -7,13 +9,33 @@ import jakarta.persistence.Converter;
 @Converter
 public class BodyConverter implements AttributeConverter<Body, String> {
 
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
     @Override
     public String convertToDatabaseColumn(Body attribute) {
-        return attribute == null ? null : attribute.value();
+        if (attribute == null) {
+            return null;
+        }
+
+        try {
+            return OBJECT_MAPPER.writeValueAsString(attribute);
+        } catch (JsonProcessingException exception) {
+            throw new IllegalArgumentException("body could not be serialized; expected JSON document", exception);
+        }
     }
 
     @Override
     public Body convertToEntityAttribute(String dbData) {
-        return dbData == null ? null : new Body(dbData);
+        if (dbData == null) {
+            return null;
+        }
+
+        try {
+            return OBJECT_MAPPER.readValue(dbData, Body.class);
+        } catch (JsonProcessingException exception) {
+            throw new IllegalArgumentException(
+                "body stored JSON '" + dbData + "' is invalid; expected Body JSON document",
+                exception);
+        }
     }
 }

@@ -20,8 +20,7 @@ public record CreateItemRequestDto(
     @Size(max = Title.MAX_LENGTH, message = "title exceeds max length of " + Title.MAX_LENGTH)
     String title,
 
-    @Size(max = Body.MAX_LENGTH, message = "body exceeds max length of " + Body.MAX_LENGTH)
-    String body,
+    Body body,
 
     @DecimalMin(
         value = Item.MIN_ENERGY_VALUE,

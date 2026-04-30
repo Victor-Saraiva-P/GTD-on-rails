@@ -1,16 +1,28 @@
 package com.gtdonrails.api.types;
 
-public record Body(String value) {
+import java.util.List;
 
-    public static final int MAX_LENGTH = 10_000;
+public record Body(int version, List<BodyBlock> blocks) {
+
+    public static final int CURRENT_VERSION = 1;
 
     public Body {
-        if (value == null || value.isBlank()) {
-            throw new IllegalArgumentException("body is required");
+        requireCurrentVersion(version);
+        blocks = List.copyOf(requireBlocks(blocks));
+    }
+
+    private static void requireCurrentVersion(int version) {
+        if (version != CURRENT_VERSION) {
+            throw new IllegalArgumentException(
+                "body version '" + version + "' is invalid; expected version " + CURRENT_VERSION);
+        }
+    }
+
+    private static List<BodyBlock> requireBlocks(List<BodyBlock> blocks) {
+        if (blocks == null || blocks.isEmpty()) {
+            throw new IllegalArgumentException("body blocks are required; expected at least one block");
         }
 
-        if (value.length() > MAX_LENGTH) {
-            throw new IllegalArgumentException("body exceeds max length of " + MAX_LENGTH);
-        }
+        return blocks;
     }
 }

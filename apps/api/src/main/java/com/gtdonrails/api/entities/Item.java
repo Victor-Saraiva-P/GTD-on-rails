@@ -52,7 +52,7 @@ public class Item extends AuditableEntity {
 
     @Setter
     @Convert(converter = BodyConverter.class)
-    @Column(length = Body.MAX_LENGTH)
+    @Column(columnDefinition = "text")
     private Body body;
 
     @Enumerated(EnumType.STRING)

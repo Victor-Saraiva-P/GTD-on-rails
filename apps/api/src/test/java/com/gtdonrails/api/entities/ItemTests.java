@@ -5,12 +5,12 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static com.gtdonrails.api.types.BodyFixtures.paragraphBody;
 
 import java.math.BigDecimal;
 import java.time.Duration;
 
 import com.gtdonrails.api.enums.ItemStatus;
-import com.gtdonrails.api.types.Body;
 import com.gtdonrails.api.types.Title;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -42,7 +42,7 @@ class ItemTests {
     // body
     @Test
     void setBodyAllowsNull() {
-        Item item = new Item(new Title("Capture idea"), new Body("Details"));
+        Item item = new Item(new Title("Capture idea"), paragraphBody("Details"));
 
         item.setBody(null);
 

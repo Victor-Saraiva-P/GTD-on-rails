@@ -1,5 +1,6 @@
 package com.gtdonrails.api.controllers;
 
+import static com.gtdonrails.api.types.BodyFixtures.paragraphBody;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
@@ -18,7 +19,6 @@ import com.gtdonrails.api.entities.Context;
 import com.gtdonrails.api.entities.Item;
 import com.gtdonrails.api.repositories.ContextRepository;
 import com.gtdonrails.api.repositories.ItemRepository;
-import com.gtdonrails.api.types.Body;
 import com.gtdonrails.api.types.Title;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
@@ -64,14 +64,14 @@ class ItemControllerTests {
         ResultActions result = createItem("""
             {
               "title": "Capture rent receipt",
-              "body": "Need to process later",
+              "body": %s,
               "energy": 3.5,
               "time": {
                 "hours": 1,
                 "minutes": 45
               }
             }
-            """);
+            """.formatted(bodyJson("Need to process later")));
 
         assertCreatedRentReceipt(result);
     }
@@ -90,7 +90,7 @@ class ItemControllerTests {
     void getsItem() throws Exception {
         Item item = itemRepository.save(new Item(
             new Title("Capture idea"),
-            new Body("Need to process later"),
+            paragraphBody("Need to process later"),
             energy("2.0"),
             Duration.ofMinutes(75)));
 
@@ -98,7 +98,9 @@ class ItemControllerTests {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(item.getId().toString()))
             .andExpect(jsonPath("$.title").value("Capture idea"))
-            .andExpect(jsonPath("$.body").value("Need to process later"))
+            .andExpect(jsonPath("$.body.version").value(1))
+            .andExpect(jsonPath("$.body.blocks[0].type").value("paragraph"))
+            .andExpect(jsonPath("$.body.blocks[0].properties.richText[0].text").value("Need to process later"))
             .andExpect(jsonPath("$.energy").value(2.0))
             .andExpect(jsonPath("$.time.hours").value(1))
             .andExpect(jsonPath("$.time.minutes").value(15))
@@ -113,9 +115,9 @@ class ItemControllerTests {
                 .content("""
                     {
                       "title": "Capture rent receipt",
-                      "body": "Need to process later"
+                      "body": %s
                     }
-                    """))
+                    """.formatted(bodyJson("Need to process later"))))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.energy").value(nullValue()))
             .andExpect(jsonPath("$.time").value(nullValue()));
@@ -126,33 +128,37 @@ class ItemControllerTests {
         ResultActions result = createItem("""
             {
               "title": "   ",
-              "body": "Need to process later",
+              "body": %s,
               "energy": 1.0,
               "time": {
                 "hours": 1,
                 "minutes": 0
               }
             }
-            """);
+            """.formatted(bodyJson("Need to process later")));
 
         assertBlankTitleError(result);
     }
 
     @Test
     void updatesItem() throws Exception {
-        Item item = itemRepository.save(new Item(new Title("Old title"), new Body("Old body"), energy("1.0"), Duration.ofMinutes(20)));
+        Item item = itemRepository.save(new Item(
+            new Title("Old title"),
+            paragraphBody("Old body"),
+            energy("1.0"),
+            Duration.ofMinutes(20)));
 
         ResultActions result = updateItem(item, """
             {
               "title": "New title",
-              "body": "New body",
+              "body": %s,
               "energy": 6.5,
               "time": {
                 "hours": 2,
                 "minutes": 5
               }
             }
-            """);
+            """.formatted(bodyJson("New body")));
 
         assertUpdatedItem(result);
     }
@@ -186,13 +192,13 @@ class ItemControllerTests {
                 .content("""
                     {
                       "title": "Capture rent receipt",
-                      "body": "Need to process later",
+                      "body": %s,
                       "time": {
                         "hours": 1,
                         "minutes": 60
                       }
                     }
-                    """))
+                    """.formatted(bodyJson("Need to process later"))))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString(
                 "Field 'time.minutes': time.minutes must be less than or equal to 59")));
@@ -248,12 +254,12 @@ class ItemControllerTests {
         return """
             {
               "title": "Capture rent receipt",
-              "body": "Need to process later",
+              "body": %s,
               "energy": 4.0,
               "time": { "hours": 0, "minutes": 30 },
               "contextIds": ["%s", "%s"]
             }
-            """.formatted(home.getId(), street.getId());
+            """.formatted(bodyJson("Need to process later"), home.getId(), street.getId());
     }
 
     private String updateWithContextJson(Context office) {
@@ -272,18 +278,40 @@ class ItemControllerTests {
         return """
             {
               "title": "Updated title",
-              "body": "Updated body",
+              "body": %s,
               "energy": 7.0,
               "time": { "hours": 1, "minutes": 20 }
             }
-            """;
+            """.formatted(bodyJson("Updated body"));
+    }
+
+    private String bodyJson(String text) {
+        return """
+            {
+              "version": 1,
+              "blocks": [{
+                "id": "00000000-0000-0000-0000-000000000001",
+                "type": "paragraph",
+                "properties": {
+                  "richText": [{
+                    "text": "%s",
+                    "marks": [],
+                    "textColor": null,
+                    "backgroundColor": null,
+                    "link": null
+                  }]
+                }
+              }]
+            }
+            """.formatted(text);
     }
 
     private void assertCreatedRentReceipt(ResultActions result) throws Exception {
         result.andExpect(status().isCreated())
             .andExpect(header().string("Location", "/items/" + itemRepository.findAll().getFirst().getId()))
             .andExpect(jsonPath("$.title").value("Capture rent receipt"))
-            .andExpect(jsonPath("$.body").value("Need to process later"))
+            .andExpect(jsonPath("$.body.version").value(1))
+            .andExpect(jsonPath("$.body.blocks[0].properties.richText[0].text").value("Need to process later"))
             .andExpect(jsonPath("$.energy").value(3.5))
             .andExpect(jsonPath("$.time.hours").value(1))
             .andExpect(jsonPath("$.time.minutes").value(45))
@@ -314,7 +342,7 @@ class ItemControllerTests {
     private void assertUpdatedItem(ResultActions result) throws Exception {
         result.andExpect(status().isOk())
             .andExpect(jsonPath("$.title").value("New title"))
-            .andExpect(jsonPath("$.body").value("New body"))
+            .andExpect(jsonPath("$.body.blocks[0].properties.richText[0].text").value("New body"))
             .andExpect(jsonPath("$.energy").value(6.5))
             .andExpect(jsonPath("$.time.hours").value(2))
             .andExpect(jsonPath("$.time.minutes").value(5))
@@ -335,7 +363,7 @@ class ItemControllerTests {
     private void assertPreservedContext(ResultActions result) throws Exception {
         result.andExpect(status().isOk())
             .andExpect(jsonPath("$.title").value("Updated title"))
-            .andExpect(jsonPath("$.body").value("Updated body"))
+            .andExpect(jsonPath("$.body.blocks[0].properties.richText[0].text").value("Updated body"))
             .andExpect(jsonPath("$.energy").value(7.0))
             .andExpect(jsonPath("$.time.hours").value(1))
             .andExpect(jsonPath("$.time.minutes").value(20))

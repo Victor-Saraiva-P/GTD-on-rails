@@ -19,7 +19,6 @@ import com.gtdonrails.api.persistence.bootstrap.model.PersistenceChangeType;
 import com.gtdonrails.api.persistence.bootstrap.services.PersistenceGitSyncService;
 import com.gtdonrails.api.repositories.ContextRepository;
 import com.gtdonrails.api.repositories.ItemRepository;
-import com.gtdonrails.api.types.Body;
 import com.gtdonrails.api.types.Title;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -58,10 +57,8 @@ public class ItemService {
     @Transactional
     public ItemResponseDto createItem(CreateItemRequestDto request) {
         Title title = new Title(itemTextNormalizer.normalizeTitle(request.title()));
-        String normalizedBodyValue = itemTextNormalizer.normalizeBody(request.body());
-        Body body = normalizedBodyValue == null ? null : new Body(normalizedBodyValue);
         Duration time = request.time() == null ? null : request.time().toDuration();
-        Item item = new Item(title, body, request.energy(), time);
+        Item item = new Item(title, request.body(), request.energy(), time);
         item.replaceContexts(findContextsOrThrow(request.contextIds()));
         ItemResponseDto response = itemMapper.toResponse(itemRepository.save(item));
         requestPersistenceSyncAfterCommit("item created", PersistenceChangeType.CREATE_ITEM);
@@ -84,11 +81,9 @@ public class ItemService {
 
     private void updateItemFields(Item item, UpdateItemRequestDto request) {
         Title title = new Title(itemTextNormalizer.normalizeTitle(request.title()));
-        String normalizedBodyValue = itemTextNormalizer.normalizeBody(request.body());
-        Body body = normalizedBodyValue == null ? null : new Body(normalizedBodyValue);
 
         item.setTitle(title);
-        item.setBody(body);
+        item.setBody(request.body());
         item.setEnergy(request.energy());
         item.setTime(request.time() == null ? null : request.time().toDuration());
     }
