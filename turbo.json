@@ -13,6 +13,10 @@
       "dependsOn": ["^test"],
       "outputs": []
     },
+    "e2e": {
+      "dependsOn": ["^build"],
+      "outputs": []
+    },
     "unitTest": {
       "dependsOn": ["^unitTest"],
       "outputs": []

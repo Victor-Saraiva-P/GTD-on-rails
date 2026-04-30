@@ -15,6 +15,7 @@ Monorepo base do projeto, mantido minimalista nesta fase.
 - `pnpm install`
 - `pnpm dev`
 - `pnpm build`
+- `pnpm e2e`
 - `pnpm lint`
 - `pnpm check`
 

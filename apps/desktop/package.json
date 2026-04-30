@@ -8,6 +8,11 @@
     "build": "pnpm run build:web",
     "build:web": "tsc && vite build",
     "desktop:build": "tauri build",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui",
+    "e2e:headed": "playwright test --headed",
+    "e2e:install": "playwright install chromium",
+    "e2e:install:ci": "playwright install --with-deps chromium",
     "lint": "tsc --noEmit",
     "check": "tsc --noEmit"
   },
@@ -21,6 +26,8 @@
     "@types/react-dom": "^19.2.2",
     "@vitejs/plugin-react": "^5.1.0",
     "@tauri-apps/cli": "^2.10.1",
+    "@playwright/test": "^1.54.2",
+    "@types/node": "^25.6.0",
     "typescript": "^6.0.2",
     "vite": "^8.0.2"
   }
