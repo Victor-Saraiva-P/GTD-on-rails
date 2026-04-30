@@ -2,16 +2,11 @@ package com.gtdonrails.api.persistence.bootstrap.services;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.gtdonrails.api.persistence.bootstrap.model.PersistenceChangeType;
 import com.gtdonrails.api.persistence.bootstrap.model.PersistenceSyncState;
@@ -20,8 +15,6 @@ import com.gtdonrails.api.persistence.bootstrap.properties.PersistenceSyncProper
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.mockito.InOrder;
-import org.mockito.Mockito;
 
 @Tag("unit")
 class PersistenceGitSyncServiceUnitTests {
@@ -31,60 +24,43 @@ class PersistenceGitSyncServiceUnitTests {
 
     @Test
     void syncDoesNotCommitWhenRepositoryIsClean() throws Exception {
-        GitCommandService gitCommandService = Mockito.mock(GitCommandService.class);
+        FakeGitCommandService gitCommandService = new FakeGitCommandService();
         PersistenceGitSyncService service = createService(gitCommandService, true);
 
-        when(gitCommandService.statusPorcelain(service.repositoryDirectory())).thenReturn("");
+        gitCommandService.statusOutput = "";
 
         service.syncNow("manual", PersistenceChangeType.UPDATE_ITEM);
 
-        verify(gitCommandService).statusPorcelain(service.repositoryDirectory());
-        verify(gitCommandService, never()).addAll(any());
-        verify(gitCommandService, never()).commit(any(), any(), any(), any());
-        verify(gitCommandService, never()).pullFastForwardOnly(any());
-        verify(gitCommandService, never()).push(any());
+        assertEquals(List.of("statusPorcelain"), gitCommandService.commands);
         assertEquals(PersistenceSyncState.IDLE, service.status().state());
         assertNotNull(service.status().lastSuccessfulSyncAt());
     }
 
     @Test
     void syncRunsAddCommitPullAndPushInOrder() throws Exception {
-        GitCommandService gitCommandService = Mockito.mock(GitCommandService.class);
+        FakeGitCommandService gitCommandService = new FakeGitCommandService();
         PersistenceGitSyncService service = createService(gitCommandService, true);
 
-        when(gitCommandService.statusPorcelain(service.repositoryDirectory())).thenReturn(" M db/gtd-on-rails.db");
+        gitCommandService.statusOutput = " M db/gtd-on-rails.db";
 
         service.syncNow("manual", PersistenceChangeType.UPDATE_CONTEXT);
 
-        InOrder inOrder = inOrder(gitCommandService);
-        verifySyncCommandOrder(service, gitCommandService, inOrder);
+        assertEquals(
+            List.of("statusPorcelain", "addAll", "commit", "pullFastForwardOnly", "push"),
+            gitCommandService.commands);
+        assertEquals("feat(data): update context", gitCommandService.commitMessage);
+        assertEquals("GTD on Rails", gitCommandService.authorName);
+        assertEquals("gtdonrails@local", gitCommandService.authorEmail);
         assertEquals(PersistenceSyncState.IDLE, service.status().state());
-    }
-
-    private void verifySyncCommandOrder(
-        PersistenceGitSyncService service,
-        GitCommandService gitCommandService,
-        InOrder inOrder
-    ) throws Exception {
-        inOrder.verify(gitCommandService).statusPorcelain(service.repositoryDirectory());
-        inOrder.verify(gitCommandService).addAll(service.repositoryDirectory());
-        inOrder.verify(gitCommandService).commit(
-            service.repositoryDirectory(),
-            "feat(data): update context",
-            "GTD on Rails",
-            "gtdonrails@local"
-        );
-        inOrder.verify(gitCommandService).pullFastForwardOnly(service.repositoryDirectory());
-        inOrder.verify(gitCommandService).push(service.repositoryDirectory());
     }
 
     @Test
     void syncMarksFailureWhenPullFails() throws Exception {
-        GitCommandService gitCommandService = Mockito.mock(GitCommandService.class);
+        FakeGitCommandService gitCommandService = new FakeGitCommandService();
         PersistenceGitSyncService service = createService(gitCommandService, true);
 
-        when(gitCommandService.statusPorcelain(service.repositoryDirectory())).thenReturn(" M db/gtd-on-rails.db");
-        doThrow(new IllegalStateException("pull failed")).when(gitCommandService).pullFastForwardOnly(service.repositoryDirectory());
+        gitCommandService.statusOutput = " M db/gtd-on-rails.db";
+        gitCommandService.pullFailure = new IllegalStateException("pull failed");
 
         service.syncNow("manual", PersistenceChangeType.UPDATE_ITEM);
 
@@ -94,11 +70,11 @@ class PersistenceGitSyncServiceUnitTests {
 
     @Test
     void syncMarksFailureWhenPushFails() throws Exception {
-        GitCommandService gitCommandService = Mockito.mock(GitCommandService.class);
+        FakeGitCommandService gitCommandService = new FakeGitCommandService();
         PersistenceGitSyncService service = createService(gitCommandService, true);
 
-        when(gitCommandService.statusPorcelain(service.repositoryDirectory())).thenReturn(" M db/gtd-on-rails.db");
-        doThrow(new IllegalStateException("push failed")).when(gitCommandService).push(service.repositoryDirectory());
+        gitCommandService.statusOutput = " M db/gtd-on-rails.db";
+        gitCommandService.pushFailure = new IllegalStateException("push failed");
 
         service.syncNow("manual", PersistenceChangeType.UPDATE_ITEM);
 
@@ -108,36 +84,32 @@ class PersistenceGitSyncServiceUnitTests {
 
     @Test
     void scheduledPullOnlyRunsPull() throws Exception {
-        GitCommandService gitCommandService = Mockito.mock(GitCommandService.class);
+        FakeGitCommandService gitCommandService = new FakeGitCommandService();
         PersistenceGitSyncService service = createService(gitCommandService, true);
 
         service.pullNow("scheduled");
 
-        verify(gitCommandService).pullFastForwardOnly(service.repositoryDirectory());
-        verify(gitCommandService, never()).statusPorcelain(any());
-        verify(gitCommandService, never()).addAll(any());
-        verify(gitCommandService, never()).commit(any(), any(), any(), any());
-        verify(gitCommandService, never()).push(any());
+        assertEquals(List.of("pullFastForwardOnly"), gitCommandService.commands);
     }
 
     @Test
     void pullOnStartupRunsPullWhenSyncIsEnabled() throws Exception {
-        GitCommandService gitCommandService = Mockito.mock(GitCommandService.class);
+        FakeGitCommandService gitCommandService = new FakeGitCommandService();
         PersistenceGitSyncService service = createService(gitCommandService, true);
 
         service.pullOnStartup();
 
-        verify(gitCommandService).pullFastForwardOnly(service.repositoryDirectory());
+        assertEquals(List.of("pullFastForwardOnly"), gitCommandService.commands);
     }
 
     @Test
     void pullOnStartupDoesNothingWhenSyncIsDisabled() throws Exception {
-        GitCommandService gitCommandService = Mockito.mock(GitCommandService.class);
+        FakeGitCommandService gitCommandService = new FakeGitCommandService();
         PersistenceGitSyncService service = createService(gitCommandService, false);
 
         service.pullOnStartup();
 
-        verify(gitCommandService, never()).pullFastForwardOnly(any());
+        assertEquals(List.of(), gitCommandService.commands);
         assertEquals(PersistenceSyncState.DISABLED, service.status().state());
     }
 
@@ -163,5 +135,51 @@ class PersistenceGitSyncServiceUnitTests {
         Files.createDirectories(databasePath.getParent());
         Files.writeString(databasePath, "seed");
         return databasePath;
+    }
+
+    private static class FakeGitCommandService extends GitCommandService {
+
+        private final List<String> commands = new ArrayList<>();
+        private String statusOutput = "";
+        private String commitMessage;
+        private String authorName;
+        private String authorEmail;
+        private RuntimeException pullFailure;
+        private RuntimeException pushFailure;
+
+        @Override
+        public String statusPorcelain(Path repositoryDirectory) {
+            commands.add("statusPorcelain");
+            return statusOutput;
+        }
+
+        @Override
+        public void addAll(Path repositoryDirectory) {
+            commands.add("addAll");
+        }
+
+        @Override
+        public void commit(Path repositoryDirectory, String message, String authorName, String authorEmail) {
+            commands.add("commit");
+            commitMessage = message;
+            this.authorName = authorName;
+            this.authorEmail = authorEmail;
+        }
+
+        @Override
+        public void pullFastForwardOnly(Path repositoryDirectory) {
+            commands.add("pullFastForwardOnly");
+            if (pullFailure != null) {
+                throw pullFailure;
+            }
+        }
+
+        @Override
+        public void push(Path repositoryDirectory) {
+            commands.add("push");
+            if (pushFailure != null) {
+                throw pushFailure;
+            }
+        }
     }
 }

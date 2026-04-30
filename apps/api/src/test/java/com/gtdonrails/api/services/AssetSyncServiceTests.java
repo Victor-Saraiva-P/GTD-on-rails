@@ -1,8 +1,7 @@
 package com.gtdonrails.api.services;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -13,19 +12,12 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
-@ExtendWith(MockitoExtension.class)
 @Tag("unit")
 class AssetSyncServiceTests {
 
     @TempDir
     private Path tempDir;
-
-    @Mock
-    private RcloneAssetSyncService rcloneAssetSyncService;
 
     private AssetSyncService service;
 
@@ -38,9 +30,10 @@ class AssetSyncServiceTests {
 
     @Test
     void staysDisabledWhenRcloneIsDisabled() throws Exception {
+        FakeRcloneAssetSyncService rcloneAssetSyncService = new FakeRcloneAssetSyncService();
         service = new AssetSyncService(properties(), rcloneAssetSyncService);
 
-        when(rcloneAssetSyncService.isEnabled()).thenReturn(false);
+        rcloneAssetSyncService.enabled = false;
 
         service.run(null);
 
@@ -51,16 +44,17 @@ class AssetSyncServiceTests {
     void bootstrapsWhenBaselineMarkerIsMissing() throws Exception {
         AssetsProperties properties = properties();
         Path localDirectory = Path.of(properties.getLocalDirectory()).toAbsolutePath().normalize();
+        FakeRcloneAssetSyncService rcloneAssetSyncService = new FakeRcloneAssetSyncService();
         service = new AssetSyncService(properties, rcloneAssetSyncService);
 
-        when(rcloneAssetSyncService.isEnabled()).thenReturn(true);
+        rcloneAssetSyncService.enabled = true;
 
         service.run(null);
         waitForIdle();
 
-        verify(rcloneAssetSyncService).bootstrapBisync(localDirectory);
+        assertEquals(localDirectory, rcloneAssetSyncService.bootstrapBisyncDirectory);
         assertEquals(AssetSyncState.SYNCED, service.status().state());
-        assertEquals(true, Files.exists(baselineMarker(properties)));
+        assertTrue(Files.exists(baselineMarker(properties)));
     }
 
     @Test
@@ -69,14 +63,15 @@ class AssetSyncServiceTests {
         Path localDirectory = Path.of(properties.getLocalDirectory()).toAbsolutePath().normalize();
         Files.createDirectories(baselineMarker(properties).getParent());
         Files.writeString(baselineMarker(properties), "ready");
+        FakeRcloneAssetSyncService rcloneAssetSyncService = new FakeRcloneAssetSyncService();
         service = new AssetSyncService(properties, rcloneAssetSyncService);
 
-        when(rcloneAssetSyncService.isEnabled()).thenReturn(true);
+        rcloneAssetSyncService.enabled = true;
 
         service.run(null);
         waitForIdle();
 
-        verify(rcloneAssetSyncService).bisync(localDirectory);
+        assertEquals(localDirectory, rcloneAssetSyncService.bisyncDirectory);
         assertEquals(AssetSyncState.SYNCED, service.status().state());
     }
 
@@ -102,6 +97,32 @@ class AssetSyncServiceTests {
             }
 
             Thread.sleep(20);
+        }
+    }
+
+    private static class FakeRcloneAssetSyncService extends RcloneAssetSyncService {
+
+        private boolean enabled;
+        private Path bisyncDirectory;
+        private Path bootstrapBisyncDirectory;
+
+        private FakeRcloneAssetSyncService() {
+            super(new AssetsProperties());
+        }
+
+        @Override
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        @Override
+        public void bisync(Path localDirectory) {
+            bisyncDirectory = localDirectory;
+        }
+
+        @Override
+        public void bootstrapBisync(Path localDirectory) {
+            bootstrapBisyncDirectory = localDirectory;
         }
     }
 }
