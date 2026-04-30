@@ -24,7 +24,7 @@ public final class BodyFixtures {
 
     public static Body linkedParagraphBody(String text, String link) {
         Map<String, Object> properties = properties(new ParagraphProperties(List.of(
-            new RichTextRun(text, List.of("bold"), null, null, link))));
+            new RichTextRun(text, List.of(RichTextMark.BOLD), null, null, link))));
         return new Body(Body.CURRENT_VERSION, List.of(paragraphBlock(properties)));
     }
 
@@ -38,7 +38,12 @@ public final class BodyFixtures {
 
     private static Map<String, Object> paragraphProperties(String text, String textColor, String backgroundColor) {
         return properties(new ParagraphProperties(List.of(
-            new RichTextRun(text, List.of(), textColor, backgroundColor, null))));
+            new RichTextRun(
+                text,
+                List.of(),
+                RichTextColor.from(textColor),
+                RichTextColor.from(backgroundColor),
+                null))));
     }
 
     private static Map<String, Object> properties(ParagraphProperties paragraphProperties) {

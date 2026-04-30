@@ -3,6 +3,7 @@ package com.gtdonrails.api.types;
 import java.util.List;
 import java.util.Map;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -36,6 +37,16 @@ public record ParagraphProperties(List<RichTextRun> richText) {
      */
     public static ParagraphProperties from(Map<String, Object> properties) {
         return fromJsonNode(OBJECT_MAPPER.valueToTree(properties));
+    }
+
+    /**
+     * Converts paragraph properties back to flexible block JSON properties.
+     *
+     * <p>Example: {@code properties.toMap()}.</p>
+     */
+    public Map<String, Object> toMap() {
+        return OBJECT_MAPPER.convertValue(this, new TypeReference<>() {
+        });
     }
 
     private static ParagraphProperties fromJsonNode(JsonNode properties) {

@@ -4,6 +4,7 @@ import static com.gtdonrails.api.types.BodyFixtures.highlightedParagraphBody;
 import static com.gtdonrails.api.types.BodyFixtures.linkedParagraphBody;
 import static com.gtdonrails.api.types.BodyFixtures.paragraphBody;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -34,6 +35,39 @@ class BodyTests {
         Body body = linkedParagraphBody("Open docs", "https://example.com");
 
         assertEquals("paragraph", body.blocks().getFirst().type());
+    }
+
+    @Test
+    void normalizesRichTextLineEndings() {
+        BodyBlock bodyBlock = block("paragraph", paragraphProperties("Line 1\r\nLine 2\rLine 3"));
+
+        assertEquals("Line 1\nLine 2\nLine 3", richTextRun(bodyBlock).get("text"));
+    }
+
+    @Test
+    void normalizesRichTextMarksAndOptionalFields() {
+        RichTextRun richTextRun = new RichTextRun(
+            "Text",
+            List.of(RichTextMark.ITALIC, RichTextMark.BOLD, RichTextMark.BOLD),
+            RichTextColor.RED,
+            null,
+            " https://example.com ");
+
+        assertEquals(List.of(RichTextMark.BOLD, RichTextMark.ITALIC), richTextRun.marks());
+        assertEquals(RichTextColor.RED, richTextRun.textColor());
+        assertNull(richTextRun.backgroundColor());
+        assertEquals("https://example.com", richTextRun.link());
+    }
+
+    @Test
+    void rejectsUnsupportedRichTextControlCharacters() {
+        IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> new RichTextRun("Text\u0007", List.of(), null, null, null));
+
+        assertEquals(
+            "rich text run text contains unsupported control character '7'; expected printable text, newline, or tab",
+            exception.getMessage());
     }
 
     @Test
@@ -95,9 +129,9 @@ class BodyTests {
     void rejectsInvalidTextColor() {
         IllegalArgumentException exception = assertThrows(
             IllegalArgumentException.class,
-            () -> new RichTextRun("Text", List.of(), "teal", null, null));
+            () -> RichTextColor.from("teal"));
 
-        assertTrue(exception.getMessage().contains("rich text textColor 'teal' is invalid"));
+        assertTrue(exception.getMessage().contains("rich text color 'teal' is invalid"));
     }
 
     @Test
@@ -120,5 +154,11 @@ class BodyTests {
     private static Map<String, Object> properties(RichTextRun richTextRun) {
         return OBJECT_MAPPER.convertValue(new ParagraphProperties(List.of(richTextRun)), new TypeReference<>() {
         });
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> richTextRun(BodyBlock bodyBlock) {
+        List<Map<String, Object>> richText = (List<Map<String, Object>>) bodyBlock.properties().get("richText");
+        return richText.getFirst();
     }
 }

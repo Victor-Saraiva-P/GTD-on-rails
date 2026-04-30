@@ -2,27 +2,40 @@ package com.gtdonrails.api.types;
 
 import java.net.URI;
 import java.util.List;
-import java.util.Set;
+import java.util.stream.Stream;
 
 public record RichTextRun(
     String text,
-    List<String> marks,
-    String textColor,
-    String backgroundColor,
+    List<RichTextMark> marks,
+    RichTextColor textColor,
+    RichTextColor backgroundColor,
     String link
 ) {
 
-    private static final Set<String> ALLOWED_MARKS =
-        Set.of("bold", "italic", "underline", "strikethrough", "code");
-    private static final Set<String> ALLOWED_COLORS =
-        Set.of("gray", "red", "orange", "yellow", "green", "blue", "purple", "pink");
-
     public RichTextRun {
+        text = normalizeText(text);
+        link = normalizeOptionalText(link);
         requireText(text);
         marks = normalizeMarks(marks);
-        requireColor(textColor, "textColor");
-        requireColor(backgroundColor, "backgroundColor");
         requireLink(link);
+    }
+
+    private static String normalizeText(String text) {
+        if (text == null) {
+            return null;
+        }
+
+        String normalizedText = text.replace("\r\n", "\n").replace('\r', '\n');
+        requireSupportedTextCharacters(normalizedText);
+        return normalizedText;
+    }
+
+    private static String normalizeOptionalText(String text) {
+        if (text == null || text.isBlank()) {
+            return null;
+        }
+
+        return text.trim();
     }
 
     private static void requireText(String text) {
@@ -31,26 +44,27 @@ public record RichTextRun(
         }
     }
 
-    private static List<String> normalizeMarks(List<String> marks) {
+    private static List<RichTextMark> normalizeMarks(List<RichTextMark> marks) {
         if (marks == null) {
             return List.of();
         }
 
-        marks.forEach(RichTextRun::requireMark);
-        return List.copyOf(marks);
+        return Stream.of(RichTextMark.values())
+            .filter(marks::contains)
+            .toList();
     }
 
-    private static void requireMark(String mark) {
-        if (!ALLOWED_MARKS.contains(mark)) {
-            throw new IllegalArgumentException(
-                "rich text mark '" + mark + "' is invalid; expected one of " + ALLOWED_MARKS);
+    private static void requireSupportedTextCharacters(String text) {
+        for (int index = 0; index < text.length(); index++) {
+            requireSupportedTextCharacter(text.charAt(index));
         }
     }
 
-    private static void requireColor(String color, String fieldName) {
-        if (color != null && !ALLOWED_COLORS.contains(color)) {
+    private static void requireSupportedTextCharacter(char character) {
+        if (Character.isISOControl(character) && character != '\n' && character != '\t') {
             throw new IllegalArgumentException(
-                "rich text " + fieldName + " '" + color + "' is invalid; expected one of " + ALLOWED_COLORS);
+                "rich text run text contains unsupported control character '" + (int) character
+                    + "'; expected printable text, newline, or tab");
         }
     }
 

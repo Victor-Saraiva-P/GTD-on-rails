@@ -22,7 +22,7 @@ public record BodyBlock(
         requireProperties(properties);
         content = normalizeContent(content);
         requireParagraphHasNoChildren(type, content);
-        ParagraphProperties.from(properties);
+        properties = ParagraphProperties.from(properties).toMap();
     }
 
     private static void requireId(UUID id) {
