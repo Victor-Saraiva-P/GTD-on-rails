@@ -37,11 +37,16 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
-    @Value("${api.project-name:https://gtdonrails.local}")
-    private String projectName = "https://gtdonrails.local";
+    private final String projectName;
+    private final String apiBasePath;
 
-    @Value("${api.base-url:/errors}")
-    private String apiBasePath = "/errors";
+    public GlobalExceptionHandler(
+        @Value("${api.project-name:https://gtdonrails.local}") String projectName,
+        @Value("${api.base-url:/errors}") String apiBasePath
+    ) {
+        this.projectName = projectName;
+        this.apiBasePath = apiBasePath;
+    }
 
     /**
      * Converts missing item errors into a resource-not-found problem response.
