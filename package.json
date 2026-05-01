@@ -6,6 +6,7 @@
     "dev": "turbo run dev",
     "build": "turbo run build",
     "test": "turbo run test",
+    "frontend:coverage": "pnpm --filter @gtd-on-rails/desktop run coverage",
     "e2e": "turbo run e2e",
     "lint": "turbo run lint",
     "check": "turbo run check",

@@ -8,12 +8,14 @@ type ClipboardImagePayload = {
   fileName: string;
 };
 
+type ClipboardImageSource = Pick<DataTransfer, "items" | "types">;
+
 /**
  * Detects whether paste or drag data may contain a supported image.
  *
  * @example hasPotentialClipboardImage(event.clipboardData)
  */
-export function hasPotentialClipboardImage(source: DataTransfer | null): boolean {
+export function hasPotentialClipboardImage(source: ClipboardImageSource | null): boolean {
   if (!source) {
     return false;
   }

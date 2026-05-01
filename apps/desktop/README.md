@@ -7,9 +7,16 @@ Minimal desktop app scaffold with Vite and Tauri 2.
 - `pnpm dev`: runs the desktop app through Tauri in development mode
 - `pnpm build`: builds only the local web frontend
 - `pnpm desktop:build`: builds the desktop bundle through Tauri
+- `pnpm test`: runs the fast unit test suite
 - `pnpm e2e`: runs the web end-to-end tests with Playwright using the real frontend and backend
 
-Run the frontend test suite from the repository root with:
+Run the frontend unit test suite from the repository root with:
+
+```sh
+pnpm --filter @gtd-on-rails/desktop test
+```
+
+Run the frontend end-to-end test suite from the repository root with:
 
 ```sh
 pnpm --filter @gtd-on-rails/desktop e2e

@@ -8,6 +8,10 @@
     "build": "pnpm run build:web",
     "build:web": "tsc && vite build",
     "desktop:build": "tauri build",
+    "test": "pnpm run unitTest",
+    "unitTest": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test \"test/**/*.test.mts\"",
+    "unitTest:coverage": "c8 --all --include \"src/**/*.ts\" --include \"src/**/*.tsx\" --exclude \"src/**/*.d.ts\" --reporter=text --reporter=html --reporter=lcov node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test \"test/**/*.test.mts\"",
+    "coverage": "pnpm run unitTest:coverage",
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui",
     "e2e:headed": "playwright test --headed",
@@ -22,12 +26,13 @@
     "react-dom": "^19.2.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.54.2",
+    "@tauri-apps/cli": "^2.10.1",
+    "@types/node": "^25.6.0",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
     "@vitejs/plugin-react": "^5.1.0",
-    "@tauri-apps/cli": "^2.10.1",
-    "@playwright/test": "^1.54.2",
-    "@types/node": "^25.6.0",
+    "c8": "^11.0.0",
     "typescript": "^6.0.2",
     "vite": "^8.0.2"
   }
