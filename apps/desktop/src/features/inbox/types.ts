@@ -1,7 +1,33 @@
+export type RichTextMark = "bold" | "italic" | "underline" | "strikethrough" | "code";
+
+export type RichTextRun = {
+  text: string;
+  marks?: RichTextMark[];
+  textColor?: string;
+  backgroundColor?: string;
+  link?: string;
+};
+
+export type ParagraphProperties = {
+  richText: RichTextRun[];
+};
+
+export type BodyBlock = {
+  id: string;
+  type: string;
+  properties: ParagraphProperties;
+  content?: BodyBlock[];
+};
+
+export type Body = {
+  version: number;
+  blocks: BodyBlock[];
+};
+
 export type Stuff = {
   id: string;
   title: string;
-  body: string | null;
+  body: Body | null;
   status: string;
   createdAt: string;
 };
@@ -11,16 +37,18 @@ export type Stuff = {
  *
  * @example getStuffBodyLines(stuff.body)
  */
-export function getStuffBodyLines(body: string | null): string[] {
-  if (!body) {
+export function getStuffBodyLines(body: Body | null): string[] {
+  if (!body || !body.blocks) {
     return [];
   }
 
-  return body
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => line.replace(/^[-*•]\s+/, ""));
+  return body.blocks
+    .filter((block) => block.type === "paragraph")
+    .map((block) => {
+      const text = block.properties.richText.map((run) => run.text).join("");
+      return text.trim().replace(/^[-*•]\s+/, "");
+    })
+    .filter(Boolean);
 }
 
 /**

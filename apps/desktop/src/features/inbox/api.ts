@@ -1,10 +1,10 @@
-import { apiFetch, apiJson } from "../../lib/api/apiClient.ts";
-import type { Stuff } from "./types";
+import { apiFetch, apiJson } from "../../lib/api/apiClient";
+import type { Stuff, Body } from "./types";
 
 type InboxStuffResponse = {
   id: string;
   title: string;
-  body: string | null;
+  body: Body | null;
   status: string;
   createdAt: string;
 };
@@ -25,7 +25,7 @@ export async function fetchInboxStuffs(): Promise<Stuff[]> {
  *
  * @example await createStuff("Capture idea", null)
  */
-export async function createStuff(title: string, body: string | null = null): Promise<Stuff> {
+export async function createStuff(title: string, body: Body | null = null): Promise<Stuff> {
   const response = await apiJson<InboxStuffResponse>("/items", {
     method: "POST",
     headers: {
@@ -68,7 +68,7 @@ export async function updateStuffTitle(item: Stuff, title: string): Promise<Stuf
  *
  * @example await updateStuffBody(stuff, "Next action")
  */
-export async function updateStuffBody(item: Stuff, body: string | null): Promise<Stuff> {
+export async function updateStuffBody(item: Stuff, body: Body | null): Promise<Stuff> {
   return updateStuff(item, {
     title: item.title,
     body
@@ -79,7 +79,7 @@ async function updateStuff(
   item: Stuff,
   payload: {
     title: string;
-    body: string | null;
+    body: Body | null;
   }
 ): Promise<Stuff> {
   const response = await apiJson<InboxStuffResponse>(`/items/${item.id}`, {

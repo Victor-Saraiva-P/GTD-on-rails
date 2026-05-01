@@ -1,5 +1,5 @@
 import { useRef, type KeyboardEvent, type MutableRefObject } from "react";
-import { buildApiUrlWithVersion } from "../../config/env.ts";
+import { buildApiUrlWithVersion } from "../../config/env";
 import type { ContextItem } from "./types";
 
 type ContextsListItemProps = {

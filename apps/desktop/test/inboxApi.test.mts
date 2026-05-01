@@ -8,7 +8,7 @@ import {
   updateStuffTitle,
   updateStuffBody
 } from "../src/features/inbox/api.ts";
-import type { Stuff } from "../src/features/inbox/types.ts";
+import type { Stuff, Body } from "../src/features/inbox/types.ts";
 
 describe("inbox API", () => {
   const originalFetch = globalThis.fetch;
@@ -16,6 +16,11 @@ describe("inbox API", () => {
   afterEach(() => {
     globalThis.fetch = originalFetch;
   });
+
+  const dummyBody: Body = {
+    version: 1,
+    blocks: [{ id: "1", type: "paragraph", properties: { richText: [{ text: "Details" }] } }]
+  };
 
   test("fetchInboxStuffs returns mapped stuff array", async () => {
     const mockResponse = [
@@ -32,15 +37,15 @@ describe("inbox API", () => {
   });
 
   test("createStuff sends correct payload", async () => {
-    const mockResponse = { id: "2", title: "New Task", body: "Details", status: "INBOX", createdAt: "2026-05-01T00:00:00Z" };
+    const mockResponse = { id: "2", title: "New Task", body: dummyBody, status: "INBOX", createdAt: "2026-05-01T00:00:00Z" };
     
     globalThis.fetch = mock.fn(async (input, init) => {
       assert.equal(init?.method, "POST");
-      assert.equal(init?.body, JSON.stringify({ title: "New Task", body: "Details" }));
+      assert.equal(init?.body, JSON.stringify({ title: "New Task", body: dummyBody }));
       return new Response(JSON.stringify(mockResponse), { status: 200 });
     });
 
-    const stuff = await createStuff("New Task", "Details");
+    const stuff = await createStuff("New Task", dummyBody);
     assert.equal(stuff.id, "2");
   });
 
@@ -55,32 +60,32 @@ describe("inbox API", () => {
   });
 
   test("updateStuffTitle only changes title", async () => {
-    const item: Stuff = { id: "3", title: "Old Title", body: "Body", status: "INBOX", createdAt: "2026-05-01T00:00:00Z" };
+    const item: Stuff = { id: "3", title: "Old Title", body: dummyBody, status: "INBOX", createdAt: "2026-05-01T00:00:00Z" };
     const mockResponse = { ...item, title: "New Title" };
 
     globalThis.fetch = mock.fn(async (input, init) => {
       assert.equal(init?.method, "PUT");
-      assert.equal(init?.body, JSON.stringify({ title: "New Title", body: "Body" }));
+      assert.equal(init?.body, JSON.stringify({ title: "New Title", body: dummyBody }));
       return new Response(JSON.stringify(mockResponse), { status: 200 });
     });
 
     const updated = await updateStuffTitle(item, "New Title");
     assert.equal(updated.title, "New Title");
-    assert.equal(updated.body, "Body");
+    assert.deepEqual(updated.body, dummyBody);
   });
 
   test("updateStuffBody only changes body", async () => {
-    const item: Stuff = { id: "4", title: "Title", body: "Old Body", status: "INBOX", createdAt: "2026-05-01T00:00:00Z" };
-    const mockResponse = { ...item, body: "New Body" };
+    const item: Stuff = { id: "4", title: "Title", body: null, status: "INBOX", createdAt: "2026-05-01T00:00:00Z" };
+    const mockResponse = { ...item, body: dummyBody };
 
     globalThis.fetch = mock.fn(async (input, init) => {
       assert.equal(init?.method, "PUT");
-      assert.equal(init?.body, JSON.stringify({ title: "Title", body: "New Body" }));
+      assert.equal(init?.body, JSON.stringify({ title: "Title", body: dummyBody }));
       return new Response(JSON.stringify(mockResponse), { status: 200 });
     });
 
-    const updated = await updateStuffBody(item, "New Body");
+    const updated = await updateStuffBody(item, dummyBody);
     assert.equal(updated.title, "Title");
-    assert.equal(updated.body, "New Body");
+    assert.deepEqual(updated.body, dummyBody);
   });
 });

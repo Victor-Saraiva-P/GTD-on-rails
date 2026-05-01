@@ -93,13 +93,26 @@ function InboxDetailTextarea(props: InboxDetailTextareaProps) {
   );
 }
 
+function formatBodyForDisplay(body: Stuff["body"]): string | null {
+  if (!body || !body.blocks) {
+    return null;
+  }
+
+  return body.blocks
+    .filter((block) => block.type === "paragraph")
+    .map((block) => block.properties.richText.map((run) => run.text).join(""))
+    .join("\n\n");
+}
+
 function ReadOnlyInboxStuffDetails({ item }: Pick<InboxStuffDetailsProps, "item">) {
+  const displayBody = formatBodyForDisplay(item.body);
+
   return (
     <div className="inbox-detail">
       <InboxDetailHeader item={item} />
-      {item.body ? (
+      {displayBody ? (
         <pre className="inbox-detail__body" aria-label="Selected item details">
-          {item.body}
+          {displayBody}
         </pre>
       ) : (
         <p className="pane-state">No details yet for this stuff.</p>

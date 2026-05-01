@@ -1,4 +1,4 @@
-import { apiJson } from "../../lib/api/apiClient.ts";
+import { apiJson } from "../../lib/api/apiClient";
 import type { SyncStatus } from "./types";
 
 /**

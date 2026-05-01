@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useActiveZone } from "../keybinds/hooks";
 import { useInboxStuffsQuery } from "./useInboxStuffsQuery";
-import type { Stuff } from "./types";
+import type { Stuff, Body } from "./types";
 
 const DRAFT_STUFF_ID = "__draft_stuff__";
 
@@ -159,7 +159,16 @@ function usePruneInboxState(model: InboxModel) {
 
 function startBodyEdit(model: InboxModel, item: Stuff) {
   model.bodyEdit.setEditingBodyId(item.id);
-  model.bodyEdit.setEditingBody(item.body ?? "");
+
+  if (item.body && item.body.blocks) {
+    const text = item.body.blocks
+      .filter((block) => block.type === "paragraph")
+      .map((block) => block.properties.richText.map((run) => run.text).join(""))
+      .join("\n");
+    model.bodyEdit.setEditingBody(text);
+  } else {
+    model.bodyEdit.setEditingBody("");
+  }
 }
 
 function startBodyEditInDetail(model: InboxModel, item: Stuff) {
@@ -286,8 +295,23 @@ async function commitNormalizedTitle(
   finishTitleEdit(model, updatedStuff, shouldContinueToBody);
 }
 
-function nextBodyValue(editingBody: string): string | null {
-  return editingBody.trim() ? editingBody : null;
+function nextBodyValue(editingBody: string): Body | null {
+  const trimmed = editingBody.trim();
+  if (!trimmed) {
+    return null;
+  }
+  return {
+    version: 1,
+    blocks: [
+      {
+        id: crypto.randomUUID(),
+        type: "paragraph",
+        properties: {
+          richText: [{ text: trimmed }]
+        }
+      }
+    ]
+  };
 }
 
 async function commitEditingSelectedStuffBodyAction(model: InboxModel) {
@@ -299,7 +323,7 @@ async function commitEditingSelectedStuffBodyAction(model: InboxModel) {
 
   const nextBody = nextBodyValue(model.bodyEdit.editingBody);
 
-  if ((selectedItem.body ?? null) === nextBody) {
+  if (JSON.stringify(selectedItem.body ?? null) === JSON.stringify(nextBody)) {
     clearBodyEdit(model);
     return;
   }

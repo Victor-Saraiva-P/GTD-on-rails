@@ -1,4 +1,4 @@
-import { apiFetch, apiJson } from "../../lib/api/apiClient.ts";
+import { apiFetch, apiJson } from "../../lib/api/apiClient";
 import type { ContextItem, ContextRelatedItem } from "./types";
 
 type ContextResponse = {
