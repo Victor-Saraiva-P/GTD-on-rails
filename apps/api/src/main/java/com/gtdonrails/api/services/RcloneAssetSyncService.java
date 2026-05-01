@@ -77,7 +77,10 @@ public class RcloneAssetSyncService {
         command.addAll(arguments);
 
         executeRcloneCommand(command);
-        logger.info("rclone command completed: {}", String.join(" ", arguments));
+        logger.atInfo()
+            .addKeyValue("event", "rclone_command_completed")
+            .addKeyValue("arguments", String.join(" ", arguments))
+            .log("rclone command completed");
     }
 
     private void executeRcloneCommand(List<String> command) {

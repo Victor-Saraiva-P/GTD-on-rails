@@ -104,7 +104,11 @@ public class PersistenceGitSyncService {
         try {
             pullNow("startup");
         } catch (RuntimeException exception) {
-            logger.warn("Initial persistence Git pull failed", exception);
+            logger.atWarn()
+                .addKeyValue("event", "initial_persistence_git_pull_failed")
+                .addKeyValue("reason", "startup")
+                .setCause(exception)
+                .log("Initial persistence Git pull failed");
         }
     }
 
@@ -159,7 +163,11 @@ public class PersistenceGitSyncService {
         runTask(reason, () -> {
             Path repository = requiredRepositoryDirectory();
             if (gitCommandService.statusPorcelain(repository).isBlank()) {
-                logger.debug("Skipping persistence Git sync because repository is clean ({})", reason);
+                logger.atDebug()
+                    .addKeyValue("event", "persistence_git_sync_skipped")
+                    .addKeyValue("reason", reason)
+                    .addKeyValue("repository", repository)
+                    .log("Skipping persistence Git sync because repository is clean");
                 return;
             }
 
@@ -190,18 +198,29 @@ public class PersistenceGitSyncService {
     private void runTask(String reason, GitTask task) {
         lastStartedAt = Instant.now();
         state = PersistenceSyncState.SYNCING;
-        logger.info("Starting persistence Git sync ({})", reason);
+        logger.atInfo()
+            .addKeyValue("event", "persistence_git_sync_started")
+            .addKeyValue("reason", reason)
+            .log("Starting persistence Git sync");
 
         try {
             task.run();
             markTaskSucceeded();
         } catch (IllegalStateException | IOException exception) {
             markTaskFailed(exception);
-            logger.warn("Persistence Git sync failed ({})", reason, exception);
+            logger.atWarn()
+                .addKeyValue("event", "persistence_git_sync_failed")
+                .addKeyValue("reason", reason)
+                .setCause(exception)
+                .log("Persistence Git sync failed");
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
             markTaskFailed(exception);
-            logger.warn("Persistence Git sync interrupted ({})", reason, exception);
+            logger.atWarn()
+                .addKeyValue("event", "persistence_git_sync_interrupted")
+                .addKeyValue("reason", reason)
+                .setCause(exception)
+                .log("Persistence Git sync interrupted");
         } finally {
             lastFinishedAt = Instant.now();
         }

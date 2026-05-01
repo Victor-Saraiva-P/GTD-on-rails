@@ -131,7 +131,11 @@ public class GitPersistenceBootstrapService {
     }
 
     private void moveCloneIntoPlace(Path tempCloneDirectory, Path cloneDirectory, Path databasePath) throws IOException {
-        logger.info("Bootstrapping SQLite database from branch '{}'", persistenceBootstrapProperties.getBranch());
+        logger.atInfo()
+            .addKeyValue("event", "persistence_bootstrap_started")
+            .addKeyValue("branch", persistenceBootstrapProperties.getBranch())
+            .addKeyValue("clone_directory", cloneDirectory)
+            .log("Bootstrapping SQLite database");
         Files.move(tempCloneDirectory, cloneDirectory, StandardCopyOption.ATOMIC_MOVE);
 
         if (!Files.exists(databasePath)) {

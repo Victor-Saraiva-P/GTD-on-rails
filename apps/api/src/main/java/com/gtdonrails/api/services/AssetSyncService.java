@@ -138,7 +138,11 @@ public class AssetSyncService implements ApplicationRunner {
     private void runOnce(boolean bootstrap, String reason) {
         lastStartedAt = Instant.now();
         state = bootstrap ? AssetSyncState.BOOTSTRAPPING : AssetSyncState.SYNCING;
-        logger.info("Starting asset {} sync ({})", bootstrap ? "bootstrap" : "bisync", reason);
+        logger.atInfo()
+            .addKeyValue("event", "asset_sync_started")
+            .addKeyValue("sync_mode", bootstrap ? "bootstrap" : "bisync")
+            .addKeyValue("reason", reason)
+            .log("Starting asset sync");
 
         try {
             runRcloneSync(bootstrap);
@@ -146,7 +150,12 @@ public class AssetSyncService implements ApplicationRunner {
         } catch (RuntimeException | IOException exception) {
             lastError = exception.getMessage();
             state = AssetSyncState.FAILED;
-            logger.warn("Asset sync failed", exception);
+            logger.atWarn()
+                .addKeyValue("event", "asset_sync_failed")
+                .addKeyValue("sync_mode", bootstrap ? "bootstrap" : "bisync")
+                .addKeyValue("reason", reason)
+                .setCause(exception)
+                .log("Asset sync failed");
         } finally {
             lastFinishedAt = Instant.now();
         }

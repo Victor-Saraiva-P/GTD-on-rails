@@ -71,7 +71,10 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 ex.getMessage(),
                 request);
 
-        log.warn("{}: {}", logMessage, ex.getMessage());
+        log.atWarn()
+            .addKeyValue("event", "resource_not_found")
+            .addKeyValue("error_message", ex.getMessage())
+            .log(logMessage);
         return handleExceptionInternal(ex, problemDetail, new HttpHeaders(), status, request);
     }
 
@@ -88,7 +91,10 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             problemDetailFactory.create(
                 status, "Data conflict", "/data-conflict", ex.getMessage(), request);
 
-        log.warn("Data conflict: {}", ex.getMessage());
+        log.atWarn()
+            .addKeyValue("event", "data_conflict")
+            .addKeyValue("error_message", ex.getMessage())
+            .log("Data conflict");
         return handleExceptionInternal(ex, problemDetail, new HttpHeaders(), status, request);
     }
 
@@ -105,7 +111,10 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             problemDetailFactory.create(
                 status, "Invalid operation", "/invalid-operation", ex.getMessage(), request);
 
-        log.warn("Invalid business operation: {}", ex.getMessage());
+        log.atWarn()
+            .addKeyValue("event", "invalid_business_operation")
+            .addKeyValue("error_message", ex.getMessage())
+            .log("Invalid business operation");
         return handleExceptionInternal(ex, problemDetail, new HttpHeaders(), status, request);
     }
 
@@ -128,7 +137,10 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             problemDetailFactory.create(
                 status, "Invalid data", "/invalid-data", detail, request);
 
-        log.warn("Constraint violation: {}", detail);
+        log.atWarn()
+            .addKeyValue("event", "constraint_violation")
+            .addKeyValue("detail", detail)
+            .log("Constraint violation");
         return handleExceptionInternal(ex, problemDetail, new HttpHeaders(), status, request);
     }
 
@@ -149,7 +161,10 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 "Database data conflict",
                 request);
 
-        log.warn("Data integrity violation", ex);
+        log.atWarn()
+            .addKeyValue("event", "data_integrity_violation")
+            .setCause(ex)
+            .log("Data integrity violation");
         return handleExceptionInternal(ex, problemDetail, new HttpHeaders(), status, request);
     }
 
@@ -166,7 +181,10 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             problemDetailFactory.create(
                 status, "System error", "/system-error", ex.getMessage(), request);
 
-        log.error("Application illegal state", ex);
+        log.atError()
+            .addKeyValue("event", "application_illegal_state")
+            .setCause(ex)
+            .log("Application illegal state");
         return handleExceptionInternal(ex, problemDetail, new HttpHeaders(), status, request);
     }
 
@@ -186,7 +204,10 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 "System error, try again later",
                 request);
 
-        log.error("Unexpected system error", ex);
+        log.atError()
+            .addKeyValue("event", "unexpected_system_error")
+            .setCause(ex)
+            .log("Unexpected system error");
         return handleExceptionInternal(ex, problemDetail, new HttpHeaders(), status, request);
     }
 
@@ -207,7 +228,10 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             problemDetailFactory.create(
                 status, "Invalid data", "/invalid-data", detail, request);
 
-        log.warn("Validation failed: {}", detail);
+        log.atWarn()
+            .addKeyValue("event", "validation_failed")
+            .addKeyValue("detail", detail)
+            .log("Validation failed");
         return handleExceptionInternal(ex, problemDetail, headers, status, request);
     }
 
@@ -253,7 +277,10 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             problemDetailFactory.create(
                 status, "Invalid parameter", "/invalid-parameter", detail, request);
 
-        log.warn("Invalid URL parameter: {}", detail);
+        log.atWarn()
+            .addKeyValue("event", "invalid_url_parameter")
+            .addKeyValue("detail", detail)
+            .log("Invalid URL parameter");
         return handleExceptionInternal(ex, problemDetail, headers, status, request);
     }
 
@@ -272,7 +299,10 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             problemDetailFactory.create(
                 status, "Invalid data", "/invalid-data", "Request body is invalid", request);
 
-        log.warn("Malformed request body", ex);
+        log.atWarn()
+            .addKeyValue("event", "malformed_request_body")
+            .setCause(ex)
+            .log("Malformed request body");
         return handleExceptionInternal(ex, problemDetail, headers, status, request);
     }
 
