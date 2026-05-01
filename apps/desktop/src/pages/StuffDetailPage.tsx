@@ -12,8 +12,8 @@ type StuffDetailPageProps = {
   controller: InboxWorkspaceController;
 };
 
-function stuffDetailBinding(id: string, key: string, description: string, handler: () => void, leader = false): KeybindDefinition {
-  return { description, handler, id, key, leader, screen: "stuff-detail", zone: "stuff-detail" };
+function stuffDetailBinding(id: string, key: string, description: string, runKeybind: () => void, leader = false): KeybindDefinition {
+  return { description, id, key, leader, runKeybind, screen: "stuff-detail", zone: "stuff-detail" };
 }
 
 function canEditStuffBody(controller: InboxWorkspaceController): boolean {

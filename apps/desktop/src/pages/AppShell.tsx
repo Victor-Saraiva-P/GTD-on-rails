@@ -14,7 +14,7 @@ function buildNavigationBindings(setActiveScreen: (screen: "contexts" | "inbox" 
       description: "Open contexts",
       leader: true,
       sequence: ["C"],
-      handler: () => setActiveScreen("contexts")
+      runKeybind: () => setActiveScreen("contexts")
     },
     {
       id: "navigation.open-inbox",
@@ -22,7 +22,7 @@ function buildNavigationBindings(setActiveScreen: (screen: "contexts" | "inbox" 
       description: "Open inbox",
       leader: true,
       sequence: ["i"],
-      handler: () => setActiveScreen("inbox")
+      runKeybind: () => setActiveScreen("inbox")
     }
   ] satisfies KeybindDefinition[];
 }

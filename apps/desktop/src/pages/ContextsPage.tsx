@@ -270,10 +270,10 @@ function contextsBinding(
   key: string,
   description: string,
   zone: FocusZoneId,
-  handler: () => void,
+  runKeybind: () => void,
   leader = false
 ): KeybindDefinition {
-  return { description, handler, id, key, leader, screen: "contexts", zone };
+  return { description, id, key, leader, runKeybind, screen: "contexts", zone };
 }
 
 function canChangeContext(model: ContextsModel): boolean {

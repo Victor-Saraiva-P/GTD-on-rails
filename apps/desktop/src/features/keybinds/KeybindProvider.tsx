@@ -164,7 +164,7 @@ function handleLeaderMatch(
     return;
   }
 
-  findExactLeaderBinding(leaderBindings, nextLeaderPath)?.handler();
+  findExactLeaderBinding(leaderBindings, nextLeaderPath)?.runKeybind();
   config.closeLeaderMenu();
 }
 
@@ -195,7 +195,7 @@ function handleDirectKey(event: KeyboardEvent, config: KeydownConfig) {
   }
 
   event.preventDefault();
-  matchingBinding.handler();
+  matchingBinding.runKeybind();
 }
 
 function useScreenState(): ScreenState {

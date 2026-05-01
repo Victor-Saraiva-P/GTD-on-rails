@@ -11,7 +11,7 @@ export type KeybindDefinition = {
   id: string;
   key: string;
   description: string;
-  handler: () => void;
+  runKeybind: () => void;
   screen?: ScreenId;
   zone?: FocusZoneId;
   leader?: boolean;

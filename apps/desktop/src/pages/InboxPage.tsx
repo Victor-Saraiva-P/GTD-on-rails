@@ -18,11 +18,11 @@ function inboxBinding(
   key: string,
   description: string,
   zone: FocusZoneId,
-  handler: () => void,
+  runKeybind: () => void,
   leader = false,
   sequence?: string[]
 ): KeybindDefinition {
-  return { description, handler, id, key, leader, screen: "inbox", sequence, zone };
+  return { description, id, key, leader, runKeybind, screen: "inbox", sequence, zone };
 }
 
 function canRunInboxAction(controller: InboxWorkspaceController): boolean {
