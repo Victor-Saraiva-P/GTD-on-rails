@@ -7,7 +7,7 @@ import {
   type DragEvent as ReactDragEvent,
   type RefObject
 } from "react";
-import { buildApiUrlWithVersion } from "../../config/env";
+import { buildApiUrlWithVersion } from "../../config/env.ts";
 import { hasPotentialClipboardImage, readClipboardImage } from "./contextIconClipboard";
 import type { ContextItem } from "./types";
 
