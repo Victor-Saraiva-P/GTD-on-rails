@@ -8,6 +8,11 @@ type ClipboardImagePayload = {
   fileName: string;
 };
 
+/**
+ * Detects whether paste or drag data may contain a supported image.
+ *
+ * @example hasPotentialClipboardImage(event.clipboardData)
+ */
 export function hasPotentialClipboardImage(source: DataTransfer | null): boolean {
   if (!source) {
     return false;
@@ -18,6 +23,11 @@ export function hasPotentialClipboardImage(source: DataTransfer | null): boolean
   return types.includes("Files") || Array.from(source.items ?? []).some(isClipboardImageItem);
 }
 
+/**
+ * Reads an image from Tauri or browser clipboard APIs as an uploadable file.
+ *
+ * @example await readClipboardImage()
+ */
 export async function readClipboardImage(): Promise<File | null> {
   return (await readTauriClipboardImage()) ?? (await readBrowserClipboardImage());
 }

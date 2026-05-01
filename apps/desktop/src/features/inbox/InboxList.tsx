@@ -34,6 +34,11 @@ function InboxListItem({
   );
 }
 
+/**
+ * Renders the inbox collection with editable stuff rows.
+ *
+ * @example <InboxList items={stuffs} selectedId={selectedId} ... />
+ */
 export function InboxList({
   items,
   ...itemProps

@@ -6,6 +6,11 @@ export type Stuff = {
   createdAt: string;
 };
 
+/**
+ * Splits optional stuff body text into display lines for detail rendering.
+ *
+ * @example getStuffBodyLines(stuff.body)
+ */
 export function getStuffBodyLines(body: string | null): string[] {
   if (!body) {
     return [];
@@ -18,6 +23,11 @@ export function getStuffBodyLines(body: string | null): string[] {
     .map((line) => line.replace(/^[-*•]\s+/, ""));
 }
 
+/**
+ * Formats an API timestamp for compact list metadata.
+ *
+ * @example formatStuffCreatedAt(stuff.createdAt)
+ */
 export function formatStuffCreatedAt(createdAt: string): string {
   return new Intl.DateTimeFormat(undefined, {
     dateStyle: "medium",

@@ -3,6 +3,11 @@ type RetryStateProps = {
   onRetry: () => void;
 };
 
+/**
+ * Shows a recoverable pane error with the retry action wired by the caller.
+ *
+ * @example <RetryState message="Failed to load inbox" onRetry={reload} />
+ */
 export function RetryState({ message, onRetry }: RetryStateProps) {
   return (
     <div className="pane-state">

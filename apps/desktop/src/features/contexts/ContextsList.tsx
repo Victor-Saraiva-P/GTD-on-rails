@@ -33,6 +33,11 @@ function ContextsListRow({
   );
 }
 
+/**
+ * Renders the context collection with editable rows.
+ *
+ * @example <ContextsList items={contexts} selectedId={selectedId} ... />
+ */
 export function ContextsList({
   items,
   ...itemProps

@@ -158,6 +158,11 @@ function useInboxStuffsMutations(state: InboxLoadState, mutations: InboxMutation
   };
 }
 
+/**
+ * Loads inbox stuff and exposes create, update, and delete mutations.
+ *
+ * @example const inbox = useInboxStuffsQuery()
+ */
 export function useInboxStuffsQuery(): InboxStuffsQueryState {
   const state = useInboxLoadState();
   const mutations = useInboxMutationState();

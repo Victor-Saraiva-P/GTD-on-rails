@@ -16,6 +16,11 @@ export const apiBaseUrl = normalizeApiBaseUrl(
   import.meta.env.VITE_API_BASE_URL ?? defaultApiBaseUrl
 );
 
+/**
+ * Builds an API URL from either an absolute URL or an API-relative pathname.
+ *
+ * @example buildApiUrl("/inbox")
+ */
 export function buildApiUrl(pathname: string): string {
   if (!pathname) {
     return apiBaseUrl;
@@ -30,6 +35,11 @@ export function buildApiUrl(pathname: string): string {
   return `${apiBaseUrl}${normalizedPathname}`;
 }
 
+/**
+ * Builds an API URL with a cache-busting version query parameter when one exists.
+ *
+ * @example buildApiUrlWithVersion("/assets/context.png", 3)
+ */
 export function buildApiUrlWithVersion(pathname: string, version?: number): string {
   const url = new URL(buildApiUrl(pathname));
 

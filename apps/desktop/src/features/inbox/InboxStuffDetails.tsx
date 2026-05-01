@@ -108,6 +108,11 @@ function ReadOnlyInboxStuffDetails({ item }: Pick<InboxStuffDetailsProps, "item"
   );
 }
 
+/**
+ * Renders selected stuff details with optional body editing controls.
+ *
+ * @example <InboxStuffDetails item={stuff} editing={false} ... />
+ */
 export function InboxStuffDetails(props: InboxStuffDetailsProps) {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   useFocusEditingTextarea(textareaRef, props.editing);

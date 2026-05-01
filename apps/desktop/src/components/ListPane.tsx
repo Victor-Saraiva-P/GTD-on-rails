@@ -37,6 +37,11 @@ function ListPaneHeader({ title, meta, panelIndex }: Pick<ListPaneProps, "title"
   );
 }
 
+/**
+ * Renders a titled list pane with consistent terminal-style header metadata.
+ *
+ * @example <ListPane title="Inbox">...</ListPane>
+ */
 export function ListPane({ bodyClassName, active = false, className, children, ...headerProps }: ListPaneProps) {
   return (
     <section className={listPaneClassName(active, className)}>

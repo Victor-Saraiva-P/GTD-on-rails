@@ -145,6 +145,11 @@ function ReadOnlyContextsListItem(props: ContextsListItemProps) {
   );
 }
 
+/**
+ * Renders one context row in either read-only or inline-edit mode.
+ *
+ * @example <ContextsListItem item={context} selected={true} editing={false} ... />
+ */
 export function ContextsListItem(props: ContextsListItemProps) {
   if (props.editing) {
     return <EditingContextsListItem {...props} />;

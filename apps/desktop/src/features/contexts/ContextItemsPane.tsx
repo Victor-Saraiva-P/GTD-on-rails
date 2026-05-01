@@ -6,6 +6,11 @@ type ContextItemsPaneProps = {
   items: ContextRelatedItem[];
 };
 
+/**
+ * Shows the selected context summary alongside its related item list.
+ *
+ * @example <ContextItemsPane context={context} items={items} />
+ */
 export function ContextItemsPane({ context, items }: ContextItemsPaneProps) {
   return (
     <div className="context-items-pane">

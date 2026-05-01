@@ -106,6 +106,11 @@ function ReadOnlyInboxListStuff(props: InboxListStuffProps) {
   );
 }
 
+/**
+ * Renders one inbox row in either read-only or inline-edit mode.
+ *
+ * @example <InboxListStuff item={stuff} selected={true} editing={false} ... />
+ */
 export function InboxListStuff(props: InboxListStuffProps) {
   if (props.editing) {
     return <EditingInboxListStuff {...props} />;

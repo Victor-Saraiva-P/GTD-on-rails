@@ -64,6 +64,13 @@ fn clipboard_image_payload(bytes: Vec<u8>) -> ClipboardImagePayload {
     }
 }
 
+/// Starts the Tauri desktop shell and registers native commands.
+///
+/// # Example
+///
+/// ```ignore
+/// desktop_lib::run();
+/// ```
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()

@@ -44,6 +44,11 @@ function LeaderMenuHint({ onClose }: { onClose: () => void }) {
   );
 }
 
+/**
+ * Shows the available keybindings for the active leader-key path.
+ *
+ * @example <LeaderMenu />
+ */
 export function LeaderMenu() {
   const { activeZone, closeLeaderMenu, getAvailableLeaderBindings, isLeaderMenuOpen, leaderPath } =
     useKeybindContext();

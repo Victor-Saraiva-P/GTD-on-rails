@@ -96,6 +96,11 @@ function StuffDetailPane({ controller }: StuffDetailPageProps) {
   );
 }
 
+/**
+ * Renders the focused stuff-detail screen and its detail keybindings.
+ *
+ * @example <StuffDetailPage controller={controller} />
+ */
 export function StuffDetailPage({ controller }: StuffDetailPageProps) {
   useKeybindScreen("stuff-detail");
   useStuffDetailZone(controller);

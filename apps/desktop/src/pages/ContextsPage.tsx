@@ -450,6 +450,11 @@ function ContextIconEditorLayer({ model, actions }: ContextsViewProps) {
   return <ContextIconEditor context={model.selection.selectedItem} isBusy={model.query.isUpdating} onClose={actions.closeSelectedContextIconEditor} onUpload={(file) => uploadSelectedContextIcon(model, file)} onDelete={() => deleteSelectedContextIcon(model)} />;
 }
 
+/**
+ * Renders the contexts workspace with list, related items, icon editing, and keybinds.
+ *
+ * @example <ContextsPage />
+ */
 export function ContextsPage() {
   useKeybindScreen("contexts");
   const model = useContextsModel();

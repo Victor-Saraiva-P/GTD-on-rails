@@ -12,6 +12,11 @@ export class ApiRequestError extends Error {
   }
 }
 
+/**
+ * Executes a fetch request against the configured API base URL.
+ *
+ * @example await apiFetch("/inbox")
+ */
 export async function apiFetch(pathname: string, init: RequestInit = {}) {
   const response = await fetch(buildApiUrl(pathname), {
     ...init,
@@ -30,6 +35,11 @@ export async function apiFetch(pathname: string, init: RequestInit = {}) {
   return response;
 }
 
+/**
+ * Executes an API request and decodes the JSON response into the expected shape.
+ *
+ * @example await apiJson<Stuff[]>("/inbox")
+ */
 export async function apiJson<T>(pathname: string, init?: RequestInit): Promise<T> {
   const response = await apiFetch(pathname, init);
 

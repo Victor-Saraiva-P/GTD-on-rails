@@ -301,12 +301,22 @@ function useKeybindController(): KeybindContextValue {
   return useKeybindContextValue(config, registerBindings, getAvailableLeaderBindings);
 }
 
+/**
+ * Provides global keybind state and dispatch for descendant screens.
+ *
+ * @example <KeybindProvider><AppShell /></KeybindProvider>
+ */
 export function KeybindProvider({ children }: PropsWithChildren) {
   const value = useKeybindController();
 
   return <KeybindContext.Provider value={value}>{children}</KeybindContext.Provider>;
 }
 
+/**
+ * Reads the keybind context created by KeybindProvider.
+ *
+ * @example const { registerBindings } = useKeybindContext()
+ */
 export function useKeybindContext() {
   const context = useContext(KeybindContext);
 

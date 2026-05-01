@@ -161,6 +161,11 @@ function useContextsMutations(state: ContextsLoadState, mutations: ContextsMutat
   };
 }
 
+/**
+ * Loads contexts and exposes create, update, delete, and icon mutations.
+ *
+ * @example const contexts = useContextsQuery()
+ */
 export function useContextsQuery(): ContextsQueryState {
   const state = useContextsLoadState();
   const mutations = useContextsMutationState();

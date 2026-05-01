@@ -13,6 +13,11 @@ type ContextRelatedItemResponse = {
   status: string;
 };
 
+/**
+ * Loads every context available to the current desktop session.
+ *
+ * @example await fetchContexts()
+ */
 export async function fetchContexts(): Promise<ContextItem[]> {
   const response = await apiJson<ContextResponse[]>("/contexts");
   const iconRevision = Date.now();
@@ -20,6 +25,11 @@ export async function fetchContexts(): Promise<ContextItem[]> {
   return response.map((context) => toContextItem(context, iconRevision));
 }
 
+/**
+ * Creates a context with the normalized name supplied by the UI.
+ *
+ * @example await createContext("home")
+ */
 export async function createContext(name: string): Promise<ContextItem> {
   const response = await apiJson<ContextResponse>("/contexts", {
     method: "POST",
@@ -34,6 +44,11 @@ export async function createContext(name: string): Promise<ContextItem> {
   return toContextItem(response);
 }
 
+/**
+ * Updates a context name while preserving the rest of the context record.
+ *
+ * @example await updateContextName(context.id, "office")
+ */
 export async function updateContextName(id: string, name: string): Promise<ContextItem> {
   const response = await apiJson<ContextResponse>(`/contexts/${id}`, {
     method: "PUT",
@@ -48,12 +63,22 @@ export async function updateContextName(id: string, name: string): Promise<Conte
   return toContextItem(response);
 }
 
+/**
+ * Deletes a context by identifier.
+ *
+ * @example await deleteContext(context.id)
+ */
 export async function deleteContext(id: string): Promise<void> {
   await apiFetch(`/contexts/${id}`, {
     method: "DELETE"
   });
 }
 
+/**
+ * Uploads a replacement icon file for a context.
+ *
+ * @example await updateContextIcon(context.id, file)
+ */
 export async function updateContextIcon(id: string, file: File): Promise<ContextItem> {
   const body = new FormData();
   body.append("file", file);
@@ -66,6 +91,11 @@ export async function updateContextIcon(id: string, file: File): Promise<Context
   return toContextItem(response);
 }
 
+/**
+ * Removes the custom icon from a context.
+ *
+ * @example await deleteContextIcon(context.id)
+ */
 export async function deleteContextIcon(id: string): Promise<ContextItem> {
   const response = await apiJson<ContextResponse>(`/contexts/${id}/icon`, {
     method: "DELETE"
@@ -74,6 +104,11 @@ export async function deleteContextIcon(id: string): Promise<ContextItem> {
   return toContextItem(response);
 }
 
+/**
+ * Loads a bounded list of items related to a context.
+ *
+ * @example await fetchContextItems(context.id, 10)
+ */
 export async function fetchContextItems(id: string, limit: number): Promise<ContextRelatedItem[]> {
   const searchParams = new URLSearchParams({
     limit: String(limit)

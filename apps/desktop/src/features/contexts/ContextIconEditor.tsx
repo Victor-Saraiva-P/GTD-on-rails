@@ -360,6 +360,11 @@ type ContextIconDialogProps = ContextIconContentProps & {
   onClose: () => void;
 };
 
+/**
+ * Presents upload, paste, drag-drop, and delete controls for a context icon.
+ *
+ * @example <ContextIconEditor context={context} isBusy={false} onClose={close} onUpload={upload} onDelete={remove} />
+ */
 export function ContextIconEditor({ context, isBusy, onClose, onUpload, onDelete }: ContextIconEditorProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const dialogRef = useRef<HTMLElement | null>(null);

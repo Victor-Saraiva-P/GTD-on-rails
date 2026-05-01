@@ -32,6 +32,11 @@ function ListWorkspaceFooter({ currentLabel }: Pick<ListWorkspaceProps, "current
   );
 }
 
+/**
+ * Wraps list-oriented screens with shared shell chrome and theme variables.
+ *
+ * @example <ListWorkspace theme={inboxListTheme} currentLabel="Inbox">...</ListWorkspace>
+ */
 export function ListWorkspace({ theme, currentLabel, children }: ListWorkspaceProps) {
   return (
     <main className="list-workspace" style={buildWorkspaceStyle(theme)}>

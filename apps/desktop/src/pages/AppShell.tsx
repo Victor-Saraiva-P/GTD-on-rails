@@ -27,6 +27,11 @@ function buildNavigationBindings(setActiveScreen: (screen: "contexts" | "inbox" 
   ] satisfies KeybindDefinition[];
 }
 
+/**
+ * Selects the active desktop page and wires shared navigation keybindings.
+ *
+ * @example <AppShell />
+ */
 export function AppShell() {
   const { activeScreen, setActiveScreen } = useActiveScreen();
   const inboxController = useInboxWorkspaceController();

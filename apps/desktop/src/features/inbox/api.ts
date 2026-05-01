@@ -9,12 +9,22 @@ type InboxStuffResponse = {
   createdAt: string;
 };
 
+/**
+ * Loads all inbox stuff from the API.
+ *
+ * @example await fetchInboxStuffs()
+ */
 export async function fetchInboxStuffs(): Promise<Stuff[]> {
   const response = await apiJson<InboxStuffResponse[]>("/inbox");
 
   return response.map(toStuff);
 }
 
+/**
+ * Creates a new inbox stuff item with an optional body.
+ *
+ * @example await createStuff("Capture idea", null)
+ */
 export async function createStuff(title: string, body: string | null = null): Promise<Stuff> {
   const response = await apiJson<InboxStuffResponse>("/items", {
     method: "POST",
@@ -30,12 +40,22 @@ export async function createStuff(title: string, body: string | null = null): Pr
   return toStuff(response);
 }
 
+/**
+ * Deletes an inbox stuff item by identifier.
+ *
+ * @example await deleteStuff(stuff.id)
+ */
 export async function deleteStuff(id: string): Promise<void> {
   await apiFetch(`/items/${id}`, {
     method: "DELETE"
   });
 }
 
+/**
+ * Updates a stuff title using its current record for optimistic shape context.
+ *
+ * @example await updateStuffTitle(stuff, "Updated title")
+ */
 export async function updateStuffTitle(item: Stuff, title: string): Promise<Stuff> {
   return updateStuff(item, {
     title,
@@ -43,6 +63,11 @@ export async function updateStuffTitle(item: Stuff, title: string): Promise<Stuf
   });
 }
 
+/**
+ * Updates the body of a stuff item while leaving its title unchanged.
+ *
+ * @example await updateStuffBody(stuff, "Next action")
+ */
 export async function updateStuffBody(item: Stuff, body: string | null): Promise<Stuff> {
   return updateStuff(item, {
     title: item.title,

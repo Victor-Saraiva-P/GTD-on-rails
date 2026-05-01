@@ -181,12 +181,22 @@ function useSyncStatusController(): SyncStatusContextValue {
   return useSyncStatusValue(state, triggerPolling);
 }
 
+/**
+ * Provides sync status polling state to visual indicators.
+ *
+ * @example <SyncStatusProvider><AppShell /></SyncStatusProvider>
+ */
 export function SyncStatusProvider({ children }: PropsWithChildren) {
   const value = useSyncStatusController();
 
   return <SyncStatusContext.Provider value={value}>{children}</SyncStatusContext.Provider>;
 }
 
+/**
+ * Reads the current sync status context.
+ *
+ * @example const { status } = useSyncStatus()
+ */
 export function useSyncStatus() {
   const context = useContext(SyncStatusContext);
 

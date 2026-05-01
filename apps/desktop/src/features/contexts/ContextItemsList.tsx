@@ -4,6 +4,11 @@ type ContextItemsListProps = {
   items: ContextRelatedItem[];
 };
 
+/**
+ * Renders related context items in the shared tree-list visual language.
+ *
+ * @example <ContextItemsList items={items} />
+ */
 export function ContextItemsList({ items }: ContextItemsListProps) {
   return (
     <ol className="tree-list tree-list--inbox context-item-list" aria-label="Related items">

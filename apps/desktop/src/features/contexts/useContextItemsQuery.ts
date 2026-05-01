@@ -103,6 +103,11 @@ function useContextItemsLoader(state: ContextItemsState, contextId: string | nul
   }, [contextId, limit, state.reloadToken]);
 }
 
+/**
+ * Loads and refreshes items related to a selected context.
+ *
+ * @example const related = useContextItemsQuery(contextId, 10)
+ */
 export function useContextItemsQuery(contextId: string | null, limit: number): ContextItemsQueryState {
   const state = useContextItemsState();
 

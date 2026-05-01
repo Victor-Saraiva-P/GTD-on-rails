@@ -364,6 +364,11 @@ function buildInboxWorkspaceController(model: InboxModel, actions: InboxActions)
   };
 }
 
+/**
+ * Composes inbox query, selection, editing, and keybind state for inbox screens.
+ *
+ * @example const controller = useInboxWorkspaceController()
+ */
 export function useInboxWorkspaceController() {
   const model = useInboxWorkspaceModel();
   const actions = useInboxWorkspaceActions(model);

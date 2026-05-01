@@ -181,6 +181,11 @@ function GitStatusIndicator({ failedBeforeStatus, isLoading, status }: SyncStatu
   );
 }
 
+/**
+ * Renders asset and persistence sync status indicators in the workspace footer.
+ *
+ * @example <SyncStatusIndicators />
+ */
 export function SyncStatusIndicators() {
   const { isLoading, isPolling, lastFetchFailed, status } = useSyncStatus();
   const groupLabel = isPolling ? "Synchronization in progress" : "Synchronization status";

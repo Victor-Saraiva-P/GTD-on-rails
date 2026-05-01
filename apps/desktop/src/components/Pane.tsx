@@ -27,6 +27,11 @@ function PaneHeader({ iconSrc, label, status, wrapLabel = false }: Omit<PaneProp
   );
 }
 
+/**
+ * Renders a generic pane with a tab-like header and active-state styling.
+ *
+ * @example <Pane iconSrc="/icon.svg" label="Inbox">...</Pane>
+ */
 export function Pane({ bodyClassName, active = false, children, ...headerProps }: PaneProps) {
   return (
     <div className={paneClassName(active)}>

@@ -215,6 +215,11 @@ function InboxPanes({ controller }: InboxPageProps) {
   );
 }
 
+/**
+ * Renders the inbox workspace with list, details, and inbox keybindings.
+ *
+ * @example <InboxPage controller={controller} />
+ */
 export function InboxPage({ controller }: InboxPageProps) {
   useKeybindScreen("inbox");
   useInboxZone(controller);
