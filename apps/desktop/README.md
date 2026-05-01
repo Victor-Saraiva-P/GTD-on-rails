@@ -9,6 +9,12 @@ Minimal desktop app scaffold with Vite and Tauri 2.
 - `pnpm desktop:build`: builds the desktop bundle through Tauri
 - `pnpm e2e`: runs the web end-to-end tests with Playwright using the real frontend and backend
 
+Run the frontend test suite from the repository root with:
+
+```sh
+pnpm --filter @gtd-on-rails/desktop e2e
+```
+
 ## Arch Linux Setup
 
 For desktop development on Arch Linux, install Playwright from the AUR and
