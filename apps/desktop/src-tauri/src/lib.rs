@@ -12,34 +12,51 @@ struct ClipboardImagePayload {
 fn read_clipboard_image() -> Result<Option<ClipboardImagePayload>, String> {
     #[cfg(target_os = "linux")]
     {
-        use base64::Engine;
-
-        let display =
-            gtk::gdk::Display::default().ok_or_else(|| "No GTK display available.".to_string())?;
-        let clipboard = gtk::Clipboard::default(&display)
-            .ok_or_else(|| "No GTK clipboard available.".to_string())?;
-
-        if !clipboard.wait_is_image_available() {
-            return Ok(None);
-        }
-
-        let image = clipboard
-            .wait_for_image()
-            .ok_or_else(|| "Clipboard image could not be read.".to_string())?;
-        let bytes = image
-            .save_to_bufferv("png", &[])
-            .map_err(|error| error.to_string())?;
-
-        return Ok(Some(ClipboardImagePayload {
-            bytes_base64: base64::engine::general_purpose::STANDARD.encode(bytes),
-            mime_type: "image/png".to_string(),
-            file_name: "clipboard-icon.png".to_string(),
-        }));
+        return read_linux_clipboard_image();
     }
 
     #[cfg(not(target_os = "linux"))]
     {
         Ok(None)
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn read_linux_clipboard_image() -> Result<Option<ClipboardImagePayload>, String> {
+    let clipboard = linux_clipboard()?;
+    if !clipboard.wait_is_image_available() {
+        return Ok(None);
+    }
+
+    let bytes = linux_clipboard_image_bytes(&clipboard)?;
+    Ok(Some(clipboard_image_payload(bytes)))
+}
+
+#[cfg(target_os = "linux")]
+fn linux_clipboard() -> Result<gtk::Clipboard, String> {
+    let display =
+        gtk::gdk::Display::default().ok_or_else(|| "No GTK display available.".to_string())?;
+    gtk::Clipboard::default(&display).ok_or_else(|| "No GTK clipboard available.".to_string())
+}
+
+#[cfg(target_os = "linux")]
+fn linux_clipboard_image_bytes(clipboard: &gtk::Clipboard) -> Result<Vec<u8>, String> {
+    let image = clipboard
+        .wait_for_image()
+        .ok_or_else(|| "Clipboard image could not be read.".to_string())?;
+    image
+        .save_to_bufferv("png", &[])
+        .map_err(|error| error.to_string())
+}
+
+#[cfg(target_os = "linux")]
+fn clipboard_image_payload(bytes: Vec<u8>) -> ClipboardImagePayload {
+    use base64::Engine;
+
+    ClipboardImagePayload {
+        bytes_base64: base64::engine::general_purpose::STANDARD.encode(bytes),
+        mime_type: "image/png".to_string(),
+        file_name: "clipboard-icon.png".to_string(),
     }
 }
 
