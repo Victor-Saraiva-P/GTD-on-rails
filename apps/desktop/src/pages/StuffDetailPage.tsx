@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { ListPane } from "../components/ListPane";
 import { ListWorkspace } from "../components/ListWorkspace";
+import { RetryState } from "../components/RetryState";
 import { InboxStuffDetails } from "../features/inbox/InboxStuffDetails";
 import type { InboxWorkspaceController } from "../features/inbox/useInboxWorkspaceController";
 import { LeaderMenu } from "../features/keybinds/LeaderMenu";
@@ -58,17 +59,6 @@ function commitStuffBody(controller: InboxWorkspaceController) {
   void controller.commitEditingSelectedStuffBody().catch((error: unknown) => {
     console.error("Failed to update stuff body", error);
   });
-}
-
-function RetryState({ message, onRetry }: { message: string; onRetry: () => void }) {
-  return (
-    <div className="pane-state">
-      <p>{message}</p>
-      <button type="button" className="pane-state__action" onClick={onRetry}>
-        Retry
-      </button>
-    </div>
-  );
 }
 
 function StuffDetailReady({ controller }: StuffDetailPageProps) {

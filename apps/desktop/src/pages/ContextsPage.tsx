@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ListPane } from "../components/ListPane";
 import { ListWorkspace } from "../components/ListWorkspace";
+import { RetryState } from "../components/RetryState";
 import { ContextIconEditor } from "../features/contexts/ContextIconEditor";
 import { ContextItemsPane } from "../features/contexts/ContextItemsPane";
 import { ContextsList } from "../features/contexts/ContextsList";
@@ -325,17 +326,6 @@ function commitContextName(model: ContextsModel, actions: ContextsActions) {
   void actions.commitEditingSelectedContext().catch((error: unknown) => {
     console.error("Failed to update context", error);
   });
-}
-
-function RetryState({ message, onRetry }: { message: string; onRetry: () => void }) {
-  return (
-    <div className="pane-state">
-      <p>{message}</p>
-      <button type="button" className="pane-state__action" onClick={onRetry}>
-        Retry
-      </button>
-    </div>
-  );
 }
 
 function ContextsListReady({ model, actions }: ContextsViewProps) {
