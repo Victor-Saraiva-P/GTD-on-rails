@@ -11,11 +11,11 @@ function uniqueTitle(): string {
   return `E2E stuff ${Date.now()}`;
 }
 
-async function focusApp(page: Page) {
+async function focusApp(page: Page): Promise<void> {
   await page.locator("main").click();
 }
 
-async function createStuffFromKeyboard(page: Page, title: string) {
+async function createStuffFromKeyboard(page: Page, title: string): Promise<void> {
   await page.keyboard.press("a");
   const input = page.locator("input.tree-entry__input");
   await expect(input).toBeVisible();
@@ -33,7 +33,7 @@ async function fetchInboxByTitle(
   return stuffs.find((stuff) => stuff.title === title) ?? null;
 }
 
-async function resetTestData(request: APIRequestContext) {
+async function resetTestData(request: APIRequestContext): Promise<void> {
   const response = await request.post(`${apiBaseUrl}/test/reset`);
   expect(response.ok()).toBeTruthy();
 }
