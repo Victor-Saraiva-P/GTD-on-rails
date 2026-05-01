@@ -34,16 +34,20 @@ fn read_linux_clipboard_image() -> Result<Option<ClipboardImagePayload>, String>
 
 #[cfg(target_os = "linux")]
 fn linux_clipboard() -> Result<gtk::Clipboard, String> {
-    let display =
-        gtk::gdk::Display::default().ok_or_else(|| "No GTK display available.".to_string())?;
-    gtk::Clipboard::default(&display).ok_or_else(|| "No GTK clipboard available.".to_string())
+    let display = gtk::gdk::Display::default().ok_or_else(|| {
+        "GTK display value 'None' is invalid; expected an active GTK display.".to_string()
+    })?;
+    gtk::Clipboard::default(&display).ok_or_else(|| {
+        "GTK clipboard value 'None' is invalid; expected a default clipboard for the active display."
+            .to_string()
+    })
 }
 
 #[cfg(target_os = "linux")]
 fn linux_clipboard_image_bytes(clipboard: &gtk::Clipboard) -> Result<Vec<u8>, String> {
-    let image = clipboard
-        .wait_for_image()
-        .ok_or_else(|| "Clipboard image could not be read.".to_string())?;
+    let image = clipboard.wait_for_image().ok_or_else(|| {
+        "Clipboard image value 'None' is invalid; expected a readable clipboard image.".to_string()
+    })?;
     image
         .save_to_bufferv("png", &[])
         .map_err(|error| error.to_string())

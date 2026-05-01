@@ -8,7 +8,7 @@ import "./styles.css";
 const app = document.querySelector<HTMLDivElement>("#app");
 
 if (!app) {
-  throw new Error("App root not found");
+  throw new Error("App root selector '#app' matched value 'null'; expected an HTMLDivElement mount node.");
 }
 
 ReactDOM.createRoot(app).render(

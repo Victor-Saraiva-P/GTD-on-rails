@@ -4,7 +4,7 @@ function normalizeApiBaseUrl(rawValue: string): string {
   const trimmedValue = rawValue.trim();
 
   if (!trimmedValue) {
-    throw new Error("VITE_API_BASE_URL cannot be empty");
+    throw new Error(`VITE_API_BASE_URL value '${rawValue}' is invalid; expected a non-empty absolute URL.`);
   }
 
   const normalizedUrl = new URL(trimmedValue);

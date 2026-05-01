@@ -191,7 +191,7 @@ export function useSyncStatus() {
   const context = useContext(SyncStatusContext);
 
   if (!context) {
-    throw new Error("Sync status context not available");
+    throw new Error("Sync status context value is 'null'; expected useSyncStatus inside <SyncStatusProvider>.");
   }
 
   return context;

@@ -311,7 +311,7 @@ export function useKeybindContext() {
   const context = useContext(KeybindContext);
 
   if (!context) {
-    throw new Error("Keybind context not available");
+    throw new Error("Keybind context value is 'null'; expected useKeybindContext inside <KeybindProvider>.");
   }
 
   return context;
