@@ -5,16 +5,12 @@ import com.gtdonrails.api.exceptions.item.ItemNotFoundException;
 import com.gtdonrails.api.exceptions.shared.BusinessException;
 import com.gtdonrails.api.exceptions.shared.ConflictException;
 
-import java.net.URI;
-import java.time.Instant;
-
 import jakarta.validation.ConstraintViolation;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import lombok.extern.slf4j.Slf4j;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.beans.TypeMismatchException;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -27,7 +23,6 @@ import org.springframework.web.bind.MissingRequestCookieException;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
@@ -37,15 +32,10 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
-    private final String projectName;
-    private final String apiBasePath;
+    private final ProblemDetailFactory problemDetailFactory;
 
-    public GlobalExceptionHandler(
-        @Value("${api.project-name:https://gtdonrails.local}") String projectName,
-        @Value("${api.base-url:/errors}") String apiBasePath
-    ) {
-        this.projectName = projectName;
-        this.apiBasePath = apiBasePath;
+    public GlobalExceptionHandler(ProblemDetailFactory problemDetailFactory) {
+        this.problemDetailFactory = problemDetailFactory;
     }
 
     /**
@@ -74,7 +64,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         BusinessException ex, WebRequest request, String logMessage) {
         HttpStatus status = HttpStatus.NOT_FOUND;
         ProblemDetail problemDetail =
-            createProblemDetail(
+            problemDetailFactory.create(
                 status,
                 "Resource not found",
                 "/resource-not-found",
@@ -95,7 +85,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ConflictException ex, WebRequest request) {
         HttpStatus status = HttpStatus.CONFLICT;
         ProblemDetail problemDetail =
-            createProblemDetail(
+            problemDetailFactory.create(
                 status, "Data conflict", "/data-conflict", ex.getMessage(), request);
 
         log.warn("Data conflict: {}", ex.getMessage());
@@ -112,7 +102,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         BusinessException ex, WebRequest request) {
         HttpStatus status = HttpStatus.BAD_REQUEST;
         ProblemDetail problemDetail =
-            createProblemDetail(
+            problemDetailFactory.create(
                 status, "Invalid operation", "/invalid-operation", ex.getMessage(), request);
 
         log.warn("Invalid business operation: {}", ex.getMessage());
@@ -135,7 +125,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             .reduce((first, second) -> first + "\n" + second)
             .orElse(ex.getMessage());
         ProblemDetail problemDetail =
-            createProblemDetail(
+            problemDetailFactory.create(
                 status, "Invalid data", "/invalid-data", detail, request);
 
         log.warn("Constraint violation: {}", detail);
@@ -152,7 +142,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         DataIntegrityViolationException ex, WebRequest request) {
         HttpStatus status = HttpStatus.CONFLICT;
         ProblemDetail problemDetail =
-            createProblemDetail(
+            problemDetailFactory.create(
                 status,
                 "Data conflict",
                 "/data-conflict",
@@ -173,7 +163,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         IllegalStateException ex, WebRequest request) {
         HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
         ProblemDetail problemDetail =
-            createProblemDetail(
+            problemDetailFactory.create(
                 status, "System error", "/system-error", ex.getMessage(), request);
 
         log.error("Application illegal state", ex);
@@ -189,7 +179,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ResponseEntity<Object> handleGenericException(Exception ex, WebRequest request) {
         HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
         ProblemDetail problemDetail =
-            createProblemDetail(
+            problemDetailFactory.create(
                 status,
                 "System error",
                 "/system-error",
@@ -214,7 +204,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
         String detail = validationFailureDetail(ex);
         ProblemDetail problemDetail =
-            createProblemDetail(
+            problemDetailFactory.create(
                 status, "Invalid data", "/invalid-data", detail, request);
 
         log.warn("Validation failed: {}", detail);
@@ -260,7 +250,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 ((MethodArgumentTypeMismatchException) ex).getName(), ex.getValue());
 
         ProblemDetail problemDetail =
-            createProblemDetail(
+            problemDetailFactory.create(
                 status, "Invalid parameter", "/invalid-parameter", detail, request);
 
         log.warn("Invalid URL parameter: {}", detail);
@@ -279,7 +269,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         @NonNull HttpStatusCode status,
         @NonNull WebRequest request) {
         ProblemDetail problemDetail =
-            createProblemDetail(
+            problemDetailFactory.create(
                 status, "Invalid data", "/invalid-data", "Request body is invalid", request);
 
         log.warn("Malformed request body", ex);
@@ -303,7 +293,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 ex.getResourcePath());
 
         ProblemDetail problemDetail =
-            createProblemDetail(status, "Invalid URI", "/invalid-uri", detail, request);
+            problemDetailFactory.create(status, "Invalid URI", "/invalid-uri", detail, request);
 
         return handleExceptionInternal(ex, problemDetail, headers, status, request);
     }
@@ -318,7 +308,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         MissingRequestHeaderException ex, WebRequest request) {
         HttpStatus status = HttpStatus.BAD_REQUEST;
         ProblemDetail problemDetail =
-            createProblemDetail(
+            problemDetailFactory.create(
                 status,
                 "Invalid data",
                 "/invalid-data",
@@ -338,7 +328,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         MissingRequestCookieException ex, WebRequest request) {
         HttpStatus status = HttpStatus.BAD_REQUEST;
         ProblemDetail problemDetail =
-            createProblemDetail(
+            problemDetailFactory.create(
                 status,
                 "Invalid data",
                 "/invalid-data",
@@ -358,7 +348,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         IllegalArgumentException ex, WebRequest request) {
         HttpStatus status = HttpStatus.BAD_REQUEST;
         ProblemDetail problemDetail =
-            createProblemDetail(
+            problemDetailFactory.create(
                 status, "Invalid data", "/invalid-data", ex.getMessage(), request);
 
         return handleExceptionInternal(ex, problemDetail, new HttpHeaders(), status, request);
@@ -379,60 +369,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
         Object responseBody = body;
         if (!(responseBody instanceof ProblemDetail)) {
-            responseBody = createDefaultProblemDetail(status, body, request);
+            responseBody = problemDetailFactory.createDefault(status, body, request);
         }
 
         return super.handleExceptionInternal(ex, responseBody, headers, status, request);
-    }
-
-    private ProblemDetail createDefaultProblemDetail(
-        HttpStatusCode status, @Nullable Object body, WebRequest request) {
-        if (status.value() == HttpStatus.NOT_FOUND.value()) {
-            String path = extractPath(request);
-            String detail =
-                String.format("The requested URI '%s' does not exist. Correct it and try again.", path);
-            return createProblemDetail(status, "Invalid URI", "/invalid-uri", detail, request);
-        }
-
-        String detail =
-            body instanceof String string
-                ? string
-                : HttpStatus.valueOf(status.value()).getReasonPhrase();
-
-        return createProblemDetail(status, "System error", "/system-error", detail, request);
-    }
-
-    private ProblemDetail createProblemDetail(
-        HttpStatusCode status,
-        String title,
-        String typePath,
-        String detail,
-        WebRequest request) {
-        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(status, detail);
-        String path = extractPath(request);
-
-        problemDetail.setTitle(title);
-        problemDetail.setType(URI.create(buildTypeUri(typePath)));
-        problemDetail.setInstance(URI.create(path));
-        problemDetail.setProperty("path", path);
-        problemDetail.setProperty("timestamp", Instant.now().toString());
-
-        return problemDetail;
-    }
-
-    private String extractPath(WebRequest request) {
-        if (request instanceof ServletWebRequest servletWebRequest) {
-            return servletWebRequest.getRequest().getRequestURI();
-        }
-
-        String description = request.getDescription(false);
-        String prefix = "uri=";
-        return description.startsWith(prefix) ? description.substring(prefix.length()) : description;
-    }
-
-    private String buildTypeUri(String typePath) {
-        String normalizedProjectName = projectName == null ? "" : projectName;
-        String normalizedApiBasePath = apiBasePath == null ? "" : apiBasePath;
-        return normalizedProjectName + normalizedApiBasePath + typePath;
     }
 }
