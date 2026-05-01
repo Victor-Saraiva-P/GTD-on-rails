@@ -1,4 +1,4 @@
-import { apiFetch, apiJson } from "../../lib/api/apiClient";
+import { apiFetch, apiJson } from "../../lib/api/apiClient.ts";
 import type { Stuff } from "./types";
 
 type InboxStuffResponse = {

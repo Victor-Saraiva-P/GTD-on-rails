@@ -12,8 +12,9 @@ function normalizeApiBaseUrl(rawValue: string): string {
   return normalizedUrl.toString().replace(/\/$/, "");
 }
 
+const viteEnv = (import.meta as any).env || {};
 export const apiBaseUrl = normalizeApiBaseUrl(
-  import.meta.env.VITE_API_BASE_URL ?? defaultApiBaseUrl
+  viteEnv.VITE_API_BASE_URL ?? defaultApiBaseUrl
 );
 
 /**

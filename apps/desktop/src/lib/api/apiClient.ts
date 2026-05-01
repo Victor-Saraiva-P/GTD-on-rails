@@ -1,4 +1,4 @@
-import { buildApiUrl } from "../../config/env";
+import { buildApiUrl } from "../../config/env.ts";
 
 export class ApiRequestError extends Error {
   readonly status: number;
