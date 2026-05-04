@@ -66,7 +66,7 @@
 }
 
 .inbox-detail__body,
-.inbox-detail__textarea {
+.inbox-detail__codemirror {
   margin: 0;
   color: #c8c1bc;
   font-family: var(--font-mono);
@@ -80,82 +80,115 @@
   min-height: clamp(240px, 48vh, 760px);
 }
 
-.inbox-detail__editor {
-  position: relative;
+.inbox-detail__markdown-editor {
+  display: grid;
+  gap: 8px;
   min-height: clamp(240px, 48vh, 760px);
 }
 
-.inbox-detail__textarea {
-  width: 100%;
+.inbox-detail__codemirror {
   min-height: 100%;
-  padding: 0;
   border: 0;
   background: transparent;
-  resize: none;
 }
 
-.inbox-detail__textarea:focus {
+.inbox-detail__codemirror .cm-editor {
+  min-height: clamp(240px, 48vh, 760px);
+  background: transparent;
+  color: inherit;
+}
+
+.inbox-detail__codemirror .cm-editor.cm-focused {
   outline: none;
 }
 
-.inbox-detail__textarea--normal,
-.inbox-detail__textarea--visual,
-.inbox-detail__textarea--visual-line {
-  caret-color: transparent;
-}
-
-.inbox-detail__textarea--normal {
-  color: transparent;
-}
-
-.inbox-detail__textarea--visual::selection,
-.inbox-detail__textarea--visual-line::selection {
-  background: rgba(var(--list-accent-rgb), 0.92);
-  color: #1b1312;
-}
-
-.inbox-detail__normal-cursor-layer {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  margin: 0;
-  color: #c8c1bc;
+.inbox-detail__codemirror .cm-scroller {
   font-family: var(--font-mono);
-  font-size: 0.92rem;
   line-height: 1.68;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  pointer-events: none;
 }
 
-.inbox-detail__normal-cursor-prefix {
-  color: inherit;
+.inbox-detail__codemirror .cm-gutters {
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.34);
 }
 
-.inbox-detail__normal-cursor-suffix {
-  color: inherit;
+.inbox-detail__codemirror .cm-activeLine,
+.inbox-detail__codemirror .cm-activeLineGutter {
+  background: rgba(255, 255, 255, 0.06);
 }
 
-.inbox-detail__normal-cursor {
-  display: inline-grid;
-  place-items: center;
-  width: 1ch;
-  height: 1.5456rem;
-  background: rgba(var(--list-accent-rgb), 0.92);
-  color: #1b1312;
-  line-height: 1;
+.inbox-detail__codemirror .cm-content {
+  caret-color: transparent !important;
 }
 
-.inbox-detail__cursor-measure {
-  position: fixed;
-  top: -10000px;
-  left: 0;
-  color: transparent;
-  line-height: 1.68;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  pointer-events: none;
+.inbox-detail__codemirror .cm-cursor,
+.inbox-detail__codemirror .cm-dropCursor,
+.inbox-detail__codemirror .cm-fat-cursor {
+  animation: none !important;
+}
+
+.inbox-detail__codemirror .cm-cursorLayer {
+  animation: none !important;
+}
+
+.inbox-detail__codemirror .cm-cursor,
+.inbox-detail__codemirror .cm-dropCursor {
+  border-left: 2px solid #ffffff !important;
+  border-left-color: #ffffff !important;
+  border-color: #ffffff !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.inbox-detail__codemirror .cm-vimMode .cm-cursor,
+.inbox-detail__codemirror .cm-vimMode .cm-fat-cursor,
+.inbox-detail__codemirror .cm-editor.cm-fat-cursor .cm-cursorLayer .cm-cursor {
+  background: linear-gradient(180deg, #ffffff 0%, #e8e3df 100%) !important;
+  border: 1px solid #ffffff !important;
+  border-left: 1px solid #ffffff !important;
+  border-color: #ffffff !important;
+  outline: none !important;
+  box-shadow: none !important;
+  color: #191716 !important;
+}
+
+.inbox-detail__codemirror .cm-selectionBackground,
+.inbox-detail__codemirror.cm-focused .cm-selectionBackground,
+.inbox-detail__codemirror .cm-editor.cm-focused .cm-selectionBackground {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.inbox-detail__codemirror .cm-searchMatch,
+.inbox-detail__codemirror .cm-selectionMatch {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.inbox-detail__codemirror .cm-searchMatch-selected,
+.inbox-detail__codemirror .cm-selectionMatch-main {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.inbox-detail__codemirror .cm-panels,
+.inbox-detail__codemirror .cm-vim-panel {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: #201d1b;
+  color: #e8e3df;
+}
+
+.inbox-detail__codemirror .cm-vim-panel input {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: #181614;
+  color: #f0ebe8;
+}
+
+.inbox-detail__save-state {
+  justify-self: start;
+  color: #8a817c;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .inbox-pane .list-pane__panel-index {
