@@ -262,3 +262,59 @@
   top: 0;
   font-weight: bold;
 }
+
+/* In the editor: dim the # marks */
+.inbox-detail__codemirror .cm-heading-mark {
+  color: rgba(200, 193, 188, 0.4);
+  font-size: 0.75em;
+  vertical-align: middle;
+}
+
+/* In the preview: hide the # marks entirely */
+.inbox-detail__body-preview .cm-heading-mark {
+  display: none;
+}
+
+/* Editor heading line styles — Notion-like scale */
+.inbox-detail__codemirror .cm-md-heading-1 {
+  font-size: 1.875em;
+  font-weight: 700;
+  color: #f0ebe8;
+  line-height: 1.3;
+}
+
+.inbox-detail__codemirror .cm-md-heading-2 {
+  font-size: 1.5em;
+  font-weight: 700;
+  color: #e0d9d4;
+  line-height: 1.3;
+}
+
+.inbox-detail__codemirror .cm-md-heading-3 {
+  font-size: 1.25em;
+  font-weight: 600;
+  color: #d0c9c4;
+  line-height: 1.3;
+}
+
+/* Preview heading styles (applied to the line-content span, not the whole row) */
+.inbox-detail__body-preview .inbox-detail__line-content.cm-md-heading-1 {
+  font-size: 1.875em;
+  font-weight: 700;
+  color: #f0ebe8;
+  line-height: 1.3;
+}
+
+.inbox-detail__body-preview .inbox-detail__line-content.cm-md-heading-2 {
+  font-size: 1.5em;
+  font-weight: 700;
+  color: #e0d9d4;
+  line-height: 1.3;
+}
+
+.inbox-detail__body-preview .inbox-detail__line-content.cm-md-heading-3 {
+  font-size: 1.25em;
+  font-weight: 600;
+  color: #d0c9c4;
+  line-height: 1.3;
+}

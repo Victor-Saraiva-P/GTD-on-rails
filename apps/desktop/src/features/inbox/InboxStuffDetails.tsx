@@ -41,6 +41,13 @@ function EditingInboxStuffDetails(props: EditingInboxStuffDetailsProps) {
   );
 }
 
+/** Returns {level, mark, content} for ATX headings H1-H4, or null. */
+function parseHeadingLine(line: string): { level: number; mark: string; content: string } | null {
+  const match = line.match(/^(#{1,3}) (.*)/);
+  if (!match) return null;
+  return { level: match[1].length, mark: match[1] + " ", content: match[2] };
+}
+
 function formatBodyForDisplay(body: Stuff["body"]): string | null {
   if (!body) {
     return null;
@@ -59,16 +66,26 @@ function ReadOnlyInboxStuffDetails({ item }: Pick<InboxStuffDetailsProps, "item"
       {displayBody ? (
         <div className="inbox-detail__body inbox-detail__body-preview" aria-label="Selected item details">
           {previewLines.map((line, index) => {
-            const match = line.match(/^(\s*)([-*+]\s+)(.*)/);
-            if (match) {
-              const [_, indent, bullet, content] = match;
+            const heading = parseHeadingLine(line);
+            if (heading) {
+              const cls = `cm-md-heading-${heading.level}`;
+              return (
+                <div className="inbox-detail__body-line" key={`${index}:${line}`}>
+                  <span className="inbox-detail__line-number">{index + 1}</span>
+                  <span className={`inbox-detail__line-content ${cls}`}>
+                    {heading.content}
+                  </span>
+                </div>
+              );
+            }
+            const bulletMatch = line.match(/^(\s*)([-*+]\s+)(.*)/);
+            if (bulletMatch) {
+              const [_, indent, bullet, content] = bulletMatch;
               return (
                 <div className="inbox-detail__body-line" key={`${index}:${line}`}>
                   <span className="inbox-detail__line-number">{index + 1}</span>
                   <span className="inbox-detail__line-content">
-                    {indent}
-                    <span className="cm-bullet-mark">{bullet}</span>
-                    {content}
+                    {indent}<span className="cm-bullet-mark">{bullet}</span>{content}
                   </span>
                 </div>
               );

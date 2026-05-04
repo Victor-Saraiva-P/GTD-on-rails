@@ -25,6 +25,7 @@ export type ItemBodyMarkdownEditorProps = {
 };
 
 export const FORMAT_BULLET_EVENT = "gtd:format-bullet";
+export const FORMAT_HEADING_EVENT = "gtd:format-heading";
 
 type ItemBodyMarkdownEditorFrameProps = {
   editorParentRef: RefObject<HTMLDivElement | null>;
@@ -138,6 +139,18 @@ function useCodeMirrorEditorView(
     window.addEventListener(FORMAT_BULLET_EVENT, handler);
     return () => window.removeEventListener(FORMAT_BULLET_EVENT, handler);
   }, []);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      if (!editorViewRef.current) return;
+      const level = (e as CustomEvent<{ level: 1 | 2 | 3 }>).detail?.level;
+      if (level >= 1 && level <= 3) {
+        toggleHeading(editorViewRef.current, level as 1 | 2 | 3);
+      }
+    };
+    window.addEventListener(FORMAT_HEADING_EVENT, handler);
+    return () => window.removeEventListener(FORMAT_HEADING_EVENT, handler);
+  }, []);
 }
 
 function mountEditorView(
@@ -238,6 +251,7 @@ function editorBehaviorExtensions(
     EditorView.editable.of(!readOnly),
     EditorView.lineWrapping,
     markdownBulletsPlugin,
+    markdownHeadingsPlugin,
     EditorView.updateListener.of((update) =>
       autosaveAfterFinishedEdit(update.view, update.docChanged, readOnly, autosaveTrackerRef, onAutosaveRef, onVimModeChangeRef, setSaveState)
     ),
@@ -403,43 +417,139 @@ const markdownBulletsPlugin = ViewPlugin.fromClass(
   }
 );
 
-function toggleBulletPoints(view: EditorView) {
-  const { state, dispatch } = view;
-  const changes = [];
-  
+const headingMark = Decoration.mark({ class: "cm-heading-mark" });
+
+const headingLineDecorations: Record<number, Decoration> = {
+  1: Decoration.line({ class: "cm-md-heading-1" }),
+  2: Decoration.line({ class: "cm-md-heading-2" }),
+  3: Decoration.line({ class: "cm-md-heading-3" }),
+};
+
+const markdownHeadingsPlugin = ViewPlugin.fromClass(
+  class {
+    decorations: DecorationSet;
+
+    constructor(view: EditorView) {
+      this.decorations = this.buildDecorations(view);
+    }
+
+    update(update: ViewUpdate) {
+      if (update.docChanged || update.viewportChanged) {
+        this.decorations = this.buildDecorations(update.view);
+      }
+    }
+
+    buildDecorations(view: EditorView) {
+      // Collect line and mark decorations separately, then merge sorted by from.
+      const lineDecos: [number, number, Decoration][] = [];
+      const markDecos: [number, number, Decoration][] = [];
+
+      for (const { from, to } of view.visibleRanges) {
+        syntaxTree(view.state).iterate({
+          from,
+          to,
+          enter: (node: any) => {
+            const headingMatch = node.name.match(/^ATXHeading(\d)$/);
+            if (headingMatch) {
+              const level = parseInt(headingMatch[1], 10);
+              const deco = headingLineDecorations[level];
+              if (deco) {
+                const line = view.state.doc.lineAt(node.from);
+                lineDecos.push([line.from, line.from, deco]);
+              }
+            }
+            if (node.name === "HeaderMark") {
+              markDecos.push([node.from, node.to, headingMark]);
+            }
+          }
+        });
+      }
+
+      // Line decos must come before mark decos at the same `from` position.
+      const all = [
+        ...lineDecos,
+        ...markDecos,
+      ].sort((a, b) => a[0] !== b[0] ? a[0] - b[0] : a[1] - b[1]);
+
+      const builder = new RangeSetBuilder<Decoration>();
+      for (const [from, to, deco] of all) {
+        builder.add(from, to, deco);
+      }
+      return builder.finish();
+    }
+  },
+  { decorations: (v) => v.decorations }
+);
+
+/** Regex matching any markdown block prefix: bullets or headings. */
+const MARKDOWN_PREFIX_RE = /^(\s*)(#{1,6}\s+|[-*+]\s+)?/;
+
+/**
+ * Strips any existing markdown block prefix (heading or bullet) from a line.
+ * Returns the indent and content without the prefix.
+ */
+function stripMarkdownPrefix(text: string): { indent: string; prefixLen: number; content: string } {
+  const match = text.match(MARKDOWN_PREFIX_RE);
+  const indent = match?.[1] ?? "";
+  const prefix = match?.[2] ?? "";
+  return { indent, prefixLen: indent.length + prefix.length, content: text.slice(indent.length + prefix.length) };
+}
+
+function iterateSelectedLines(
+  state: ReturnType<typeof EditorView.prototype.state.toJSON>["doc"] extends never ? never : EditorView["state"],
+  cb: (line: ReturnType<typeof EditorView.prototype.state.doc.line>, startLine: number, endLine: number) => void
+) {
   for (const range of state.selection.ranges) {
     const startLine = state.doc.lineAt(range.from).number;
     let endLine = state.doc.lineAt(range.to).number;
-    
-    if (range.to > range.from && range.to === state.doc.line(endLine).from) {
-      endLine--;
-    }
-
+    if (range.to > range.from && range.to === state.doc.line(endLine).from) endLine--;
     for (let i = startLine; i <= endLine; i++) {
-      const line = state.doc.line(i);
-      const text = line.text;
-      const match = text.match(/^(\s*)([-*+]\s+)?(.*)/);
-      if (!match) continue;
-      
-      const [_, indent, bullet, content] = match;
-      if (bullet) {
-        changes.push({
-          from: line.from + indent.length,
-          to: line.from + indent.length + bullet.length,
-          insert: ""
-        });
-      } else if (content.trim().length > 0 || startLine === endLine) {
-        changes.push({
-          from: line.from + indent.length,
-          insert: "- "
-        });
-      }
+      cb(state.doc.line(i), startLine, endLine);
     }
   }
-  
-  if (changes.length > 0) {
-    dispatch({ changes });
-  }
+}
+
+function toggleBulletPoints(view: EditorView) {
+  const { state, dispatch } = view;
+  const changes: { from: number; to?: number; insert: string }[] = [];
+
+  iterateSelectedLines(state, (line, startLine, endLine) => {
+    const { indent, prefixLen, content } = stripMarkdownPrefix(line.text);
+    const existingPrefix = line.text.slice(indent.length, prefixLen);
+    const isBullet = /^[-*+]\s+/.test(existingPrefix);
+
+    if (isBullet) {
+      // remove bullet, keep other prefixes intact — strip bullet only
+      changes.push({ from: line.from + indent.length, to: line.from + prefixLen, insert: "" });
+    } else if (content.trim().length > 0 || startLine === endLine) {
+      // replace any heading prefix with bullet
+      changes.push({ from: line.from + indent.length, to: line.from + prefixLen, insert: "- " });
+    }
+  });
+
+  if (changes.length > 0) dispatch({ changes });
+}
+
+function toggleHeading(view: EditorView, level: 1 | 2 | 3) {
+  const { state, dispatch } = view;
+  const hashes = "#".repeat(level) + " ";
+  const changes: { from: number; to?: number; insert: string }[] = [];
+
+  iterateSelectedLines(state, (line, startLine, endLine) => {
+    const { indent, prefixLen, content } = stripMarkdownPrefix(line.text);
+    const existingPrefix = line.text.slice(indent.length, prefixLen);
+    const sameHeading = existingPrefix === hashes;
+
+    if (sameHeading) {
+      // toggle off: remove the heading prefix
+      changes.push({ from: line.from + indent.length, to: line.from + prefixLen, insert: "" });
+    } else if (content.trim().length > 0 || startLine === endLine) {
+      // replace existing prefix (bullet or different heading) with new heading
+      changes.push({ from: line.from + indent.length, to: line.from + prefixLen, insert: hashes });
+    }
+  });
+
+  if (changes.length > 0) dispatch({ changes });
 }
 
 function isRecentInsertExit(tracker: AutosaveTracker): boolean {
