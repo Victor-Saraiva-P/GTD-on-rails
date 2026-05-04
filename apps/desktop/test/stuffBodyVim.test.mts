@@ -6,7 +6,8 @@ import {
   formatStuffBodyVimMode,
   initialStuffBodyVimState,
   moveStuffBodyCursor,
-  stuffBodyCursorCell
+  stuffBodyCursorCell,
+  stuffBodyCursorGlyph
 } from "../src/features/inbox/stuffBodyVim.ts";
 
 test("formatStuffBodyVimMode formats supported footer labels", () => {
@@ -43,6 +44,11 @@ test("stuffBodyCursorCell renders empty line cursors as blank cells", () => {
     column: 0,
     line: 1
   });
+});
+
+test("stuffBodyCursorGlyph keeps blank cursor cells from collapsing", () => {
+  assert.equal(stuffBodyCursorGlyph("one two", 3), "\u00a0");
+  assert.equal(stuffBodyCursorGlyph("one two", 4), "t");
 });
 
 test("applyStuffBodyVimCommand enters insert mode from normal mode", () => {

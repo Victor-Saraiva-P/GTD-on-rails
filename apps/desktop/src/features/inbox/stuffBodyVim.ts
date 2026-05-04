@@ -85,6 +85,16 @@ export function stuffBodyCursorCell(value: string, cursor: number): StuffBodyCur
   return { character, column: lineColumn(value, safeCursor), line: lineIndex(value, safeCursor) };
 }
 
+/**
+ * Returns the non-collapsing glyph used by the rendered normal-mode cursor.
+ *
+ * @example stuffBodyCursorGlyph("one two", 3)
+ */
+export function stuffBodyCursorGlyph(value: string, cursor: number): string {
+  const character = stuffBodyCursorCell(value, cursor).character;
+  return character === " " ? "\u00a0" : character;
+}
+
 function cursorAtColumn(value: string, lineStart: number, column: number): number {
   return Math.min(lineStart + column, currentLineEnd(value, lineStart));
 }

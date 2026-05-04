@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type KeyboardEvent, type RefObject } from 
 import { applyStuffBodyTextareaCommand } from "./stuffBodyRenderedCursor";
 import {
   initialStuffBodyVimState,
-  stuffBodyCursorCell,
+  stuffBodyCursorGlyph,
   type StuffBodyVimMode,
   type StuffBodyVimState
 } from "./stuffBodyVim";
@@ -137,7 +137,7 @@ function copyTextWhenPresent(copiedText: string | null, writeClipboardText?: (va
 }
 
 function normalModeCursorCharacter(value: string, vimState: StuffBodyVimState): string {
-  return stuffBodyCursorCell(value, vimState.activeCursor).character;
+  return stuffBodyCursorGlyph(value, vimState.activeCursor);
 }
 
 function normalModeCursorPrefix(value: string, vimState: StuffBodyVimState): string {

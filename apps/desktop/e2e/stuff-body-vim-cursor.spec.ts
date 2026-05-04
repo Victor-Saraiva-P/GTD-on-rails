@@ -86,7 +86,7 @@ async function expectNormalCursorIndex(page: Page, index: number): Promise<void>
 }
 
 function expectedCursorText(value: string, index: number): string {
-  return value[index] && value[index] !== "\n" ? value[index] : " ";
+  return value[index] && value[index] !== "\n" ? value[index] : "\u00a0";
 }
 
 test("moves the normal-mode block cursor one character with h and l", async ({ page }) => {
@@ -113,7 +113,25 @@ test("keeps the normal-mode block cursor visible on empty lines", async ({ page 
   await page.keyboard.press("j");
   const cursor = page.locator(".inbox-detail__normal-cursor");
   await expect(cursor).toBeVisible();
-  await expect.poll(() => cursor.evaluate((element) => element.textContent)).toBe(" ");
+  await expect.poll(() => cursor.evaluate((element) => element.textContent)).toBe("\u00a0");
+});
+
+test("keeps the normal-mode block cursor stable on body spaces", async ({ page }) => {
+  const title = uniqueTitle();
+  const bodyText = "comprar presente pra ela ficar bem feliz";
+  const cursorStart = bodyText.indexOf(" bem");
+
+  await editNewStuffBody(page, title);
+  await writeBodyAndReturnToStart(page, bodyText);
+  await moveNormalCursorRight(page, bodyText.indexOf("bem"));
+  await page.keyboard.press("h");
+  await expectNormalCursorIndex(page, cursorStart);
+
+  const cursor = page.locator(".inbox-detail__normal-cursor");
+  const cursorBox = await cursor.boundingBox();
+
+  await expect.poll(() => cursor.evaluate((element) => element.textContent)).toBe("\u00a0");
+  expect(cursorBox?.width).toBeGreaterThan(0);
 });
 
 test("moves down by rendered wrapped lines instead of jumping to logical line end", async ({ page }) => {
