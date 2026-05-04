@@ -336,6 +336,35 @@
   margin: 0.6em 0;
 }
 
+.inbox-detail__body-preview .cm-quote-line,
+.inbox-detail__codemirror .cm-quote-line {
+  position: relative;
+  padding-left: 1.2em;
+  color: #cfc7c2;
+  font-style: italic;
+}
+
+.inbox-detail__body-preview .cm-quote-line::before,
+.inbox-detail__codemirror .cm-quote-line::before {
+  content: "";
+  position: absolute;
+  left: 0.4em;
+  top: 0.2em;
+  bottom: 0.2em;
+  width: 2px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.inbox-detail__codemirror .cm-quote-mark {
+  color: rgba(200, 193, 188, 0.4);
+  font-size: 0.85em;
+}
+
+.inbox-detail__body-preview .cm-quote-mark {
+  display: none;
+}
+
+
 /* In the editor: dim # marks only on the line being edited */
 .inbox-detail__codemirror .cm-heading-mark {
   color: rgba(200, 193, 188, 0.4);

@@ -1,7 +1,7 @@
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
 import { syntaxTree } from "@codemirror/language";
-import { RangeSetBuilder } from "@codemirror/state";
+import { EditorSelection, RangeSetBuilder } from "@codemirror/state";
 import { EditorState } from "@codemirror/state";
 import { Decoration, drawSelection, EditorView, highlightActiveLine, keymap, lineNumbers, ViewPlugin, WidgetType, type ViewUpdate, type DecorationSet } from "@codemirror/view";
 import { getCM, Vim, vim, type CodeMirrorV } from "@replit/codemirror-vim";
@@ -33,6 +33,7 @@ export const FORMAT_CHECKLIST_EVENT = "gtd:format-checklist";
 export const FORMAT_CHECKLIST_CHECKED_EVENT = "gtd:format-checklist-checked";
 export const FORMAT_CHECKLIST_UNCHECKED_EVENT = "gtd:format-checklist-unchecked";
 export const FORMAT_DIVIDER_EVENT = "gtd:format-divider";
+export const FORMAT_QUOTE_EVENT = "gtd:format-quote";
 
 type ItemBodyMarkdownEditorFrameProps = {
   editorParentRef: RefObject<HTMLDivElement | null>;
@@ -218,6 +219,16 @@ function useCodeMirrorEditorView(
   }, []);
 
   useEffect(() => {
+    const handler = () => {
+      if (editorViewRef.current) {
+        applyQuote(editorViewRef.current);
+      }
+    };
+    window.addEventListener(FORMAT_QUOTE_EVENT, handler);
+    return () => window.removeEventListener(FORMAT_QUOTE_EVENT, handler);
+  }, []);
+
+  useEffect(() => {
     const handler = (e: Event) => {
       if (!editorViewRef.current) return;
       const level = (e as CustomEvent<{ level: 1 | 2 | 3 }>).detail?.level;
@@ -331,6 +342,7 @@ function editorBehaviorExtensions(
     markdownHeadingsPlugin,
     markdownChecklistPlugin,
     markdownDividerPlugin,
+    markdownQuotePlugin,
     EditorView.updateListener.of((update) =>
       autosaveAfterFinishedEdit(update.view, update.docChanged, readOnly, autosaveTrackerRef, onAutosaveRef, onVimModeChangeRef, setSaveState)
     ),
@@ -538,6 +550,7 @@ class DividerWidget extends WidgetType {
   }
 }
 
+
 const checklistTextDecoration = Decoration.mark({ class: "cm-checklist-text" });
 const checklistCheckedTextDecoration = Decoration.mark({ class: "cm-checklist-text cm-checklist-text--checked" });
 
@@ -688,6 +701,60 @@ const markdownDividerPlugin = ViewPlugin.fromClass(
   { decorations: (v) => v.decorations }
 );
 
+const quoteLineDecoration = Decoration.line({ class: "cm-quote-line" });
+const quoteMarkDecoration = Decoration.mark({ class: "cm-quote-mark" });
+const hiddenQuotePrefix = Decoration.replace({});
+
+const markdownQuotePlugin = ViewPlugin.fromClass(
+  class {
+    decorations: DecorationSet;
+
+    constructor(view: EditorView) {
+      this.decorations = this.buildDecorations(view);
+    }
+
+    update(update: ViewUpdate) {
+      if (update.docChanged || update.selectionSet || update.viewportChanged) {
+        this.decorations = this.buildDecorations(update.view);
+      }
+    }
+
+    buildDecorations(view: EditorView) {
+      const activeLines = selectedLineNumbers(view);
+      const lineDecos: [number, number, Decoration][] = [];
+      const markDecos: [number, number, Decoration][] = [];
+
+      for (const { from, to } of view.visibleRanges) {
+        for (let pos = from; pos <= to;) {
+          const line = view.state.doc.lineAt(pos);
+          const match = line.text.match(/^(\s*)(>\s+)(.*)$/);
+          if (match) {
+            const markerFrom = line.from + match[1].length;
+            const markerTo = markerFrom + match[2].length;
+            
+            if (!activeLines.has(line.number)) {
+              lineDecos.push([line.from, line.from, quoteLineDecoration]);
+              markDecos.push([markerFrom, markerTo, hiddenQuotePrefix]);
+            } else {
+              markDecos.push([markerFrom, markerTo, quoteMarkDecoration]);
+            }
+          }
+          pos = line.to + 1;
+        }
+      }
+
+      const all = [...lineDecos, ...markDecos].sort((a, b) => a[0] !== b[0] ? a[0] - b[0] : a[1] - b[1]);
+      const builder = new RangeSetBuilder<Decoration>();
+      for (const [from, to, deco] of all) {
+        builder.add(from, to, deco);
+      }
+      return builder.finish();
+    }
+  },
+  { decorations: (v) => v.decorations }
+);
+
+
 function selectedLineNumbers(view: EditorView): Set<number> {
   const activeLines = new Set<number>();
   for (const range of view.state.selection.ranges) {
@@ -711,7 +778,7 @@ function headingPrefixDecoration(
 }
 
 /** Regex matching any markdown block prefix: bullets, numbered lists, or headings. */
-const MARKDOWN_PREFIX_RE = /^(\s*)(#{1,6}\s+|[-*+]\s+\[[ xX]\]\s+|[-*+]\s+|\d+\.\s+|[a-zA-Z]\.\s+)?/;
+const MARKDOWN_PREFIX_RE = /^(\s*)(#{1,6}\s+|>\s+|[-*+]\s+\[[ xX]\]\s+|[-*+]\s+|\d+\.\s+|[a-zA-Z]\.\s+)?/;
 
 function isDividerLine(lineText: string): boolean {
   return /^\s*---\s*$/.test(lineText);
@@ -887,6 +954,34 @@ function applyDivider(view: EditorView) {
   });
 
   if (changes.length > 0) dispatch({ changes });
+  exitVisualModeAfterFormatting(view);
+}
+
+function applyQuote(view: EditorView) {
+  const { state, dispatch } = view;
+  const changes: { from: number; to?: number; insert: string }[] = [];
+  const isSingleCursor = state.selection.ranges.length === 1 && state.selection.main.empty;
+  let newCursor: number | null = null;
+
+  iterateSelectedLines(state, (line, startLine, endLine) => {
+    const { indent, prefixLen, content } = stripMarkdownPrefix(line.text);
+    const existingPrefix = line.text.slice(indent.length, prefixLen);
+    const isQuote = /^>\s+/.test(existingPrefix);
+    const shouldApply = !isQuote && (content.trim().length > 0 || startLine === endLine);
+    if (shouldApply) {
+      changes.push({ from: line.from + indent.length, to: line.from + prefixLen, insert: "> " });
+      if (isSingleCursor && newCursor === null && state.doc.lineAt(state.selection.main.from).number === line.number) {
+        newCursor = line.from + indent.length + 2;
+      }
+    }
+  });
+
+  if (changes.length > 0) {
+    dispatch({
+      changes,
+      selection: newCursor === null ? undefined : EditorSelection.cursor(newCursor)
+    });
+  }
   exitVisualModeAfterFormatting(view);
 }
 
