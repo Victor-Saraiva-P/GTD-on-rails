@@ -323,7 +323,10 @@ function normalModeEscapeHandler(
 ) {
   return EditorView.domEventHandlers({
     keydown: (event, view) => {
-      if (readOnly || event.key !== "Escape" || !isVimNormalMode(view)) {
+      const isEscape = event.key === "Escape";
+      const isCtrlH = event.key === "h" && event.ctrlKey;
+
+      if (readOnly || (!isEscape && !isCtrlH) || !isVimNormalMode(view)) {
         return false;
       }
 
