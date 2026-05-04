@@ -519,6 +519,7 @@ class ChecklistBoxWidget extends WidgetType {
 }
 
 const checklistTextDecoration = Decoration.mark({ class: "cm-checklist-text" });
+const checklistCheckedTextDecoration = Decoration.mark({ class: "cm-checklist-text cm-checklist-text--checked" });
 
 const headingMark = Decoration.mark({ class: "cm-heading-mark" });
 const hiddenHeadingPrefix = Decoration.replace({});
@@ -620,7 +621,8 @@ const markdownChecklistPlugin = ViewPlugin.fromClass(
             builder.add(markerFrom, markerTo, Decoration.replace({ widget: new ChecklistBoxWidget(isChecked) }));
             const contentFrom = markerTo;
             if (contentFrom < line.to) {
-              builder.add(contentFrom, line.to, checklistTextDecoration);
+              const textDeco = isChecked ? checklistCheckedTextDecoration : checklistTextDecoration;
+              builder.add(contentFrom, line.to, textDeco);
             }
           }
           pos = line.to + 1;

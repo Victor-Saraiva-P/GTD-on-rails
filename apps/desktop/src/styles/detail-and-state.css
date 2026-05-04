@@ -321,8 +321,8 @@
   line-height: 1;
 }
 
-.inbox-detail__body-preview .cm-checklist-box--checked + .cm-checklist-text,
-.inbox-detail__codemirror .cm-checklist-box--checked + .cm-checklist-text {
+.inbox-detail__body-preview .cm-checklist-text--checked,
+.inbox-detail__codemirror .cm-checklist-text--checked {
   text-decoration: line-through;
   opacity: 0.7;
 }

@@ -82,13 +82,14 @@ function ReadOnlyInboxStuffDetails({ item }: Pick<InboxStuffDetailsProps, "item"
             if (checklistMatch) {
               const [_, indent, checkbox, content] = checklistMatch;
               const isChecked = /\[[xX]\]\s+$/.test(checkbox);
+              const textClassName = isChecked ? "cm-checklist-text cm-checklist-text--checked" : "cm-checklist-text";
               return (
                 <div className="inbox-detail__body-line" key={`${index}:${line}`}>
                   <span className="inbox-detail__line-number">{index + 1}</span>
                   <span className="inbox-detail__line-content">
                     {indent}
                     <span className={isChecked ? "cm-checklist-box cm-checklist-box--checked" : "cm-checklist-box"} />
-                    <span className="cm-checklist-text">{content}</span>
+                    <span className={textClassName}>{content}</span>
                   </span>
                 </div>
               );
