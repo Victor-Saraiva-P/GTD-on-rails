@@ -120,13 +120,15 @@ function createEditorView(
   onExitNormalModeRef: MutableRefObject<ItemBodyMarkdownEditorProps["onExitNormalMode"]>,
   setSaveState: (state: MarkdownBodySaveState) => void
 ): EditorView {
-  return new EditorView({
+  const view = new EditorView({
     parent,
     state: EditorState.create({
       doc: normalizedInitialBody(props.initialBody),
       extensions: editorExtensions(props.readOnly === true, onSaveRef, onExitNormalModeRef, setSaveState)
     })
   });
+  view.contentDOM.dataset.vimMode = isVimNormalMode(view) ? "normal" : "insert";
+  return view;
 }
 
 function editorExtensions(
@@ -157,7 +159,12 @@ function editorBehaviorExtensions(
     EditorState.readOnly.of(readOnly),
     EditorView.editable.of(!readOnly),
     EditorView.lineWrapping,
-    EditorView.updateListener.of((update) => update.docChanged && setSaveState("unsaved")),
+    EditorView.updateListener.of((update) => {
+      if (update.docChanged) {
+        setSaveState("unsaved");
+      }
+      update.view.contentDOM.dataset.vimMode = isVimNormalMode(update.view) ? "normal" : "insert";
+    }),
     normalModeEscapeHandler(readOnly, onSaveRef, onExitNormalModeRef, setSaveState)
   ];
 }

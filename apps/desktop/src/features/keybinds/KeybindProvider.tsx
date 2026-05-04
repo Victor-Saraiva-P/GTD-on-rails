@@ -54,12 +54,19 @@ function isModifierKey(key: string): boolean {
 }
 
 function isTypingTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  if (target.closest('[data-vim-mode="normal"]')) {
+    return false;
+  }
+
   return (
-    target instanceof HTMLElement &&
-    (target.isContentEditable ||
-      target instanceof HTMLInputElement ||
-      target instanceof HTMLTextAreaElement ||
-      target instanceof HTMLSelectElement)
+    target.isContentEditable ||
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLSelectElement
   );
 }
 
@@ -174,12 +181,14 @@ function handleGlobalKeyDown(event: KeyboardEvent, config: KeydownConfig) {
   }
 
   if (config.isLeaderMenuOpen) {
+    event.stopPropagation();
     handleLeaderKey(event, config);
     return;
   }
 
   if (event.key === " ") {
     event.preventDefault();
+    event.stopPropagation();
     config.openLeaderMenu();
     return;
   }
@@ -195,6 +204,7 @@ function handleDirectKey(event: KeyboardEvent, config: KeydownConfig) {
   }
 
   event.preventDefault();
+  event.stopPropagation();
   matchingBinding.runKeybind();
 }
 
@@ -250,9 +260,9 @@ function useKeydownListener(config: KeydownConfig) {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => handleGlobalKeyDown(event, config);
 
-    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keydown", onKeyDown, { capture: true });
 
-    return () => window.removeEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown, { capture: true });
   }, [config]);
 }
 
