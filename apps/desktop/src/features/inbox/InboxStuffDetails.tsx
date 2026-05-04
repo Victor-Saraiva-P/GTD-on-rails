@@ -91,6 +91,16 @@ function ReadOnlyInboxStuffDetails({ item }: Pick<InboxStuffDetailsProps, "item"
                 </div>
               );
             }
+            const numberedMatch = line.match(/^(\s*)(\d+\.\s+)(.*)/);
+            if (numberedMatch) {
+              const [_, indent, number, content] = numberedMatch;
+              return (
+                <div className="inbox-detail__body-line" key={`${index}:${line}`}>
+                  <span className="inbox-detail__line-number">{index + 1}</span>
+                  <span className="inbox-detail__line-content">{indent}{number}{content}</span>
+                </div>
+              );
+            }
             return (
               <div className="inbox-detail__body-line" key={`${index}:${line}`}>
                 <span className="inbox-detail__line-number">{index + 1}</span>

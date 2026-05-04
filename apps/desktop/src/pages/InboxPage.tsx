@@ -4,7 +4,7 @@ import { ListWorkspace } from "../components/ListWorkspace";
 import { RetryState } from "../components/RetryState";
 import { InboxList } from "../features/inbox/InboxList";
 import { InboxStuffDetails } from "../features/inbox/InboxStuffDetails";
-import { FORMAT_BULLET_EVENT, FORMAT_HEADING_EVENT } from "../features/inbox/ItemBodyMarkdownEditor";
+import { FORMAT_BULLET_EVENT, FORMAT_HEADING_EVENT, FORMAT_NUMBERED_LIST_EVENT } from "../features/inbox/ItemBodyMarkdownEditor";
 import type { InboxWorkspaceController } from "../features/inbox/useInboxWorkspaceController";
 import { LeaderMenu } from "../features/keybinds/LeaderMenu";
 import { useActiveScreen, useKeybindScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
@@ -93,6 +93,10 @@ function formatAsBulletFromKeybind() {
   window.dispatchEvent(new CustomEvent(FORMAT_BULLET_EVENT));
 }
 
+function formatAsNumberedListFromKeybind() {
+  window.dispatchEvent(new CustomEvent(FORMAT_NUMBERED_LIST_EVENT));
+}
+
 function formatAsHeadingFromKeybind(level: 1 | 2 | 3) {
   window.dispatchEvent(new CustomEvent(FORMAT_HEADING_EVENT, { detail: { level } }));
 }
@@ -110,6 +114,7 @@ function buildInboxBindings(controller: InboxWorkspaceController, setActiveScree
     inboxBinding("inbox.focus-list", "h", "Focus inbox list", "stuff-detail", () => focusInboxList(controller)),
     inboxBinding("inbox.open-detail-screen", "Enter", "Open full stuff detail", "stuff-detail", () => openStuffDetailScreen(controller, setActiveScreen), true, ["Enter"]),
     inboxBinding("inbox.format-bullet", "b", "Format as Bullet Point", "stuff-detail", () => formatAsBulletFromKeybind(), true, ["m", "b"]),
+    inboxBinding("inbox.format-numbered-list", "n", "Format as Numbered List", "stuff-detail", () => formatAsNumberedListFromKeybind(), true, ["m", "n"]),
     inboxBinding("inbox.format-h1", "1", "Format as Heading 1", "stuff-detail", () => formatAsHeadingFromKeybind(1), true, ["m", "1"]),
     inboxBinding("inbox.format-h2", "2", "Format as Heading 2", "stuff-detail", () => formatAsHeadingFromKeybind(2), true, ["m", "2"]),
     inboxBinding("inbox.format-h3", "3", "Format as Heading 3", "stuff-detail", () => formatAsHeadingFromKeybind(3), true, ["m", "3"]),

@@ -26,6 +26,7 @@ export type ItemBodyMarkdownEditorProps = {
 
 export const FORMAT_BULLET_EVENT = "gtd:format-bullet";
 export const FORMAT_HEADING_EVENT = "gtd:format-heading";
+export const FORMAT_NUMBERED_LIST_EVENT = "gtd:format-numbered-list";
 
 type ItemBodyMarkdownEditorFrameProps = {
   editorParentRef: RefObject<HTMLDivElement | null>;
@@ -138,6 +139,16 @@ function useCodeMirrorEditorView(
     };
     window.addEventListener(FORMAT_BULLET_EVENT, handler);
     return () => window.removeEventListener(FORMAT_BULLET_EVENT, handler);
+  }, []);
+
+  useEffect(() => {
+    const handler = () => {
+      if (editorViewRef.current) {
+        toggleNumberedList(editorViewRef.current);
+      }
+    };
+    window.addEventListener(FORMAT_NUMBERED_LIST_EVENT, handler);
+    return () => window.removeEventListener(FORMAT_NUMBERED_LIST_EVENT, handler);
   }, []);
 
   useEffect(() => {
@@ -487,8 +498,8 @@ const markdownHeadingsPlugin = ViewPlugin.fromClass(
   { decorations: (v) => v.decorations }
 );
 
-/** Regex matching any markdown block prefix: bullets or headings. */
-const MARKDOWN_PREFIX_RE = /^(\s*)(#{1,6}\s+|[-*+]\s+)?/;
+/** Regex matching any markdown block prefix: bullets, numbered lists, or headings. */
+const MARKDOWN_PREFIX_RE = /^(\s*)(#{1,6}\s+|[-*+]\s+|\d+\.\s+)?/;
 
 /**
  * Strips any existing markdown block prefix (heading or bullet) from a line.
@@ -530,6 +541,26 @@ function toggleBulletPoints(view: EditorView) {
     } else if (content.trim().length > 0 || startLine === endLine) {
       // replace any heading prefix with bullet
       changes.push({ from: line.from + indent.length, to: line.from + prefixLen, insert: "- " });
+    }
+  });
+
+  if (changes.length > 0) dispatch({ changes });
+}
+
+function toggleNumberedList(view: EditorView) {
+  const { state, dispatch } = view;
+  const changes: { from: number; to?: number; insert: string }[] = [];
+
+  iterateSelectedLines(state, (line, startLine, endLine) => {
+    const { indent, prefixLen, content } = stripMarkdownPrefix(line.text);
+    const existingPrefix = line.text.slice(indent.length, prefixLen);
+    const isNumbered = /^\d+\.\s+/.test(existingPrefix);
+    const number = changes.length + 1;
+
+    if (isNumbered) {
+      changes.push({ from: line.from + indent.length, to: line.from + prefixLen, insert: "" });
+    } else if (content.trim().length > 0 || startLine === endLine) {
+      changes.push({ from: line.from + indent.length, to: line.from + prefixLen, insert: `${number}. ` });
     }
   });
 
