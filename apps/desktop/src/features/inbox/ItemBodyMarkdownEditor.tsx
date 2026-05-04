@@ -3,7 +3,7 @@ import { markdown } from "@codemirror/lang-markdown";
 import { syntaxTree } from "@codemirror/language";
 import { RangeSetBuilder } from "@codemirror/state";
 import { EditorState } from "@codemirror/state";
-import { Decoration, drawSelection, EditorView, highlightActiveLine, keymap, lineNumbers, ViewPlugin, type ViewUpdate, type DecorationSet } from "@codemirror/view";
+import { Decoration, drawSelection, EditorView, highlightActiveLine, keymap, lineNumbers, ViewPlugin, WidgetType, type ViewUpdate, type DecorationSet } from "@codemirror/view";
 import { getCM, Vim, vim, type CodeMirrorV } from "@replit/codemirror-vim";
 import { useEffect, useRef, useState, type MutableRefObject, type RefObject } from "react";
 import {
@@ -28,6 +28,8 @@ export const FORMAT_BULLET_EVENT = "gtd:format-bullet";
 export const FORMAT_HEADING_EVENT = "gtd:format-heading";
 export const FORMAT_NUMBERED_LIST_EVENT = "gtd:format-numbered-list";
 export const FORMAT_NORMAL_TEXT_EVENT = "gtd:format-normal-text";
+export const FORMAT_LETTERED_LIST_EVENT = "gtd:format-lettered-list";
+export const FORMAT_CHECKLIST_EVENT = "gtd:format-checklist";
 
 type ItemBodyMarkdownEditorFrameProps = {
   editorParentRef: RefObject<HTMLDivElement | null>;
@@ -163,6 +165,26 @@ function useCodeMirrorEditorView(
   }, []);
 
   useEffect(() => {
+    const handler = () => {
+      if (editorViewRef.current) {
+        applyLetteredList(editorViewRef.current);
+      }
+    };
+    window.addEventListener(FORMAT_LETTERED_LIST_EVENT, handler);
+    return () => window.removeEventListener(FORMAT_LETTERED_LIST_EVENT, handler);
+  }, []);
+
+  useEffect(() => {
+    const handler = () => {
+      if (editorViewRef.current) {
+        applyChecklist(editorViewRef.current);
+      }
+    };
+    window.addEventListener(FORMAT_CHECKLIST_EVENT, handler);
+    return () => window.removeEventListener(FORMAT_CHECKLIST_EVENT, handler);
+  }, []);
+
+  useEffect(() => {
     const handler = (e: Event) => {
       if (!editorViewRef.current) return;
       const level = (e as CustomEvent<{ level: 1 | 2 | 3 }>).detail?.level;
@@ -274,6 +296,7 @@ function editorBehaviorExtensions(
     EditorView.lineWrapping,
     markdownBulletsPlugin,
     markdownHeadingsPlugin,
+    markdownChecklistPlugin,
     EditorView.updateListener.of((update) =>
       autosaveAfterFinishedEdit(update.view, update.docChanged, readOnly, autosaveTrackerRef, onAutosaveRef, onVimModeChangeRef, setSaveState)
     ),
@@ -457,6 +480,24 @@ const markdownBulletsPlugin = ViewPlugin.fromClass(
   }
 );
 
+class ChecklistBoxWidget extends WidgetType {
+  constructor(private checked: boolean) {
+    super();
+  }
+
+  eq(other: ChecklistBoxWidget): boolean {
+    return this.checked === other.checked;
+  }
+
+  toDOM(): HTMLElement {
+    const box = document.createElement("span");
+    box.className = this.checked ? "cm-checklist-box cm-checklist-box--checked" : "cm-checklist-box";
+    return box;
+  }
+}
+
+const checklistTextDecoration = Decoration.mark({ class: "cm-checklist-text" });
+
 const headingMark = Decoration.mark({ class: "cm-heading-mark" });
 const hiddenHeadingPrefix = Decoration.replace({});
 
@@ -523,6 +564,52 @@ const markdownHeadingsPlugin = ViewPlugin.fromClass(
   { decorations: (v) => v.decorations }
 );
 
+const markdownChecklistPlugin = ViewPlugin.fromClass(
+  class {
+    decorations: DecorationSet;
+
+    constructor(view: EditorView) {
+      this.decorations = this.buildDecorations(view);
+    }
+
+    update(update: ViewUpdate) {
+      if (update.docChanged || update.selectionSet || update.viewportChanged) {
+        this.decorations = this.buildDecorations(update.view);
+      }
+    }
+
+    buildDecorations(view: EditorView) {
+      const activeLines = selectedLineNumbers(view);
+      const builder = new RangeSetBuilder<Decoration>();
+      for (const { from, to } of view.visibleRanges) {
+        for (let pos = from; pos <= to;) {
+          const line = view.state.doc.lineAt(pos);
+          const match = line.text.match(/^(\s*)([-*+]\s+\[[ xX]\]\s+)(.*)$/);
+          if (match) {
+            if (activeLines.has(line.number)) {
+              pos = line.to + 1;
+              continue;
+            }
+            const indent = match[1].length;
+            const marker = match[2];
+            const isChecked = /\[[xX]\]/.test(marker);
+            const markerFrom = line.from + indent;
+            const markerTo = markerFrom + marker.length;
+            builder.add(markerFrom, markerTo, Decoration.replace({ widget: new ChecklistBoxWidget(isChecked) }));
+            const contentFrom = markerTo;
+            if (contentFrom < line.to) {
+              builder.add(contentFrom, line.to, checklistTextDecoration);
+            }
+          }
+          pos = line.to + 1;
+        }
+      }
+      return builder.finish();
+    }
+  },
+  { decorations: (v) => v.decorations }
+);
+
 function selectedLineNumbers(view: EditorView): Set<number> {
   const activeLines = new Set<number>();
   for (const range of view.state.selection.ranges) {
@@ -546,7 +633,7 @@ function headingPrefixDecoration(
 }
 
 /** Regex matching any markdown block prefix: bullets, numbered lists, or headings. */
-const MARKDOWN_PREFIX_RE = /^(\s*)(#{1,6}\s+|[-*+]\s+|\d+\.\s+)?/;
+const MARKDOWN_PREFIX_RE = /^(\s*)(#{1,6}\s+|[-*+]\s+\[[ xX]\]\s+|[-*+]\s+|\d+\.\s+|[a-zA-Z]\.\s+)?/;
 
 /**
  * Strips any existing markdown block prefix (heading or bullet) from a line.
@@ -651,6 +738,49 @@ function applyNormalText(view: EditorView) {
     if (hasPrefix && (content.trim().length > 0 || startLine === endLine)) {
       changes.push({ from: line.from + indent.length, to: line.from + prefixLen, insert: "" });
     }
+  });
+
+  if (changes.length > 0) dispatch({ changes });
+  exitVisualModeAfterFormatting(view);
+}
+
+function applyLetteredList(view: EditorView) {
+  const { state, dispatch } = view;
+  const changes: { from: number; to?: number; insert: string }[] = [];
+  let index = 0;
+
+  iterateSelectedLines(state, (line, startLine, endLine) => {
+    const { indent, prefixLen, content } = stripMarkdownPrefix(line.text);
+    if (content.trim().length === 0 && startLine !== endLine) {
+      return;
+    }
+    const letter = String.fromCharCode(97 + (index % 26));
+    const letterPrefix = `${letter}. `;
+    const existingPrefix = line.text.slice(indent.length, prefixLen);
+    if (existingPrefix !== letterPrefix) {
+      changes.push({ from: line.from + indent.length, to: line.from + prefixLen, insert: letterPrefix });
+    }
+    index += 1;
+  });
+
+  if (changes.length > 0) dispatch({ changes });
+  exitVisualModeAfterFormatting(view);
+}
+
+function applyChecklist(view: EditorView) {
+  const { state, dispatch } = view;
+  const changes: { from: number; to?: number; insert: string }[] = [];
+
+  iterateSelectedLines(state, (line, startLine, endLine) => {
+    const { indent, prefixLen, content } = stripMarkdownPrefix(line.text);
+    if (content.trim().length === 0 && startLine !== endLine) {
+      return;
+    }
+    const existingPrefix = line.text.slice(indent.length, prefixLen);
+    if (/^[-*+]\s+\[[ xX]\]\s+/.test(existingPrefix)) {
+      return;
+    }
+    changes.push({ from: line.from + indent.length, to: line.from + prefixLen, insert: "- [ ] " });
   });
 
   if (changes.length > 0) dispatch({ changes });

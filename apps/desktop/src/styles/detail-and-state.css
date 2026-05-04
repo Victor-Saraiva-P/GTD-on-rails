@@ -288,6 +288,45 @@
   line-height: 0;
 }
 
+.inbox-detail__codemirror .cm-checklist-box,
+.inbox-detail__body-preview .cm-checklist-box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.05em;
+  height: 1.05em;
+  border: 1px solid rgba(200, 193, 188, 0.7);
+  border-radius: 2px;
+  margin-right: 0.6em;
+  transform: translateY(0.05em);
+}
+
+.inbox-detail__codemirror .cm-checklist-box,
+.inbox-detail__codemirror .cm-checklist-text {
+  pointer-events: none;
+}
+
+.inbox-detail__codemirror .cm-checklist-box--checked,
+.inbox-detail__body-preview .cm-checklist-box--checked {
+  background: #2b6c49;
+  border-color: #2b6c49;
+  position: relative;
+}
+
+.inbox-detail__codemirror .cm-checklist-box--checked::before,
+.inbox-detail__body-preview .cm-checklist-box--checked::before {
+  content: "✓";
+  color: #f5f1ee;
+  font-size: 0.9em;
+  line-height: 1;
+}
+
+.inbox-detail__body-preview .cm-checklist-box--checked + .cm-checklist-text,
+.inbox-detail__codemirror .cm-checklist-box--checked + .cm-checklist-text {
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+
 /* In the editor: dim # marks only on the line being edited */
 .inbox-detail__codemirror .cm-heading-mark {
   color: rgba(200, 193, 188, 0.4);
