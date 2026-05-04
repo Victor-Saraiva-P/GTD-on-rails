@@ -435,6 +435,7 @@ const markdownBulletsPlugin = ViewPlugin.fromClass(
 );
 
 const headingMark = Decoration.mark({ class: "cm-heading-mark" });
+const hiddenHeadingPrefix = Decoration.replace({});
 
 const headingLineDecorations: Record<number, Decoration> = {
   1: Decoration.line({ class: "cm-md-heading-1" }),
@@ -451,13 +452,14 @@ const markdownHeadingsPlugin = ViewPlugin.fromClass(
     }
 
     update(update: ViewUpdate) {
-      if (update.docChanged || update.viewportChanged) {
+      if (update.docChanged || update.selectionSet || update.viewportChanged) {
         this.decorations = this.buildDecorations(update.view);
       }
     }
 
     buildDecorations(view: EditorView) {
       // Collect line and mark decorations separately, then merge sorted by from.
+      const activeLines = selectedLineNumbers(view);
       const lineDecos: [number, number, Decoration][] = [];
       const markDecos: [number, number, Decoration][] = [];
 
@@ -476,7 +478,7 @@ const markdownHeadingsPlugin = ViewPlugin.fromClass(
               }
             }
             if (node.name === "HeaderMark") {
-              markDecos.push([node.from, node.to, headingMark]);
+              markDecos.push(headingPrefixDecoration(view, activeLines, node.from, node.to));
             }
           }
         });
@@ -497,6 +499,28 @@ const markdownHeadingsPlugin = ViewPlugin.fromClass(
   },
   { decorations: (v) => v.decorations }
 );
+
+function selectedLineNumbers(view: EditorView): Set<number> {
+  const activeLines = new Set<number>();
+  for (const range of view.state.selection.ranges) {
+    activeLines.add(view.state.doc.lineAt(range.head).number);
+  }
+  return activeLines;
+}
+
+function headingPrefixDecoration(
+  view: EditorView,
+  activeLines: Set<number>,
+  from: number,
+  to: number
+): [number, number, Decoration] {
+  const line = view.state.doc.lineAt(from);
+  if (activeLines.has(line.number)) {
+    return [from, to, headingMark];
+  }
+  const prefixTo = view.state.sliceDoc(to, to + 1) === " " ? to + 1 : to;
+  return [from, prefixTo, hiddenHeadingPrefix];
+}
 
 /** Regex matching any markdown block prefix: bullets, numbered lists, or headings. */
 const MARKDOWN_PREFIX_RE = /^(\s*)(#{1,6}\s+|[-*+]\s+|\d+\.\s+)?/;
