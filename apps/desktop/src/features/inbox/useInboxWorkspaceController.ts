@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useActiveZone } from "../keybinds/hooks";
 import { useInboxStuffsQuery } from "./useInboxStuffsQuery";
-import type { Stuff, Body } from "./types";
+import type { Stuff } from "./types";
 
 const DRAFT_STUFF_ID = "__draft_stuff__";
 
@@ -9,7 +9,7 @@ function buildDraftStuff(): Stuff {
   return {
     id: DRAFT_STUFF_ID,
     title: "",
-    body: null,
+    body: "",
     status: "INBOX",
     createdAt: new Date().toISOString()
   };
@@ -34,9 +34,7 @@ function useTitleEditState() {
 
 function useBodyEditState() {
   const [editingBodyId, setEditingBodyId] = useState<string | null>(null);
-  const [editingBody, setEditingBody] = useState("");
-
-  return { editingBody, editingBodyId, setEditingBody, setEditingBodyId };
+  return { editingBodyId, setEditingBodyId };
 }
 
 function usePendingBodyEditState() {
@@ -91,7 +89,6 @@ function clearTitleEdit(model: InboxModel) {
 
 function clearBodyEdit(model: InboxModel) {
   model.bodyEdit.setEditingBodyId(null);
-  model.bodyEdit.setEditingBody("");
 }
 
 function clearPendingBodyEdit(model: InboxModel) {
@@ -159,16 +156,6 @@ function usePruneInboxState(model: InboxModel) {
 
 function startBodyEdit(model: InboxModel, item: Stuff) {
   model.bodyEdit.setEditingBodyId(item.id);
-
-  if (item.body && item.body.blocks) {
-    const text = item.body.blocks
-      .filter((block) => block.type === "paragraph")
-      .map((block) => block.properties.richText.map((run) => run.text).join(""))
-      .join("\n");
-    model.bodyEdit.setEditingBody(text);
-  } else {
-    model.bodyEdit.setEditingBody("");
-  }
 }
 
 function startBodyEditInDetail(model: InboxModel, item: Stuff) {
@@ -222,7 +209,7 @@ function cancelEditingSelectedStuffAction(model: InboxModel) {
 
 function startEditingSelectedStuffBodyAction(model: InboxModel) {
   if (model.selection.selectedItem) {
-    startBodyEdit(model, model.selection.selectedItem);
+    startBodyEditInDetail(model, model.selection.selectedItem);
   }
 }
 
@@ -295,40 +282,19 @@ async function commitNormalizedTitle(
   finishTitleEdit(model, updatedStuff, shouldContinueToBody);
 }
 
-function nextBodyValue(editingBody: string): Body | null {
-  const trimmed = editingBody.trim();
-  if (!trimmed) {
-    return null;
-  }
-  return {
-    version: 1,
-    blocks: [
-      {
-        id: crypto.randomUUID(),
-        type: "paragraph",
-        properties: {
-          richText: [{ text: trimmed }]
-        }
-      }
-    ]
-  };
-}
-
-async function commitEditingSelectedStuffBodyAction(model: InboxModel) {
+async function commitEditingSelectedStuffBodyAction(model: InboxModel, body: string) {
   const selectedItem = model.selection.selectedItem;
 
   if (!selectedItem || model.bodyEdit.editingBodyId !== selectedItem.id) {
     return;
   }
 
-  const nextBody = nextBodyValue(model.bodyEdit.editingBody);
-
-  if (JSON.stringify(selectedItem.body ?? null) === JSON.stringify(nextBody)) {
+  if (selectedItem.body === body) {
     clearBodyEdit(model);
     return;
   }
 
-  const updatedStuff = await model.query.updateStuffBody(selectedItem, nextBody);
+  const updatedStuff = await model.query.updateStuffBody(selectedItem, body);
   model.selection.setSelectedId(updatedStuff.id);
   clearBodyEdit(model);
   clearPendingBodyEdit(model);
@@ -339,7 +305,7 @@ function useInboxWorkspaceActions(model: InboxModel) {
     cancelEditingSelectedStuff: () => cancelEditingSelectedStuffAction(model),
     cancelEditingSelectedStuffBody: () => clearBodyEdit(model),
     commitEditingSelectedStuff: () => commitEditingSelectedStuffAction(model),
-    commitEditingSelectedStuffBody: () => commitEditingSelectedStuffBodyAction(model),
+    commitEditingSelectedStuffBody: (body: string) => commitEditingSelectedStuffBodyAction(model, body),
     createNewStuff: () => Promise.resolve(createNewStuffAction(model)),
     deleteSelectedStuff: () => deleteSelectedStuffAction(model),
     selectNextStuff: model.selection.selectNextStuff,
@@ -362,7 +328,7 @@ function useInboxWorkspaceModel() {
 }
 
 function controllerEditState(model: InboxModel) {
-  return { editingBody: model.bodyEdit.editingBody, editingBodyId: model.bodyEdit.editingBodyId, editingId: model.titleEdit.editingId, editingTitle: model.titleEdit.editingTitle };
+  return { editingBodyId: model.bodyEdit.editingBodyId, editingId: model.titleEdit.editingId, editingTitle: model.titleEdit.editingTitle };
 }
 
 function controllerQueryState(query: InboxQuery) {
@@ -381,7 +347,6 @@ function buildInboxWorkspaceController(model: InboxModel, actions: InboxActions)
     ...controllerSelectionState(model),
     activeZone: model.zone.activeZone,
     setActiveZone: model.zone.setActiveZone,
-    setEditingBody: model.bodyEdit.setEditingBody,
     setEditingTitle: model.titleEdit.setEditingTitle,
     setPendingBodyEditId: model.pending.setPendingBodyEditId,
     setSelectedId: model.selection.setSelectedId

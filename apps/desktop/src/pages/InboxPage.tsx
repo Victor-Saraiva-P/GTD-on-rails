@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { ListPane } from "../components/ListPane";
 import { ListWorkspace } from "../components/ListWorkspace";
 import { RetryState } from "../components/RetryState";
 import { InboxList } from "../features/inbox/InboxList";
 import { InboxStuffDetails } from "../features/inbox/InboxStuffDetails";
-import { formatStuffBodyVimMode, type StuffBodyVimMode } from "../features/inbox/stuffBodyVim";
 import type { InboxWorkspaceController } from "../features/inbox/useInboxWorkspaceController";
 import { LeaderMenu } from "../features/keybinds/LeaderMenu";
 import { useActiveScreen, useKeybindScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
@@ -13,7 +12,6 @@ import { inboxListTheme } from "../features/lists/listThemes";
 
 type InboxPageProps = {
   controller: InboxWorkspaceController;
-  onEditorModeChange?: (mode: StuffBodyVimMode | null) => void;
 };
 
 function inboxBinding(
@@ -66,9 +64,9 @@ function moveInboxSelection(controller: InboxWorkspaceController, direction: "ne
   }
 }
 
-function focusStuffDetail(controller: InboxWorkspaceController) {
-  if (controller.stuffs.length > 0 && !controller.editingId && !controller.editingBodyId) {
-    controller.setActiveZone("stuff-detail");
+function editBodyFromListKeybind(controller: InboxWorkspaceController) {
+  if (canEditSelectedStuff(controller)) {
+    controller.startEditingSelectedStuffBody();
   }
 }
 
@@ -98,7 +96,7 @@ function buildInboxBindings(controller: InboxWorkspaceController, setActiveScree
     inboxBinding("inbox.edit-title", "Enter", "Edit selected title", "inbox-list", () => editTitleFromKeybind(controller)),
     inboxBinding("inbox.move-down", "j", "Move down", "inbox-list", () => moveInboxSelection(controller, "next")),
     inboxBinding("inbox.move-up", "k", "Move up", "inbox-list", () => moveInboxSelection(controller, "previous")),
-    inboxBinding("inbox.focus-detail", "l", "Focus stuff detail", "inbox-list", () => focusStuffDetail(controller)),
+    inboxBinding("inbox.edit-body-from-list", "l", "Edit selected body", "inbox-list", () => editBodyFromListKeybind(controller)),
     inboxBinding("inbox.edit-body", "Enter", "Edit selected body", "stuff-detail", () => editBodyFromKeybind(controller)),
     inboxBinding("inbox.focus-list", "h", "Focus inbox list", "stuff-detail", () => focusInboxList(controller)),
     inboxBinding("inbox.open-detail-screen", "Enter", "Open full stuff detail", "stuff-detail", () => openStuffDetailScreen(controller, setActiveScreen), true, ["Enter"]),
@@ -128,10 +126,8 @@ function commitStuffTitle(controller: InboxWorkspaceController) {
   });
 }
 
-function commitStuffBody(controller: InboxWorkspaceController) {
-  void controller.commitEditingSelectedStuffBody().catch((error: unknown) => {
-    console.error("Failed to update stuff body", error);
-  });
+function commitStuffBody(controller: InboxWorkspaceController, body: string): Promise<void> {
+  return controller.commitEditingSelectedStuffBody(body);
 }
 
 function InboxListReady({ controller }: InboxPageProps) {
@@ -163,23 +159,20 @@ function InboxListBody({ controller }: InboxPageProps) {
   return controller.stuffs.length === 0 ? <p className="pane-state">Inbox is empty.</p> : <InboxListReady controller={controller} />;
 }
 
-function InboxDetailReady({ controller, onEditorModeChange }: InboxPageProps) {
+function InboxDetailReady({ controller }: InboxPageProps) {
   const selectedItem = controller.selectedItem;
 
   return selectedItem ? (
     <InboxStuffDetails
       item={selectedItem}
       editing={controller.editingBodyId === selectedItem.id}
-      editingBody={controller.editingBody}
-      onEditingBodyChange={controller.setEditingBody}
-      onCommitEditing={() => commitStuffBody(controller)}
+      onCommitEditing={(body) => commitStuffBody(controller, body)}
       onCancelEditing={controller.cancelEditingSelectedStuffBody}
-      onModeChange={onEditorModeChange}
     />
   ) : null;
 }
 
-function InboxDetailBody({ controller, onEditorModeChange }: InboxPageProps) {
+function InboxDetailBody({ controller }: InboxPageProps) {
   if (controller.isLoading) {
     return <p className="pane-state">Loading stuff details...</p>;
   }
@@ -189,7 +182,7 @@ function InboxDetailBody({ controller, onEditorModeChange }: InboxPageProps) {
   }
 
   return controller.selectedItem ? (
-    <InboxDetailReady controller={controller} onEditorModeChange={onEditorModeChange} />
+    <InboxDetailReady controller={controller} />
   ) : (
     <p className="pane-state">Select a stuff to inspect its details.</p>
   );
@@ -205,19 +198,19 @@ function InboxListPane({ controller }: InboxPageProps) {
   );
 }
 
-function InboxDetailPane({ controller, onEditorModeChange }: InboxPageProps) {
+function InboxDetailPane({ controller }: InboxPageProps) {
   return (
     <ListPane title="Stuff Detail" panelIndex={2} active={controller.activeZone === "stuff-detail"} bodyClassName="list-pane__body--detail" className="inbox-pane inbox-pane--detail">
-      <InboxDetailBody controller={controller} onEditorModeChange={onEditorModeChange} />
+      <InboxDetailBody controller={controller} />
     </ListPane>
   );
 }
 
-function InboxPanes({ controller, onEditorModeChange }: InboxPageProps) {
+function InboxPanes({ controller }: InboxPageProps) {
   return (
     <section className="inbox-terminal-layout" aria-label="Inbox">
       <InboxListPane controller={controller} />
-      <InboxDetailPane controller={controller} onEditorModeChange={onEditorModeChange} />
+      <InboxDetailPane controller={controller} />
     </section>
   );
 }
@@ -228,14 +221,13 @@ function InboxPanes({ controller, onEditorModeChange }: InboxPageProps) {
  * @example <InboxPage controller={controller} />
  */
 export function InboxPage({ controller }: InboxPageProps) {
-  const [editorMode, setEditorMode] = useState<StuffBodyVimMode | null>(null);
   useKeybindScreen("inbox");
   useInboxZone(controller);
   useInboxBindings(controller);
 
   return (
-    <ListWorkspace theme={inboxListTheme} currentLabel={inboxListTheme.label} modeLabel={formatStuffBodyVimMode(editorMode)}>
-      <InboxPanes controller={controller} onEditorModeChange={setEditorMode} />
+    <ListWorkspace theme={inboxListTheme} currentLabel={inboxListTheme.label}>
+      <InboxPanes controller={controller} />
       <LeaderMenu />
     </ListWorkspace>
   );

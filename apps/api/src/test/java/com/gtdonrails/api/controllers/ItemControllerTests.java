@@ -1,6 +1,5 @@
 package com.gtdonrails.api.controllers;
 
-import static com.gtdonrails.api.types.BodyFixtures.paragraphBody;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
@@ -137,6 +136,34 @@ class ItemControllerTests {
     }
 
     @Test
+    void normalizesMarkdownBodyLineEndings() throws Exception {
+        ResultActions result = createItem("""
+            {
+              "title": "Capture markdown",
+              "body": %s
+            }
+            """.formatted(bodyJson("  # Title\r\n\n- item  ")));
+
+        result.andExpect(status().isCreated())
+            .andExpect(jsonPath("$.body").value("  # Title\n\n- item  "));
+    }
+
+    @Test
+    void storesMaliciousBodyAsText() throws Exception {
+        String maliciousBody = "<script>alert(1)</script>\n[jump](javascript:alert(1))";
+
+        ResultActions result = createItem("""
+            {
+              "title": "Capture suspicious markdown",
+              "body": %s
+            }
+            """.formatted(bodyJson(maliciousBody)));
+
+        result.andExpect(status().isCreated())
+            .andExpect(jsonPath("$.body").value(maliciousBody));
+    }
+
+    @Test
     void updatesItemContexts() throws Exception {
         Item item = itemRepository.save(new Item(new Title("Old title"), null, energy("1.0"), Duration.ofMinutes(15)));
         Context office = contextRepository.save(new Context("office"));
@@ -226,7 +253,7 @@ class ItemControllerTests {
     private Item savedTimedItem(String title, String body, String energyValue, long minutes) {
         return itemRepository.save(new Item(
             new Title(title),
-            paragraphBody(body),
+            body,
             energy(energyValue),
             Duration.ofMinutes(minutes)));
     }
@@ -278,24 +305,19 @@ class ItemControllerTests {
     }
 
     private String bodyJson(String text) {
-        return """
-            { "version": 1, "blocks": [{
-              "id": "00000000-0000-0000-0000-000000000001",
-              "type": "paragraph",
-              "properties": { "richText": [{
-                "text": "%s", "marks": [], "textColor": null, "backgroundColor": null, "link": null
-              }] }
-            }] }
-            """.formatted(text);
+        return "\"" + text
+            .replace("\\", "\\\\")
+            .replace("\"", "\\\"")
+            .replace("\r", "\\r")
+            .replace("\n", "\\n")
+            + "\"";
     }
 
     private void assertFetchedItem(ResultActions result, Item item) throws Exception {
         result.andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(item.getId().toString()))
             .andExpect(jsonPath("$.title").value("Capture idea"))
-            .andExpect(jsonPath("$.body.version").value(1))
-            .andExpect(jsonPath("$.body.blocks[0].type").value("paragraph"))
-            .andExpect(jsonPath("$.body.blocks[0].properties.richText[0].text").value("Need to process later"))
+            .andExpect(jsonPath("$.body").value("Need to process later"))
             .andExpect(jsonPath("$.energy").value(2.0))
             .andExpect(jsonPath("$.time.hours").value(1))
             .andExpect(jsonPath("$.time.minutes").value(15))
@@ -307,8 +329,7 @@ class ItemControllerTests {
         result.andExpect(status().isCreated())
             .andExpect(header().string("Location", "/items/" + itemRepository.findAll().getFirst().getId()))
             .andExpect(jsonPath("$.title").value("Capture rent receipt"))
-            .andExpect(jsonPath("$.body.version").value(1))
-            .andExpect(jsonPath("$.body.blocks[0].properties.richText[0].text").value("Need to process later"))
+            .andExpect(jsonPath("$.body").value("Need to process later"))
             .andExpect(jsonPath("$.energy").value(3.5))
             .andExpect(jsonPath("$.time.hours").value(1))
             .andExpect(jsonPath("$.time.minutes").value(45))
@@ -340,7 +361,7 @@ class ItemControllerTests {
     private void assertUpdatedItem(ResultActions result) throws Exception {
         result.andExpect(status().isOk())
             .andExpect(jsonPath("$.title").value("New title"))
-            .andExpect(jsonPath("$.body.blocks[0].properties.richText[0].text").value("New body"))
+            .andExpect(jsonPath("$.body").value("New body"))
             .andExpect(jsonPath("$.energy").value(6.5))
             .andExpect(jsonPath("$.time.hours").value(2))
             .andExpect(jsonPath("$.time.minutes").value(5))
@@ -350,6 +371,7 @@ class ItemControllerTests {
 
     private void assertUpdatedItemContexts(ResultActions result) throws Exception {
         result.andExpect(status().isOk())
+            .andExpect(jsonPath("$.body").value(""))
             .andExpect(jsonPath("$.energy").value(5.0))
             .andExpect(jsonPath("$.time.hours").value(3))
             .andExpect(jsonPath("$.time.minutes").value(10))
@@ -361,7 +383,7 @@ class ItemControllerTests {
     private void assertPreservedContext(ResultActions result) throws Exception {
         result.andExpect(status().isOk())
             .andExpect(jsonPath("$.title").value("Updated title"))
-            .andExpect(jsonPath("$.body.blocks[0].properties.richText[0].text").value("Updated body"))
+            .andExpect(jsonPath("$.body").value("Updated body"))
             .andExpect(jsonPath("$.energy").value(7.0))
             .andExpect(jsonPath("$.time.hours").value(1))
             .andExpect(jsonPath("$.time.minutes").value(20))

@@ -67,8 +67,9 @@ public class ItemService {
     @Transactional
     public ItemResponseDto createItem(CreateItemRequestDto request) {
         Title title = new Title(itemTextNormalizer.normalizeTitle(request.title()));
+        String body = itemTextNormalizer.normalizeBody(request.body());
         Duration time = request.time() == null ? null : request.time().toDuration();
-        Item item = new Item(title, request.body(), request.energy(), time);
+        Item item = new Item(title, body, request.energy(), time);
         item.replaceContexts(findContextsOrThrow(request.contextIds()));
         ItemResponseDto response = itemMapper.toResponse(itemRepository.save(item));
         requestPersistenceSyncAfterCommit("item created", PersistenceChangeType.CREATE_ITEM);
@@ -96,9 +97,10 @@ public class ItemService {
 
     private void updateItemFields(Item item, UpdateItemRequestDto request) {
         Title title = new Title(itemTextNormalizer.normalizeTitle(request.title()));
+        String body = itemTextNormalizer.normalizeBody(request.body());
 
         item.setTitle(title);
-        item.setBody(request.body());
+        item.setBody(body);
         item.setEnergy(request.energy());
         item.setTime(request.time() == null ? null : request.time().toDuration());
     }

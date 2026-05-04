@@ -1,22 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { getStuffBodyLines, formatStuffCreatedAt, type Body } from "../src/features/inbox/types.ts";
+import { getStuffBodyLines, formatStuffCreatedAt } from "../src/features/inbox/types.ts";
 
 test("getStuffBodyLines returns no lines for an empty body", () => {
   assert.deepEqual(getStuffBodyLines(null), []);
-  assert.deepEqual(getStuffBodyLines({ version: 1, blocks: [] }), []);
+  assert.deepEqual(getStuffBodyLines(""), []);
 });
 
 test("getStuffBodyLines trims text and removes bullet markers", () => {
-  const body: Body = {
-    version: 1,
-    blocks: [
-      { id: "1", type: "paragraph", properties: { richText: [{ text: "  - Capture idea" }] } },
-      { id: "2", type: "paragraph", properties: { richText: [{ text: "* Clarify next action" }] } },
-      { id: "3", type: "paragraph", properties: { richText: [{ text: "• Ship it  " }] } }
-    ]
-  };
+  const body = "  - Capture idea\n* Clarify next action\n• Ship it  ";
   assert.deepEqual(
     getStuffBodyLines(body),
     ["Capture idea", "Clarify next action", "Ship it"]
@@ -29,4 +22,3 @@ test("formatStuffCreatedAt formats a date string", () => {
   assert.ok(formatted.length > 0);
   assert.ok(typeof formatted === "string");
 });
-

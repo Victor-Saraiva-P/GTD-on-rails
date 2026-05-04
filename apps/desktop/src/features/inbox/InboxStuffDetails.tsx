@@ -1,16 +1,11 @@
-import { StuffBodyEditor } from "./StuffBodyEditor";
-import type { StuffBodyVimMode } from "./stuffBodyVim";
+import { ItemBodyMarkdownEditor } from "./ItemBodyMarkdownEditor";
 import { formatStuffCreatedAt, type Stuff } from "./types";
 
 type InboxStuffDetailsProps = {
   item: Stuff;
   editing: boolean;
-  editingBody: string;
-  onEditingBodyChange: (value: string) => void;
-  onCommitEditing: () => void;
+  onCommitEditing: (body: string) => Promise<void>;
   onCancelEditing: () => void;
-  onModeChange?: (mode: StuffBodyVimMode | null) => void;
-  writeClipboardText?: (value: string) => void;
 };
 
 function InboxDetailHeader({ item }: Pick<InboxStuffDetailsProps, "item">) {
@@ -31,27 +26,21 @@ function EditingInboxStuffDetails(props: EditingInboxStuffDetailsProps) {
   return (
     <div className="inbox-detail">
       <InboxDetailHeader item={props.item} />
-      <StuffBodyEditor
-        value={props.editingBody}
-        onChange={props.onEditingBodyChange}
-        onBlur={props.onCommitEditing}
-        onCommitEditing={props.onCommitEditing}
-        onModeChange={props.onModeChange}
-        writeClipboardText={props.writeClipboardText}
+      <ItemBodyMarkdownEditor
+        itemId={props.item.id}
+        initialBody={props.item.body}
+        onSave={props.onCommitEditing}
       />
     </div>
   );
 }
 
 function formatBodyForDisplay(body: Stuff["body"]): string | null {
-  if (!body || !body.blocks) {
+  if (!body) {
     return null;
   }
 
-  return body.blocks
-    .filter((block) => block.type === "paragraph")
-    .map((block) => block.properties.richText.map((run) => run.text).join(""))
-    .join("\n\n");
+  return body;
 }
 
 function ReadOnlyInboxStuffDetails({ item }: Pick<InboxStuffDetailsProps, "item">) {

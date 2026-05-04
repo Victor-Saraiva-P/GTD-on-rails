@@ -7,10 +7,9 @@ import java.util.Set;
 import java.util.UUID;
 
 import com.gtdonrails.api.enums.ItemStatus;
-import com.gtdonrails.api.persistence.converters.BodyConverter;
+import com.gtdonrails.api.normalizers.ItemTextNormalizer;
 import com.gtdonrails.api.persistence.converters.DurationMinutesConverter;
 import com.gtdonrails.api.persistence.converters.TitleConverter;
-import com.gtdonrails.api.types.Body;
 import com.gtdonrails.api.types.Title;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
@@ -27,7 +26,6 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.Getter;
-import lombok.Setter;
 
 @Entity
 @Table(name = "items")
@@ -50,10 +48,8 @@ public class Item extends AuditableEntity {
     @Column(nullable = false, length = Title.MAX_LENGTH)
     private Title title;
 
-    @Setter
-    @Convert(converter = BodyConverter.class)
-    @Column(columnDefinition = "text")
-    private Body body;
+    @Column(nullable = false, columnDefinition = "text")
+    private String body = "";
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
@@ -77,15 +73,15 @@ public class Item extends AuditableEntity {
     public Item() {
     }
 
-    public Item(Title title, Body body) {
+    public Item(Title title, String body) {
         this(title, body, null, null);
     }
 
-    public Item(Title title, Body body, BigDecimal energy) {
+    public Item(Title title, String body, BigDecimal energy) {
         this(title, body, energy, null);
     }
 
-    public Item(Title title, Body body, BigDecimal energy, Duration time) {
+    public Item(Title title, String body, BigDecimal energy, Duration time) {
         setTitle(title);
         setBody(body);
         setEnergy(energy);
@@ -103,6 +99,15 @@ public class Item extends AuditableEntity {
         }
 
         this.title = title;
+    }
+
+    /**
+     * Stores optional item body markdown as non-null text.
+     *
+     * <p>Example: {@code item.setBody("# Notes")}.</p>
+     */
+    public void setBody(String body) {
+        this.body = ItemTextNormalizer.normalizeBodyValue(body);
     }
 
     /**

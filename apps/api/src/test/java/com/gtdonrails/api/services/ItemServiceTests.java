@@ -1,6 +1,5 @@
 package com.gtdonrails.api.services;
 
-import static com.gtdonrails.api.types.BodyFixtures.paragraphBody;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -29,7 +28,6 @@ import com.gtdonrails.api.persistence.bootstrap.model.PersistenceChangeType;
 import com.gtdonrails.api.persistence.bootstrap.services.PersistenceGitSyncService;
 import com.gtdonrails.api.repositories.ContextRepository;
 import com.gtdonrails.api.repositories.ItemRepository;
-import com.gtdonrails.api.types.Body;
 import com.gtdonrails.api.types.Title;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
@@ -106,8 +104,8 @@ class ItemServiceTests {
 
     @Test
     void createItemNormalizesAndSavesItem() {
-        Body body = paragraphBody("line 1\nline 2");
-        ItemResponseDto expectedResponse = itemResponse("Capture idea later", body);
+        String body = "line 1\r\nline 2";
+        ItemResponseDto expectedResponse = itemResponse("Capture idea later", "line 1\nline 2");
         stubSavedItemResponse(expectedResponse);
 
         ItemResponseDto response = itemService.createItem(new CreateItemRequestDto(
@@ -117,7 +115,7 @@ class ItemServiceTests {
             new ItemTimeRequestDto(1L, 30),
             null));
 
-        assertSavedTimedItem("Capture idea later", body, "4.5", Duration.ofMinutes(90));
+        assertSavedTimedItem("Capture idea later", "line 1\nline 2", "4.5", Duration.ofMinutes(90));
         assertEquals(expectedResponse, response);
         verify(persistenceGitSyncService).requestSync("item created", PersistenceChangeType.CREATE_ITEM);
     }
@@ -154,7 +152,7 @@ class ItemServiceTests {
 
         Item savedItem = capturedSavedItem();
         assertEquals("Capture idea", savedItem.getTitle().value());
-        assertNull(savedItem.getBody());
+        assertEquals("", savedItem.getBody());
         assertNull(savedItem.getEnergy());
         assertNull(savedItem.getTime());
         assertEquals(expectedResponse, response);
@@ -162,7 +160,7 @@ class ItemServiceTests {
 
     @Test
     void createItemThrowsWhenTitleIsInvalid() {
-        CreateItemRequestDto request = new CreateItemRequestDto("   ", paragraphBody("Body"), energy("1.0"), null, null);
+        CreateItemRequestDto request = new CreateItemRequestDto("   ", "Body", energy("1.0"), null, null);
 
         IllegalArgumentException exception = assertThrows(
             IllegalArgumentException.class,
@@ -195,7 +193,7 @@ class ItemServiceTests {
     @Test
     void updateItemClearsBodyWhenBodyIsAbsent() {
         UUID itemId = UUID.randomUUID();
-        Item existingItem = new Item(new Title("Old title"), paragraphBody("Old body"));
+        Item existingItem = new Item(new Title("Old title"), "Old body");
         ItemResponseDto expectedResponse = itemResponse(itemId, "New title");
 
         when(itemRepository.findByIdAndDeletedAtIsNull(itemId)).thenReturn(Optional.of(existingItem));
@@ -231,15 +229,15 @@ class ItemServiceTests {
     void updateItemNormalizesAndUpdatesItem() {
         UUID itemId = UUID.randomUUID();
         Item existingItem = new Item(new Title("Old title"), null);
-        Body body = paragraphBody("line 1\nline 2");
-        ItemResponseDto expectedResponse = itemResponse(itemId, "New title later", body);
+        String body = "line 1\r\nline 2";
+        ItemResponseDto expectedResponse = itemResponse(itemId, "New title later", "line 1\nline 2");
 
         when(itemRepository.findByIdAndDeletedAtIsNull(itemId)).thenReturn(Optional.of(existingItem));
         stubSavedItemResponse(expectedResponse);
 
         ItemResponseDto response = itemService.updateItem(itemId, normalizedUpdateRequest(body));
 
-        assertSavedTimedItem("New  title later", body, "7.5", Duration.ofMinutes(135));
+        assertSavedTimedItem("New  title later", "line 1\nline 2", "7.5", Duration.ofMinutes(135));
         assertEquals(expectedResponse, response);
     }
 
@@ -251,7 +249,7 @@ class ItemServiceTests {
         ItemNotFoundException exception = assertThrows(
             ItemNotFoundException.class,
             () -> itemService.updateItem(itemId,
-                new UpdateItemRequestDto("Title", paragraphBody("Body"), energy("1.0"), null, null)));
+                new UpdateItemRequestDto("Title", "Body", energy("1.0"), null, null)));
 
         assertEquals("item not found", exception.getMessage());
         verify(itemRepository, never()).save(any(Item.class));
@@ -267,7 +265,7 @@ class ItemServiceTests {
         IllegalArgumentException exception = assertThrows(
             IllegalArgumentException.class,
             () -> itemService.updateItem(itemId,
-                new UpdateItemRequestDto("   ", paragraphBody("Body"), energy("1.0"), null, null)));
+                new UpdateItemRequestDto("   ", "Body", energy("1.0"), null, null)));
 
         assertEquals("title value '' is invalid; expected non-blank text", exception.getMessage());
         verify(itemRepository, never()).save(any(Item.class));
@@ -354,7 +352,7 @@ class ItemServiceTests {
         }
     }
 
-    private ItemResponseDto itemResponse(String title, Body body) {
+    private ItemResponseDto itemResponse(String title, String body) {
         return itemResponse(UUID.randomUUID(), title, body);
     }
 
@@ -362,7 +360,7 @@ class ItemServiceTests {
         return itemResponse(id, title, null);
     }
 
-    private ItemResponseDto itemResponse(UUID id, String title, Body body) {
+    private ItemResponseDto itemResponse(UUID id, String title, String body) {
         return new ItemResponseDto(id, title, body, null, null, "STUFF", Instant.now(), List.of());
     }
 
@@ -426,7 +424,7 @@ class ItemServiceTests {
         return new UpdateItemRequestDto("New title", null, null, null, null);
     }
 
-    private UpdateItemRequestDto normalizedUpdateRequest(Body body) {
+    private UpdateItemRequestDto normalizedUpdateRequest(String body) {
         return new UpdateItemRequestDto(
             " New\t title\r\nlater ",
             body,
@@ -450,7 +448,7 @@ class ItemServiceTests {
         return itemCaptor.getValue();
     }
 
-    private void assertSavedTimedItem(String title, Body body, String energyValue, Duration time) {
+    private void assertSavedTimedItem(String title, String body, String energyValue, Duration time) {
         Item savedItem = capturedSavedItem();
         assertEquals(title, savedItem.getTitle().value());
         assertEquals(body, savedItem.getBody());
@@ -461,7 +459,7 @@ class ItemServiceTests {
     private void assertSavedItemClearedBody() {
         Item savedItem = capturedSavedItem();
         assertEquals("New title", savedItem.getTitle().value());
-        assertNull(savedItem.getBody());
+        assertEquals("", savedItem.getBody());
         assertEquals(energy("3.0"), savedItem.getEnergy());
         assertNull(savedItem.getTime());
     }

@@ -1,6 +1,5 @@
 package com.gtdonrails.api.services;
 
-import static com.gtdonrails.api.types.BodyFixtures.paragraphBody;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.when;
 
@@ -14,7 +13,6 @@ import com.gtdonrails.api.entities.Item;
 import com.gtdonrails.api.enums.ItemStatus;
 import com.gtdonrails.api.mappers.ItemMapper;
 import com.gtdonrails.api.repositories.ItemRepository;
-import com.gtdonrails.api.types.Body;
 import com.gtdonrails.api.types.Title;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
@@ -43,9 +41,9 @@ class InboxServiceTests {
     @Test
     void listStuffReturnsMappedItems() {
         Item olderItem = new Item(new Title("Older item"), null);
-        Item newerItem = new Item(new Title("Newer item"), paragraphBody("Body"));
+        Item newerItem = new Item(new Title("Newer item"), "Body");
         ItemResponseDto olderResponse = itemResponse("Older item", null, "1.0");
-        ItemResponseDto newerResponse = itemResponse("Newer item", paragraphBody("Body"), "2.5");
+        ItemResponseDto newerResponse = itemResponse("Newer item", "Body", "2.5");
 
         when(itemRepository.findAllByStatusAndDeletedAtIsNullOrderByCreatedAtDesc(ItemStatus.STUFF))
             .thenReturn(List.of(newerItem, olderItem));
@@ -67,7 +65,7 @@ class InboxServiceTests {
         assertEquals(List.of(), response);
     }
 
-    private ItemResponseDto itemResponse(String title, Body body, String energy) {
+    private ItemResponseDto itemResponse(String title, String body, String energy) {
         return new ItemResponseDto(
             UUID.randomUUID(),
             title,

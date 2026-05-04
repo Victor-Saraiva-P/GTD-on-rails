@@ -1,10 +1,10 @@
 import { apiFetch, apiJson } from "../../lib/api/apiClient.ts";
-import type { Stuff, Body } from "./types";
+import type { Stuff } from "./types";
 
 type InboxStuffResponse = {
   id: string;
   title: string;
-  body: Body | null;
+  body: string;
   status: string;
   createdAt: string;
 };
@@ -23,9 +23,9 @@ export async function fetchInboxStuffs(): Promise<Stuff[]> {
 /**
  * Creates a new inbox stuff item with an optional body.
  *
- * @example await createStuff("Capture idea", null)
+ * @example await createStuff("Capture idea", "")
  */
-export async function createStuff(title: string, body: Body | null = null): Promise<Stuff> {
+export async function createStuff(title: string, body = ""): Promise<Stuff> {
   const response = await apiJson<InboxStuffResponse>("/items", {
     method: "POST",
     headers: {
@@ -68,7 +68,7 @@ export async function updateStuffTitle(item: Stuff, title: string): Promise<Stuf
  *
  * @example await updateStuffBody(stuff, "Next action")
  */
-export async function updateStuffBody(item: Stuff, body: Body | null): Promise<Stuff> {
+export async function updateStuffBody(item: Stuff, body: string): Promise<Stuff> {
   return updateStuff(item, {
     title: item.title,
     body
@@ -79,7 +79,7 @@ async function updateStuff(
   item: Stuff,
   payload: {
     title: string;
-    body: Body | null;
+    body: string;
   }
 ): Promise<Stuff> {
   const response = await apiJson<InboxStuffResponse>(`/items/${item.id}`, {
@@ -100,7 +100,7 @@ function toStuff(item: InboxStuffResponse): Stuff {
   return {
     id: item.id,
     title: item.title,
-    body: item.body,
+    body: item.body ?? "",
     status: item.status,
     createdAt: item.createdAt
   };

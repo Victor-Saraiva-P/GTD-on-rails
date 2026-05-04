@@ -8,7 +8,7 @@ import {
   updateStuffTitle,
   updateStuffBody
 } from "../src/features/inbox/api.ts";
-import type { Stuff, Body } from "../src/features/inbox/types.ts";
+import type { Stuff } from "../src/features/inbox/types.ts";
 
 describe("inbox API", () => {
   const originalFetch = globalThis.fetch;
@@ -17,14 +17,11 @@ describe("inbox API", () => {
     globalThis.fetch = originalFetch;
   });
 
-  const dummyBody: Body = {
-    version: 1,
-    blocks: [{ id: "1", type: "paragraph", properties: { richText: [{ text: "Details" }] } }]
-  };
+  const dummyBody = "# Details\n\n- Next action";
 
   test("fetchInboxStuffs returns mapped stuff array", async () => {
     const mockResponse = [
-      { id: "1", title: "Task 1", body: null, status: "INBOX", createdAt: "2026-05-01T00:00:00Z" }
+      { id: "1", title: "Task 1", body: "", status: "INBOX", createdAt: "2026-05-01T00:00:00Z" }
     ];
     
     globalThis.fetch = mock.fn(async () => {
@@ -34,6 +31,7 @@ describe("inbox API", () => {
     const stuffs = await fetchInboxStuffs();
     assert.equal(stuffs.length, 1);
     assert.equal(stuffs[0].id, "1");
+    assert.equal(stuffs[0].body, "");
   });
 
   test("createStuff sends correct payload", async () => {
@@ -71,11 +69,11 @@ describe("inbox API", () => {
 
     const updated = await updateStuffTitle(item, "New Title");
     assert.equal(updated.title, "New Title");
-    assert.deepEqual(updated.body, dummyBody);
+    assert.equal(updated.body, dummyBody);
   });
 
   test("updateStuffBody only changes body", async () => {
-    const item: Stuff = { id: "4", title: "Title", body: null, status: "INBOX", createdAt: "2026-05-01T00:00:00Z" };
+    const item: Stuff = { id: "4", title: "Title", body: "", status: "INBOX", createdAt: "2026-05-01T00:00:00Z" };
     const mockResponse = { ...item, body: dummyBody };
 
     globalThis.fetch = mock.fn(async (input, init) => {
@@ -86,6 +84,6 @@ describe("inbox API", () => {
 
     const updated = await updateStuffBody(item, dummyBody);
     assert.equal(updated.title, "Title");
-    assert.deepEqual(updated.body, dummyBody);
+    assert.equal(updated.body, dummyBody);
   });
 });

@@ -5,6 +5,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class ItemTextNormalizer {
 
+    public static final int MAX_BODY_LENGTH = 100_000;
+
     /**
      * Normalizes title input into printable single-line text.
      *
@@ -26,20 +28,37 @@ public class ItemTextNormalizer {
      * <p>Example: {@code itemTextNormalizer.normalizeBody(" line 1\r\nline 2 ")}.</p>
      */
     public String normalizeBody(String value) {
-        if (value == null) {
-            return null;
-        }
-
-        String normalized = normalizeLineEndings(value).trim();
-        validatePlainText(normalized, "body");
-        return normalized.isEmpty() ? null : normalized;
+        return normalizeBodyValue(value);
     }
 
-    private String normalizeLineEndings(String value) {
+    /**
+     * Normalizes body markdown without requiring a Spring-managed normalizer.
+     *
+     * <p>Example: {@code ItemTextNormalizer.normalizeBodyValue("# Notes")}.</p>
+     */
+    public static String normalizeBodyValue(String value) {
+        if (value == null) {
+            return "";
+        }
+
+        String normalized = normalizeLineEndings(value);
+        validatePlainText(normalized, "body");
+        validateBodyLength(normalized);
+        return normalized;
+    }
+
+    private static void validateBodyLength(String value) {
+        if (value.length() > MAX_BODY_LENGTH) {
+            throw new IllegalArgumentException(
+                "body length '" + value.length() + "' is invalid; expected at most " + MAX_BODY_LENGTH + " characters");
+        }
+    }
+
+    private static String normalizeLineEndings(String value) {
         return value.replace("\r\n", "\n").replace('\r', '\n');
     }
 
-    private void validatePlainText(String value, String fieldName) {
+    private static void validatePlainText(String value, String fieldName) {
         for (int index = 0; index < value.length(); index++) {
             char character = value.charAt(index);
             if (Character.isISOControl(character) && character != '\n' && character != '\t') {

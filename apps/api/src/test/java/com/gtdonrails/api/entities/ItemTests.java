@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static com.gtdonrails.api.types.BodyFixtures.paragraphBody;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -39,12 +38,21 @@ class ItemTests {
     }
 
     @Test
-    void setBodyAllowsNull() {
-        Item item = new Item(new Title("Capture idea"), paragraphBody("Details"));
+    void setBodyNormalizesNullToEmptyText() {
+        Item item = new Item(new Title("Capture idea"), "Details");
 
         item.setBody(null);
 
-        assertNull(item.getBody());
+        assertEquals("", item.getBody());
+    }
+
+    @Test
+    void setBodyNormalizesMarkdownText() {
+        Item item = new Item(new Title("Capture idea"), "Details");
+
+        item.setBody(" line 1\r\nline 2 ");
+
+        assertEquals(" line 1\nline 2 ", item.getBody());
     }
 
     @Test
