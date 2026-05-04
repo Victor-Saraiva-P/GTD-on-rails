@@ -31,7 +31,7 @@
   display: grid;
   gap: 14px;
   align-content: start;
-  --inbox-line-number-width: 3ch;
+  --inbox-line-number-width: 4ch;
   --inbox-line-number-gap: 12px;
   --inbox-line-number-shift: 20px;
   --inbox-line-text-shift: 9px;
