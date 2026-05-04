@@ -411,12 +411,13 @@ const markdownBulletsPlugin = ViewPlugin.fromClass(
     }
 
     update(update: ViewUpdate) {
-      if (update.docChanged || update.viewportChanged) {
+      if (update.docChanged || update.selectionSet || update.viewportChanged) {
         this.decorations = this.buildDecorations(update.view);
       }
     }
 
     buildDecorations(view: EditorView) {
+      const activeLines = selectedLineNumbers(view);
       const builder = new RangeSetBuilder<Decoration>();
       for (const { from, to } of view.visibleRanges) {
         syntaxTree(view.state).iterate({
@@ -427,6 +428,9 @@ const markdownBulletsPlugin = ViewPlugin.fromClass(
               const text = view.state.sliceDoc(node.from, node.to);
               if (/^[-*+]\s*$/.test(text)) {
                 const line = view.state.doc.lineAt(node.from);
+                if (activeLines.has(line.number)) {
+                  return;
+                }
                 const indent = line.text.match(/^(\s*)/)?.[1].length ?? 0;
                 builder.add(node.from, bulletMarkerTo(view, node.from, node.to), bulletDecorationForLevel(indent));
               }
