@@ -10,6 +10,7 @@ import {
   useState
 } from "react";
 import { fetchSyncStatus } from "./api";
+import { shouldStopSyncStatusPolling, startupObservationDeadline } from "./syncStatusPolling";
 import type { SyncStatus } from "./types";
 
 const POLL_INTERVAL_MS = 1000;
@@ -34,19 +35,6 @@ type SyncStatusState = {
 };
 
 const SyncStatusContext = createContext<SyncStatusContextValue | null>(null);
-
-function isSettledStatus(status: SyncStatus): boolean {
-  const assetsSettled =
-    status.assets.state === "SYNCED" ||
-    status.assets.state === "DISABLED" ||
-    status.assets.state === "FAILED";
-  const persistenceSettled =
-    status.persistence.state === "IDLE" ||
-    status.persistence.state === "DISABLED" ||
-    status.persistence.state === "FAILED";
-
-  return assetsSettled && persistenceSettled;
-}
 
 function usePollingRef() {
   const intervalRef = useRef<number | null>(null);
@@ -89,22 +77,28 @@ function useStopPolling(state: SyncStatusState, clearPollingInterval: () => void
 function setSuccessfulStatus(
   state: SyncStatusState,
   nextStatus: SyncStatus,
+  startupDeadlineRef: MutableRefObject<number | null>,
   stopPolling: () => void
 ) {
   state.setStatus(nextStatus);
   state.setLastFetchFailed(false);
 
-  if (isSettledStatus(nextStatus)) {
+  if (shouldStopSyncStatusPolling(nextStatus, startupDeadlineRef.current, Date.now())) {
+    startupDeadlineRef.current = null;
     stopPolling();
   }
 }
 
-function useRefreshSyncStatus(state: SyncStatusState, stopPolling: () => void) {
+function useRefreshSyncStatus(
+  state: SyncStatusState,
+  startupDeadlineRef: MutableRefObject<number | null>,
+  stopPolling: () => void
+) {
   return useCallback(async () => {
     try {
       const nextStatus = await fetchSyncStatus();
 
-      setSuccessfulStatus(state, nextStatus, stopPolling);
+      setSuccessfulStatus(state, nextStatus, startupDeadlineRef, stopPolling);
       return nextStatus;
     } catch {
       state.setLastFetchFailed(true);
@@ -112,7 +106,7 @@ function useRefreshSyncStatus(state: SyncStatusState, stopPolling: () => void) {
     } finally {
       state.setIsLoading(false);
     }
-  }, [state.setIsLoading, state.setLastFetchFailed, state.setStatus, stopPolling]);
+  }, [state.setIsLoading, state.setLastFetchFailed, state.setStatus, startupDeadlineRef, stopPolling]);
 }
 
 function useStartPolling(
@@ -145,12 +139,19 @@ function useTriggerSyncStatusPolling(
   }, [intervalRef, refreshSyncStatus, startPolling]);
 }
 
-function useInitialSyncStatusRefresh(refreshSyncStatus: () => Promise<SyncStatus | null>, stopPolling: () => void) {
+function useInitialSyncStatusRefresh(
+  refreshSyncStatus: () => Promise<SyncStatus | null>,
+  startPolling: () => void,
+  startupDeadlineRef: MutableRefObject<number | null>,
+  stopPolling: () => void
+) {
   useEffect(() => {
+    startupDeadlineRef.current = startupObservationDeadline(Date.now());
+    startPolling();
     void refreshSyncStatus();
 
     return () => stopPolling();
-  }, [refreshSyncStatus, stopPolling]);
+  }, [refreshSyncStatus, startPolling, startupDeadlineRef, stopPolling]);
 }
 
 function useSyncStatusValue(
@@ -172,12 +173,13 @@ function useSyncStatusValue(
 function useSyncStatusController(): SyncStatusContextValue {
   const state = useSyncStatusState();
   const { clearPollingInterval, intervalRef } = usePollingRef();
+  const startupDeadlineRef = useRef<number | null>(null);
   const stopPolling = useStopPolling(state, clearPollingInterval);
-  const refreshSyncStatus = useRefreshSyncStatus(state, stopPolling);
+  const refreshSyncStatus = useRefreshSyncStatus(state, startupDeadlineRef, stopPolling);
   const startPolling = useStartPolling(state, intervalRef, refreshSyncStatus);
   const triggerPolling = useTriggerSyncStatusPolling(intervalRef, refreshSyncStatus, startPolling);
 
-  useInitialSyncStatusRefresh(refreshSyncStatus, stopPolling);
+  useInitialSyncStatusRefresh(refreshSyncStatus, startPolling, startupDeadlineRef, stopPolling);
   return useSyncStatusValue(state, triggerPolling);
 }
 
