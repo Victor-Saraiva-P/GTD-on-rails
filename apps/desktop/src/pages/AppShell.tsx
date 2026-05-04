@@ -1,12 +1,12 @@
 import { useMemo } from "react";
-import { useInboxWorkspaceController } from "../features/inbox/useInboxWorkspaceController";
+import { useInboxWorkspaceController, type InboxWorkspaceController } from "../features/inbox/useInboxWorkspaceController";
 import { useActiveScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
 import type { KeybindDefinition } from "../features/keybinds/types";
 import { ContextsPage } from "./ContextsPage";
 import { InboxPage } from "./InboxPage";
 import { StuffDetailPage } from "./StuffDetailPage";
 
-function buildNavigationBindings(setActiveScreen: (screen: "contexts" | "inbox" | "stuff-detail") => void) {
+function buildNavigationBindings(setActiveScreen: (screen: "contexts" | "inbox" | "stuff-detail") => void, inboxController: InboxWorkspaceController) {
   return [
     {
       id: "navigation.open-contexts",
@@ -22,7 +22,10 @@ function buildNavigationBindings(setActiveScreen: (screen: "contexts" | "inbox" 
       description: "Open inbox",
       leader: true,
       sequence: ["i"],
-      runKeybind: () => setActiveScreen("inbox")
+      runKeybind: () => {
+        inboxController.resetWorkspace();
+        setActiveScreen("inbox");
+      }
     }
   ] satisfies KeybindDefinition[];
 }
@@ -35,7 +38,7 @@ function buildNavigationBindings(setActiveScreen: (screen: "contexts" | "inbox" 
 export function AppShell() {
   const { activeScreen, setActiveScreen } = useActiveScreen();
   const inboxController = useInboxWorkspaceController();
-  const navigationBindings = useMemo(() => buildNavigationBindings(setActiveScreen), [setActiveScreen]);
+  const navigationBindings = useMemo(() => buildNavigationBindings(setActiveScreen, inboxController), [setActiveScreen, inboxController]);
 
   useRegisterKeybinds(navigationBindings);
 

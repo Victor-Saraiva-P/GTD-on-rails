@@ -115,9 +115,9 @@ function useInboxBindings(controller: InboxWorkspaceController) {
 function useInboxZone(controller: InboxWorkspaceController) {
   useEffect(() => {
     if (controller.activeZone !== "inbox-list" && controller.activeZone !== "stuff-detail") {
-      controller.setActiveZone("inbox-list");
+      controller.setActiveZone(controller.editingBodyId ? "stuff-detail" : "inbox-list");
     }
-  }, [controller]);
+  }, [controller.activeZone, controller.editingBodyId, controller.setActiveZone]);
 }
 
 function commitStuffTitle(controller: InboxWorkspaceController) {

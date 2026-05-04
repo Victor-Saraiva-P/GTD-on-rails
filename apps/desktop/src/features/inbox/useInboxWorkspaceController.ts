@@ -300,6 +300,12 @@ async function commitEditingSelectedStuffBodyAction(model: InboxModel, body: str
   clearPendingBodyEdit(model);
 }
 
+function resetWorkspaceAction(model: InboxModel) {
+  clearAllEditing(model);
+  model.selection.setSelectedId(model.query.stuffs[0]?.id ?? null);
+  model.zone.setActiveZone("inbox-list");
+}
+
 function useInboxWorkspaceActions(model: InboxModel) {
   return {
     cancelEditingSelectedStuff: () => cancelEditingSelectedStuffAction(model),
@@ -311,7 +317,8 @@ function useInboxWorkspaceActions(model: InboxModel) {
     selectNextStuff: model.selection.selectNextStuff,
     selectPreviousStuff: model.selection.selectPreviousStuff,
     startEditingSelectedStuff: () => startEditingSelectedStuffAction(model),
-    startEditingSelectedStuffBody: () => startEditingSelectedStuffBodyAction(model)
+    startEditingSelectedStuffBody: () => startEditingSelectedStuffBodyAction(model),
+    resetWorkspace: () => resetWorkspaceAction(model)
   };
 }
 
