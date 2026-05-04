@@ -1,7 +1,9 @@
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
+import { syntaxTree } from "@codemirror/language";
+import { RangeSetBuilder } from "@codemirror/state";
 import { EditorState } from "@codemirror/state";
-import { drawSelection, EditorView, highlightActiveLine, keymap, lineNumbers } from "@codemirror/view";
+import { Decoration, drawSelection, EditorView, highlightActiveLine, keymap, lineNumbers, ViewPlugin, type ViewUpdate, type DecorationSet } from "@codemirror/view";
 import { getCM, vim } from "@replit/codemirror-vim";
 import { useEffect, useRef, useState, type MutableRefObject, type RefObject } from "react";
 import {
@@ -21,6 +23,8 @@ export type ItemBodyMarkdownEditorProps = {
   onExitNormalMode?: (body: string) => Promise<void>;
   onVimModeChange?: (mode: "NORMAL" | "INSERT" | "VISUAL") => void;
 };
+
+export const FORMAT_BULLET_EVENT = "gtd:format-bullet";
 
 type ItemBodyMarkdownEditorFrameProps = {
   editorParentRef: RefObject<HTMLDivElement | null>;
@@ -124,6 +128,16 @@ function useCodeMirrorEditorView(
       setSaveState
     );
   }, [props.itemId, props.readOnly]);
+
+  useEffect(() => {
+    const handler = () => {
+      if (editorViewRef.current) {
+        toggleBulletPoints(editorViewRef.current);
+      }
+    };
+    window.addEventListener(FORMAT_BULLET_EVENT, handler);
+    return () => window.removeEventListener(FORMAT_BULLET_EVENT, handler);
+  }, []);
 }
 
 function mountEditorView(
@@ -223,6 +237,7 @@ function editorBehaviorExtensions(
     EditorState.readOnly.of(readOnly),
     EditorView.editable.of(!readOnly),
     EditorView.lineWrapping,
+    markdownBulletsPlugin,
     EditorView.updateListener.of((update) =>
       autosaveAfterFinishedEdit(update.view, update.docChanged, readOnly, autosaveTrackerRef, onAutosaveRef, onVimModeChangeRef, setSaveState)
     ),
@@ -346,6 +361,85 @@ function normalModeEscapeHandler(
       return true;
     }
   });
+}
+
+const bulletDecoration = Decoration.mark({ class: "cm-bullet-mark" });
+
+const markdownBulletsPlugin = ViewPlugin.fromClass(
+  class {
+    decorations: DecorationSet;
+
+    constructor(view: EditorView) {
+      this.decorations = this.buildDecorations(view);
+    }
+
+    update(update: ViewUpdate) {
+      if (update.docChanged || update.viewportChanged) {
+        this.decorations = this.buildDecorations(update.view);
+      }
+    }
+
+    buildDecorations(view: EditorView) {
+      const builder = new RangeSetBuilder<Decoration>();
+      for (const { from, to } of view.visibleRanges) {
+        syntaxTree(view.state).iterate({
+          from,
+          to,
+          enter: (node: any) => {
+            if (node.name === "ListMark") {
+              const text = view.state.sliceDoc(node.from, node.to);
+              if (/^[-*+]\s*$/.test(text)) {
+                builder.add(node.from, node.to, bulletDecoration);
+              }
+            }
+          }
+        });
+      }
+      return builder.finish();
+    }
+  },
+  {
+    decorations: (v) => v.decorations
+  }
+);
+
+function toggleBulletPoints(view: EditorView) {
+  const { state, dispatch } = view;
+  const changes = [];
+  
+  for (const range of state.selection.ranges) {
+    const startLine = state.doc.lineAt(range.from).number;
+    let endLine = state.doc.lineAt(range.to).number;
+    
+    if (range.to > range.from && range.to === state.doc.line(endLine).from) {
+      endLine--;
+    }
+
+    for (let i = startLine; i <= endLine; i++) {
+      const line = state.doc.line(i);
+      const text = line.text;
+      const match = text.match(/^(\s*)([-*+]\s+)?(.*)/);
+      if (!match) continue;
+      
+      const [_, indent, bullet, content] = match;
+      if (bullet) {
+        changes.push({
+          from: line.from + indent.length,
+          to: line.from + indent.length + bullet.length,
+          insert: ""
+        });
+      } else if (content.trim().length > 0 || startLine === endLine) {
+        changes.push({
+          from: line.from + indent.length,
+          insert: "- "
+        });
+      }
+    }
+  }
+  
+  if (changes.length > 0) {
+    dispatch({ changes });
+  }
 }
 
 function isRecentInsertExit(tracker: AutosaveTracker): boolean {

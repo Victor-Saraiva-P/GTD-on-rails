@@ -58,12 +58,28 @@ function ReadOnlyInboxStuffDetails({ item }: Pick<InboxStuffDetailsProps, "item"
       <InboxDetailHeader item={item} />
       {displayBody ? (
         <div className="inbox-detail__body inbox-detail__body-preview" aria-label="Selected item details">
-          {previewLines.map((line, index) => (
-            <div className="inbox-detail__body-line" key={`${index}:${line}`}>
-              <span className="inbox-detail__line-number">{index + 1}</span>
-              <span className="inbox-detail__line-content">{line || "\u00A0"}</span>
-            </div>
-          ))}
+          {previewLines.map((line, index) => {
+            const match = line.match(/^(\s*)([-*+]\s+)(.*)/);
+            if (match) {
+              const [_, indent, bullet, content] = match;
+              return (
+                <div className="inbox-detail__body-line" key={`${index}:${line}`}>
+                  <span className="inbox-detail__line-number">{index + 1}</span>
+                  <span className="inbox-detail__line-content">
+                    {indent}
+                    <span className="cm-bullet-mark">{bullet}</span>
+                    {content}
+                  </span>
+                </div>
+              );
+            }
+            return (
+              <div className="inbox-detail__body-line" key={`${index}:${line}`}>
+                <span className="inbox-detail__line-number">{index + 1}</span>
+                <span className="inbox-detail__line-content">{line || "\u00A0"}</span>
+              </div>
+            );
+          })}
         </div>
       ) : (
         <p className="pane-state">No details yet for this stuff.</p>

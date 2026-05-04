@@ -202,7 +202,13 @@
 .inbox-detail__codemirror .cm-selectionBackground,
 .inbox-detail__codemirror.cm-focused .cm-selectionBackground,
 .inbox-detail__codemirror .cm-editor.cm-focused .cm-selectionBackground {
-  background: rgba(255, 255, 255, 0.18);
+  background: #3a3836;
+}
+
+.inbox-detail__codemirror .cm-content ::selection,
+.inbox-detail__codemirror .cm-content *::selection {
+  background: #3a3836;
+  color: inherit;
 }
 
 .inbox-detail__codemirror .cm-searchMatch,
@@ -238,4 +244,21 @@
 
 .inbox-pane--detail.list-pane--active .list-pane__title {
   color: var(--list-accent);
+}
+
+.inbox-detail__codemirror .cm-bullet-mark,
+.inbox-detail__body-preview .cm-bullet-mark {
+  color: transparent !important;
+  position: relative;
+  display: inline-block;
+}
+
+.inbox-detail__codemirror .cm-bullet-mark::before,
+.inbox-detail__body-preview .cm-bullet-mark::before {
+  content: "•";
+  color: #c8c1bc;
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-weight: bold;
 }
