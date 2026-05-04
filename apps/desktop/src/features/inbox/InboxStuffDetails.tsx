@@ -1,5 +1,5 @@
 import { ItemBodyMarkdownEditor } from "./ItemBodyMarkdownEditor";
-import { formatStuffCreatedAt, type Stuff } from "./types";
+import { formatStuffCreatedAt, getStuffBodyPreviewLines, type Stuff } from "./types";
 
 type InboxStuffDetailsProps = {
   item: Stuff;
@@ -47,14 +47,20 @@ function formatBodyForDisplay(body: Stuff["body"]): string | null {
 
 function ReadOnlyInboxStuffDetails({ item }: Pick<InboxStuffDetailsProps, "item">) {
   const displayBody = formatBodyForDisplay(item.body);
+  const previewLines = getStuffBodyPreviewLines(displayBody);
 
   return (
     <div className="inbox-detail">
       <InboxDetailHeader item={item} />
       {displayBody ? (
-        <pre className="inbox-detail__body" aria-label="Selected item details">
-          {displayBody}
-        </pre>
+        <div className="inbox-detail__body inbox-detail__body-preview" aria-label="Selected item details">
+          {previewLines.map((line, index) => (
+            <div className="inbox-detail__body-line" key={`${index}:${line}`}>
+              <span className="inbox-detail__line-number">{index + 1}</span>
+              <span className="inbox-detail__line-content">{line || "\u00A0"}</span>
+            </div>
+          ))}
+        </div>
       ) : (
         <p className="pane-state">No details yet for this stuff.</p>
       )}

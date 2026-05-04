@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { getStuffBodyLines, formatStuffCreatedAt } from "../src/features/inbox/types.ts";
+import {
+  formatStuffCreatedAt,
+  getStuffBodyLines,
+  getStuffBodyPreviewLines
+} from "../src/features/inbox/types.ts";
 
 test("getStuffBodyLines returns no lines for an empty body", () => {
   assert.deepEqual(getStuffBodyLines(null), []);
@@ -14,6 +18,12 @@ test("getStuffBodyLines trims text and removes bullet markers", () => {
     getStuffBodyLines(body),
     ["Capture idea", "Clarify next action", "Ship it"]
   );
+});
+
+test("getStuffBodyPreviewLines preserves blank lines and spacing", () => {
+  const body = "  first line\n\nthird line  ";
+  assert.deepEqual(getStuffBodyPreviewLines(body), ["  first line", "", "third line  "]);
+  assert.deepEqual(getStuffBodyPreviewLines(null), []);
 });
 
 test("formatStuffCreatedAt formats a date string", () => {

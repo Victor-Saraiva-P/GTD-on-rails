@@ -23,6 +23,19 @@ export function getStuffBodyLines(body: string | null | undefined): string[] {
 }
 
 /**
+ * Splits body text into preview lines while preserving blank lines.
+ *
+ * @example getStuffBodyPreviewLines("line 1\n\nline 3")
+ */
+export function getStuffBodyPreviewLines(body: string | null | undefined): string[] {
+  if (!body) {
+    return [];
+  }
+
+  return body.split("\n");
+}
+
+/**
  * Formats an API timestamp for compact list metadata.
  *
  * @example formatStuffCreatedAt(stuff.createdAt)

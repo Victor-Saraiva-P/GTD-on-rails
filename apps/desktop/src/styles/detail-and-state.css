@@ -80,6 +80,29 @@
   min-height: clamp(240px, 48vh, 760px);
 }
 
+.inbox-detail__body-preview {
+  display: grid;
+  align-content: start;
+  white-space: normal;
+}
+
+.inbox-detail__body-line {
+  display: grid;
+  grid-template-columns: 3ch minmax(0, 1fr);
+  column-gap: 14px;
+}
+
+.inbox-detail__line-number {
+  user-select: none;
+  color: rgba(255, 255, 255, 0.34);
+  text-align: right;
+}
+
+.inbox-detail__line-content {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .inbox-detail__markdown-editor {
   display: grid;
   gap: 8px;
