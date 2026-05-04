@@ -59,7 +59,21 @@ function commitStuffBody(controller: InboxWorkspaceController, body: string): Pr
   return controller.commitEditingSelectedStuffBody(body);
 }
 
-function StuffDetailReady({ controller }: StuffDetailPageProps) {
+async function exitBodyEditingToInbox(
+  controller: InboxWorkspaceController,
+  setActiveScreen: (screen: ScreenId) => void,
+  body: string
+): Promise<void> {
+  await controller.commitEditingSelectedStuffBody(body);
+  controller.setActiveZone("inbox-list");
+  setActiveScreen("inbox");
+}
+
+type StuffDetailReadyProps = StuffDetailPageProps & {
+  setActiveScreen: (screen: ScreenId) => void;
+};
+
+function StuffDetailReady({ controller, setActiveScreen }: StuffDetailReadyProps) {
   const selectedItem = controller.selectedItem;
 
   return selectedItem ? (
@@ -67,12 +81,13 @@ function StuffDetailReady({ controller }: StuffDetailPageProps) {
       item={selectedItem}
       editing={controller.editingBodyId === selectedItem.id}
       onCommitEditing={(body) => commitStuffBody(controller, body)}
+      onExitEditingFromNormalMode={(body) => exitBodyEditingToInbox(controller, setActiveScreen, body)}
       onCancelEditing={controller.cancelEditingSelectedStuffBody}
     />
   ) : null;
 }
 
-function StuffDetailBody({ controller }: StuffDetailPageProps) {
+function StuffDetailBody({ controller, setActiveScreen }: StuffDetailReadyProps) {
   if (controller.isLoading) {
     return <p className="pane-state">Loading stuff details...</p>;
   }
@@ -82,16 +97,16 @@ function StuffDetailBody({ controller }: StuffDetailPageProps) {
   }
 
   return controller.selectedItem ? (
-    <StuffDetailReady controller={controller} />
+    <StuffDetailReady controller={controller} setActiveScreen={setActiveScreen} />
   ) : (
     <p className="pane-state">Select a stuff in inbox to inspect its details.</p>
   );
 }
 
-function StuffDetailPane({ controller }: StuffDetailPageProps) {
+function StuffDetailPane({ controller, setActiveScreen }: StuffDetailReadyProps) {
   return (
     <ListPane title="Stuff Detail" active bodyClassName="list-pane__body--detail">
-      <StuffDetailBody controller={controller} />
+      <StuffDetailBody controller={controller} setActiveScreen={setActiveScreen} />
     </ListPane>
   );
 }
@@ -102,6 +117,7 @@ function StuffDetailPane({ controller }: StuffDetailPageProps) {
  * @example <StuffDetailPage controller={controller} />
  */
 export function StuffDetailPage({ controller }: StuffDetailPageProps) {
+  const { setActiveScreen } = useActiveScreen();
   useKeybindScreen("stuff-detail");
   useStuffDetailZone(controller);
   useStuffDetailBindings(controller);
@@ -109,7 +125,7 @@ export function StuffDetailPage({ controller }: StuffDetailPageProps) {
   return (
     <ListWorkspace theme={stuffDetailListTheme} currentLabel={stuffDetailListTheme.label}>
       <section className="stuff-detail-layout" aria-label="Stuff detail">
-        <StuffDetailPane controller={controller} />
+        <StuffDetailPane controller={controller} setActiveScreen={setActiveScreen} />
       </section>
       <LeaderMenu />
     </ListWorkspace>

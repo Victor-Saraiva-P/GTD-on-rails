@@ -130,6 +130,11 @@ function commitStuffBody(controller: InboxWorkspaceController, body: string): Pr
   return controller.commitEditingSelectedStuffBody(body);
 }
 
+async function exitBodyEditingFromNormalMode(controller: InboxWorkspaceController, body: string): Promise<void> {
+  await controller.commitEditingSelectedStuffBody(body);
+  controller.setActiveZone("inbox-list");
+}
+
 function InboxListReady({ controller }: InboxPageProps) {
   return (
     <InboxList
@@ -167,6 +172,7 @@ function InboxDetailReady({ controller }: InboxPageProps) {
       item={selectedItem}
       editing={controller.editingBodyId === selectedItem.id}
       onCommitEditing={(body) => commitStuffBody(controller, body)}
+      onExitEditingFromNormalMode={(body) => exitBodyEditingFromNormalMode(controller, body)}
       onCancelEditing={controller.cancelEditingSelectedStuffBody}
     />
   ) : null;

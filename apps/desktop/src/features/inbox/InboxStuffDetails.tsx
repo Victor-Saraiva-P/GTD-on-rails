@@ -5,6 +5,7 @@ type InboxStuffDetailsProps = {
   item: Stuff;
   editing: boolean;
   onCommitEditing: (body: string) => Promise<void>;
+  onExitEditingFromNormalMode: (body: string) => Promise<void>;
   onCancelEditing: () => void;
 };
 
@@ -30,6 +31,7 @@ function EditingInboxStuffDetails(props: EditingInboxStuffDetailsProps) {
         itemId={props.item.id}
         initialBody={props.item.body}
         onSave={props.onCommitEditing}
+        onExitNormalMode={props.onExitEditingFromNormalMode}
       />
     </div>
   );

@@ -23,6 +23,20 @@ export function normalizeMarkdownBody(value: string | null | undefined): string 
 }
 
 /**
+ * Normalizes markdown body text and forwards it to the provided save function.
+ *
+ * @example await saveNormalizedMarkdownBody("one\r\ntwo", saveBody)
+ */
+export async function saveNormalizedMarkdownBody(
+  rawBody: string,
+  saveMarkdownBody: (body: string) => Promise<void> | void
+): Promise<string> {
+  const normalizedBody = normalizeMarkdownBody(rawBody);
+  await saveMarkdownBody(normalizedBody);
+  return normalizedBody;
+}
+
+/**
  * Runs post-save item body effects after the backend accepts the markdown.
  *
  * @example await runPostSaveEffects()
@@ -42,26 +56,12 @@ export function createSaveItemBodyCommand(
   onSaveError: (error: unknown) => void = console.error
 ) {
   return (view: MarkdownDocumentView): boolean => {
-    const markdownBody = safeNormalizeMarkdownBody(view.state.doc.toString(), onSaveError);
-    if (markdownBody === null) {
-      return true;
-    }
-
-    void Promise.resolve(saveMarkdownBody(markdownBody))
+    void saveNormalizedMarkdownBody(view.state.doc.toString(), saveMarkdownBody)
       .then(runAfterSave)
       .catch(onSaveError);
 
     return true;
   };
-}
-
-function safeNormalizeMarkdownBody(value: string, onSaveError: (error: unknown) => void): string | null {
-  try {
-    return normalizeMarkdownBody(value);
-  } catch (error) {
-    onSaveError(error);
-    return null;
-  }
 }
 
 function validateMarkdownBodyLength(value: string): void {
