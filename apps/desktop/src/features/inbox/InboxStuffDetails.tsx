@@ -94,6 +94,17 @@ function ReadOnlyInboxStuffDetails({ item }: Pick<InboxStuffDetailsProps, "item"
                 </div>
               );
             }
+            const dividerMatch = line.match(/^\s*---\s*$/);
+            if (dividerMatch) {
+              return (
+                <div className="inbox-detail__body-line" key={`${index}:${line}`}>
+                  <span className="inbox-detail__line-number">{index + 1}</span>
+                  <span className="inbox-detail__line-content">
+                    <span className="cm-divider" />
+                  </span>
+                </div>
+              );
+            }
             const bulletMatch = line.match(/^(\s*)([-*+]\s+)(.*)/);
             if (bulletMatch) {
               const [_, indent, bullet, content] = bulletMatch;

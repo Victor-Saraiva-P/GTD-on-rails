@@ -32,6 +32,7 @@ export const FORMAT_LETTERED_LIST_EVENT = "gtd:format-lettered-list";
 export const FORMAT_CHECKLIST_EVENT = "gtd:format-checklist";
 export const FORMAT_CHECKLIST_CHECKED_EVENT = "gtd:format-checklist-checked";
 export const FORMAT_CHECKLIST_UNCHECKED_EVENT = "gtd:format-checklist-unchecked";
+export const FORMAT_DIVIDER_EVENT = "gtd:format-divider";
 
 type ItemBodyMarkdownEditorFrameProps = {
   editorParentRef: RefObject<HTMLDivElement | null>;
@@ -207,6 +208,16 @@ function useCodeMirrorEditorView(
   }, []);
 
   useEffect(() => {
+    const handler = () => {
+      if (editorViewRef.current) {
+        applyDivider(editorViewRef.current);
+      }
+    };
+    window.addEventListener(FORMAT_DIVIDER_EVENT, handler);
+    return () => window.removeEventListener(FORMAT_DIVIDER_EVENT, handler);
+  }, []);
+
+  useEffect(() => {
     const handler = (e: Event) => {
       if (!editorViewRef.current) return;
       const level = (e as CustomEvent<{ level: 1 | 2 | 3 }>).detail?.level;
@@ -319,6 +330,7 @@ function editorBehaviorExtensions(
     markdownBulletsPlugin,
     markdownHeadingsPlugin,
     markdownChecklistPlugin,
+    markdownDividerPlugin,
     EditorView.updateListener.of((update) =>
       autosaveAfterFinishedEdit(update.view, update.docChanged, readOnly, autosaveTrackerRef, onAutosaveRef, onVimModeChangeRef, setSaveState)
     ),
@@ -518,6 +530,14 @@ class ChecklistBoxWidget extends WidgetType {
   }
 }
 
+class DividerWidget extends WidgetType {
+  toDOM(): HTMLElement {
+    const divider = document.createElement("span");
+    divider.className = "cm-divider";
+    return divider;
+  }
+}
+
 const checklistTextDecoration = Decoration.mark({ class: "cm-checklist-text" });
 const checklistCheckedTextDecoration = Decoration.mark({ class: "cm-checklist-text cm-checklist-text--checked" });
 
@@ -634,6 +654,40 @@ const markdownChecklistPlugin = ViewPlugin.fromClass(
   { decorations: (v) => v.decorations }
 );
 
+const markdownDividerPlugin = ViewPlugin.fromClass(
+  class {
+    decorations: DecorationSet;
+
+    constructor(view: EditorView) {
+      this.decorations = this.buildDecorations(view);
+    }
+
+    update(update: ViewUpdate) {
+      if (update.docChanged || update.selectionSet || update.viewportChanged) {
+        this.decorations = this.buildDecorations(update.view);
+      }
+    }
+
+    buildDecorations(view: EditorView) {
+      const activeLines = selectedLineNumbers(view);
+      const builder = new RangeSetBuilder<Decoration>();
+      for (const { from, to } of view.visibleRanges) {
+        for (let pos = from; pos <= to;) {
+          const line = view.state.doc.lineAt(pos);
+          if (isDividerLine(line.text)) {
+            if (!activeLines.has(line.number)) {
+              builder.add(line.from, line.to, Decoration.replace({ widget: new DividerWidget() }));
+            }
+          }
+          pos = line.to + 1;
+        }
+      }
+      return builder.finish();
+    }
+  },
+  { decorations: (v) => v.decorations }
+);
+
 function selectedLineNumbers(view: EditorView): Set<number> {
   const activeLines = new Set<number>();
   for (const range of view.state.selection.ranges) {
@@ -658,6 +712,10 @@ function headingPrefixDecoration(
 
 /** Regex matching any markdown block prefix: bullets, numbered lists, or headings. */
 const MARKDOWN_PREFIX_RE = /^(\s*)(#{1,6}\s+|[-*+]\s+\[[ xX]\]\s+|[-*+]\s+|\d+\.\s+|[a-zA-Z]\.\s+)?/;
+
+function isDividerLine(lineText: string): boolean {
+  return /^\s*---\s*$/.test(lineText);
+}
 
 /**
  * Strips any existing markdown block prefix (heading or bullet) from a line.
@@ -813,6 +871,19 @@ function applyChecklist(view: EditorView, checked?: boolean) {
       return;
     }
     changes.push({ from: line.from + indent.length, to: line.from + prefixLen, insert: "- [ ] " });
+  });
+
+  if (changes.length > 0) dispatch({ changes });
+  exitVisualModeAfterFormatting(view);
+}
+
+function applyDivider(view: EditorView) {
+  const { state, dispatch } = view;
+  const changes: { from: number; to?: number; insert: string }[] = [];
+
+  iterateSelectedLines(state, (line) => {
+    const { indent, prefixLen } = stripMarkdownPrefix(line.text);
+    changes.push({ from: line.from + indent.length, to: line.from + prefixLen, insert: "---" });
   });
 
   if (changes.length > 0) dispatch({ changes });
