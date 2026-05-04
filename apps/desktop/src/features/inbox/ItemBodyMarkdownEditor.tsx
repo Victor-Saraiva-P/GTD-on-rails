@@ -377,7 +377,11 @@ function normalModeEscapeHandler(
   });
 }
 
-const bulletDecoration = Decoration.mark({ class: "cm-bullet-mark" });
+/** Returns the Decoration for a bullet at a given indent level (cycles 0→1→2→0…). */
+function bulletDecorationForLevel(indentSpaces: number): Decoration {
+  const level = Math.floor(indentSpaces / 2) % 3;
+  return Decoration.mark({ class: `cm-bullet-mark cm-bullet-level-${level}` });
+}
 
 const markdownBulletsPlugin = ViewPlugin.fromClass(
   class {
@@ -403,7 +407,9 @@ const markdownBulletsPlugin = ViewPlugin.fromClass(
             if (node.name === "ListMark") {
               const text = view.state.sliceDoc(node.from, node.to);
               if (/^[-*+]\s*$/.test(text)) {
-                builder.add(node.from, node.to, bulletDecoration);
+                const line = view.state.doc.lineAt(node.from);
+                const indent = line.text.match(/^(\s*)/)?.[1].length ?? 0;
+                builder.add(node.from, node.to, bulletDecorationForLevel(indent));
               }
             }
           }

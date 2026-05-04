@@ -81,11 +81,12 @@ function ReadOnlyInboxStuffDetails({ item }: Pick<InboxStuffDetailsProps, "item"
             const bulletMatch = line.match(/^(\s*)([-*+]\s+)(.*)/);
             if (bulletMatch) {
               const [_, indent, bullet, content] = bulletMatch;
+              const level = Math.floor(indent.length / 2) % 3;
               return (
                 <div className="inbox-detail__body-line" key={`${index}:${line}`}>
                   <span className="inbox-detail__line-number">{index + 1}</span>
                   <span className="inbox-detail__line-content">
-                    {indent}<span className="cm-bullet-mark">{bullet}</span>{content}
+                    {indent}<span className={`cm-bullet-mark cm-bullet-level-${level}`}>{bullet}</span>{content}
                   </span>
                 </div>
               );

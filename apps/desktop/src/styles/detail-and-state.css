@@ -246,21 +246,46 @@
   color: var(--list-accent);
 }
 
+/* Base: hide the original - * + glyph */
 .inbox-detail__codemirror .cm-bullet-mark,
 .inbox-detail__body-preview .cm-bullet-mark {
   color: transparent !important;
   position: relative;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1em;
+  height: 1em;
+  vertical-align: middle;
+  margin-right: 0.5em;
+  transform: translateY(0.1em);
 }
 
-.inbox-detail__codemirror .cm-bullet-mark::before,
-.inbox-detail__body-preview .cm-bullet-mark::before {
+/* Level 0 — filled circle • */
+.inbox-detail__codemirror .cm-bullet-level-0::before,
+.inbox-detail__body-preview .cm-bullet-level-0::before {
   content: "•";
   color: #c8c1bc;
-  position: absolute;
-  left: 0;
-  top: 0;
-  font-weight: bold;
+  font-size: 2em;
+  line-height: 0;
+}
+
+/* Level 1 — hollow circle ○ */
+.inbox-detail__codemirror .cm-bullet-level-1::before,
+.inbox-detail__body-preview .cm-bullet-level-1::before {
+  content: "◦";
+  color: #c8c1bc;
+  font-size: 2em;
+  line-height: 0;
+}
+
+/* Level 2 — small square ▪ */
+.inbox-detail__codemirror .cm-bullet-level-2::before,
+.inbox-detail__body-preview .cm-bullet-level-2::before {
+  content: "▪";
+  color: #c8c1bc;
+  font-size: 1.6em;
+  line-height: 0;
 }
 
 /* In the editor: dim the # marks */
