@@ -53,12 +53,19 @@ function isModifierKey(key: string): boolean {
   return key === "Shift" || key === "Control" || key === "Alt" || key === "Meta";
 }
 
+function isVimNormalModeTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+  return target.closest('[data-vim-mode="normal"]') !== null;
+}
+
 function isTypingTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) {
     return false;
   }
 
-  if (target.closest('[data-vim-mode="normal"]')) {
+  if (isVimNormalModeTarget(target)) {
     return false;
   }
 
@@ -190,6 +197,10 @@ function handleGlobalKeyDown(event: KeyboardEvent, config: KeydownConfig) {
     event.preventDefault();
     event.stopPropagation();
     config.openLeaderMenu();
+    return;
+  }
+
+  if (isVimNormalModeTarget(event.target)) {
     return;
   }
 
