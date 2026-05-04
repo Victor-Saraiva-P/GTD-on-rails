@@ -8,6 +8,7 @@ type InboxStuffDetailsProps = {
   onCommitEditing: (body: string) => Promise<void>;
   onExitEditingFromNormalMode: (body: string) => Promise<void>;
   onCancelEditing: () => void;
+  onVimModeChange?: (mode: "NORMAL" | "INSERT" | "VISUAL") => void;
 };
 
 function InboxDetailHeader({ item }: Pick<InboxStuffDetailsProps, "item">) {
@@ -34,6 +35,7 @@ function EditingInboxStuffDetails(props: EditingInboxStuffDetailsProps) {
         onAutosave={props.onAutosaveEditing}
         onSave={props.onCommitEditing}
         onExitNormalMode={props.onExitEditingFromNormalMode}
+        onVimModeChange={props.onVimModeChange}
       />
     </div>
   );

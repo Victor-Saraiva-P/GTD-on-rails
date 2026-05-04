@@ -34,7 +34,8 @@ function useTitleEditState() {
 
 function useBodyEditState() {
   const [editingBodyId, setEditingBodyId] = useState<string | null>(null);
-  return { editingBodyId, setEditingBodyId };
+  const [vimMode, setVimMode] = useState<"NORMAL" | "INSERT" | "VISUAL" | null>(null);
+  return { editingBodyId, setEditingBodyId, vimMode, setVimMode };
 }
 
 function usePendingBodyEditState() {
@@ -89,6 +90,7 @@ function clearTitleEdit(model: InboxModel) {
 
 function clearBodyEdit(model: InboxModel) {
   model.bodyEdit.setEditingBodyId(null);
+  model.bodyEdit.setVimMode(null);
 }
 
 function clearPendingBodyEdit(model: InboxModel) {
@@ -366,8 +368,10 @@ function buildInboxWorkspaceController(model: InboxModel, actions: InboxActions)
     ...controllerQueryState(model.query),
     ...controllerSelectionState(model),
     activeZone: model.zone.activeZone,
+    vimMode: model.bodyEdit.vimMode,
     setActiveZone: model.zone.setActiveZone,
     setEditingTitle: model.titleEdit.setEditingTitle,
+    setVimMode: model.bodyEdit.setVimMode,
     setPendingBodyEditId: model.pending.setPendingBodyEditId,
     setSelectedId: model.selection.setSelectedId
   };

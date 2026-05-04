@@ -96,10 +96,11 @@ body {
 
 .list-workspace__mode {
   margin-left: 8px;
-  background: #2b2927;
-  color: #f0ebe8;
+  background: #f0ebe8;
+  color: #1b1312;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  font-weight: 700;
 }
 
 .sync-status {

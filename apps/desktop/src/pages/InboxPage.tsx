@@ -179,6 +179,7 @@ function InboxDetailReady({ controller }: InboxPageProps) {
       onCommitEditing={(body) => commitStuffBody(controller, body)}
       onExitEditingFromNormalMode={(body) => exitBodyEditingFromNormalMode(controller, body)}
       onCancelEditing={controller.cancelEditingSelectedStuffBody}
+      onVimModeChange={controller.setVimMode}
     />
   ) : null;
 }
@@ -237,7 +238,7 @@ export function InboxPage({ controller }: InboxPageProps) {
   useInboxBindings(controller);
 
   return (
-    <ListWorkspace theme={inboxListTheme} currentLabel={inboxListTheme.label}>
+    <ListWorkspace theme={inboxListTheme} currentLabel={inboxListTheme.label} modeLabel={controller.vimMode ?? undefined}>
       <InboxPanes controller={controller} />
       <LeaderMenu />
     </ListWorkspace>
