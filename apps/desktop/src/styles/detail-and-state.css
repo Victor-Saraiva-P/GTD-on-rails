@@ -228,15 +228,6 @@
   color: #f0ebe8;
 }
 
-.inbox-detail__save-state {
-  justify-self: start;
-  color: #8a817c;
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
 .inbox-pane .list-pane__panel-index {
   display: none;
 }

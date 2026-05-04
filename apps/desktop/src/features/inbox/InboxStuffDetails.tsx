@@ -4,6 +4,7 @@ import { formatStuffCreatedAt, getStuffBodyPreviewLines, type Stuff } from "./ty
 type InboxStuffDetailsProps = {
   item: Stuff;
   editing: boolean;
+  onAutosaveEditing: (body: string) => Promise<void>;
   onCommitEditing: (body: string) => Promise<void>;
   onExitEditingFromNormalMode: (body: string) => Promise<void>;
   onCancelEditing: () => void;
@@ -30,6 +31,7 @@ function EditingInboxStuffDetails(props: EditingInboxStuffDetailsProps) {
       <ItemBodyMarkdownEditor
         itemId={props.item.id}
         initialBody={props.item.body}
+        onAutosave={props.onAutosaveEditing}
         onSave={props.onCommitEditing}
         onExitNormalMode={props.onExitEditingFromNormalMode}
       />

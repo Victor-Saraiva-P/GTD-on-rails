@@ -15,6 +15,7 @@ import {
 type ItemBodyMarkdownEditorProps = {
   itemId: string;
   initialBody: string | null | undefined;
+  onAutosave?: (body: string) => Promise<void>;
   onSave?: (body: string) => Promise<void>;
   onExitNormalMode?: (body: string) => Promise<void>;
   readOnly?: boolean;
@@ -22,7 +23,14 @@ type ItemBodyMarkdownEditorProps = {
 
 type ItemBodyMarkdownEditorFrameProps = {
   editorParentRef: RefObject<HTMLDivElement | null>;
-  saveState: MarkdownBodySaveState;
+};
+
+type AutosaveTracker = {
+  hasUnsavedChanges: boolean;
+  isSaving: boolean;
+  lastInsertExitAt: number | null;
+  lastInsertMode: boolean | null;
+  changeId: number;
 };
 
 function normalizedInitialBody(initialBody: string | null | undefined): string {
@@ -33,15 +41,10 @@ function normalizedInitialBody(initialBody: string | null | undefined): string {
   }
 }
 
-function SaveStateBadge({ saveState }: Pick<ItemBodyMarkdownEditorFrameProps, "saveState">) {
-  return <span className={`inbox-detail__save-state inbox-detail__save-state--${saveState}`}>{saveState}</span>;
-}
-
 function ItemBodyMarkdownEditorFrame(props: ItemBodyMarkdownEditorFrameProps) {
   return (
     <div className="inbox-detail__markdown-editor">
       <div ref={props.editorParentRef} className="inbox-detail__codemirror" />
-      <SaveStateBadge saveState={props.saveState} />
     </div>
   );
 }
@@ -53,13 +56,21 @@ function ItemBodyMarkdownEditorFrame(props: ItemBodyMarkdownEditorFrameProps) {
  */
 export function ItemBodyMarkdownEditor(props: ItemBodyMarkdownEditorProps) {
   const editorParentRef = useRef<HTMLDivElement | null>(null);
-  const [saveState, setSaveState] = useState<MarkdownBodySaveState>("saved");
+  const [, setSaveState] = useState<MarkdownBodySaveState>("saved");
+  const onAutosaveRef = useLatestCallbackRef(props.onAutosave);
   const onSaveRef = useLatestCallbackRef(props.onSave);
   const onExitNormalModeRef = useLatestCallbackRef(props.onExitNormalMode);
+  const autosaveTrackerRef = useRef<AutosaveTracker>({
+    hasUnsavedChanges: false,
+    isSaving: false,
+    lastInsertExitAt: null,
+    lastInsertMode: null,
+    changeId: 0
+  });
 
-  useCodeMirrorEditorView(editorParentRef, props, onSaveRef, onExitNormalModeRef, setSaveState);
+  useCodeMirrorEditorView(editorParentRef, props, autosaveTrackerRef, onAutosaveRef, onSaveRef, onExitNormalModeRef, setSaveState);
 
-  return <ItemBodyMarkdownEditorFrame editorParentRef={editorParentRef} saveState={saveState} />;
+  return <ItemBodyMarkdownEditorFrame editorParentRef={editorParentRef} />;
 }
 
 function useLatestCallbackRef<T>(callback: T) {
@@ -74,13 +85,31 @@ function useLatestCallbackRef<T>(callback: T) {
 function useCodeMirrorEditorView(
   editorParentRef: RefObject<HTMLDivElement | null>,
   props: ItemBodyMarkdownEditorProps,
+  autosaveTrackerRef: MutableRefObject<AutosaveTracker>,
+  onAutosaveRef: MutableRefObject<ItemBodyMarkdownEditorProps["onAutosave"]>,
   onSaveRef: MutableRefObject<ItemBodyMarkdownEditorProps["onSave"]>,
   onExitNormalModeRef: MutableRefObject<ItemBodyMarkdownEditorProps["onExitNormalMode"]>,
   setSaveState: (state: MarkdownBodySaveState) => void
 ) {
   const editorViewRef = useRef<EditorView | null>(null);
   useEffect(() => {
-    return mountEditorView(editorParentRef.current, editorViewRef, props, onSaveRef, onExitNormalModeRef, setSaveState);
+    autosaveTrackerRef.current = {
+      hasUnsavedChanges: false,
+      isSaving: false,
+      lastInsertExitAt: null,
+      lastInsertMode: null,
+      changeId: 0
+    };
+    return mountEditorView(
+      editorParentRef.current,
+      editorViewRef,
+      props,
+      autosaveTrackerRef,
+      onAutosaveRef,
+      onSaveRef,
+      onExitNormalModeRef,
+      setSaveState
+    );
   }, [props.itemId, props.readOnly]);
 }
 
@@ -88,6 +117,8 @@ function mountEditorView(
   parent: HTMLDivElement | null,
   editorViewRef: MutableRefObject<EditorView | null>,
   props: ItemBodyMarkdownEditorProps,
+  autosaveTrackerRef: MutableRefObject<AutosaveTracker>,
+  onAutosaveRef: MutableRefObject<ItemBodyMarkdownEditorProps["onAutosave"]>,
   onSaveRef: MutableRefObject<ItemBodyMarkdownEditorProps["onSave"]>,
   onExitNormalModeRef: MutableRefObject<ItemBodyMarkdownEditorProps["onExitNormalMode"]>,
   setSaveState: (state: MarkdownBodySaveState) => void
@@ -96,16 +127,24 @@ function mountEditorView(
     return undefined;
   }
 
-  const view = createEditorView(parent, props, onSaveRef, onExitNormalModeRef, setSaveState);
+  const view = createEditorView(parent, props, autosaveTrackerRef, onAutosaveRef, onSaveRef, onExitNormalModeRef, setSaveState);
   editorViewRef.current = view;
-  focusEditableEditorView(view, props.readOnly === true);
+  focusEditableEditorView(view, props.readOnly === true, autosaveTrackerRef);
   return () => destroyEditorView(view, editorViewRef);
 }
 
-function focusEditableEditorView(view: EditorView, readOnly: boolean) {
+function focusEditableEditorView(
+  view: EditorView,
+  readOnly: boolean,
+  autosaveTrackerRef: MutableRefObject<AutosaveTracker>
+) {
   if (!readOnly) {
     view.focus();
   }
+
+  const tracker = autosaveTrackerRef.current;
+  const insertMode = getCM(view)?.state?.vim?.insertMode ?? null;
+  tracker.lastInsertMode = insertMode;
 }
 
 function destroyEditorView(view: EditorView, editorViewRef: MutableRefObject<EditorView | null>) {
@@ -116,6 +155,8 @@ function destroyEditorView(view: EditorView, editorViewRef: MutableRefObject<Edi
 function createEditorView(
   parent: HTMLDivElement,
   props: ItemBodyMarkdownEditorProps,
+  autosaveTrackerRef: MutableRefObject<AutosaveTracker>,
+  onAutosaveRef: MutableRefObject<ItemBodyMarkdownEditorProps["onAutosave"]>,
   onSaveRef: MutableRefObject<ItemBodyMarkdownEditorProps["onSave"]>,
   onExitNormalModeRef: MutableRefObject<ItemBodyMarkdownEditorProps["onExitNormalMode"]>,
   setSaveState: (state: MarkdownBodySaveState) => void
@@ -124,7 +165,7 @@ function createEditorView(
     parent,
     state: EditorState.create({
       doc: normalizedInitialBody(props.initialBody),
-      extensions: editorExtensions(props.readOnly === true, onSaveRef, onExitNormalModeRef, setSaveState)
+      extensions: editorExtensions(props.readOnly === true, autosaveTrackerRef, onAutosaveRef, onSaveRef, onExitNormalModeRef, setSaveState)
     })
   });
   view.contentDOM.dataset.vimMode = isVimNormalMode(view) ? "normal" : "insert";
@@ -133,19 +174,23 @@ function createEditorView(
 
 function editorExtensions(
   readOnly: boolean,
+  autosaveTrackerRef: MutableRefObject<AutosaveTracker>,
+  onAutosaveRef: MutableRefObject<ItemBodyMarkdownEditorProps["onAutosave"]>,
   onSaveRef: MutableRefObject<ItemBodyMarkdownEditorProps["onSave"]>,
   onExitNormalModeRef: MutableRefObject<ItemBodyMarkdownEditorProps["onExitNormalMode"]>,
   setSaveState: (state: MarkdownBodySaveState) => void
 ) {
   return [
     vim(),
-    ...editorBehaviorExtensions(readOnly, onSaveRef, onExitNormalModeRef, setSaveState),
-    ...editorKeymapExtensions(onSaveRef, setSaveState)
+    ...editorBehaviorExtensions(readOnly, autosaveTrackerRef, onAutosaveRef, onSaveRef, onExitNormalModeRef, setSaveState),
+    ...editorKeymapExtensions(onAutosaveRef, onSaveRef, setSaveState)
   ];
 }
 
 function editorBehaviorExtensions(
   readOnly: boolean,
+  autosaveTrackerRef: MutableRefObject<AutosaveTracker>,
+  onAutosaveRef: MutableRefObject<ItemBodyMarkdownEditorProps["onAutosave"]>,
   onSaveRef: MutableRefObject<ItemBodyMarkdownEditorProps["onSave"]>,
   onExitNormalModeRef: MutableRefObject<ItemBodyMarkdownEditorProps["onExitNormalMode"]>,
   setSaveState: (state: MarkdownBodySaveState) => void
@@ -159,18 +204,96 @@ function editorBehaviorExtensions(
     EditorState.readOnly.of(readOnly),
     EditorView.editable.of(!readOnly),
     EditorView.lineWrapping,
-    EditorView.updateListener.of((update) => {
-      if (update.docChanged) {
-        setSaveState("unsaved");
-      }
-      update.view.contentDOM.dataset.vimMode = isVimNormalMode(update.view) ? "normal" : "insert";
-    }),
-    normalModeEscapeHandler(readOnly, onSaveRef, onExitNormalModeRef, setSaveState)
+    EditorView.updateListener.of((update) =>
+      autosaveAfterFinishedEdit(update.view, update.docChanged, readOnly, autosaveTrackerRef, onAutosaveRef, setSaveState)
+    ),
+    normalModeEscapeHandler(readOnly, autosaveTrackerRef, onSaveRef, onExitNormalModeRef, setSaveState)
   ];
+}
+
+function autosaveAfterFinishedEdit(
+  view: EditorView,
+  docChanged: boolean,
+  readOnly: boolean,
+  autosaveTrackerRef: MutableRefObject<AutosaveTracker>,
+  onAutosaveRef: MutableRefObject<ItemBodyMarkdownEditorProps["onAutosave"]>,
+  setSaveState: (state: MarkdownBodySaveState) => void
+) {
+  view.contentDOM.dataset.vimMode = isVimNormalMode(view) ? "normal" : "insert";
+  const tracker = autosaveTrackerRef.current;
+  const insertMode = getCM(view)?.state?.vim?.insertMode ?? null;
+  const exitedInsert = tracker.lastInsertMode === true && insertMode === false;
+  if (exitedInsert) {
+    tracker.lastInsertExitAt = Date.now();
+  }
+  updateAutosaveTracker(tracker, docChanged, insertMode, setSaveState);
+  if (readOnly || tracker.isSaving || !shouldAutosave(tracker, docChanged, exitedInsert, insertMode)) {
+    return;
+  }
+  void saveChangedMarkdownBody(view, tracker, onAutosaveRef.current, setSaveState);
+}
+
+function updateAutosaveTracker(
+  tracker: AutosaveTracker,
+  docChanged: boolean,
+  insertMode: boolean | null,
+  setSaveState: (state: MarkdownBodySaveState) => void
+) {
+  if (docChanged) {
+    tracker.hasUnsavedChanges = true;
+    tracker.changeId += 1;
+    setSaveState("unsaved");
+  }
+  if (insertMode !== null) {
+    tracker.lastInsertMode = insertMode;
+  }
+}
+
+function shouldAutosave(
+  tracker: AutosaveTracker,
+  docChanged: boolean,
+  exitedInsert: boolean,
+  insertMode: boolean | null
+): boolean {
+  return tracker.hasUnsavedChanges && (exitedInsert || (docChanged && insertMode === false));
+}
+
+async function saveChangedMarkdownBody(
+  view: EditorView,
+  tracker: AutosaveTracker,
+  onAutosave: ItemBodyMarkdownEditorProps["onAutosave"],
+  setSaveState: (state: MarkdownBodySaveState) => void
+) {
+  const saveVersion = tracker.changeId;
+  tracker.isSaving = true;
+  setSaveState("saving");
+  try {
+    await saveNormalizedMarkdownBody(view.state.doc.toString(), async (body) => onAutosave?.(body));
+    await runPostSaveEffects();
+    markAutosaveComplete(tracker, saveVersion, setSaveState);
+  } catch (error: unknown) {
+    console.error("Failed to autosave markdown body", error);
+    setSaveState("error");
+  } finally {
+    tracker.isSaving = false;
+  }
+}
+
+function markAutosaveComplete(
+  tracker: AutosaveTracker,
+  saveVersion: number,
+  setSaveState: (state: MarkdownBodySaveState) => void
+) {
+  if (tracker.changeId !== saveVersion) {
+    return;
+  }
+  tracker.hasUnsavedChanges = false;
+  setSaveState("saved");
 }
 
 function normalModeEscapeHandler(
   readOnly: boolean,
+  autosaveTrackerRef: MutableRefObject<AutosaveTracker>,
   onSaveRef: MutableRefObject<ItemBodyMarkdownEditorProps["onSave"]>,
   onExitNormalModeRef: MutableRefObject<ItemBodyMarkdownEditorProps["onExitNormalMode"]>,
   setSaveState: (state: MarkdownBodySaveState) => void
@@ -178,6 +301,14 @@ function normalModeEscapeHandler(
   return EditorView.domEventHandlers({
     keydown: (event, view) => {
       if (readOnly || event.key !== "Escape" || !isVimNormalMode(view)) {
+        return false;
+      }
+
+      if (autosaveTrackerRef.current.lastInsertMode === true) {
+        return false;
+      }
+
+      if (isRecentInsertExit(autosaveTrackerRef.current)) {
         return false;
       }
 
@@ -189,6 +320,13 @@ function normalModeEscapeHandler(
       return true;
     }
   });
+}
+
+function isRecentInsertExit(tracker: AutosaveTracker): boolean {
+  if (tracker.lastInsertExitAt === null) {
+    return false;
+  }
+  return Date.now() - tracker.lastInsertExitAt < 150;
 }
 
 function isVimNormalMode(view: EditorView): boolean {
@@ -210,21 +348,23 @@ async function saveAndExitOnNormalMode(
 }
 
 function editorKeymapExtensions(
+  onAutosaveRef: MutableRefObject<ItemBodyMarkdownEditorProps["onAutosave"]>,
   onSaveRef: MutableRefObject<ItemBodyMarkdownEditorProps["onSave"]>,
   setSaveState: (state: MarkdownBodySaveState) => void
 ) {
   return [
-    keymap.of([{ key: "Mod-s", run: saveMarkdownBodyCommand(onSaveRef, setSaveState) }]),
+    keymap.of([{ key: "Mod-s", run: saveMarkdownBodyCommand(onAutosaveRef, onSaveRef, setSaveState) }]),
     keymap.of([...historyKeymap, ...defaultKeymap])
   ];
 }
 
 function saveMarkdownBodyCommand(
+  onAutosaveRef: MutableRefObject<ItemBodyMarkdownEditorProps["onAutosave"]>,
   onSaveRef: MutableRefObject<ItemBodyMarkdownEditorProps["onSave"]>,
   setSaveState: (state: MarkdownBodySaveState) => void
 ) {
   return createSaveItemBodyCommand(
-    async (body) => saveMarkdownBody(onSaveRef.current, body, setSaveState),
+    async (body) => saveMarkdownBody(onAutosaveRef.current ?? onSaveRef.current, body, setSaveState),
     runPostSaveEffects,
     () => setSaveState("error")
   );

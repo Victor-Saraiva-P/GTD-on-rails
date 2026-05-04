@@ -306,8 +306,21 @@ function resetWorkspaceAction(model: InboxModel) {
   model.zone.setActiveZone("inbox-list");
 }
 
+async function autosaveEditingSelectedStuffBodyAction(model: InboxModel, body: string) {
+  const selectedItem = model.selection.selectedItem;
+
+  if (!selectedItem || model.bodyEdit.editingBodyId !== selectedItem.id || selectedItem.body === body) {
+    return;
+  }
+
+  const updatedStuff = await model.query.updateStuffBody(selectedItem, body);
+  model.selection.setSelectedId(updatedStuff.id);
+  clearPendingBodyEdit(model);
+}
+
 function useInboxWorkspaceActions(model: InboxModel) {
   return {
+    autosaveEditingSelectedStuffBody: (body: string) => autosaveEditingSelectedStuffBodyAction(model, body),
     cancelEditingSelectedStuff: () => cancelEditingSelectedStuffAction(model),
     cancelEditingSelectedStuffBody: () => clearBodyEdit(model),
     commitEditingSelectedStuff: () => commitEditingSelectedStuffAction(model),

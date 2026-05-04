@@ -44,6 +44,7 @@ body {
 .list-workspace {
   --list-accent: #c85a53;
   --list-accent-rgb: 200, 90, 83;
+  height: 100vh;
   min-height: 100vh;
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;

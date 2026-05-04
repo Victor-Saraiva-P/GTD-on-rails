@@ -59,6 +59,10 @@ function commitStuffBody(controller: InboxWorkspaceController, body: string): Pr
   return controller.commitEditingSelectedStuffBody(body);
 }
 
+function autosaveStuffBody(controller: InboxWorkspaceController, body: string): Promise<void> {
+  return controller.autosaveEditingSelectedStuffBody(body);
+}
+
 async function exitBodyEditingToInbox(
   controller: InboxWorkspaceController,
   setActiveScreen: (screen: ScreenId) => void,
@@ -80,6 +84,7 @@ function StuffDetailReady({ controller, setActiveScreen }: StuffDetailReadyProps
     <InboxStuffDetails
       item={selectedItem}
       editing={controller.editingBodyId === selectedItem.id}
+      onAutosaveEditing={(body) => autosaveStuffBody(controller, body)}
       onCommitEditing={(body) => commitStuffBody(controller, body)}
       onExitEditingFromNormalMode={(body) => exitBodyEditingToInbox(controller, setActiveScreen, body)}
       onCancelEditing={controller.cancelEditingSelectedStuffBody}

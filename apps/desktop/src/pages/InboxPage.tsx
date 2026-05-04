@@ -130,6 +130,10 @@ function commitStuffBody(controller: InboxWorkspaceController, body: string): Pr
   return controller.commitEditingSelectedStuffBody(body);
 }
 
+function autosaveStuffBody(controller: InboxWorkspaceController, body: string): Promise<void> {
+  return controller.autosaveEditingSelectedStuffBody(body);
+}
+
 async function exitBodyEditingFromNormalMode(controller: InboxWorkspaceController, body: string): Promise<void> {
   await controller.commitEditingSelectedStuffBody(body);
   controller.setActiveZone("inbox-list");
@@ -171,6 +175,7 @@ function InboxDetailReady({ controller }: InboxPageProps) {
     <InboxStuffDetails
       item={selectedItem}
       editing={controller.editingBodyId === selectedItem.id}
+      onAutosaveEditing={(body) => autosaveStuffBody(controller, body)}
       onCommitEditing={(body) => commitStuffBody(controller, body)}
       onExitEditingFromNormalMode={(body) => exitBodyEditingFromNormalMode(controller, body)}
       onCancelEditing={controller.cancelEditingSelectedStuffBody}
