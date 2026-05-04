@@ -4,7 +4,7 @@ import { syntaxTree } from "@codemirror/language";
 import { RangeSetBuilder } from "@codemirror/state";
 import { EditorState } from "@codemirror/state";
 import { Decoration, drawSelection, EditorView, highlightActiveLine, keymap, lineNumbers, ViewPlugin, type ViewUpdate, type DecorationSet } from "@codemirror/view";
-import { getCM, vim } from "@replit/codemirror-vim";
+import { getCM, Vim, vim, type CodeMirrorV } from "@replit/codemirror-vim";
 import { useEffect, useRef, useState, type MutableRefObject, type RefObject } from "react";
 import {
   createSaveItemBodyCommand,
@@ -27,6 +27,7 @@ export type ItemBodyMarkdownEditorProps = {
 export const FORMAT_BULLET_EVENT = "gtd:format-bullet";
 export const FORMAT_HEADING_EVENT = "gtd:format-heading";
 export const FORMAT_NUMBERED_LIST_EVENT = "gtd:format-numbered-list";
+export const FORMAT_NORMAL_TEXT_EVENT = "gtd:format-normal-text";
 
 type ItemBodyMarkdownEditorFrameProps = {
   editorParentRef: RefObject<HTMLDivElement | null>;
@@ -134,7 +135,7 @@ function useCodeMirrorEditorView(
   useEffect(() => {
     const handler = () => {
       if (editorViewRef.current) {
-        toggleBulletPoints(editorViewRef.current);
+        applyBulletPoints(editorViewRef.current);
       }
     };
     window.addEventListener(FORMAT_BULLET_EVENT, handler);
@@ -144,7 +145,7 @@ function useCodeMirrorEditorView(
   useEffect(() => {
     const handler = () => {
       if (editorViewRef.current) {
-        toggleNumberedList(editorViewRef.current);
+        applyNumberedList(editorViewRef.current);
       }
     };
     window.addEventListener(FORMAT_NUMBERED_LIST_EVENT, handler);
@@ -152,11 +153,21 @@ function useCodeMirrorEditorView(
   }, []);
 
   useEffect(() => {
+    const handler = () => {
+      if (editorViewRef.current) {
+        applyNormalText(editorViewRef.current);
+      }
+    };
+    window.addEventListener(FORMAT_NORMAL_TEXT_EVENT, handler);
+    return () => window.removeEventListener(FORMAT_NORMAL_TEXT_EVENT, handler);
+  }, []);
+
+  useEffect(() => {
     const handler = (e: Event) => {
       if (!editorViewRef.current) return;
       const level = (e as CustomEvent<{ level: 1 | 2 | 3 }>).detail?.level;
       if (level >= 1 && level <= 3) {
-        toggleHeading(editorViewRef.current, level as 1 | 2 | 3);
+        applyHeading(editorViewRef.current, level as 1 | 2 | 3);
       }
     };
     window.addEventListener(FORMAT_HEADING_EVENT, handler);
@@ -562,7 +573,14 @@ function iterateSelectedLines(
   }
 }
 
-function toggleBulletPoints(view: EditorView) {
+function exitVisualModeAfterFormatting(view: EditorView) {
+  const cm = getCM(view);
+  if (cm?.state?.vim?.visualMode) {
+    Vim.exitVisualMode(cm as CodeMirrorV);
+  }
+}
+
+function applyBulletPoints(view: EditorView) {
   const { state, dispatch } = view;
   const changes: { from: number; to?: number; insert: string }[] = [];
 
@@ -571,39 +589,39 @@ function toggleBulletPoints(view: EditorView) {
     const existingPrefix = line.text.slice(indent.length, prefixLen);
     const isBullet = /^[-*+]\s+/.test(existingPrefix);
 
-    if (isBullet) {
-      // remove bullet, keep other prefixes intact — strip bullet only
-      changes.push({ from: line.from + indent.length, to: line.from + prefixLen, insert: "" });
-    } else if (content.trim().length > 0 || startLine === endLine) {
+    if (!isBullet && (content.trim().length > 0 || startLine === endLine)) {
       // replace any heading prefix with bullet
       changes.push({ from: line.from + indent.length, to: line.from + prefixLen, insert: "- " });
     }
   });
 
   if (changes.length > 0) dispatch({ changes });
+  exitVisualModeAfterFormatting(view);
 }
 
-function toggleNumberedList(view: EditorView) {
+function applyNumberedList(view: EditorView) {
   const { state, dispatch } = view;
   const changes: { from: number; to?: number; insert: string }[] = [];
+  let number = 1;
 
   iterateSelectedLines(state, (line, startLine, endLine) => {
     const { indent, prefixLen, content } = stripMarkdownPrefix(line.text);
     const existingPrefix = line.text.slice(indent.length, prefixLen);
-    const isNumbered = /^\d+\.\s+/.test(existingPrefix);
-    const number = changes.length + 1;
+    const numberedPrefix = `${number}. `;
 
-    if (isNumbered) {
-      changes.push({ from: line.from + indent.length, to: line.from + prefixLen, insert: "" });
-    } else if (content.trim().length > 0 || startLine === endLine) {
-      changes.push({ from: line.from + indent.length, to: line.from + prefixLen, insert: `${number}. ` });
+    if (content.trim().length > 0 || startLine === endLine) {
+      if (existingPrefix !== numberedPrefix) {
+        changes.push({ from: line.from + indent.length, to: line.from + prefixLen, insert: numberedPrefix });
+      }
+      number += 1;
     }
   });
 
   if (changes.length > 0) dispatch({ changes });
+  exitVisualModeAfterFormatting(view);
 }
 
-function toggleHeading(view: EditorView, level: 1 | 2 | 3) {
+function applyHeading(view: EditorView, level: 1 | 2 | 3) {
   const { state, dispatch } = view;
   const hashes = "#".repeat(level) + " ";
   const changes: { from: number; to?: number; insert: string }[] = [];
@@ -613,16 +631,30 @@ function toggleHeading(view: EditorView, level: 1 | 2 | 3) {
     const existingPrefix = line.text.slice(indent.length, prefixLen);
     const sameHeading = existingPrefix === hashes;
 
-    if (sameHeading) {
-      // toggle off: remove the heading prefix
-      changes.push({ from: line.from + indent.length, to: line.from + prefixLen, insert: "" });
-    } else if (content.trim().length > 0 || startLine === endLine) {
+    if (!sameHeading && (content.trim().length > 0 || startLine === endLine)) {
       // replace existing prefix (bullet or different heading) with new heading
       changes.push({ from: line.from + indent.length, to: line.from + prefixLen, insert: hashes });
     }
   });
 
   if (changes.length > 0) dispatch({ changes });
+  exitVisualModeAfterFormatting(view);
+}
+
+function applyNormalText(view: EditorView) {
+  const { state, dispatch } = view;
+  const changes: { from: number; to?: number; insert: string }[] = [];
+
+  iterateSelectedLines(state, (line, startLine, endLine) => {
+    const { indent, prefixLen, content } = stripMarkdownPrefix(line.text);
+    const hasPrefix = prefixLen > indent.length;
+    if (hasPrefix && (content.trim().length > 0 || startLine === endLine)) {
+      changes.push({ from: line.from + indent.length, to: line.from + prefixLen, insert: "" });
+    }
+  });
+
+  if (changes.length > 0) dispatch({ changes });
+  exitVisualModeAfterFormatting(view);
 }
 
 function isRecentInsertExit(tracker: AutosaveTracker): boolean {
