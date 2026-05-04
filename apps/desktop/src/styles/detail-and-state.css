@@ -161,11 +161,11 @@
   caret-color: transparent !important;
   padding-left: 0;
   padding-top: 0;
+  margin-left: calc(-1 * var(--inbox-line-text-shift));
 }
 
 .inbox-detail__codemirror .cm-line {
   padding-left: 0;
-  transform: translateX(calc(-1 * var(--inbox-line-text-shift)));
 }
 
 .inbox-detail__codemirror .cm-cursor,
