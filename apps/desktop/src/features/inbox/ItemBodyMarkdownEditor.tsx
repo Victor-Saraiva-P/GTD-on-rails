@@ -30,6 +30,8 @@ export const FORMAT_NUMBERED_LIST_EVENT = "gtd:format-numbered-list";
 export const FORMAT_NORMAL_TEXT_EVENT = "gtd:format-normal-text";
 export const FORMAT_LETTERED_LIST_EVENT = "gtd:format-lettered-list";
 export const FORMAT_CHECKLIST_EVENT = "gtd:format-checklist";
+export const FORMAT_CHECKLIST_CHECKED_EVENT = "gtd:format-checklist-checked";
+export const FORMAT_CHECKLIST_UNCHECKED_EVENT = "gtd:format-checklist-unchecked";
 
 type ItemBodyMarkdownEditorFrameProps = {
   editorParentRef: RefObject<HTMLDivElement | null>;
@@ -182,6 +184,26 @@ function useCodeMirrorEditorView(
     };
     window.addEventListener(FORMAT_CHECKLIST_EVENT, handler);
     return () => window.removeEventListener(FORMAT_CHECKLIST_EVENT, handler);
+  }, []);
+
+  useEffect(() => {
+    const handler = () => {
+      if (editorViewRef.current) {
+        applyChecklist(editorViewRef.current, true);
+      }
+    };
+    window.addEventListener(FORMAT_CHECKLIST_CHECKED_EVENT, handler);
+    return () => window.removeEventListener(FORMAT_CHECKLIST_CHECKED_EVENT, handler);
+  }, []);
+
+  useEffect(() => {
+    const handler = () => {
+      if (editorViewRef.current) {
+        applyChecklist(editorViewRef.current, false);
+      }
+    };
+    window.addEventListener(FORMAT_CHECKLIST_UNCHECKED_EVENT, handler);
+    return () => window.removeEventListener(FORMAT_CHECKLIST_UNCHECKED_EVENT, handler);
   }, []);
 
   useEffect(() => {
@@ -767,7 +789,7 @@ function applyLetteredList(view: EditorView) {
   exitVisualModeAfterFormatting(view);
 }
 
-function applyChecklist(view: EditorView) {
+function applyChecklist(view: EditorView, checked?: boolean) {
   const { state, dispatch } = view;
   const changes: { from: number; to?: number; insert: string }[] = [];
 
@@ -777,7 +799,15 @@ function applyChecklist(view: EditorView) {
       return;
     }
     const existingPrefix = line.text.slice(indent.length, prefixLen);
-    if (/^[-*+]\s+\[[ xX]\]\s+/.test(existingPrefix)) {
+    if (/^[-*+]\s+\[[ xX]\]\s+/.test(existingPrefix) && checked === undefined) {
+      return;
+    }
+    if (checked === true) {
+      changes.push({ from: line.from + indent.length, to: line.from + prefixLen, insert: "- [x] " });
+      return;
+    }
+    if (checked === false) {
+      changes.push({ from: line.from + indent.length, to: line.from + prefixLen, insert: "- [ ] " });
       return;
     }
     changes.push({ from: line.from + indent.length, to: line.from + prefixLen, insert: "- [ ] " });
