@@ -48,3 +48,16 @@
 
 - Structured JSON when logging for debugging / observability.
 - Plain text only for user-facing CLI output.
+
+## Commits
+
+- Use Conventional Commit subjects: `feat:`, `fix:`, `test:`, `chore:`,
+  `docs:`, or the closest accurate type.
+- Write the subject in lowercase imperative style after the type.
+- Keep the subject specific and concise: describe the project behavior or
+  area changed, not the implementation mechanics.
+- Commit unrelated concerns separately. Code fixes, test-only work, and
+  documentation updates should be separate commits unless one cannot stand
+  without the other.
+- Before committing, check `git status --short` and stage only files that
+  belong to the intended change.
