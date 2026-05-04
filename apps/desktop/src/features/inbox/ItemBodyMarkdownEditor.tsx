@@ -394,6 +394,14 @@ function bulletDecorationForLevel(indentSpaces: number): Decoration {
   return Decoration.mark({ class: `cm-bullet-mark cm-bullet-level-${level}` });
 }
 
+function bulletMarkerTo(view: EditorView, from: number, to: number): number {
+  const marker = view.state.sliceDoc(from, to);
+  if (/\s$/.test(marker)) {
+    return to;
+  }
+  return view.state.sliceDoc(to, to + 1) === " " ? to + 1 : to;
+}
+
 const markdownBulletsPlugin = ViewPlugin.fromClass(
   class {
     decorations: DecorationSet;
@@ -420,7 +428,7 @@ const markdownBulletsPlugin = ViewPlugin.fromClass(
               if (/^[-*+]\s*$/.test(text)) {
                 const line = view.state.doc.lineAt(node.from);
                 const indent = line.text.match(/^(\s*)/)?.[1].length ?? 0;
-                builder.add(node.from, node.to, bulletDecorationForLevel(indent));
+                builder.add(node.from, bulletMarkerTo(view, node.from, node.to), bulletDecorationForLevel(indent));
               }
             }
           }
