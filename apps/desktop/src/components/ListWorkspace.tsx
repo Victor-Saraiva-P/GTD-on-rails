@@ -6,6 +6,7 @@ import { SyncStatusIndicators } from "../features/sync-status/SyncStatusIndicato
 type ListWorkspaceProps = PropsWithChildren<{
   theme: ListTheme;
   currentLabel: string;
+  modeLabel?: string | null;
 }>;
 
 function buildWorkspaceStyle(theme: ListTheme): CSSProperties {
@@ -15,7 +16,7 @@ function buildWorkspaceStyle(theme: ListTheme): CSSProperties {
   } as CSSProperties;
 }
 
-function ListWorkspaceFooter({ currentLabel }: Pick<ListWorkspaceProps, "currentLabel">) {
+function ListWorkspaceFooter({ currentLabel, modeLabel }: Pick<ListWorkspaceProps, "currentLabel" | "modeLabel">) {
   return (
     <footer className="list-workspace__footer" aria-label="Current list">
       <div className="list-workspace__brand">
@@ -27,6 +28,12 @@ function ListWorkspaceFooter({ currentLabel }: Pick<ListWorkspaceProps, "current
         <span>{currentLabel}</span>
       </div>
 
+      {modeLabel ? (
+        <div className="list-workspace__mode" aria-label="Editing mode">
+          <span>{modeLabel}</span>
+        </div>
+      ) : null}
+
       <SyncStatusIndicators />
     </footer>
   );
@@ -37,11 +44,11 @@ function ListWorkspaceFooter({ currentLabel }: Pick<ListWorkspaceProps, "current
  *
  * @example <ListWorkspace theme={inboxListTheme} currentLabel="Inbox">...</ListWorkspace>
  */
-export function ListWorkspace({ theme, currentLabel, children }: ListWorkspaceProps) {
+export function ListWorkspace({ theme, currentLabel, modeLabel, children }: ListWorkspaceProps) {
   return (
     <main className="list-workspace" style={buildWorkspaceStyle(theme)}>
       <div className="list-workspace__viewport">{children}</div>
-      <ListWorkspaceFooter currentLabel={currentLabel} />
+      <ListWorkspaceFooter currentLabel={currentLabel} modeLabel={modeLabel} />
     </main>
   );
 }

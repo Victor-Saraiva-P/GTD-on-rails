@@ -96,10 +96,15 @@
   }
 
   .list-workspace__brand,
-  .list-workspace__current {
+  .list-workspace__current,
+  .list-workspace__mode {
     width: 100%;
     justify-content: flex-start;
     min-height: 40px;
+  }
+
+  .list-workspace__mode {
+    margin-left: 0;
   }
 }
 

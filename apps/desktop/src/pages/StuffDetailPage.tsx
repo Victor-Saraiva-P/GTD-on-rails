@@ -1,8 +1,9 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ListPane } from "../components/ListPane";
 import { ListWorkspace } from "../components/ListWorkspace";
 import { RetryState } from "../components/RetryState";
 import { InboxStuffDetails } from "../features/inbox/InboxStuffDetails";
+import { formatStuffBodyVimMode, type StuffBodyVimMode } from "../features/inbox/stuffBodyVim";
 import type { InboxWorkspaceController } from "../features/inbox/useInboxWorkspaceController";
 import { LeaderMenu } from "../features/keybinds/LeaderMenu";
 import { useActiveScreen, useKeybindScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
@@ -11,6 +12,7 @@ import { stuffDetailListTheme } from "../features/lists/listThemes";
 
 type StuffDetailPageProps = {
   controller: InboxWorkspaceController;
+  onEditorModeChange?: (mode: StuffBodyVimMode | null) => void;
 };
 
 function stuffDetailBinding(id: string, key: string, description: string, runKeybind: () => void, leader = false): KeybindDefinition {
@@ -61,7 +63,7 @@ function commitStuffBody(controller: InboxWorkspaceController) {
   });
 }
 
-function StuffDetailReady({ controller }: StuffDetailPageProps) {
+function StuffDetailReady({ controller, onEditorModeChange }: StuffDetailPageProps) {
   const selectedItem = controller.selectedItem;
 
   return selectedItem ? (
@@ -72,11 +74,12 @@ function StuffDetailReady({ controller }: StuffDetailPageProps) {
       onEditingBodyChange={controller.setEditingBody}
       onCommitEditing={() => commitStuffBody(controller)}
       onCancelEditing={() => commitStuffBody(controller)}
+      onModeChange={onEditorModeChange}
     />
   ) : null;
 }
 
-function StuffDetailBody({ controller }: StuffDetailPageProps) {
+function StuffDetailBody({ controller, onEditorModeChange }: StuffDetailPageProps) {
   if (controller.isLoading) {
     return <p className="pane-state">Loading stuff details...</p>;
   }
@@ -85,13 +88,17 @@ function StuffDetailBody({ controller }: StuffDetailPageProps) {
     return <RetryState message={controller.errorMessage} onRetry={controller.reload} />;
   }
 
-  return controller.selectedItem ? <StuffDetailReady controller={controller} /> : <p className="pane-state">Select a stuff in inbox to inspect its details.</p>;
+  return controller.selectedItem ? (
+    <StuffDetailReady controller={controller} onEditorModeChange={onEditorModeChange} />
+  ) : (
+    <p className="pane-state">Select a stuff in inbox to inspect its details.</p>
+  );
 }
 
-function StuffDetailPane({ controller }: StuffDetailPageProps) {
+function StuffDetailPane({ controller, onEditorModeChange }: StuffDetailPageProps) {
   return (
     <ListPane title="Stuff Detail" active bodyClassName="list-pane__body--detail">
-      <StuffDetailBody controller={controller} />
+      <StuffDetailBody controller={controller} onEditorModeChange={onEditorModeChange} />
     </ListPane>
   );
 }
@@ -102,14 +109,15 @@ function StuffDetailPane({ controller }: StuffDetailPageProps) {
  * @example <StuffDetailPage controller={controller} />
  */
 export function StuffDetailPage({ controller }: StuffDetailPageProps) {
+  const [editorMode, setEditorMode] = useState<StuffBodyVimMode | null>(null);
   useKeybindScreen("stuff-detail");
   useStuffDetailZone(controller);
   useStuffDetailBindings(controller);
 
   return (
-    <ListWorkspace theme={stuffDetailListTheme} currentLabel={stuffDetailListTheme.label}>
+    <ListWorkspace theme={stuffDetailListTheme} currentLabel={stuffDetailListTheme.label} modeLabel={formatStuffBodyVimMode(editorMode)}>
       <section className="stuff-detail-layout" aria-label="Stuff detail">
-        <StuffDetailPane controller={controller} />
+        <StuffDetailPane controller={controller} onEditorModeChange={setEditorMode} />
       </section>
       <LeaderMenu />
     </ListWorkspace>

@@ -70,7 +70,8 @@ body {
 }
 
 .list-workspace__brand,
-.list-workspace__current {
+.list-workspace__current,
+.list-workspace__mode {
   min-height: 100%;
   display: inline-flex;
   align-items: center;
@@ -90,6 +91,14 @@ body {
   background: rgba(var(--list-accent-rgb), 0.94);
   border-left: 0;
   color: #1b1312;
+}
+
+.list-workspace__mode {
+  margin-left: 8px;
+  background: #2b2927;
+  color: #f0ebe8;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .sync-status {
