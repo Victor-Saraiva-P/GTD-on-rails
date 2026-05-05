@@ -35,6 +35,7 @@ export const FORMAT_CHECKLIST_UNCHECKED_EVENT = "gtd:format-checklist-unchecked"
 export const FORMAT_DIVIDER_EVENT = "gtd:format-divider";
 export const FORMAT_QUOTE_EVENT = "gtd:format-quote";
 export const FORMAT_BOLD_EVENT = "gtd:format-bold";
+export const FORMAT_ITALIC_EVENT = "gtd:format-italic";
 
 type ItemBodyMarkdownEditorFrameProps = {
   editorParentRef: RefObject<HTMLDivElement | null>;
@@ -240,6 +241,16 @@ function useCodeMirrorEditorView(
   }, []);
 
   useEffect(() => {
+    const handler = () => {
+      if (editorViewRef.current) {
+        applyItalic(editorViewRef.current);
+      }
+    };
+    window.addEventListener(FORMAT_ITALIC_EVENT, handler);
+    return () => window.removeEventListener(FORMAT_ITALIC_EVENT, handler);
+  }, []);
+
+  useEffect(() => {
     const handler = (e: Event) => {
       if (!editorViewRef.current) return;
       const level = (e as CustomEvent<{ level: 1 | 2 | 3 }>).detail?.level;
@@ -355,6 +366,7 @@ function editorBehaviorExtensions(
     markdownDividerPlugin,
     markdownQuotePlugin,
     markdownBoldPlugin,
+    markdownItalicPlugin,
     EditorView.updateListener.of((update) =>
       autosaveAfterFinishedEdit(update.view, update.docChanged, readOnly, autosaveTrackerRef, onAutosaveRef, onVimModeChangeRef, setSaveState)
     ),
@@ -1120,6 +1132,68 @@ function applyBold(view: EditorView) {
             {from: range.to, insert: "**"}
           ],
           range: EditorSelection.range(range.from + 2, range.to + 2)
+        };
+      }
+    }
+  });
+
+  dispatch(state.update(transaction));
+  exitVisualModeAfterFormatting(view);
+}
+
+function applyItalic(view: EditorView) {
+  const { state, dispatch } = view;
+
+  const transaction = state.changeByRange(range => {
+    if (range.empty) {
+      const before = state.sliceDoc(Math.max(0, range.from - 1), range.from);
+      const after = state.sliceDoc(range.from, Math.min(state.doc.length, range.from + 1));
+      if (before === "*" && after === "*") {
+        return {
+          changes: [
+            {from: range.from - 1, to: range.from, insert: ""},
+            {from: range.from, to: range.from + 1, insert: ""}
+          ],
+          range: EditorSelection.cursor(range.from - 1)
+        };
+      } else {
+        return {
+          changes: [{from: range.from, insert: "**"}],
+          range: EditorSelection.cursor(range.from + 1)
+        };
+      }
+    } else {
+      const selectedText = state.sliceDoc(range.from, range.to);
+      const isSelectedItalic = selectedText.startsWith("*") && selectedText.endsWith("*") && selectedText.length >= 2 && !selectedText.startsWith("**");
+      
+      if (isSelectedItalic) {
+        return {
+          changes: [
+            {from: range.from, to: range.from + 1, insert: ""},
+            {from: range.to - 1, to: range.to, insert: ""}
+          ],
+          range: EditorSelection.range(range.from, range.to - 2)
+        };
+      }
+
+      const before = state.sliceDoc(Math.max(0, range.from - 1), range.from);
+      const after = state.sliceDoc(range.to, Math.min(state.doc.length, range.to + 1));
+      
+      if (before === "*" && after === "*") {
+        return {
+          changes: [
+            {from: range.from - 1, to: range.from, insert: ""},
+            {from: range.to, to: range.to + 1, insert: ""}
+          ],
+          range: EditorSelection.range(range.from - 1, range.to - 1)
+        };
+      } else {
+        return {
+          changes: [
+            {from: range.from, insert: "*"},
+            {from: range.to, insert: "*"}
+          ],
+          range: EditorSelection.range(range.from + 1, range.to + 1)
         };
       }
     }

@@ -434,3 +434,17 @@
 .inbox-detail__body-preview .cm-bold-text {
   font-weight: bold;
 }
+
+/* Italic marks and text */
+.inbox-detail__codemirror .cm-italic-mark {
+  color: rgba(200, 193, 188, 0.4);
+}
+
+.inbox-detail__body-preview .cm-italic-mark {
+  display: none;
+}
+
+.inbox-detail__codemirror .cm-italic-text,
+.inbox-detail__body-preview .cm-italic-text {
+  font-style: italic;
+}
