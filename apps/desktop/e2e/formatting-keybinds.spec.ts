@@ -113,7 +113,10 @@ test("space t b applies bold formatting to selection", async ({ page }) => {
   await page.keyboard.type("Bold text");
   await page.keyboard.press("Escape");
 
-  // Select "Bold" using vim keys (assuming start of line)
+  // Go back to start of line
+  await page.keyboard.press("0");
+
+  // Select "Bold" using vim keys
   // 'v' for visual mode, 'e' to end of word
   await page.keyboard.press("v");
   await page.keyboard.press("e");
