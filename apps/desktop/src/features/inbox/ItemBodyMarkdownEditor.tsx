@@ -36,6 +36,7 @@ export const FORMAT_DIVIDER_EVENT = "gtd:format-divider";
 export const FORMAT_QUOTE_EVENT = "gtd:format-quote";
 export const FORMAT_BOLD_EVENT = "gtd:format-bold";
 export const FORMAT_ITALIC_EVENT = "gtd:format-italic";
+export const FORMAT_CODE_EVENT = "gtd:format-code";
 export const FORMAT_CLEAR_INLINE_EVENT = "gtd:format-clear-inline";
 
 type ItemBodyMarkdownEditorFrameProps = {
@@ -262,6 +263,16 @@ function useCodeMirrorEditorView(
   }, []);
 
   useEffect(() => {
+    const handler = () => {
+      if (editorViewRef.current) {
+        applyCode(editorViewRef.current);
+      }
+    };
+    window.addEventListener(FORMAT_CODE_EVENT, handler);
+    return () => window.removeEventListener(FORMAT_CODE_EVENT, handler);
+  }, []);
+
+  useEffect(() => {
     const handler = (e: Event) => {
       if (!editorViewRef.current) return;
       const level = (e as CustomEvent<{ level: 1 | 2 | 3 }>).detail?.level;
@@ -378,6 +389,7 @@ function editorBehaviorExtensions(
     markdownQuotePlugin,
     markdownBoldPlugin,
     markdownItalicPlugin,
+    markdownCodePlugin,
     EditorView.updateListener.of((update) =>
       autosaveAfterFinishedEdit(update.view, update.docChanged, readOnly, autosaveTrackerRef, onAutosaveRef, onVimModeChangeRef, setSaveState)
     ),
@@ -931,6 +943,77 @@ const markdownItalicPlugin = ViewPlugin.fromClass(
   { decorations: (v) => v.decorations }
 );
 
+const codeTextDecoration = Decoration.mark({ class: "cm-code-text" });
+const codeMarkDecoration = Decoration.mark({ class: "cm-code-mark" });
+const hiddenCodeMark = Decoration.replace({});
+
+const markdownCodePlugin = ViewPlugin.fromClass(
+  class {
+    decorations: DecorationSet;
+
+    constructor(view: EditorView) {
+      this.decorations = this.buildDecorations(view);
+    }
+
+    update(update: ViewUpdate) {
+      if (update.docChanged || update.selectionSet || update.viewportChanged) {
+        this.decorations = this.buildDecorations(update.view);
+      }
+    }
+
+    buildDecorations(view: EditorView) {
+      const activeLines = selectedLineNumbers(view);
+      const markDecos: [number, number, Decoration][] = [];
+
+      for (const { from, to } of view.visibleRanges) {
+        syntaxTree(view.state).iterate({
+          from,
+          to,
+          enter: (node: any) => {
+            if (node.name === "InlineCode") {
+              let child = node.node.firstChild;
+              let contentFrom = -1;
+              let contentTo = -1;
+              
+              while (child) {
+                if (child.name === "CodeMark") {
+                   const line = view.state.doc.lineAt(child.from);
+                   const isActive = activeLines.has(line.number);
+                   if (isActive) {
+                     markDecos.push([child.from, child.to, codeMarkDecoration]);
+                   } else {
+                     markDecos.push([child.from, child.to, hiddenCodeMark]);
+                   }
+                   if (contentFrom === -1) {
+                     contentFrom = child.to;
+                   } else {
+                     contentTo = child.from;
+                   }
+                }
+                child = child.nextSibling;
+              }
+              
+              if (contentFrom !== -1 && contentTo !== -1 && contentFrom < contentTo) {
+                 markDecos.push([contentFrom, contentTo, codeTextDecoration]);
+              }
+            }
+          }
+        });
+      }
+
+      const all = markDecos.sort((a, b) => a[0] !== b[0] ? a[0] - b[0] : a[1] - b[1]);
+      const builder = new RangeSetBuilder<Decoration>();
+      for (const [from, to, deco] of all) {
+        if (from < to) {
+          builder.add(from, to, deco);
+        }
+      }
+      return builder.finish();
+    }
+  },
+  { decorations: (v) => v.decorations }
+);
+
 function selectedLineNumbers(view: EditorView): Set<number> {
   const activeLines = new Set<number>();
   for (const range of view.state.selection.ranges) {
@@ -1309,6 +1392,68 @@ function applyClearInlineFormatting(view: EditorView) {
     changes.sort((a, b) => b.from - a.from);
     dispatch({ changes });
   }
+  exitVisualModeAfterFormatting(view);
+}
+
+function applyCode(view: EditorView) {
+  const { state, dispatch } = view;
+
+  const transaction = state.changeByRange(range => {
+    if (range.empty) {
+      const before = state.sliceDoc(Math.max(0, range.from - 1), range.from);
+      const after = state.sliceDoc(range.from, Math.min(state.doc.length, range.from + 1));
+      if (before === "`" && after === "`") {
+        return {
+          changes: [
+            {from: range.from - 1, to: range.from, insert: ""},
+            {from: range.from, to: range.from + 1, insert: ""}
+          ],
+          range: EditorSelection.cursor(range.from - 1)
+        };
+      } else {
+        return {
+          changes: [{from: range.from, insert: "``"}],
+          range: EditorSelection.cursor(range.from + 1)
+        };
+      }
+    } else {
+      const selectedText = state.sliceDoc(range.from, range.to);
+      const isSelectedCode = selectedText.startsWith("`") && selectedText.endsWith("`") && selectedText.length >= 2;
+      
+      if (isSelectedCode) {
+        return {
+          changes: [
+            {from: range.from, to: range.from + 1, insert: ""},
+            {from: range.to - 1, to: range.to, insert: ""}
+          ],
+          range: EditorSelection.range(range.from, range.to - 2)
+        };
+      }
+
+      const before = state.sliceDoc(Math.max(0, range.from - 1), range.from);
+      const after = state.sliceDoc(range.to, Math.min(state.doc.length, range.to + 1));
+      
+      if (before === "`" && after === "`") {
+        return {
+          changes: [
+            {from: range.from - 1, to: range.from, insert: ""},
+            {from: range.to, to: range.to + 1, insert: ""}
+          ],
+          range: EditorSelection.range(range.from - 1, range.to - 1)
+        };
+      } else {
+        return {
+          changes: [
+            {from: range.from, insert: "`"},
+            {from: range.to, insert: "`"}
+          ],
+          range: EditorSelection.range(range.from + 1, range.to + 1)
+        };
+      }
+    }
+  });
+
+  dispatch(state.update(transaction));
   exitVisualModeAfterFormatting(view);
 }
 

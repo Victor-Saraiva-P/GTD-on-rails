@@ -448,3 +448,22 @@
 .inbox-detail__body-preview .cm-italic-text {
   font-style: italic;
 }
+
+/* Code marks and text */
+.inbox-detail__codemirror .cm-code-mark {
+  color: rgba(200, 193, 188, 0.4);
+}
+
+.inbox-detail__body-preview .cm-code-mark {
+  display: none;
+}
+
+.inbox-detail__codemirror .cm-code-text,
+.inbox-detail__body-preview .cm-code-text {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0.15em 0.3em;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  color: #e59d4c;
+}

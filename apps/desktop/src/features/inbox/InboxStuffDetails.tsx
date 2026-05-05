@@ -57,9 +57,18 @@ function formatBodyForDisplay(body: Stuff["body"]): string | null {
 }
 
 function renderInlineMarkdown(text: string) {
-  const parts = text.split(/(\*\*.*?\*\*|\*.*?\*)/g);
+  const parts = text.split(/(`.*?`|\*\*.*?\*\*|\*.*?\*)/g);
   return parts.map((part, i) => {
-    if (part.startsWith("**") && part.endsWith("**") && part.length >= 4) {
+    if (part.startsWith("`") && part.endsWith("`") && part.length >= 2) {
+      const inner = part.slice(1, -1);
+      return (
+        <span key={i} className="cm-code-text">
+          <span className="cm-code-mark">`</span>
+          {inner}
+          <span className="cm-code-mark">`</span>
+        </span>
+      );
+    } else if (part.startsWith("**") && part.endsWith("**") && part.length >= 4) {
       const inner = part.slice(2, -2);
       return (
         <span key={i} className="cm-bold-text">

@@ -4,7 +4,7 @@ import { ListWorkspace } from "../components/ListWorkspace";
 import { RetryState } from "../components/RetryState";
 import { InboxList } from "../features/inbox/InboxList";
 import { InboxStuffDetails } from "../features/inbox/InboxStuffDetails";
-import { FORMAT_BOLD_EVENT, FORMAT_ITALIC_EVENT, FORMAT_CLEAR_INLINE_EVENT, FORMAT_BULLET_EVENT, FORMAT_CHECKLIST_CHECKED_EVENT, FORMAT_CHECKLIST_EVENT, FORMAT_CHECKLIST_UNCHECKED_EVENT, FORMAT_DIVIDER_EVENT, FORMAT_HEADING_EVENT, FORMAT_LETTERED_LIST_EVENT, FORMAT_NUMBERED_LIST_EVENT, FORMAT_NORMAL_TEXT_EVENT, FORMAT_QUOTE_EVENT } from "../features/inbox/ItemBodyMarkdownEditor";
+import { FORMAT_BOLD_EVENT, FORMAT_ITALIC_EVENT, FORMAT_CLEAR_INLINE_EVENT, FORMAT_CODE_EVENT, FORMAT_BULLET_EVENT, FORMAT_CHECKLIST_CHECKED_EVENT, FORMAT_CHECKLIST_EVENT, FORMAT_CHECKLIST_UNCHECKED_EVENT, FORMAT_DIVIDER_EVENT, FORMAT_HEADING_EVENT, FORMAT_LETTERED_LIST_EVENT, FORMAT_NUMBERED_LIST_EVENT, FORMAT_NORMAL_TEXT_EVENT, FORMAT_QUOTE_EVENT } from "../features/inbox/ItemBodyMarkdownEditor";
 import type { InboxWorkspaceController } from "../features/inbox/useInboxWorkspaceController";
 import { LeaderMenu } from "../features/keybinds/LeaderMenu";
 import { useActiveScreen, useKeybindScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
@@ -141,6 +141,10 @@ function formatAsClearInlineFromKeybind() {
   window.dispatchEvent(new CustomEvent(FORMAT_CLEAR_INLINE_EVENT));
 }
 
+function formatAsCodeFromKeybind() {
+  window.dispatchEvent(new CustomEvent(FORMAT_CODE_EVENT));
+}
+
 function buildInboxBindings(controller: InboxWorkspaceController, setActiveScreen: (screen: ScreenId) => void) {
   return [
     inboxBinding("inbox.create-stuff", "a", "Add new stuff", "inbox-list", () => createStuffFromKeybind(controller)),
@@ -167,6 +171,7 @@ function buildInboxBindings(controller: InboxWorkspaceController, setActiveScree
     inboxBinding("inbox.format-h3", "3", "Format as Heading 3", "stuff-detail", () => formatAsHeadingFromKeybind(3), true, ["m", "3"]),
     inboxBinding("inbox.format-bold", "b", "Format as Bold", "stuff-detail", () => formatAsBoldFromKeybind(), true, ["t", "b"]),
     inboxBinding("inbox.format-italic", "i", "Format as Italic", "stuff-detail", () => formatAsItalicFromKeybind(), true, ["t", "i"]),
+    inboxBinding("inbox.format-code", "c", "Format as Code", "stuff-detail", () => formatAsCodeFromKeybind(), true, ["t", "c"]),
     inboxBinding("inbox.format-clear-inline", "t", "Clear Inline Formatting", "stuff-detail", () => formatAsClearInlineFromKeybind(), true, ["t", "t"]),
     inboxBinding("inbox.which-key-list", "k", "Show available keybinds", "inbox-list", () => undefined, true),
     inboxBinding("inbox.which-key-detail", "k", "Show available keybinds", "stuff-detail", () => undefined, true)
