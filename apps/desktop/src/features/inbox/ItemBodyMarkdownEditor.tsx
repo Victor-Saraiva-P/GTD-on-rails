@@ -34,6 +34,7 @@ export const FORMAT_CHECKLIST_CHECKED_EVENT = "gtd:format-checklist-checked";
 export const FORMAT_CHECKLIST_UNCHECKED_EVENT = "gtd:format-checklist-unchecked";
 export const FORMAT_DIVIDER_EVENT = "gtd:format-divider";
 export const FORMAT_QUOTE_EVENT = "gtd:format-quote";
+export const FORMAT_BOLD_EVENT = "gtd:format-bold";
 
 type ItemBodyMarkdownEditorFrameProps = {
   editorParentRef: RefObject<HTMLDivElement | null>;
@@ -229,6 +230,16 @@ function useCodeMirrorEditorView(
   }, []);
 
   useEffect(() => {
+    const handler = () => {
+      if (editorViewRef.current) {
+        applyBold(editorViewRef.current);
+      }
+    };
+    window.addEventListener(FORMAT_BOLD_EVENT, handler);
+    return () => window.removeEventListener(FORMAT_BOLD_EVENT, handler);
+  }, []);
+
+  useEffect(() => {
     const handler = (e: Event) => {
       if (!editorViewRef.current) return;
       const level = (e as CustomEvent<{ level: 1 | 2 | 3 }>).detail?.level;
@@ -343,6 +354,7 @@ function editorBehaviorExtensions(
     markdownChecklistPlugin,
     markdownDividerPlugin,
     markdownQuotePlugin,
+    markdownBoldPlugin,
     EditorView.updateListener.of((update) =>
       autosaveAfterFinishedEdit(update.view, update.docChanged, readOnly, autosaveTrackerRef, onAutosaveRef, onVimModeChangeRef, setSaveState)
     ),
@@ -754,6 +766,76 @@ const markdownQuotePlugin = ViewPlugin.fromClass(
   { decorations: (v) => v.decorations }
 );
 
+const boldTextDecoration = Decoration.mark({ class: "cm-bold-text" });
+const boldMarkDecoration = Decoration.mark({ class: "cm-bold-mark" });
+const hiddenBoldMark = Decoration.replace({});
+
+const markdownBoldPlugin = ViewPlugin.fromClass(
+  class {
+    decorations: DecorationSet;
+
+    constructor(view: EditorView) {
+      this.decorations = this.buildDecorations(view);
+    }
+
+    update(update: ViewUpdate) {
+      if (update.docChanged || update.selectionSet || update.viewportChanged) {
+        this.decorations = this.buildDecorations(update.view);
+      }
+    }
+
+    buildDecorations(view: EditorView) {
+      const activeLines = selectedLineNumbers(view);
+      const markDecos: [number, number, Decoration][] = [];
+
+      for (const { from, to } of view.visibleRanges) {
+        syntaxTree(view.state).iterate({
+          from,
+          to,
+          enter: (node: any) => {
+            if (node.name === "StrongEmphasis") {
+              let child = node.node.firstChild;
+              let contentFrom = -1;
+              let contentTo = -1;
+              
+              while (child) {
+                if (child.name === "EmphasisMark") {
+                   const line = view.state.doc.lineAt(child.from);
+                   const isActive = activeLines.has(line.number);
+                   if (isActive) {
+                     markDecos.push([child.from, child.to, boldMarkDecoration]);
+                   } else {
+                     markDecos.push([child.from, child.to, hiddenBoldMark]);
+                   }
+                   if (contentFrom === -1) {
+                     contentFrom = child.to;
+                   } else {
+                     contentTo = child.from;
+                   }
+                }
+                child = child.nextSibling;
+              }
+              
+              if (contentFrom !== -1 && contentTo !== -1 && contentFrom < contentTo) {
+                 markDecos.push([contentFrom, contentTo, boldTextDecoration]);
+              }
+            }
+          }
+        });
+      }
+
+      const all = markDecos.sort((a, b) => a[0] !== b[0] ? a[0] - b[0] : a[1] - b[1]);
+      const builder = new RangeSetBuilder<Decoration>();
+      for (const [from, to, deco] of all) {
+        if (from < to) {
+          builder.add(from, to, deco);
+        }
+      }
+      return builder.finish();
+    }
+  },
+  { decorations: (v) => v.decorations }
+);
 
 function selectedLineNumbers(view: EditorView): Set<number> {
   const activeLines = new Set<number>();
@@ -982,6 +1064,68 @@ function applyQuote(view: EditorView) {
       selection: newCursor === null ? undefined : EditorSelection.cursor(newCursor)
     });
   }
+  exitVisualModeAfterFormatting(view);
+}
+
+function applyBold(view: EditorView) {
+  const { state, dispatch } = view;
+
+  const transaction = state.changeByRange(range => {
+    if (range.empty) {
+      const before = state.sliceDoc(Math.max(0, range.from - 2), range.from);
+      const after = state.sliceDoc(range.from, Math.min(state.doc.length, range.from + 2));
+      if (before === "**" && after === "**") {
+        return {
+          changes: [
+            {from: range.from - 2, to: range.from, insert: ""},
+            {from: range.from, to: range.from + 2, insert: ""}
+          ],
+          range: EditorSelection.cursor(range.from - 2)
+        };
+      } else {
+        return {
+          changes: [{from: range.from, insert: "****"}],
+          range: EditorSelection.cursor(range.from + 2)
+        };
+      }
+    } else {
+      const selectedText = state.sliceDoc(range.from, range.to);
+      const isSelectedBold = selectedText.startsWith("**") && selectedText.endsWith("**") && selectedText.length >= 4;
+      
+      if (isSelectedBold) {
+        return {
+          changes: [
+            {from: range.from, to: range.from + 2, insert: ""},
+            {from: range.to - 2, to: range.to, insert: ""}
+          ],
+          range: EditorSelection.range(range.from, range.to - 4)
+        };
+      }
+
+      const before = state.sliceDoc(Math.max(0, range.from - 2), range.from);
+      const after = state.sliceDoc(range.to, Math.min(state.doc.length, range.to + 2));
+      
+      if (before === "**" && after === "**") {
+        return {
+          changes: [
+            {from: range.from - 2, to: range.from, insert: ""},
+            {from: range.to, to: range.to + 2, insert: ""}
+          ],
+          range: EditorSelection.range(range.from - 2, range.to - 2)
+        };
+      } else {
+        return {
+          changes: [
+            {from: range.from, insert: "**"},
+            {from: range.to, insert: "**"}
+          ],
+          range: EditorSelection.range(range.from + 2, range.to + 2)
+        };
+      }
+    }
+  });
+
+  dispatch(state.update(transaction));
   exitVisualModeAfterFormatting(view);
 }
 

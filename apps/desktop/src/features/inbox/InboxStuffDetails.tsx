@@ -56,6 +56,23 @@ function formatBodyForDisplay(body: Stuff["body"]): string | null {
   return body;
 }
 
+function renderInlineMarkdown(text: string) {
+  const parts = text.split(/(\*\*.*?\*\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith("**") && part.endsWith("**") && part.length >= 4) {
+      const inner = part.slice(2, -2);
+      return (
+        <span key={i} className="cm-bold-text">
+          <span className="cm-bold-mark">**</span>
+          {inner}
+          <span className="cm-bold-mark">**</span>
+        </span>
+      );
+    }
+    return <span key={i}>{part}</span>;
+  });
+}
+
 function ReadOnlyInboxStuffDetails({ item }: Pick<InboxStuffDetailsProps, "item">) {
   const displayBody = formatBodyForDisplay(item.body);
   const previewLines = getStuffBodyPreviewLines(displayBody);
@@ -73,7 +90,7 @@ function ReadOnlyInboxStuffDetails({ item }: Pick<InboxStuffDetailsProps, "item"
                 <div className="inbox-detail__body-line" key={`${index}:${line}`}>
                   <span className="inbox-detail__line-number">{index + 1}</span>
                   <span className={`inbox-detail__line-content ${cls}`}>
-                    {heading.content}
+                    {renderInlineMarkdown(heading.content)}
                   </span>
                 </div>
               );
@@ -89,7 +106,7 @@ function ReadOnlyInboxStuffDetails({ item }: Pick<InboxStuffDetailsProps, "item"
                   <span className="inbox-detail__line-content">
                     {indent}
                     <span className={isChecked ? "cm-checklist-box cm-checklist-box--checked" : "cm-checklist-box"} />
-                    <span className={textClassName}>{content}</span>
+                    <span className={textClassName}>{renderInlineMarkdown(content)}</span>
                   </span>
                 </div>
               );
@@ -114,7 +131,7 @@ function ReadOnlyInboxStuffDetails({ item }: Pick<InboxStuffDetailsProps, "item"
                   <span className="inbox-detail__line-content cm-quote-line">
                     {indent}
                     <span className="cm-quote-mark" />
-                    {content}
+                    {renderInlineMarkdown(content)}
                   </span>
                 </div>
               );
@@ -127,7 +144,7 @@ function ReadOnlyInboxStuffDetails({ item }: Pick<InboxStuffDetailsProps, "item"
                 <div className="inbox-detail__body-line" key={`${index}:${line}`}>
                   <span className="inbox-detail__line-number">{index + 1}</span>
                   <span className="inbox-detail__line-content">
-                    {indent}<span className={`cm-bullet-mark cm-bullet-level-${level}`}>{bullet}</span>{content}
+                    {indent}<span className={`cm-bullet-mark cm-bullet-level-${level}`}>{bullet}</span>{renderInlineMarkdown(content)}
                   </span>
                 </div>
               );
@@ -138,14 +155,14 @@ function ReadOnlyInboxStuffDetails({ item }: Pick<InboxStuffDetailsProps, "item"
               return (
                 <div className="inbox-detail__body-line" key={`${index}:${line}`}>
                   <span className="inbox-detail__line-number">{index + 1}</span>
-                  <span className="inbox-detail__line-content">{indent}{number}{content}</span>
+                  <span className="inbox-detail__line-content">{indent}{number}{renderInlineMarkdown(content)}</span>
                 </div>
               );
             }
             return (
               <div className="inbox-detail__body-line" key={`${index}:${line}`}>
                 <span className="inbox-detail__line-number">{index + 1}</span>
-                <span className="inbox-detail__line-content">{line || "\u00A0"}</span>
+                <span className="inbox-detail__line-content">{line ? renderInlineMarkdown(line) : "\u00A0"}</span>
               </div>
             );
           })}

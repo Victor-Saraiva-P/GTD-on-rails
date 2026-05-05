@@ -4,7 +4,7 @@ import { ListWorkspace } from "../components/ListWorkspace";
 import { RetryState } from "../components/RetryState";
 import { InboxList } from "../features/inbox/InboxList";
 import { InboxStuffDetails } from "../features/inbox/InboxStuffDetails";
-import { FORMAT_BULLET_EVENT, FORMAT_CHECKLIST_CHECKED_EVENT, FORMAT_CHECKLIST_EVENT, FORMAT_CHECKLIST_UNCHECKED_EVENT, FORMAT_DIVIDER_EVENT, FORMAT_HEADING_EVENT, FORMAT_LETTERED_LIST_EVENT, FORMAT_NUMBERED_LIST_EVENT, FORMAT_NORMAL_TEXT_EVENT, FORMAT_QUOTE_EVENT } from "../features/inbox/ItemBodyMarkdownEditor";
+import { FORMAT_BOLD_EVENT, FORMAT_BULLET_EVENT, FORMAT_CHECKLIST_CHECKED_EVENT, FORMAT_CHECKLIST_EVENT, FORMAT_CHECKLIST_UNCHECKED_EVENT, FORMAT_DIVIDER_EVENT, FORMAT_HEADING_EVENT, FORMAT_LETTERED_LIST_EVENT, FORMAT_NUMBERED_LIST_EVENT, FORMAT_NORMAL_TEXT_EVENT, FORMAT_QUOTE_EVENT, FORMAT_TABLE_EVENT } from "../features/inbox/ItemBodyMarkdownEditor";
 import type { InboxWorkspaceController } from "../features/inbox/useInboxWorkspaceController";
 import { LeaderMenu } from "../features/keybinds/LeaderMenu";
 import { useActiveScreen, useKeybindScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
@@ -129,6 +129,10 @@ function formatAsHeadingFromKeybind(level: 1 | 2 | 3) {
   window.dispatchEvent(new CustomEvent(FORMAT_HEADING_EVENT, { detail: { level } }));
 }
 
+function formatAsBoldFromKeybind() {
+  window.dispatchEvent(new CustomEvent(FORMAT_BOLD_EVENT));
+}
+
 function buildInboxBindings(controller: InboxWorkspaceController, setActiveScreen: (screen: ScreenId) => void) {
   return [
     inboxBinding("inbox.create-stuff", "a", "Add new stuff", "inbox-list", () => createStuffFromKeybind(controller)),
@@ -153,6 +157,7 @@ function buildInboxBindings(controller: InboxWorkspaceController, setActiveScree
     inboxBinding("inbox.format-h1", "1", "Format as Heading 1", "stuff-detail", () => formatAsHeadingFromKeybind(1), true, ["m", "1"]),
     inboxBinding("inbox.format-h2", "2", "Format as Heading 2", "stuff-detail", () => formatAsHeadingFromKeybind(2), true, ["m", "2"]),
     inboxBinding("inbox.format-h3", "3", "Format as Heading 3", "stuff-detail", () => formatAsHeadingFromKeybind(3), true, ["m", "3"]),
+    inboxBinding("inbox.format-bold", "b", "Format as Bold", "stuff-detail", () => formatAsBoldFromKeybind(), true, ["t", "b"]),
     inboxBinding("inbox.which-key-list", "k", "Show available keybinds", "inbox-list", () => undefined, true),
     inboxBinding("inbox.which-key-detail", "k", "Show available keybinds", "stuff-detail", () => undefined, true)
   ];
