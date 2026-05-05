@@ -8,6 +8,7 @@ export type TerminalComboDialogProps = {
   confirmKey: string;
   confirmLabel: string;
   cancelLabel?: string;
+  statusMessage?: string | null;
   onChange: (value: string) => void;
   onConfirm: () => void;
   onCancel: () => void;
@@ -44,6 +45,7 @@ export function TerminalComboDialog(props: TerminalComboDialogProps) {
           <span>{props.label}</span>
           <input ref={inputRef} value={props.value} placeholder={props.placeholder} onChange={(event) => props.onChange(event.target.value)} />
         </label>
+        {props.statusMessage ? <p className="terminal-combo__status">{props.statusMessage}</p> : null}
         <TerminalComboCommands {...props} />
       </form>
     </div>

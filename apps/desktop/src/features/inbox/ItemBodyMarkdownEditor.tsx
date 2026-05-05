@@ -13,7 +13,8 @@ import {
   runPostSaveEffects,
   type MarkdownBodySaveState
 } from "./bodyMarkdown";
-import { INSERT_MARKDOWN_LINK_EVENT, insertMarkdownLink, type InsertMarkdownLinkEventDetail } from "./markdownLinks";
+import { buildApiUrl } from "../../config/env";
+import { INSERT_MARKDOWN_LINK_EVENT, insertMarkdownLink, markdownMatches, type InsertMarkdownLinkEventDetail } from "./markdownLinks";
 
 export type ItemBodyMarkdownEditorProps = {
   itemId: string;
@@ -290,8 +291,8 @@ function useCodeMirrorEditorView(
   useEffect(() => {
     const handler = (event: Event) => {
       if (!editorViewRef.current) return;
-      const url = (event as CustomEvent<InsertMarkdownLinkEventDetail>).detail?.url;
-      if (url) insertMarkdownLink(editorViewRef.current, url);
+      const detail = (event as CustomEvent<InsertMarkdownLinkEventDetail>).detail;
+      if (detail?.url) insertMarkdownLink(editorViewRef.current, detail.url, detail.text, detail.image === true);
     };
     window.addEventListener(INSERT_MARKDOWN_LINK_EVENT, handler);
     return () => window.removeEventListener(INSERT_MARKDOWN_LINK_EVENT, handler);
@@ -984,12 +985,12 @@ const codeMarkDecoration = Decoration.mark({ class: "cm-code-mark" });
 const hiddenCodeMark = Decoration.replace({});
 
 class MarkdownLinkWidget extends WidgetType {
-  constructor(private url: string) {
+  constructor(private text: string, private url: string) {
     super();
   }
 
   eq(other: MarkdownLinkWidget): boolean {
-    return this.url === other.url;
+    return this.text === other.text && this.url === other.url;
   }
 
   toDOM(): HTMLElement {
@@ -998,8 +999,26 @@ class MarkdownLinkWidget extends WidgetType {
     link.href = this.url;
     link.rel = "noreferrer";
     link.target = "_blank";
-    link.textContent = this.url;
+    link.textContent = this.text;
     return link;
+  }
+}
+
+class MarkdownImageWidget extends WidgetType {
+  constructor(private text: string, private url: string) {
+    super();
+  }
+
+  eq(other: MarkdownImageWidget): boolean {
+    return this.text === other.text && this.url === other.url;
+  }
+
+  toDOM(): HTMLElement {
+    const image = document.createElement("img");
+    image.alt = this.text;
+    image.className = "cm-markdown-image";
+    image.src = buildApiUrl(this.url);
+    return image;
   }
 }
 
@@ -1044,10 +1063,10 @@ function addMarkdownLinkDecorations(
 }
 
 function addMarkdownLinksFromLine(lineFrom: number, lineText: string, builder: RangeSetBuilder<Decoration>) {
-  const markdownLinkPattern = /\[([^\]\n]+)\]\(([^)\s]+)\)/g;
-  for (const match of lineText.matchAll(markdownLinkPattern)) {
-    const from = lineFrom + (match.index ?? 0);
-    builder.add(from, from + match[0].length, Decoration.replace({ widget: new MarkdownLinkWidget(match[1]) }));
+  for (const match of markdownMatches(lineText)) {
+    const from = lineFrom + match.index;
+    const widget = match.image ? new MarkdownImageWidget(match.text, match.href) : new MarkdownLinkWidget(match.text, match.href);
+    builder.add(from, from + match.raw.length, Decoration.replace({ widget }));
   }
 }
 

@@ -7,6 +7,7 @@ import java.time.Duration;
 import java.util.UUID;
 
 import com.gtdonrails.api.dtos.item.CreateItemRequestDto;
+import com.gtdonrails.api.dtos.item.ItemAssetResponseDto;
 import com.gtdonrails.api.dtos.item.ItemResponseDto;
 import com.gtdonrails.api.dtos.item.UpdateItemRequestDto;
 import com.gtdonrails.api.entities.Context;
@@ -22,6 +23,7 @@ import com.gtdonrails.api.repositories.ItemRepository;
 import com.gtdonrails.api.types.Title;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class ItemService {
@@ -30,6 +32,8 @@ public class ItemService {
     private final ContextRepository contextRepository;
     private final ItemMapper itemMapper;
     private final ItemTextNormalizer itemTextNormalizer;
+    private final AssetStorageService assetStorageService;
+    private final AssetSyncService assetSyncService;
     private final PersistenceGitSyncService persistenceGitSyncService;
     private final AfterCommitExecutor afterCommitExecutor;
 
@@ -38,6 +42,8 @@ public class ItemService {
         ContextRepository contextRepository,
         ItemMapper itemMapper,
         ItemTextNormalizer itemTextNormalizer,
+        AssetStorageService assetStorageService,
+        AssetSyncService assetSyncService,
         PersistenceGitSyncService persistenceGitSyncService,
         AfterCommitExecutor afterCommitExecutor
     ) {
@@ -45,6 +51,8 @@ public class ItemService {
         this.contextRepository = contextRepository;
         this.itemMapper = itemMapper;
         this.itemTextNormalizer = itemTextNormalizer;
+        this.assetStorageService = assetStorageService;
+        this.assetSyncService = assetSyncService;
         this.persistenceGitSyncService = persistenceGitSyncService;
         this.afterCommitExecutor = afterCommitExecutor;
     }
@@ -132,6 +140,19 @@ public class ItemService {
         requestPersistenceSyncAfterCommit("item restored", PersistenceChangeType.UPDATE_ITEM);
     }
 
+    /**
+     * Stores an asset for an active item and returns its markdown-ready URL.
+     *
+     * <p>Example: {@code itemService.storeItemAsset(itemId, file)}.</p>
+     */
+    @Transactional
+    public ItemAssetResponseDto storeItemAsset(UUID id, MultipartFile file) {
+        findItem(id);
+        String relativePath = assetStorageService.storeItemAsset(id, file);
+        requestAssetSyncAfterCommit("item asset uploaded");
+        return itemAssetResponse(relativePath);
+    }
+
     private Item findItem(UUID id) {
         return itemRepository.findByIdAndDeletedAtIsNull(id)
             .orElseThrow(() -> new ItemNotFoundException("item not found"));
@@ -154,5 +175,18 @@ public class ItemService {
 
     private void requestPersistenceSyncAfterCommit(String reason, PersistenceChangeType changeType) {
         afterCommitExecutor.run(() -> persistenceGitSyncService.requestSync(reason, changeType));
+    }
+
+    private void requestAssetSyncAfterCommit(String reason) {
+        afterCommitExecutor.run(() -> assetSyncService.requestSync(reason));
+    }
+
+    private ItemAssetResponseDto itemAssetResponse(String relativePath) {
+        return new ItemAssetResponseDto(
+            relativePath,
+            assetStorageService.publicUrl(relativePath),
+            assetStorageService.fileName(relativePath),
+            assetStorageService.mediaType(relativePath).toString(),
+            assetStorageService.isImage(relativePath));
     }
 }

@@ -26,7 +26,7 @@ function dispatchFormat(eventName: string, detail?: unknown) {
  *
  * @example buildFormattingBindings("inbox")
  */
-export function buildFormattingBindings(screen: ScreenId, openLinkCombo?: () => void): KeybindDefinition[] {
+export function buildFormattingBindings(screen: ScreenId, openLinkCombo?: () => void, openAssetCombo?: () => void): KeybindDefinition[] {
   const b = (id: string, key: string, description: string, run: () => void, sequence: string[]): KeybindDefinition => ({
     description,
     id: `${screen}.${id}`,
@@ -51,6 +51,7 @@ export function buildFormattingBindings(screen: ScreenId, openLinkCombo?: () => 
     b("format-h1", "1", "Format as Heading 1", () => dispatchFormat(FORMAT_HEADING_EVENT, { level: 1 }), ["m", "1"]),
     b("format-h2", "2", "Format as Heading 2", () => dispatchFormat(FORMAT_HEADING_EVENT, { level: 2 }), ["m", "2"]),
     b("format-h3", "3", "Format as Heading 3", () => dispatchFormat(FORMAT_HEADING_EVENT, { level: 3 }), ["m", "3"]),
+    b("format-asset", "a", "Insert Asset", () => openAssetCombo?.(), ["m", "a"]),
     b("format-bold", "b", "Format as Bold", () => dispatchFormat(FORMAT_BOLD_EVENT), ["t", "b"]),
     b("format-italic", "i", "Format as Italic", () => dispatchFormat(FORMAT_ITALIC_EVENT), ["t", "i"]),
     b("format-link", "l", "Insert Link", () => openLinkCombo?.(), ["t", "l"]),

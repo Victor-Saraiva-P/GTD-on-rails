@@ -192,6 +192,28 @@ test("space t l inserts markdown link from clipboard with p", async ({ page, con
   await expect(page.locator(".cm-content")).toContainText(`[${url}](${url})`);
 });
 
+test("space m a inserts markdown asset from clipboard with p", async ({ page }) => {
+  const title = uniqueTitle();
+  await createStuff(page, title);
+  await focusDetail(page);
+  await mockClipboardAsset(page);
+  await mockAssetUpload(page);
+
+  await page.keyboard.press("i");
+  await page.keyboard.type("assetzinho ");
+  await page.keyboard.press("Escape");
+
+  await page.keyboard.press(" ");
+  await page.keyboard.press("m");
+  await page.keyboard.press("a");
+
+  const input = page.getByLabel("Clipboard Asset");
+  await expect(input).toBeVisible();
+  await page.keyboard.press("p");
+
+  await expect(page.locator(".cm-content")).toContainText("![clipboard-asset.png](/assets/items/test/asset/clipboard-asset.png)");
+});
+
 test("space m c c applies checked checklist", async ({ page }) => {
   const title = uniqueTitle();
   await createStuff(page, title);
@@ -209,3 +231,29 @@ test("space m c c applies checked checklist", async ({ page }) => {
 
   await expect(page.locator(".cm-content")).toContainText("- [x] Task");
 });
+
+async function mockClipboardAsset(page: Page) {
+  await page.evaluate(() => {
+    const blob = new Blob(["%PDF-1.7"], { type: "application/pdf" });
+    const clipboardItem = { types: ["application/pdf"], getType: async () => blob };
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { read: async () => [clipboardItem] }
+    });
+  });
+}
+
+async function mockAssetUpload(page: Page) {
+  await page.route("**/items/*/assets", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        relativePath: "items/test/asset/clipboard-asset.png",
+        url: "/assets/items/test/asset/clipboard-asset.png",
+        fileName: "clipboard-asset.png",
+        contentType: "image/png",
+        image: true
+      })
+    });
+  });
+}

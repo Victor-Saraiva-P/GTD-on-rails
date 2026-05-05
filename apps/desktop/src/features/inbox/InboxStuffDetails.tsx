@@ -58,9 +58,9 @@ function formatBodyForDisplay(body: Stuff["body"]): string | null {
 }
 
 function renderInlineMarkdown(text: string) {
-  const parts = text.split(/(\[[^\]\n]+\]\([^)\s]+\)|`.*?`|\*\*.*?\*\*|\*.*?\*)/g);
+  const parts = text.split(/(!?\[[^\]\n]+\]\([^)\s]+\)|`.*?`|\*\*.*?\*\*|\*.*?\*)/g);
   return parts.map((part, i) => {
-    if (/^\[[^\]\n]+\]\([^)\s]+\)$/.test(part)) {
+    if (/^!?\[[^\]\n]+\]\([^)\s]+\)$/.test(part)) {
       return renderMarkdownLinks(part);
     }
     if (part.startsWith("`") && part.endsWith("`") && part.length >= 2) {

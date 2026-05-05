@@ -5,6 +5,7 @@ import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -25,6 +26,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -250,6 +252,20 @@ class ItemControllerTests {
         mockMvc.perform(get("/items/{id}", item.getId()))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(item.getId().toString()));
+    }
+
+    @Test
+    void uploadsItemAsset() throws Exception {
+        Item item = itemRepository.save(new Item(new Title("Asset item"), null));
+        MockMultipartFile file = new MockMultipartFile("file", "file.pdf", "application/pdf", new byte[] {1, 2, 3});
+
+        mockMvc.perform(multipart("/items/{id}/assets", item.getId()).file(file))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.relativePath").value(org.hamcrest.Matchers.matchesPattern("items/" + item.getId() + "/[0-9a-f-]+/file\\.pdf")))
+            .andExpect(jsonPath("$.url").value(org.hamcrest.Matchers.matchesPattern("/assets/items/" + item.getId() + "/[0-9a-f-]+/file\\.pdf")))
+            .andExpect(jsonPath("$.fileName").value("file.pdf"))
+            .andExpect(jsonPath("$.contentType").value("application/pdf"))
+            .andExpect(jsonPath("$.image").value(false));
     }
 
     @Test

@@ -15,6 +15,7 @@ import java.util.UUID;
 
 import com.gtdonrails.api.dtos.context.ContextResponseDto;
 import com.gtdonrails.api.dtos.item.CreateItemRequestDto;
+import com.gtdonrails.api.dtos.item.ItemAssetResponseDto;
 import com.gtdonrails.api.dtos.item.ItemResponseDto;
 import com.gtdonrails.api.dtos.item.ItemTimeRequestDto;
 import com.gtdonrails.api.dtos.item.UpdateItemRequestDto;
@@ -37,6 +38,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
@@ -58,6 +61,12 @@ class ItemServiceTests {
     private ItemMapper itemMapper;
 
     @Mock
+    private AssetStorageService assetStorageService;
+
+    @Mock
+    private AssetSyncService assetSyncService;
+
+    @Mock
     private PersistenceGitSyncService persistenceGitSyncService;
 
     @Captor
@@ -72,6 +81,8 @@ class ItemServiceTests {
             contextRepository,
             itemMapper,
             new ItemTextNormalizer(),
+            assetStorageService,
+            assetSyncService,
             persistenceGitSyncService,
             new AfterCommitExecutor());
     }
@@ -348,6 +359,39 @@ class ItemServiceTests {
     }
 
     @Test
+    void storeItemAssetReturnsAssetMetadata() {
+        UUID itemId = UUID.randomUUID();
+        Item item = new Item(new Title("Asset item"), null);
+        MockMultipartFile file = pdfAssetFile();
+        String relativePath = "items/" + itemId + "/asset-id/file.pdf";
+
+        when(itemRepository.findByIdAndDeletedAtIsNull(itemId)).thenReturn(Optional.of(item));
+        when(assetStorageService.storeItemAsset(itemId, file)).thenReturn(relativePath);
+        when(assetStorageService.publicUrl(relativePath)).thenReturn("/assets/" + relativePath);
+        when(assetStorageService.fileName(relativePath)).thenReturn("file.pdf");
+        when(assetStorageService.mediaType(relativePath)).thenReturn(MediaType.APPLICATION_PDF);
+        when(assetStorageService.isImage(relativePath)).thenReturn(false);
+
+        ItemAssetResponseDto response = itemService.storeItemAsset(itemId, file);
+
+        assertEquals(new ItemAssetResponseDto(relativePath, "/assets/" + relativePath, "file.pdf", "application/pdf", false), response);
+        verify(assetSyncService).requestSync("item asset uploaded");
+    }
+
+    @Test
+    void storeItemAssetThrowsWhenItemDoesNotExist() {
+        UUID itemId = UUID.randomUUID();
+        when(itemRepository.findByIdAndDeletedAtIsNull(itemId)).thenReturn(Optional.empty());
+
+        ItemNotFoundException exception = assertThrows(
+            ItemNotFoundException.class,
+            () -> itemService.storeItemAsset(itemId, pdfAssetFile()));
+
+        assertEquals("item not found", exception.getMessage());
+        verify(assetStorageService, never()).storeItemAsset(any(), any());
+    }
+
+    @Test
     void createItemRequestsPersistenceSyncOnlyAfterCommitWhenTransactionSynchronizationIsActive() {
         stubSavedItemResponse(itemResponse("Capture idea", null));
 
@@ -383,6 +427,10 @@ class ItemServiceTests {
 
     private ItemResponseDto itemResponse(String title, String body) {
         return itemResponse(UUID.randomUUID(), title, body);
+    }
+
+    private MockMultipartFile pdfAssetFile() {
+        return new MockMultipartFile("file", "file.pdf", "application/pdf", new byte[] {1, 2, 3});
     }
 
     private ItemResponseDto itemResponse(UUID id, String title) {

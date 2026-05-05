@@ -56,6 +56,12 @@
   outline-offset: 1px;
 }
 
+.terminal-combo__status {
+  margin: 0;
+  color: #ffb4a8;
+  font-size: 0.78rem;
+}
+
 .terminal-combo__commands {
   display: flex;
   flex-wrap: wrap;

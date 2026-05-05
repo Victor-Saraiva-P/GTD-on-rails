@@ -9,6 +9,14 @@ type InboxStuffResponse = {
   createdAt: string;
 };
 
+export type StuffAssetResponse = {
+  relativePath: string;
+  url: string;
+  fileName: string;
+  contentType: string;
+  image: boolean;
+};
+
 /**
  * Loads all inbox stuff from the API.
  *
@@ -59,6 +67,21 @@ export async function deleteStuff(id: string): Promise<void> {
 export async function restoreStuff(id: string): Promise<void> {
   await apiFetch(`/items/${id}/restore`, {
     method: "POST"
+  });
+}
+
+/**
+ * Uploads a clipboard asset for one stuff item.
+ *
+ * @example await uploadStuffAsset(stuff.id, file)
+ */
+export async function uploadStuffAsset(id: string, file: File): Promise<StuffAssetResponse> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  return apiJson<StuffAssetResponse>(`/items/${id}/assets`, {
+    method: "POST",
+    body: formData
   });
 }
 

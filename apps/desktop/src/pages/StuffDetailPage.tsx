@@ -4,6 +4,7 @@ import { ListWorkspace } from "../components/ListWorkspace";
 import { RetryState } from "../components/RetryState";
 import { InboxStuffDetails } from "../features/inbox/InboxStuffDetails";
 import { buildFormattingBindings } from "../features/inbox/formattingKeybinds";
+import { MarkdownAssetComboDialog } from "../features/inbox/MarkdownAssetComboDialog";
 import { MarkdownLinkComboDialog } from "../features/inbox/MarkdownLinkComboDialog";
 import type { InboxWorkspaceController } from "../features/inbox/useInboxWorkspaceController";
 import { LeaderMenu } from "../features/keybinds/LeaderMenu";
@@ -39,19 +40,20 @@ function backToInboxFromKeybind(controller: InboxWorkspaceController, setActiveS
 function buildStuffDetailBindings(
   controller: InboxWorkspaceController,
   setActiveScreen: (screen: ScreenId) => void,
-  openLinkCombo: () => void
+  openLinkCombo: () => void,
+  openAssetCombo: () => void
 ) {
   return [
     stuffDetailBinding("stuff-detail-page.edit-body", "Enter", "Edit selected body", () => editStuffBodyFromKeybind(controller)),
     stuffDetailBinding("stuff-detail-page.back-to-inbox", "Escape", "Back to inbox", () => backToInboxFromKeybind(controller, setActiveScreen)),
     stuffDetailBinding("stuff-detail-page.which-key", "k", "Show available keybinds", () => undefined, true),
-    ...buildFormattingBindings("stuff-detail", openLinkCombo)
+    ...buildFormattingBindings("stuff-detail", openLinkCombo, openAssetCombo)
   ];
 }
 
-function useStuffDetailBindings(controller: InboxWorkspaceController, openLinkCombo: () => void) {
+function useStuffDetailBindings(controller: InboxWorkspaceController, openLinkCombo: () => void, openAssetCombo: () => void) {
   const { setActiveScreen } = useActiveScreen();
-  const bindings = useMemo(() => buildStuffDetailBindings(controller, setActiveScreen, openLinkCombo), [controller, setActiveScreen, openLinkCombo]);
+  const bindings = useMemo(() => buildStuffDetailBindings(controller, setActiveScreen, openLinkCombo, openAssetCombo), [controller, setActiveScreen, openLinkCombo, openAssetCombo]);
 
   useRegisterKeybinds(bindings);
 }
@@ -134,11 +136,13 @@ function StuffDetailPane({ controller, setActiveScreen }: StuffDetailReadyProps)
  */
 export function StuffDetailPage({ controller }: StuffDetailPageProps) {
   const [isLinkComboOpen, setIsLinkComboOpen] = useState(false);
+  const [isAssetComboOpen, setIsAssetComboOpen] = useState(false);
   const openLinkCombo = useCallback(() => setIsLinkComboOpen(true), []);
+  const openAssetCombo = useCallback(() => setIsAssetComboOpen(true), []);
   const { setActiveScreen } = useActiveScreen();
   useKeybindScreen("stuff-detail");
   useStuffDetailZone(controller);
-  useStuffDetailBindings(controller, openLinkCombo);
+  useStuffDetailBindings(controller, openLinkCombo, openAssetCombo);
 
   return (
     <ListWorkspace theme={stuffDetailListTheme} currentLabel={stuffDetailListTheme.label} modeLabel={controller.vimMode ?? undefined}>
@@ -147,6 +151,7 @@ export function StuffDetailPage({ controller }: StuffDetailPageProps) {
       </section>
       <LeaderMenu />
       {isLinkComboOpen ? <MarkdownLinkComboDialog onClose={() => setIsLinkComboOpen(false)} /> : null}
+      {isAssetComboOpen && controller.selectedItem ? <MarkdownAssetComboDialog itemId={controller.selectedItem.id} onClose={() => setIsAssetComboOpen(false)} /> : null}
     </ListWorkspace>
   );
 }

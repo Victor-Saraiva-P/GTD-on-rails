@@ -121,6 +121,17 @@
   color: #bae6fd;
 }
 
+.inbox-detail__body-image,
+.inbox-detail__codemirror .cm-markdown-image {
+  display: block;
+  max-width: min(100%, 760px);
+  max-height: 420px;
+  margin: 6px 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 4px;
+  object-fit: contain;
+}
+
 .inbox-detail__codemirror .cm-markdown-link {
   color: #7dd3fc;
   text-decoration: underline;

@@ -1,17 +1,21 @@
 import { EditorSelection, type SelectionRange } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
 import type { ReactNode } from "react";
+import { buildApiUrl } from "../../config/env";
 
 export const INSERT_MARKDOWN_LINK_EVENT = "gtd:insert-markdown-link";
 
 export type InsertMarkdownLinkEventDetail = {
+  image?: boolean;
+  text?: string;
   url: string;
 };
 
+const markdownImagePattern = /!\[([^\]\n]*)\]\(([^)\s]+)\)/g;
 const markdownLinkPattern = /\[([^\]\n]+)\]\(([^)\s]+)\)/g;
 
-export function dispatchInsertMarkdownLink(url: string) {
-  window.dispatchEvent(new CustomEvent<InsertMarkdownLinkEventDetail>(INSERT_MARKDOWN_LINK_EVENT, { detail: { url } }));
+export function dispatchInsertMarkdownLink(url: string, text?: string, image = false) {
+  window.dispatchEvent(new CustomEvent<InsertMarkdownLinkEventDetail>(INSERT_MARKDOWN_LINK_EVENT, { detail: { image, text, url } }));
 }
 
 /**
@@ -19,8 +23,8 @@ export function dispatchInsertMarkdownLink(url: string) {
  *
  * @example insertMarkdownLink(view, "https://example.com")
  */
-export function insertMarkdownLink(view: EditorView, url: string) {
-  const markdownLink = markdownLinkFromUrl(url);
+export function insertMarkdownLink(view: EditorView, url: string, text?: string, image = false) {
+  const markdownLink = markdownLinkFromUrl(url, text, image);
   if (!markdownLink) {
     return;
   }
@@ -39,23 +43,51 @@ function insertMarkdownLinkAtRange(range: SelectionRange, markdownLink: string) 
   };
 }
 
-function markdownLinkFromUrl(url: string): string | null {
+function markdownLinkFromUrl(url: string, text?: string, image = false): string | null {
   const trimmedUrl = url.trim();
-  return trimmedUrl ? `[${trimmedUrl}](${trimmedUrl})` : null;
+  const trimmedText = text?.trim() || trimmedUrl;
+  const prefix = image ? "!" : "";
+  return trimmedUrl ? `${prefix}[${trimmedText}](${trimmedUrl})` : null;
 }
 
 export function renderMarkdownLinks(line: string): ReactNode[] {
   const nodes: ReactNode[] = [];
   let lastIndex = 0;
 
-  for (const match of line.matchAll(markdownLinkPattern)) {
-    pushTextBeforeLink(nodes, line, lastIndex, match.index ?? 0);
-    nodes.push(renderMarkdownLink(match[1], match[2], match.index ?? 0));
-    lastIndex = (match.index ?? 0) + match[0].length;
+  for (const match of markdownMatches(line)) {
+    pushTextBeforeLink(nodes, line, lastIndex, match.index);
+    nodes.push(match.image ? renderMarkdownImage(match.text, match.href, match.index) : renderMarkdownLink(match.text, match.href, match.index));
+    lastIndex = match.index + match.raw.length;
   }
 
   pushTextBeforeLink(nodes, line, lastIndex, line.length);
   return nodes.length > 0 ? nodes : [line || "\u00A0"];
+}
+
+type MarkdownMatch = {
+  href: string;
+  image: boolean;
+  index: number;
+  raw: string;
+  text: string;
+};
+
+export function markdownMatches(line: string): MarkdownMatch[] {
+  const imageMatches = Array.from(line.matchAll(markdownImagePattern), (match) => markdownMatch(match, true));
+  const linkMatches = Array.from(line.matchAll(markdownLinkPattern), (match) => markdownMatch(match, false))
+    .filter((match) => line.charAt(match.index - 1) !== "!");
+
+  return [...imageMatches, ...linkMatches].sort((a, b) => a.index - b.index);
+}
+
+function markdownMatch(match: RegExpMatchArray, image: boolean): MarkdownMatch {
+  return {
+    href: match[2],
+    image,
+    index: match.index ?? 0,
+    raw: match[0],
+    text: match[1]
+  };
 }
 
 function pushTextBeforeLink(nodes: ReactNode[], line: string, from: number, to: number) {
@@ -70,4 +102,8 @@ function renderMarkdownLink(text: string, href: string, index: number) {
       {text}
     </a>
   );
+}
+
+function renderMarkdownImage(text: string, href: string, index: number) {
+  return <img alt={text} className="inbox-detail__body-image" key={`${index}:${href}`} src={buildApiUrl(href)} />;
 }

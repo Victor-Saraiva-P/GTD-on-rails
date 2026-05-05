@@ -100,6 +100,55 @@ class AssetStorageServiceTests {
     }
 
     @Test
+    void storesItemAssetInExpectedPath() throws IOException {
+        UUID itemId = UUID.randomUUID();
+        MockMultipartFile file = new MockMultipartFile("file", "report.pdf", "application/pdf", new byte[] {1, 2, 3});
+        AssetStorageService assetStorageService = newAssetStorageService();
+
+        String relativePath = assetStorageService.storeItemAsset(itemId, file);
+
+        assertTrue(relativePath.matches("items/" + itemId + "/[0-9a-f-]+/report\\.pdf"));
+        assertTrue(Files.exists(tempDir.resolve("assets").resolve(relativePath)));
+    }
+
+    @Test
+    void rejectsEmptyItemAsset() {
+        UUID itemId = UUID.randomUUID();
+        MockMultipartFile file = new MockMultipartFile("file", "file.pdf", "application/pdf", new byte[0]);
+        AssetStorageService assetStorageService = newAssetStorageService();
+
+        IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> assetStorageService.storeItemAsset(itemId, file));
+
+        assertEquals("item asset file value '" + file + "' is invalid; expected non-empty MultipartFile", exception.getMessage());
+    }
+
+    @Test
+    void rejectsInvalidItemAssetType() {
+        UUID itemId = UUID.randomUUID();
+        MockMultipartFile file = new MockMultipartFile("file", "script.sh", "text/x-shellscript", new byte[] {1});
+        AssetStorageService assetStorageService = newAssetStorageService();
+
+        IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> assetStorageService.storeItemAsset(itemId, file));
+
+        assertEquals("item asset file extension 'sh' is invalid; expected pdf, doc, docx, xls, xlsx, png, jpg, jpeg, gif, webp, or svg", exception.getMessage());
+    }
+
+    @Test
+    void sanitizesItemAssetFileName() {
+        UUID itemId = UUID.randomUUID();
+        MockMultipartFile file = new MockMultipartFile("file", "bad name.pdf", "application/pdf", new byte[] {1});
+        AssetStorageService assetStorageService = newAssetStorageService();
+
+        String relativePath = assetStorageService.storeItemAsset(itemId, file);
+
+        assertTrue(relativePath.endsWith("/bad-name.pdf"));
+    }
+
+    @Test
     void deletesExistingAsset() throws IOException {
         Path assetFile = tempDir.resolve("assets/contexts/context-id/icon.png");
         Files.createDirectories(assetFile.getParent());

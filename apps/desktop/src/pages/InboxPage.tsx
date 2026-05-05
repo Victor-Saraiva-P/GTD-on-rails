@@ -5,6 +5,7 @@ import { RetryState } from "../components/RetryState";
 import { InboxList } from "../features/inbox/InboxList";
 import { InboxStuffDetails } from "../features/inbox/InboxStuffDetails";
 import { buildFormattingBindings } from "../features/inbox/formattingKeybinds";
+import { MarkdownAssetComboDialog } from "../features/inbox/MarkdownAssetComboDialog";
 import { MarkdownLinkComboDialog } from "../features/inbox/MarkdownLinkComboDialog";
 import type { InboxWorkspaceController } from "../features/inbox/useInboxWorkspaceController";
 import { LeaderMenu } from "../features/keybinds/LeaderMenu";
@@ -93,7 +94,8 @@ function openStuffDetailScreen(controller: InboxWorkspaceController, setActiveSc
 function buildInboxBindings(
   controller: InboxWorkspaceController,
   setActiveScreen: (screen: ScreenId) => void,
-  openLinkCombo: () => void
+  openLinkCombo: () => void,
+  openAssetCombo: () => void
 ) {
   return [
     inboxBinding("inbox.create-stuff", "a", "Add new stuff", "inbox-list", () => createStuffFromKeybind(controller)),
@@ -113,14 +115,14 @@ function buildInboxBindings(
     inboxBinding("inbox.open-detail-screen-from-detail", "Enter", "Open full stuff detail", "stuff-detail", () => openStuffDetailScreen(controller, setActiveScreen), true, ["Enter"]),
     inboxBinding("inbox.which-key-list", "k", "Show available keybinds", "inbox-list", () => undefined, true),
     inboxBinding("inbox.which-key-detail", "k", "Show available keybinds", "stuff-detail", () => undefined, true),
-    ...buildFormattingBindings("inbox", openLinkCombo)
+    ...buildFormattingBindings("inbox", openLinkCombo, openAssetCombo)
   ];
 }
 
 
-function useInboxBindings(controller: InboxWorkspaceController, openLinkCombo: () => void) {
+function useInboxBindings(controller: InboxWorkspaceController, openLinkCombo: () => void, openAssetCombo: () => void) {
   const { setActiveScreen } = useActiveScreen();
-  const bindings = useMemo(() => buildInboxBindings(controller, setActiveScreen, openLinkCombo), [controller, setActiveScreen, openLinkCombo]);
+  const bindings = useMemo(() => buildInboxBindings(controller, setActiveScreen, openLinkCombo, openAssetCombo), [controller, setActiveScreen, openLinkCombo, openAssetCombo]);
 
   useRegisterKeybinds(bindings);
 }
@@ -247,16 +249,19 @@ function InboxPanes({ controller }: InboxPageProps) {
  */
 export function InboxPage({ controller }: InboxPageProps) {
   const [isLinkComboOpen, setIsLinkComboOpen] = useState(false);
+  const [isAssetComboOpen, setIsAssetComboOpen] = useState(false);
   const openLinkCombo = useCallback(() => setIsLinkComboOpen(true), []);
+  const openAssetCombo = useCallback(() => setIsAssetComboOpen(true), []);
   useKeybindScreen("inbox");
   useInboxZone(controller);
-  useInboxBindings(controller, openLinkCombo);
+  useInboxBindings(controller, openLinkCombo, openAssetCombo);
 
   return (
     <ListWorkspace theme={inboxListTheme} currentLabel={inboxListTheme.label} modeLabel={controller.vimMode ?? undefined}>
       <InboxPanes controller={controller} />
       <LeaderMenu />
       {isLinkComboOpen ? <MarkdownLinkComboDialog onClose={() => setIsLinkComboOpen(false)} /> : null}
+      {isAssetComboOpen && controller.selectedItem ? <MarkdownAssetComboDialog itemId={controller.selectedItem.id} onClose={() => setIsAssetComboOpen(false)} /> : null}
     </ListWorkspace>
   );
 }
