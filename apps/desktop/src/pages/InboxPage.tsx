@@ -162,7 +162,7 @@ function buildInboxBindings(controller: InboxWorkspaceController, setActiveScree
     inboxBinding("inbox.format-h2", "2", "Format as Heading 2", "stuff-detail", () => formatAsHeadingFromKeybind(2), true, ["m", "2"]),
     inboxBinding("inbox.format-h3", "3", "Format as Heading 3", "stuff-detail", () => formatAsHeadingFromKeybind(3), true, ["m", "3"]),
     inboxBinding("inbox.format-bold", "b", "Format as Bold", "stuff-detail", () => formatAsBoldFromKeybind(), true, ["t", "b"]),
-    inboxBinding("inbox.format-italic", "t", "Format as Italic", "stuff-detail", () => formatAsItalicFromKeybind(), true, ["t", "t"]),
+    inboxBinding("inbox.format-italic", "i", "Format as Italic", "stuff-detail", () => formatAsItalicFromKeybind(), true, ["t", "i"]),
     inboxBinding("inbox.which-key-list", "k", "Show available keybinds", "inbox-list", () => undefined, true),
     inboxBinding("inbox.which-key-detail", "k", "Show available keybinds", "stuff-detail", () => undefined, true)
   ];
