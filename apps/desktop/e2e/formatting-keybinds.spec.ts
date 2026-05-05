@@ -25,18 +25,31 @@ async function focusDetail(page: any) {
 }
 
 async function openFullDetail(page: any) {
-  // Assuming we are in Inbox with a stuff selected and detail focused
+  // We might be in editing mode after creating stuff, so we press Escape
+  // to go to normal mode, and Escape again to go back to inbox list
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape");
+  
+  // The binding is Space (leader) + Enter from the inbox list
+  await page.keyboard.press(" ");
   await page.keyboard.press("Enter");
   await expect(page.locator(".stuff-detail-layout")).toBeVisible();
+}
+
+async function enterEditMode(page: any) {
+  await expect(async () => {
+    await page.keyboard.press("Enter");
+    await expect(page.locator(".cm-content")).toHaveAttribute("contenteditable", "true", { timeout: 500 });
+  }).toPass({ timeout: 5000 });
 }
 
 test("space m b applies bullet point formatting in full detail screen", async ({ page }) => {
   const title = uniqueTitle();
   await createStuff(page, title);
-  await focusDetail(page);
   await openFullDetail(page);
 
   // Enter insert mode and type some text
+  await enterEditMode(page);
   await page.keyboard.press("i");
   await page.keyboard.type("Hello world");
   await page.keyboard.press("Escape");
@@ -52,12 +65,14 @@ test("space m b applies bullet point formatting in full detail screen", async ({
 test("space t b applies bold formatting in full detail screen", async ({ page }) => {
   const title = uniqueTitle();
   await createStuff(page, title);
-  await focusDetail(page);
   await openFullDetail(page);
 
+  await enterEditMode(page);
   await page.keyboard.press("i");
   await page.keyboard.type("Bold text");
   await page.keyboard.press("Escape");
+
+  await page.keyboard.press("0");
 
   await page.keyboard.press("v");
   await page.keyboard.press("e");

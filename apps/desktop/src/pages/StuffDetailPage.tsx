@@ -90,6 +90,7 @@ function StuffDetailReady({ controller, setActiveScreen }: StuffDetailReadyProps
       onCommitEditing={(body) => commitStuffBody(controller, body)}
       onExitEditingFromNormalMode={(body) => exitBodyEditingToInbox(controller, setActiveScreen, body)}
       onCancelEditing={controller.cancelEditingSelectedStuffBody}
+      onVimModeChange={controller.setVimMode}
     />
   ) : null;
 }
@@ -130,7 +131,7 @@ export function StuffDetailPage({ controller }: StuffDetailPageProps) {
   useStuffDetailBindings(controller);
 
   return (
-    <ListWorkspace theme={stuffDetailListTheme} currentLabel={stuffDetailListTheme.label}>
+    <ListWorkspace theme={stuffDetailListTheme} currentLabel={stuffDetailListTheme.label} modeLabel={controller.vimMode ?? undefined}>
       <section className="stuff-detail-layout" aria-label="Stuff detail">
         <StuffDetailPane controller={controller} setActiveScreen={setActiveScreen} />
       </section>
