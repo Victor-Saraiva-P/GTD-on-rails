@@ -5,6 +5,7 @@ import {
   createStuff as createStuffRequest,
   deleteStuff as deleteStuffRequest,
   fetchInboxStuffs,
+  restoreStuff as restoreStuffRequest,
   updateStuffBody as updateStuffBodyRequest,
   updateStuffTitle as updateStuffTitleRequest
 } from "./api";
@@ -19,6 +20,7 @@ type InboxStuffsQueryState = {
   errorMessage: string | null;
   createStuff: (title: string, body?: string) => Promise<Stuff>;
   deleteStuff: (id: string) => Promise<void>;
+  restoreStuff: (id: string) => Promise<void>;
   updateStuffBody: (item: Stuff, body: string) => Promise<Stuff>;
   updateStuffTitle: (item: Stuff, title: string) => Promise<Stuff>;
   reload: () => void;
@@ -128,6 +130,19 @@ async function deleteInboxStuff(id: string, state: InboxLoadState, mutations: In
   }
 }
 
+async function restoreInboxStuff(id: string, state: InboxLoadState, mutations: InboxMutationState, triggerSyncStatusPolling: () => void) {
+  mutations.setIsUpdating(true);
+
+  try {
+    await restoreStuffRequest(id);
+    const nextStuffs = await fetchInboxStuffs();
+    state.setStuffs(nextStuffs);
+    completeInboxMutation(state, triggerSyncStatusPolling);
+  } finally {
+    mutations.setIsUpdating(false);
+  }
+}
+
 function replaceStuff(currentStuffs: Stuff[], updatedStuff: Stuff): Stuff[] {
   return currentStuffs.map((currentStuff) =>
     currentStuff.id === updatedStuff.id ? updatedStuff : currentStuff
@@ -153,6 +168,7 @@ function useInboxStuffsMutations(state: InboxLoadState, mutations: InboxMutation
   return {
     createStuff: (title: string, body = "") => createInboxStuff(title, body, state, mutations, triggerSyncStatusPolling),
     deleteStuff: (id: string) => deleteInboxStuff(id, state, mutations, triggerSyncStatusPolling),
+    restoreStuff: (id: string) => restoreInboxStuff(id, state, mutations, triggerSyncStatusPolling),
     updateStuffBody: (item: Stuff, body: string) => updateInboxStuff(() => updateStuffBodyRequest(item, body), state, mutations, triggerSyncStatusPolling),
     updateStuffTitle: (item: Stuff, title: string) => updateInboxStuff(() => updateStuffTitleRequest(item, title), state, mutations, triggerSyncStatusPolling)
   };

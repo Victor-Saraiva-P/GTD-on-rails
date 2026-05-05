@@ -150,6 +150,20 @@ public class ContextService {
     }
 
     /**
+     * Restores a soft-deleted context and schedules persistence sync after commit.
+     *
+     * <p>Example: {@code contextService.restoreContext(contextId)}.</p>
+     */
+    @Transactional
+    public void restoreContext(UUID id) {
+        Context context = contextRepository.findById(id)
+            .orElseThrow(() -> new ContextNotFoundException("context not found"));
+        context.restore();
+        contextRepository.save(context);
+        requestPersistenceSyncAfterCommit("context restored", PersistenceChangeType.UPDATE_CONTEXT);
+    }
+
+    /**
      * Stores a replacement context icon and removes the previous asset.
      *
      * <p>Example: {@code contextService.updateContextIcon(contextId, file)}.</p>

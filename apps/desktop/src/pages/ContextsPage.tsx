@@ -9,6 +9,7 @@ import { CONTEXT_RELATED_ITEMS_LIMIT } from "../features/contexts/constants";
 import { useContextItemsQuery } from "../features/contexts/useContextItemsQuery";
 import { useContextsQuery } from "../features/contexts/useContextsQuery";
 import type { ContextItem } from "../features/contexts/types";
+import { useUndoRedoHistory } from "../features/history/useUndoRedoHistory";
 import { LeaderMenu } from "../features/keybinds/LeaderMenu";
 import { useActiveZone, useKeybindScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
 import type { FocusZoneId, KeybindDefinition } from "../features/keybinds/types";
@@ -94,8 +95,9 @@ function useContextsModel() {
   const iconEditor = useContextIconEditorState();
   const selection = useContextSelection(query.contexts, draft.draftContext);
   const related = useContextItemsQuery(relatedContextId(selection.selectedItem), CONTEXT_RELATED_ITEMS_LIMIT);
+  const history = useUndoRedoHistory<ContextItem>();
 
-  return { draft, edit, iconEditor, query, related, selection, zone };
+  return { draft, edit, iconEditor, query, related, selection, zone, history };
 }
 
 function clearContextEdit(model: ContextsModel) {
@@ -170,13 +172,40 @@ function createNewContextAction(model: ContextsModel) {
 }
 
 async function deleteSelectedContextAction(model: ContextsModel) {
-  if (!model.selection.selectedItem) {
+  const selectedItem = model.selection.selectedItem;
+
+  if (!selectedItem) {
     return;
   }
 
-  await model.query.deleteContext(model.selection.selectedItem.id);
+  await model.query.deleteContext(selectedItem.id);
+  model.history.pushUndo({ type: "DELETE", payload: selectedItem });
   clearContextEdit(model);
   model.zone.setActiveZone("context-list");
+}
+
+async function undoAction(model: ContextsModel) {
+  const action = model.history.popUndo();
+  if (!action) return;
+
+  if (action.type === "DELETE") {
+    await model.query.restoreContext(action.payload.id);
+    model.selection.setSelectedId(action.payload.id);
+  } else {
+    await model.query.deleteContext(action.payload.id);
+  }
+}
+
+async function redoAction(model: ContextsModel) {
+  const action = model.history.popRedo();
+  if (!action) return;
+
+  if (action.type === "RESTORE") {
+    await model.query.deleteContext(action.payload.id);
+  } else {
+    await model.query.restoreContext(action.payload.id);
+    model.selection.setSelectedId(action.payload.id);
+  }
 }
 
 function startEditingSelectedContextAction(model: ContextsModel) {
@@ -259,6 +288,8 @@ function useContextsActions(model: ContextsModel) {
     commitEditingSelectedContext: () => commitEditingSelectedContextAction(model),
     createNewContext: () => Promise.resolve(createNewContextAction(model)),
     deleteSelectedContext: () => deleteSelectedContextAction(model),
+    undo: () => undoAction(model),
+    redo: () => redoAction(model),
     openSelectedContextIconEditor: () => openSelectedContextIconEditor(model),
     selectNextContext: model.selection.selectNextContext,
     selectPreviousContext: model.selection.selectPreviousContext,
@@ -296,6 +327,10 @@ function buildContextsBindings(model: ContextsModel, actions: ContextsActions) {
     contextsBinding("contexts.create-context", "a", "Add new context", "context-list", () => runContextAsyncAction(canChangeContext(model), actions.createNewContext, "Failed to create context")),
     contextsBinding("contexts.delete-context-list", "d", "Delete selected context", "context-list", () => runContextAsyncAction(canChangeSelectedContext(model), actions.deleteSelectedContext, "Failed to delete context")),
     contextsBinding("contexts.delete-context-detail", "d", "Delete selected context", "context-detail", () => runContextAsyncAction(canChangeSelectedContext(model), actions.deleteSelectedContext, "Failed to delete context")),
+    contextsBinding("contexts.undo-list", "u", "Undo last deletion", "context-list", () => void actions.undo()),
+    contextsBinding("contexts.undo-detail", "u", "Undo last deletion", "context-detail", () => void actions.undo()),
+    { ...contextsBinding("contexts.redo-list", "r", "Redo last action", "context-list", () => void actions.redo()), ctrl: true },
+    { ...contextsBinding("contexts.redo-detail", "r", "Redo last action", "context-detail", () => void actions.redo()), ctrl: true },
     contextsBinding("contexts.edit-name", "Enter", "Edit selected context", "context-list", () => canChangeSelectedContext(model) && actions.startEditingSelectedContext()),
     contextsBinding("contexts.edit-icon-list", "e", "Edit context icon", "context-list", () => canChangeSelectedContext(model) && actions.openSelectedContextIconEditor()),
     contextsBinding("contexts.edit-icon-detail", "e", "Edit context icon", "context-detail", () => canChangeSelectedContext(model) && actions.openSelectedContextIconEditor()),

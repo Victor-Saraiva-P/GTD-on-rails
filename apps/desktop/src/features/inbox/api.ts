@@ -52,6 +52,18 @@ export async function deleteStuff(id: string): Promise<void> {
 }
 
 /**
+ * Restores a soft-deleted inbox stuff item by identifier.
+ *
+ * @example await restoreStuff(stuff.id)
+ */
+export async function restoreStuff(id: string): Promise<void> {
+  await apiFetch(`/items/${id}/restore`, {
+    method: "POST"
+  });
+}
+
+
+/**
  * Updates a stuff title using its current record for optimistic shape context.
  *
  * @example await updateStuffTitle(stuff, "Updated title")

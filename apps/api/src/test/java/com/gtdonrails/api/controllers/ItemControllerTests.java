@@ -238,6 +238,27 @@ class ItemControllerTests {
             .andExpect(jsonPath("$", hasSize(0)));
     }
 
+    @Test
+    void restoresItem() throws Exception {
+        Item item = itemRepository.save(new Item(new Title("Restore me"), null));
+        item.softDelete();
+        itemRepository.save(item);
+
+        mockMvc.perform(post("/items/{id}/restore", item.getId()))
+            .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/items/{id}", item.getId()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(item.getId().toString()));
+    }
+
+    @Test
+    void returnsNotFoundWhenRestoringMissingItem() throws Exception {
+        mockMvc.perform(post("/items/00000000-0000-0000-0000-000000000001/restore"))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.detail").value("item not found"));
+    }
+
     private ResultActions createItem(String content) throws Exception {
         return mockMvc.perform(post("/items")
             .contentType(MediaType.APPLICATION_JSON)

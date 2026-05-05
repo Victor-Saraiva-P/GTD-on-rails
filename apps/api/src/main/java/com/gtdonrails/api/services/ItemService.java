@@ -118,9 +118,22 @@ public class ItemService {
         requestPersistenceSyncAfterCommit("item deleted", PersistenceChangeType.DELETE_ITEM);
     }
 
+    /**
+     * Restores a soft-deleted item and schedules persistence sync after commit.
+     *
+     * <p>Example: {@code itemService.restoreItem(itemId)}.</p>
+     */
+    @Transactional
+    public void restoreItem(UUID id) {
+        Item item = itemRepository.findById(id)
+            .orElseThrow(() -> new ItemNotFoundException("item not found"));
+        item.restore();
+        itemRepository.save(item);
+        requestPersistenceSyncAfterCommit("item restored", PersistenceChangeType.UPDATE_ITEM);
+    }
+
     private Item findItem(UUID id) {
         return itemRepository.findByIdAndDeletedAtIsNull(id)
-
             .orElseThrow(() -> new ItemNotFoundException("item not found"));
     }
 

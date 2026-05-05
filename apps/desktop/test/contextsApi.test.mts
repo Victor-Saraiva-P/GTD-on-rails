@@ -6,6 +6,7 @@ import {
   createContext,
   updateContextName,
   deleteContext,
+  restoreContext,
   updateContextIcon,
   deleteContextIcon,
   fetchContextItems
@@ -76,6 +77,16 @@ describe("contexts API", () => {
     });
 
     await deleteContext("5");
+  });
+
+  test("restoreContext sends POST method", async () => {
+    globalThis.fetch = mock.fn(async (input, init) => {
+      assert.ok(input.toString().endsWith("/contexts/9/restore"));
+      assert.equal(init?.method, "POST");
+      return new Response("", { status: 200 });
+    });
+
+    await restoreContext("9");
   });
 
   test("updateContextIcon uploads FormData", async () => {

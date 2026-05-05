@@ -191,6 +191,27 @@ class ContextControllerTests {
     }
 
     @Test
+    void restoresContext() throws Exception {
+        Context context = contextRepository.save(new Context("home"));
+        context.softDelete();
+        contextRepository.save(context);
+
+        mockMvc.perform(post("/contexts/{id}/restore", context.getId()))
+            .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/contexts/{id}", context.getId()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(context.getId().toString()));
+    }
+
+    @Test
+    void returnsNotFoundWhenRestoringMissingContext() throws Exception {
+        mockMvc.perform(post("/contexts/00000000-0000-0000-0000-000000000001/restore"))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.detail").value("context not found"));
+    }
+
+    @Test
     void deletingContextRemovesItFromRelatedItems() throws Exception {
         Context context = contextRepository.save(new Context("home"));
         Item item = new Item(new Title("Capture idea"), null);

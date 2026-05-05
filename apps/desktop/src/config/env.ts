@@ -1,4 +1,5 @@
 const defaultApiBaseUrl = "http://127.0.0.1:8080";
+const defaultUndoRedoMaxStackSize = 50;
 
 function normalizeApiBaseUrl(rawValue: string): string {
   const trimmedValue = rawValue.trim();
@@ -12,9 +13,22 @@ function normalizeApiBaseUrl(rawValue: string): string {
   return normalizedUrl.toString().replace(/\/$/, "");
 }
 
+function normalizeNumber(rawValue: string | undefined, defaultValue: number): number {
+  if (rawValue === undefined) {
+    return defaultValue;
+  }
+  const parsed = parseInt(rawValue, 10);
+  return isNaN(parsed) ? defaultValue : parsed;
+}
+
 const viteEnv = (import.meta as any).env || {};
 export const apiBaseUrl = normalizeApiBaseUrl(
   viteEnv.VITE_API_BASE_URL ?? defaultApiBaseUrl
+);
+
+export const undoRedoMaxStackSize = normalizeNumber(
+  viteEnv.VITE_UNDO_REDO_MAX_STACK_SIZE,
+  defaultUndoRedoMaxStackSize
 );
 
 /**

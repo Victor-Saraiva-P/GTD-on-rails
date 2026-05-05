@@ -6,6 +6,7 @@ import {
   deleteContext as deleteContextRequest,
   deleteContextIcon as deleteContextIconRequest,
   fetchContexts,
+  restoreContext as restoreContextRequest,
   updateContextIcon as updateContextIconRequest,
   updateContextName as updateContextNameRequest
 } from "./api";
@@ -20,6 +21,7 @@ type ContextsQueryState = {
   errorMessage: string | null;
   createContext: (name: string) => Promise<ContextItem>;
   deleteContext: (id: string) => Promise<void>;
+  restoreContext: (id: string) => Promise<void>;
   updateContextName: (id: string, name: string) => Promise<ContextItem>;
   updateContextIcon: (id: string, file: File) => Promise<ContextItem>;
   deleteContextIcon: (id: string) => Promise<ContextItem>;
@@ -136,6 +138,19 @@ async function deleteContextItem(id: string, state: ContextsLoadState, mutations
   }
 }
 
+async function restoreContextItem(id: string, state: ContextsLoadState, mutations: ContextsMutationState, triggerSyncStatusPolling: () => void) {
+  mutations.setIsUpdating(true);
+
+  try {
+    await restoreContextRequest(id);
+    const nextContexts = await fetchContexts();
+    state.setContexts(nextContexts);
+    completeContextMutation(state, triggerSyncStatusPolling);
+  } finally {
+    mutations.setIsUpdating(false);
+  }
+}
+
 async function updateContextItem(updateRequest: () => Promise<ContextItem>, state: ContextsLoadState, mutations: ContextsMutationState, triggerSyncStatusPolling: () => void) {
   mutations.setIsUpdating(true);
 
@@ -155,6 +170,7 @@ function useContextsMutations(state: ContextsLoadState, mutations: ContextsMutat
   return {
     createContext: (name: string) => createContextItem(name, state, mutations, triggerSyncStatusPolling),
     deleteContext: (id: string) => deleteContextItem(id, state, mutations, triggerSyncStatusPolling),
+    restoreContext: (id: string) => restoreContextItem(id, state, mutations, triggerSyncStatusPolling),
     deleteContextIcon: (id: string) => updateContextItem(() => deleteContextIconRequest(id), state, mutations, triggerSyncStatusPolling),
     updateContextIcon: (id: string, file: File) => updateContextItem(() => updateContextIconRequest(id, file), state, mutations, triggerSyncStatusPolling),
     updateContextName: (id: string, name: string) => updateContextItem(() => updateContextNameRequest(id, name), state, mutations, triggerSyncStatusPolling)

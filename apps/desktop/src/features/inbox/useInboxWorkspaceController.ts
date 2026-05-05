@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useUndoRedoHistory } from "../history/useUndoRedoHistory";
 import { useActiveZone } from "../keybinds/hooks";
 import { useInboxStuffsQuery } from "./useInboxStuffsQuery";
 import type { Stuff } from "./types";
@@ -178,13 +179,40 @@ function createNewStuffAction(model: InboxModel) {
 }
 
 async function deleteSelectedStuffAction(model: InboxModel) {
-  if (!model.selection.selectedItem) {
+  const selectedItem = model.selection.selectedItem;
+
+  if (!selectedItem) {
     return;
   }
 
-  await model.query.deleteStuff(model.selection.selectedItem.id);
+  await model.query.deleteStuff(selectedItem.id);
+  model.history.pushUndo({ type: "DELETE", payload: selectedItem });
   clearAllEditing(model);
   model.zone.setActiveZone("inbox-list");
+}
+
+async function undoAction(model: InboxModel) {
+  const action = model.history.popUndo();
+  if (!action) return;
+
+  if (action.type === "DELETE") {
+    await model.query.restoreStuff(action.payload.id);
+    model.selection.setSelectedId(action.payload.id);
+  } else {
+    await model.query.deleteStuff(action.payload.id);
+  }
+}
+
+async function redoAction(model: InboxModel) {
+  const action = model.history.popRedo();
+  if (!action) return;
+
+  if (action.type === "RESTORE") {
+    await model.query.deleteStuff(action.payload.id);
+  } else {
+    await model.query.restoreStuff(action.payload.id);
+    model.selection.setSelectedId(action.payload.id);
+  }
 }
 
 function startEditingSelectedStuffAction(model: InboxModel) {
@@ -329,6 +357,8 @@ function useInboxWorkspaceActions(model: InboxModel) {
     commitEditingSelectedStuffBody: (body: string) => commitEditingSelectedStuffBodyAction(model, body),
     createNewStuff: () => Promise.resolve(createNewStuffAction(model)),
     deleteSelectedStuff: () => deleteSelectedStuffAction(model),
+    undo: () => undoAction(model),
+    redo: () => redoAction(model),
     selectNextStuff: model.selection.selectNextStuff,
     selectPreviousStuff: model.selection.selectPreviousStuff,
     startEditingSelectedStuff: () => startEditingSelectedStuffAction(model),
@@ -345,8 +375,9 @@ function useInboxWorkspaceModel() {
   const bodyEdit = useBodyEditState();
   const pending = usePendingBodyEditState();
   const zone = useActiveZone();
+  const history = useUndoRedoHistory<Stuff>();
 
-  return { bodyEdit, draft, pending, query, selection, titleEdit, zone };
+  return { bodyEdit, draft, pending, query, selection, titleEdit, zone, history };
 }
 
 function controllerEditState(model: InboxModel) {

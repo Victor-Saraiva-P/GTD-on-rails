@@ -5,6 +5,7 @@ import {
   fetchInboxStuffs,
   createStuff,
   deleteStuff,
+  restoreStuff,
   updateStuffTitle,
   updateStuffBody
 } from "../src/features/inbox/api.ts";
@@ -55,6 +56,16 @@ describe("inbox API", () => {
     });
 
     await deleteStuff("123");
+  });
+
+  test("restoreStuff sends POST method", async () => {
+    globalThis.fetch = mock.fn(async (input, init) => {
+      assert.ok(input.toString().endsWith("/items/456/restore"));
+      assert.equal(init?.method, "POST");
+      return new Response("", { status: 200 });
+    });
+
+    await restoreStuff("456");
   });
 
   test("updateStuffTitle only changes title", async () => {

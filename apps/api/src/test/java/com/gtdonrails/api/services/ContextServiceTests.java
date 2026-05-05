@@ -259,6 +259,34 @@ class ContextServiceTests {
     }
 
     @Test
+    void restoreContextClearsDeletedFlag() {
+        UUID contextId = UUID.randomUUID();
+        Context context = new Context("home");
+        context.softDelete();
+
+        when(contextRepository.findById(contextId)).thenReturn(Optional.of(context));
+
+        contextService.restoreContext(contextId);
+
+        verify(contextRepository).save(contextCaptor.capture());
+        assertFalse(contextCaptor.getValue().isDeleted());
+        verify(persistenceGitSyncService).requestSync("context restored", PersistenceChangeType.UPDATE_CONTEXT);
+    }
+
+    @Test
+    void restoreContextThrowsWhenContextDoesNotExist() {
+        UUID contextId = UUID.randomUUID();
+
+        when(contextRepository.findById(contextId)).thenReturn(Optional.empty());
+
+        ContextNotFoundException exception = assertThrows(
+            ContextNotFoundException.class,
+            () -> contextService.restoreContext(contextId));
+
+        assertEquals("context not found", exception.getMessage());
+    }
+
+    @Test
     void deleteContextRemovesRelationFromAllItems() {
         UUID contextId = UUID.randomUUID();
         Context context = new Context("home");

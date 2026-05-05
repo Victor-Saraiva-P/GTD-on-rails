@@ -75,6 +75,18 @@ export async function deleteContext(id: string): Promise<void> {
 }
 
 /**
+ * Restores a soft-deleted context by identifier.
+ *
+ * @example await restoreContext(context.id)
+ */
+export async function restoreContext(id: string): Promise<void> {
+  await apiFetch(`/contexts/${id}/restore`, {
+    method: "POST"
+  });
+}
+
+
+/**
  * Uploads a replacement icon file for a context.
  *
  * @example await updateContextIcon(context.id, file)

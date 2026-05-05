@@ -71,4 +71,15 @@ public class ItemController {
         itemService.deleteItem(id);
         return ResponseEntity.noContent().build();
     }
+
+    /**
+     * Handles item restoration requests by clearing the soft deletion flag.
+     *
+     * <p>Example: {@code POST /items/018f13b2-a7f3-7c44-8f1a-9f31f65a7fd2/restore}.</p>
+     */
+    @PostMapping("/{id}/restore")
+    public ResponseEntity<Void> restoreItem(@PathVariable UUID id) {
+        itemService.restoreItem(id);
+        return ResponseEntity.noContent().build();
+    }
 }

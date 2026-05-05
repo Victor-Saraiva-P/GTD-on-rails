@@ -146,8 +146,10 @@ function collectLeaderBindings(bindings: KeybindDefinition[], leaderPath: string
   return Array.from(nextBindingsByKey.values());
 }
 
-function findDirectBinding(config: KeydownConfig, key: string): RegisteredKeybind | undefined {
-  return matchingBindings(config).find((binding) => !binding.leader && binding.key === key);
+function findDirectBinding(config: KeydownConfig, event: KeyboardEvent): RegisteredKeybind | undefined {
+  return matchingBindings(config).find(
+    (binding) => !binding.leader && binding.key === event.key && Boolean(binding.ctrl) === event.ctrlKey
+  );
 }
 
 function handleLeaderKey(event: KeyboardEvent, config: KeydownConfig) {
@@ -183,7 +185,7 @@ function handleLeaderMatch(
 }
 
 function handleGlobalKeyDown(event: KeyboardEvent, config: KeydownConfig) {
-  if (isTypingTarget(event.target) || event.ctrlKey || event.metaKey || event.altKey) {
+  if (isTypingTarget(event.target) || event.metaKey || event.altKey) {
     return;
   }
 
@@ -193,7 +195,7 @@ function handleGlobalKeyDown(event: KeyboardEvent, config: KeydownConfig) {
     return;
   }
 
-  if (event.key === " ") {
+  if (event.key === " " && !event.ctrlKey) {
     event.preventDefault();
     event.stopPropagation();
     config.openLeaderMenu();
@@ -201,6 +203,9 @@ function handleGlobalKeyDown(event: KeyboardEvent, config: KeydownConfig) {
   }
 
   if (isVimNormalModeTarget(event.target)) {
+    // Redo (Ctrl-R) is a Vim command, but we might want to handle it globally for the list
+    // If the target is a Vim editor, we let it handle Ctrl-R unless we are in the list.
+    // However, if the user is in the list, isVimNormalModeTarget is false.
     return;
   }
 
@@ -208,7 +213,7 @@ function handleGlobalKeyDown(event: KeyboardEvent, config: KeydownConfig) {
 }
 
 function handleDirectKey(event: KeyboardEvent, config: KeydownConfig) {
-  const matchingBinding = findDirectBinding(config, event.key);
+  const matchingBinding = findDirectBinding(config, event);
 
   if (!matchingBinding) {
     return;

@@ -16,4 +16,5 @@ export type KeybindDefinition = {
   zone?: FocusZoneId;
   leader?: boolean;
   sequence?: string[];
+  ctrl?: boolean;
 };

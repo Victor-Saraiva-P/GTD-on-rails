@@ -319,6 +319,35 @@ class ItemServiceTests {
     }
 
     @Test
+    void restoreItemClearsDeletedFlag() {
+        UUID itemId = UUID.randomUUID();
+        Item item = new Item(new Title("Restore"), null);
+        item.softDelete();
+
+        when(itemRepository.findById(itemId)).thenReturn(Optional.of(item));
+
+        itemService.restoreItem(itemId);
+
+        verify(itemRepository).save(itemCaptor.capture());
+        assertFalse(itemCaptor.getValue().isDeleted());
+        verify(persistenceGitSyncService).requestSync("item restored", PersistenceChangeType.UPDATE_ITEM);
+    }
+
+    @Test
+    void restoreItemThrowsNotFoundWhenItemDoesNotExist() {
+        UUID itemId = UUID.randomUUID();
+
+        when(itemRepository.findById(itemId)).thenReturn(Optional.empty());
+
+        ItemNotFoundException exception = assertThrows(
+            ItemNotFoundException.class,
+            () -> itemService.restoreItem(itemId));
+
+        assertEquals("item not found", exception.getMessage());
+        verify(itemRepository, never()).save(any(Item.class));
+    }
+
+    @Test
     void createItemRequestsPersistenceSyncOnlyAfterCommitWhenTransactionSynchronizationIsActive() {
         stubSavedItemResponse(itemResponse("Capture idea", null));
 

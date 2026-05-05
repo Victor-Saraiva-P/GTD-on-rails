@@ -125,4 +125,15 @@ public class ContextController {
         contextService.deleteContext(id);
         return ResponseEntity.noContent().build();
     }
+
+    /**
+     * Handles context restoration requests by clearing the soft deletion flag.
+     *
+     * <p>Example: {@code POST /contexts/018f13b2-a7f3-7c44-8f1a-9f31f65a7fd2/restore}.</p>
+     */
+    @PostMapping("/{id}/restore")
+    public ResponseEntity<Void> restoreContext(@PathVariable UUID id) {
+        contextService.restoreContext(id);
+        return ResponseEntity.noContent().build();
+    }
 }
