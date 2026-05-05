@@ -7,9 +7,11 @@ import java.util.Set;
 import java.util.UUID;
 
 import com.gtdonrails.api.enums.ItemStatus;
-import com.gtdonrails.api.normalizers.ItemTextNormalizer;
+import com.gtdonrails.api.normalizers.ItemBodyNormalizer;
 import com.gtdonrails.api.persistence.converters.DurationMinutesConverter;
+import com.gtdonrails.api.persistence.converters.ItemBodyConverter;
 import com.gtdonrails.api.persistence.converters.TitleConverter;
+import com.gtdonrails.api.types.ItemBody;
 import com.gtdonrails.api.types.Title;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
@@ -49,7 +51,8 @@ public class Item extends AuditableEntity {
     private Title title;
 
     @Column(nullable = false, columnDefinition = "text")
-    private String body = "";
+    @Convert(converter = ItemBodyConverter.class)
+    private ItemBody body = ItemBody.empty();
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
@@ -83,7 +86,7 @@ public class Item extends AuditableEntity {
 
     public Item(Title title, String body, BigDecimal energy, Duration time) {
         setTitle(title);
-        setBody(body);
+        setBody(new ItemBody(body, null, null, null));
         setEnergy(energy);
         setTime(time);
     }
@@ -102,12 +105,12 @@ public class Item extends AuditableEntity {
     }
 
     /**
-     * Stores optional item body markdown as non-null text.
+     * Stores optional item body metadata as a non-null value object.
      *
-     * <p>Example: {@code item.setBody("# Notes")}.</p>
+     * <p>Example: {@code item.setBody(ItemBody.empty())}.</p>
      */
-    public void setBody(String body) {
-        this.body = ItemTextNormalizer.normalizeBodyValue(body);
+    public void setBody(ItemBody body) {
+        this.body = ItemBodyNormalizer.normalizeBodyValue(body);
     }
 
     /**

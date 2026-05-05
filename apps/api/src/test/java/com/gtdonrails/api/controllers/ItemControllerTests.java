@@ -6,6 +6,7 @@ import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -18,6 +19,7 @@ import java.time.Duration;
 import com.gtdonrails.api.entities.Context;
 import com.gtdonrails.api.entities.Item;
 import com.gtdonrails.api.repositories.ContextRepository;
+import com.gtdonrails.api.repositories.ItemAssetRepository;
 import com.gtdonrails.api.repositories.ItemRepository;
 import com.gtdonrails.api.types.Title;
 import org.junit.jupiter.api.BeforeEach;
@@ -51,11 +53,15 @@ class ItemControllerTests {
     @Autowired
     private ContextRepository contextRepository;
 
+    @Autowired
+    private ItemAssetRepository itemAssetRepository;
+
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).build();
+        itemAssetRepository.deleteAll();
         itemRepository.deleteAll();
         contextRepository.deleteAll();
     }
@@ -88,6 +94,21 @@ class ItemControllerTests {
     }
 
     @Test
+    void createsItemWithOnlyTitle() throws Exception {
+        createItem("""
+            {
+              "title": "Quick capture"
+            }
+            """)
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.title").value("Quick capture"))
+            .andExpect(jsonPath("$.body.text").value(""))
+            .andExpect(jsonPath("$.energy").value(nullValue()))
+            .andExpect(jsonPath("$.time").value(nullValue()))
+            .andExpect(jsonPath("$.contexts", hasSize(0)));
+    }
+
+    @Test
     void getsItem() throws Exception {
         Item item = savedTimedItem("Capture idea", "Need to process later", "2.0", 75);
 
@@ -109,6 +130,80 @@ class ItemControllerTests {
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.energy").value(nullValue()))
             .andExpect(jsonPath("$.time").value(nullValue()));
+    }
+
+    @Test
+    void createsItemWithNullBodyAsEmptyBody() throws Exception {
+        createItem("""
+            {
+              "title": "Capture empty body",
+              "body": null
+            }
+            """)
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.body.text").value(""))
+            .andExpect(jsonPath("$.body.inlineMarks", hasSize(0)))
+            .andExpect(jsonPath("$.body.lineBlocks", hasSize(0)))
+            .andExpect(jsonPath("$.body.blockEntities", hasSize(0)));
+    }
+
+    @Test
+    void createsItemWithStructuredBody() throws Exception {
+        createItem("""
+            {
+              "title": "Capture rich body",
+              "body": {
+                "text": null,
+                "inlineMarks": null,
+                "lineBlocks": null,
+                "blockEntities": null
+              }
+            }
+            """)
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.body.text").value(""))
+            .andExpect(jsonPath("$.body.inlineMarks", hasSize(0)))
+            .andExpect(jsonPath("$.body.lineBlocks", hasSize(0)))
+            .andExpect(jsonPath("$.body.blockEntities", hasSize(0)));
+    }
+
+    @Test
+    void persistsStructuredBodyMetadata() throws Exception {
+        String body = """
+            {
+              "text": "see ⟦asset:asset_id⟧",
+              "inlineMarks": [{"id":"m1","type":"bold","from":0,"to":3}],
+              "lineBlocks": [{"id":"l1","type":"paragraph","from":0,"to":22}],
+              "blockEntities": []
+            }
+            """;
+
+        createItem("""
+            {
+              "title": "Capture asset token",
+              "body": %s
+            }
+            """.formatted(body))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.body.text").value("see ⟦asset:asset_id⟧"))
+            .andExpect(jsonPath("$.body.inlineMarks[0].id").value("m1"))
+            .andExpect(jsonPath("$.body.lineBlocks[0].id").value("l1"))
+            .andExpect(jsonPath("$.body.blockEntities", hasSize(0)));
+    }
+
+    @Test
+    void rejectsCreateWithBlockEntityBeforeAssetUpload() throws Exception {
+        createItem("""
+            {
+              "title": "Capture asset token",
+              "body": {
+                "text": "see ⟦asset:asset_id⟧",
+                "blockEntities": [{"id":"b1","type":"pdf","from":4,"to":22,"assetId":"asset_id"}]
+              }
+            }
+            """)
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.detail").value("body.blockEntities value is invalid; expected uploaded assets on an existing item"));
     }
 
     @Test
@@ -138,6 +233,58 @@ class ItemControllerTests {
     }
 
     @Test
+    void patchesOnlyItemBody() throws Exception {
+        Item item = savedTimedItem("Old title", "Old body", "1.0", 20);
+
+        patchItemBody(item, """
+            {
+              "body": %s
+            }
+            """.formatted(bodyJson("New body only")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.title").value("Old title"))
+            .andExpect(jsonPath("$.body.text").value("New body only"))
+            .andExpect(jsonPath("$.energy").value(1.0))
+            .andExpect(jsonPath("$.time.minutes").value(20));
+    }
+
+    @Test
+    void patchesMetadataAndPreservesOmittedContexts() throws Exception {
+        Context office = contextRepository.save(new Context("office"));
+        Item item = savedTimedItem("Old title", "Old body", "1.0", 20);
+        item.addContext(office);
+        item = itemRepository.save(item);
+
+        patchItem(item, """
+            {
+              "energy": 4.5
+            }
+            """)
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.title").value("Old title"))
+            .andExpect(jsonPath("$.body.text").value("Old body"))
+            .andExpect(jsonPath("$.energy").value(4.5))
+            .andExpect(jsonPath("$.time.minutes").value(20))
+            .andExpect(jsonPath("$.contexts", hasSize(1)));
+    }
+
+    @Test
+    void patchesMetadataAndClearsContextsWithEmptyArray() throws Exception {
+        Context office = contextRepository.save(new Context("office"));
+        Item item = itemRepository.save(new Item(new Title("Old title"), null));
+        item.addContext(office);
+        item = itemRepository.save(item);
+
+        patchItem(item, """
+            {
+              "contextIds": []
+            }
+            """)
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.contexts", hasSize(0)));
+    }
+
+    @Test
     void normalizesMarkdownBodyLineEndings() throws Exception {
         ResultActions result = createItem("""
             {
@@ -147,7 +294,7 @@ class ItemControllerTests {
             """.formatted(bodyJson("  # Title\r\n\n- item  ")));
 
         result.andExpect(status().isCreated())
-            .andExpect(jsonPath("$.body").value("  # Title\n\n- item  "));
+            .andExpect(jsonPath("$.body.text").value("  # Title\n\n- item  "));
     }
 
     @Test
@@ -162,7 +309,7 @@ class ItemControllerTests {
             """.formatted(bodyJson(maliciousBody)));
 
         result.andExpect(status().isCreated())
-            .andExpect(jsonPath("$.body").value(maliciousBody));
+            .andExpect(jsonPath("$.body.text").value(maliciousBody));
     }
 
     @Test
@@ -261,11 +408,13 @@ class ItemControllerTests {
 
         mockMvc.perform(multipart("/items/{id}/assets", item.getId()).file(file))
             .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(notNullValue()))
             .andExpect(jsonPath("$.relativePath").value(org.hamcrest.Matchers.matchesPattern("items/" + item.getId() + "/[0-9a-f-]+/file\\.pdf")))
             .andExpect(jsonPath("$.url").value(org.hamcrest.Matchers.matchesPattern("/assets/items/" + item.getId() + "/[0-9a-f-]+/file\\.pdf")))
             .andExpect(jsonPath("$.fileName").value("file.pdf"))
             .andExpect(jsonPath("$.contentType").value("application/pdf"))
             .andExpect(jsonPath("$.image").value(false));
+        org.junit.jupiter.api.Assertions.assertEquals(1, itemAssetRepository.findAllByItemId(item.getId()).size());
     }
 
     @Test
@@ -283,6 +432,18 @@ class ItemControllerTests {
 
     private ResultActions updateItem(Item item, String content) throws Exception {
         return mockMvc.perform(put("/items/{id}", item.getId())
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(content));
+    }
+
+    private ResultActions patchItem(Item item, String content) throws Exception {
+        return mockMvc.perform(patch("/items/{id}", item.getId())
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(content));
+    }
+
+    private ResultActions patchItemBody(Item item, String content) throws Exception {
+        return mockMvc.perform(patch("/items/{id}/body", item.getId())
             .contentType(MediaType.APPLICATION_JSON)
             .content(content));
     }
@@ -342,19 +503,19 @@ class ItemControllerTests {
     }
 
     private String bodyJson(String text) {
-        return "\"" + text
+        return "{\"text\":\"" + text
             .replace("\\", "\\\\")
             .replace("\"", "\\\"")
             .replace("\r", "\\r")
             .replace("\n", "\\n")
-            + "\"";
+            + "\",\"inlineMarks\":[],\"lineBlocks\":[],\"blockEntities\":[]}";
     }
 
     private void assertFetchedItem(ResultActions result, Item item) throws Exception {
         result.andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(item.getId().toString()))
             .andExpect(jsonPath("$.title").value("Capture idea"))
-            .andExpect(jsonPath("$.body").value("Need to process later"))
+            .andExpect(jsonPath("$.body.text").value("Need to process later"))
             .andExpect(jsonPath("$.energy").value(2.0))
             .andExpect(jsonPath("$.time.hours").value(1))
             .andExpect(jsonPath("$.time.minutes").value(15))
@@ -366,7 +527,7 @@ class ItemControllerTests {
         result.andExpect(status().isCreated())
             .andExpect(header().string("Location", "/items/" + itemRepository.findAll().getFirst().getId()))
             .andExpect(jsonPath("$.title").value("Capture rent receipt"))
-            .andExpect(jsonPath("$.body").value("Need to process later"))
+            .andExpect(jsonPath("$.body.text").value("Need to process later"))
             .andExpect(jsonPath("$.energy").value(3.5))
             .andExpect(jsonPath("$.time.hours").value(1))
             .andExpect(jsonPath("$.time.minutes").value(45))
@@ -398,7 +559,7 @@ class ItemControllerTests {
     private void assertUpdatedItem(ResultActions result) throws Exception {
         result.andExpect(status().isOk())
             .andExpect(jsonPath("$.title").value("New title"))
-            .andExpect(jsonPath("$.body").value("New body"))
+            .andExpect(jsonPath("$.body.text").value("New body"))
             .andExpect(jsonPath("$.energy").value(6.5))
             .andExpect(jsonPath("$.time.hours").value(2))
             .andExpect(jsonPath("$.time.minutes").value(5))
@@ -408,7 +569,7 @@ class ItemControllerTests {
 
     private void assertUpdatedItemContexts(ResultActions result) throws Exception {
         result.andExpect(status().isOk())
-            .andExpect(jsonPath("$.body").value(""))
+            .andExpect(jsonPath("$.body.text").value(""))
             .andExpect(jsonPath("$.energy").value(5.0))
             .andExpect(jsonPath("$.time.hours").value(3))
             .andExpect(jsonPath("$.time.minutes").value(10))
@@ -420,7 +581,7 @@ class ItemControllerTests {
     private void assertPreservedContext(ResultActions result) throws Exception {
         result.andExpect(status().isOk())
             .andExpect(jsonPath("$.title").value("Updated title"))
-            .andExpect(jsonPath("$.body").value("Updated body"))
+            .andExpect(jsonPath("$.body.text").value("Updated body"))
             .andExpect(jsonPath("$.energy").value(7.0))
             .andExpect(jsonPath("$.time.hours").value(1))
             .andExpect(jsonPath("$.time.minutes").value(20))

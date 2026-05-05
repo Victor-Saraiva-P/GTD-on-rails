@@ -9,18 +9,26 @@ import java.util.UUID;
 import com.gtdonrails.api.dtos.item.CreateItemRequestDto;
 import com.gtdonrails.api.dtos.item.ItemAssetResponseDto;
 import com.gtdonrails.api.dtos.item.ItemResponseDto;
+import com.gtdonrails.api.dtos.item.PatchItemBodyRequestDto;
+import com.gtdonrails.api.dtos.item.PatchItemRequestDto;
 import com.gtdonrails.api.dtos.item.UpdateItemRequestDto;
 import com.gtdonrails.api.entities.Context;
 import com.gtdonrails.api.entities.Item;
+import com.gtdonrails.api.entities.ItemAsset;
 import com.gtdonrails.api.exceptions.context.ContextNotFoundException;
 import com.gtdonrails.api.exceptions.item.ItemNotFoundException;
+import com.gtdonrails.api.exceptions.shared.BusinessException;
 import com.gtdonrails.api.mappers.ItemMapper;
+import com.gtdonrails.api.normalizers.ItemBodyNormalizer;
 import com.gtdonrails.api.normalizers.ItemTextNormalizer;
 import com.gtdonrails.api.persistence.bootstrap.model.PersistenceChangeType;
 import com.gtdonrails.api.persistence.bootstrap.services.PersistenceGitSyncService;
 import com.gtdonrails.api.repositories.ContextRepository;
+import com.gtdonrails.api.repositories.ItemAssetRepository;
 import com.gtdonrails.api.repositories.ItemRepository;
+import com.gtdonrails.api.types.ItemBody;
 import com.gtdonrails.api.types.Title;
+import com.gtdonrails.api.types.BlockEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -29,9 +37,11 @@ import org.springframework.web.multipart.MultipartFile;
 public class ItemService {
 
     private final ItemRepository itemRepository;
+    private final ItemAssetRepository itemAssetRepository;
     private final ContextRepository contextRepository;
     private final ItemMapper itemMapper;
     private final ItemTextNormalizer itemTextNormalizer;
+    private final ItemBodyNormalizer itemBodyNormalizer;
     private final AssetStorageService assetStorageService;
     private final AssetSyncService assetSyncService;
     private final PersistenceGitSyncService persistenceGitSyncService;
@@ -39,18 +49,22 @@ public class ItemService {
 
     public ItemService(
         ItemRepository itemRepository,
+        ItemAssetRepository itemAssetRepository,
         ContextRepository contextRepository,
         ItemMapper itemMapper,
         ItemTextNormalizer itemTextNormalizer,
+        ItemBodyNormalizer itemBodyNormalizer,
         AssetStorageService assetStorageService,
         AssetSyncService assetSyncService,
         PersistenceGitSyncService persistenceGitSyncService,
         AfterCommitExecutor afterCommitExecutor
     ) {
         this.itemRepository = itemRepository;
+        this.itemAssetRepository = itemAssetRepository;
         this.contextRepository = contextRepository;
         this.itemMapper = itemMapper;
         this.itemTextNormalizer = itemTextNormalizer;
+        this.itemBodyNormalizer = itemBodyNormalizer;
         this.assetStorageService = assetStorageService;
         this.assetSyncService = assetSyncService;
         this.persistenceGitSyncService = persistenceGitSyncService;
@@ -75,9 +89,11 @@ public class ItemService {
     @Transactional
     public ItemResponseDto createItem(CreateItemRequestDto request) {
         Title title = new Title(itemTextNormalizer.normalizeTitle(request.title()));
-        String body = itemTextNormalizer.normalizeBody(request.body());
+        ItemBody body = itemBodyNormalizer.normalizeBody(request.body());
+        rejectCreateBlockEntities(body);
         Duration time = request.time() == null ? null : request.time().toDuration();
-        Item item = new Item(title, body, request.energy(), time);
+        Item item = new Item(title, (String) null, request.energy(), time);
+        item.setBody(body);
         item.replaceContexts(findContextsOrThrow(request.contextIds()));
         ItemResponseDto response = itemMapper.toResponse(itemRepository.save(item));
         requestPersistenceSyncAfterCommit("item created", PersistenceChangeType.CREATE_ITEM);
@@ -92,7 +108,7 @@ public class ItemService {
     @Transactional
     public ItemResponseDto updateItem(UUID id, UpdateItemRequestDto request) {
         Item item = findItem(id);
-        updateItemFields(item, request);
+        updateItemFields(id, item, request);
 
         if (request.contextIds() != null) {
             item.replaceContexts(findContextsOrThrow(request.contextIds()));
@@ -103,14 +119,60 @@ public class ItemService {
         return response;
     }
 
-    private void updateItemFields(Item item, UpdateItemRequestDto request) {
+    /**
+     * Updates only body metadata for an active item.
+     *
+     * <p>Example: {@code itemService.patchItemBody(itemId, request)}.</p>
+     */
+    @Transactional
+    public ItemResponseDto patchItemBody(UUID id, PatchItemBodyRequestDto request) {
+        Item item = findItem(id);
+        ItemBody body = itemBodyNormalizer.normalizeBody(request.body());
+        validateBlockEntityAssets(id, body);
+        item.setBody(body);
+        ItemResponseDto response = itemMapper.toResponse(itemRepository.save(item));
+        requestPersistenceSyncAfterCommit("item body updated", PersistenceChangeType.UPDATE_ITEM);
+        return response;
+    }
+
+    /**
+     * Updates only provided item metadata fields.
+     *
+     * <p>Example: {@code itemService.patchItem(itemId, request)}.</p>
+     */
+    @Transactional
+    public ItemResponseDto patchItem(UUID id, PatchItemRequestDto request) {
+        Item item = findItem(id);
+        patchItemFields(item, request);
+        ItemResponseDto response = itemMapper.toResponse(itemRepository.save(item));
+        requestPersistenceSyncAfterCommit("item metadata updated", PersistenceChangeType.UPDATE_ITEM);
+        return response;
+    }
+
+    private void updateItemFields(UUID itemId, Item item, UpdateItemRequestDto request) {
         Title title = new Title(itemTextNormalizer.normalizeTitle(request.title()));
-        String body = itemTextNormalizer.normalizeBody(request.body());
+        ItemBody body = itemBodyNormalizer.normalizeBody(request.body());
+        validateBlockEntityAssets(itemId, body);
 
         item.setTitle(title);
         item.setBody(body);
         item.setEnergy(request.energy());
         item.setTime(request.time() == null ? null : request.time().toDuration());
+    }
+
+    private void patchItemFields(Item item, PatchItemRequestDto request) {
+        if (request.hasTitle()) {
+            item.setTitle(new Title(itemTextNormalizer.normalizeTitle(request.title())));
+        }
+        if (request.hasEnergy()) {
+            item.setEnergy(request.energy());
+        }
+        if (request.hasTime()) {
+            item.setTime(request.time() == null ? null : request.time().toDuration());
+        }
+        if (request.hasContextIds()) {
+            item.replaceContexts(findContextsOrThrow(request.contextIds()));
+        }
     }
 
     /**
@@ -147,10 +209,11 @@ public class ItemService {
      */
     @Transactional
     public ItemAssetResponseDto storeItemAsset(UUID id, MultipartFile file) {
-        findItem(id);
+        Item item = findItem(id);
         String relativePath = assetStorageService.storeItemAsset(id, file);
+        ItemAsset itemAsset = saveItemAsset(item, file, relativePath);
         requestAssetSyncAfterCommit("item asset uploaded");
-        return itemAssetResponse(relativePath);
+        return itemAssetResponse(itemAsset);
     }
 
     private Item findItem(UUID id) {
@@ -181,12 +244,57 @@ public class ItemService {
         afterCommitExecutor.run(() -> assetSyncService.requestSync(reason));
     }
 
-    private ItemAssetResponseDto itemAssetResponse(String relativePath) {
-        return new ItemAssetResponseDto(
+    private void rejectCreateBlockEntities(ItemBody body) {
+        if (body.blockEntities().isEmpty()) {
+            return;
+        }
+
+        throw new BusinessException("body.blockEntities value is invalid; expected uploaded assets on an existing item");
+    }
+
+    private void validateBlockEntityAssets(UUID itemId, ItemBody body) {
+        body.blockEntities().forEach(entity -> validateBlockEntityAsset(itemId, entity));
+    }
+
+    private void validateBlockEntityAsset(UUID itemId, BlockEntity entity) {
+        UUID assetId = parseAssetId(entity.assetId());
+        if (itemAssetRepository.existsByIdAndItemId(assetId, itemId)) {
+            return;
+        }
+
+        throw new BusinessException(
+            "body.blockEntities.assetId value '" + entity.assetId() + "' is invalid; expected asset owned by item '" + itemId + "'");
+    }
+
+    private UUID parseAssetId(String value) {
+        try {
+            return UUID.fromString(value);
+        } catch (RuntimeException exception) {
+            throw new BusinessException(
+                "body.blockEntities.assetId value '" + value + "' is invalid; expected persisted asset UUID");
+        }
+    }
+
+    private ItemAsset saveItemAsset(Item item, MultipartFile file, String relativePath) {
+        ItemAsset asset = new ItemAsset(
+            item,
+            assetStorageService.fileName(relativePath),
+            file.getOriginalFilename() == null ? assetStorageService.fileName(relativePath) : file.getOriginalFilename(),
+            assetStorageService.mediaType(relativePath).toString(),
+            file.getSize(),
             relativePath,
             assetStorageService.publicUrl(relativePath),
-            assetStorageService.fileName(relativePath),
-            assetStorageService.mediaType(relativePath).toString(),
             assetStorageService.isImage(relativePath));
+        return itemAssetRepository.save(asset);
+    }
+
+    private ItemAssetResponseDto itemAssetResponse(ItemAsset asset) {
+        return new ItemAssetResponseDto(
+            asset.getId(),
+            asset.getRelativePath(),
+            asset.getUrl(),
+            asset.getFileName(),
+            asset.getContentType(),
+            asset.isImage());
     }
 }

@@ -6,6 +6,8 @@ import java.util.UUID;
 import com.gtdonrails.api.dtos.item.CreateItemRequestDto;
 import com.gtdonrails.api.dtos.item.ItemAssetResponseDto;
 import com.gtdonrails.api.dtos.item.ItemResponseDto;
+import com.gtdonrails.api.dtos.item.PatchItemBodyRequestDto;
+import com.gtdonrails.api.dtos.item.PatchItemRequestDto;
 import com.gtdonrails.api.dtos.item.UpdateItemRequestDto;
 import com.gtdonrails.api.services.ItemService;
 import jakarta.validation.Valid;
@@ -13,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -62,6 +65,26 @@ public class ItemController {
     @PutMapping("/{id}")
     public ItemResponseDto updateItem(@PathVariable UUID id, @Valid @RequestBody UpdateItemRequestDto request) {
         return itemService.updateItem(id, request);
+    }
+
+    /**
+     * Handles partial item metadata updates for one active item.
+     *
+     * <p>Example: {@code PATCH /items/018f13b2-a7f3-7c44-8f1a-9f31f65a7fd2}.</p>
+     */
+    @PatchMapping("/{id}")
+    public ItemResponseDto patchItem(@PathVariable UUID id, @RequestBody PatchItemRequestDto request) {
+        return itemService.patchItem(id, request);
+    }
+
+    /**
+     * Handles body-only updates for one active item.
+     *
+     * <p>Example: {@code PATCH /items/018f13b2-a7f3-7c44-8f1a-9f31f65a7fd2/body}.</p>
+     */
+    @PatchMapping("/{id}/body")
+    public ItemResponseDto patchItemBody(@PathVariable UUID id, @Valid @RequestBody PatchItemBodyRequestDto request) {
+        return itemService.patchItemBody(id, request);
     }
 
     /**

@@ -18,17 +18,24 @@ import com.gtdonrails.api.dtos.item.CreateItemRequestDto;
 import com.gtdonrails.api.dtos.item.ItemAssetResponseDto;
 import com.gtdonrails.api.dtos.item.ItemResponseDto;
 import com.gtdonrails.api.dtos.item.ItemTimeRequestDto;
+import com.gtdonrails.api.dtos.item.PatchItemBodyRequestDto;
+import com.gtdonrails.api.dtos.item.PatchItemRequestDto;
 import com.gtdonrails.api.dtos.item.UpdateItemRequestDto;
 import com.gtdonrails.api.entities.Context;
 import com.gtdonrails.api.entities.Item;
 import com.gtdonrails.api.exceptions.context.ContextNotFoundException;
 import com.gtdonrails.api.exceptions.item.ItemNotFoundException;
+import com.gtdonrails.api.exceptions.shared.BusinessException;
 import com.gtdonrails.api.mappers.ItemMapper;
 import com.gtdonrails.api.normalizers.ItemTextNormalizer;
+import com.gtdonrails.api.normalizers.ItemBodyNormalizer;
 import com.gtdonrails.api.persistence.bootstrap.model.PersistenceChangeType;
 import com.gtdonrails.api.persistence.bootstrap.services.PersistenceGitSyncService;
 import com.gtdonrails.api.repositories.ContextRepository;
+import com.gtdonrails.api.repositories.ItemAssetRepository;
 import com.gtdonrails.api.repositories.ItemRepository;
+import com.gtdonrails.api.types.BlockEntity;
+import com.gtdonrails.api.types.ItemBody;
 import com.gtdonrails.api.types.Title;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
@@ -42,6 +49,7 @@ import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import tools.jackson.databind.ObjectMapper;
 
 @ExtendWith(MockitoExtension.class)
 @Tag("unit")
@@ -51,11 +59,16 @@ class ItemServiceTests {
         return new BigDecimal(value);
     }
 
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
     @Mock
     private ItemRepository itemRepository;
 
     @Mock
     private ContextRepository contextRepository;
+
+    @Mock
+    private ItemAssetRepository itemAssetRepository;
 
     @Mock
     private ItemMapper itemMapper;
@@ -78,9 +91,11 @@ class ItemServiceTests {
     void setUp() {
         itemService = new ItemService(
             itemRepository,
+            itemAssetRepository,
             contextRepository,
             itemMapper,
             new ItemTextNormalizer(),
+            new ItemBodyNormalizer(),
             assetStorageService,
             assetSyncService,
             persistenceGitSyncService,
@@ -121,7 +136,7 @@ class ItemServiceTests {
 
         ItemResponseDto response = itemService.createItem(new CreateItemRequestDto(
             " Capture\tidea\r\nlater ",
-            body,
+            bodyValue(body),
             energy("4.5"),
             new ItemTimeRequestDto(1L, 30),
             null));
@@ -163,7 +178,7 @@ class ItemServiceTests {
 
         Item savedItem = capturedSavedItem();
         assertEquals("Capture idea", savedItem.getTitle().value());
-        assertEquals("", savedItem.getBody());
+        assertEquals("", savedItem.getBody().text());
         assertNull(savedItem.getEnergy());
         assertNull(savedItem.getTime());
         assertEquals(expectedResponse, response);
@@ -171,7 +186,7 @@ class ItemServiceTests {
 
     @Test
     void createItemThrowsWhenTitleIsInvalid() {
-        CreateItemRequestDto request = new CreateItemRequestDto("   ", "Body", energy("1.0"), null, null);
+        CreateItemRequestDto request = new CreateItemRequestDto("   ", bodyValue("Body"), energy("1.0"), null, null);
 
         IllegalArgumentException exception = assertThrows(
             IllegalArgumentException.class,
@@ -260,7 +275,7 @@ class ItemServiceTests {
         ItemNotFoundException exception = assertThrows(
             ItemNotFoundException.class,
             () -> itemService.updateItem(itemId,
-                new UpdateItemRequestDto("Title", "Body", energy("1.0"), null, null)));
+                new UpdateItemRequestDto("Title", bodyValue("Body"), energy("1.0"), null, null)));
 
         assertEquals("item not found", exception.getMessage());
         verify(itemRepository, never()).save(any(Item.class));
@@ -276,7 +291,7 @@ class ItemServiceTests {
         IllegalArgumentException exception = assertThrows(
             IllegalArgumentException.class,
             () -> itemService.updateItem(itemId,
-                new UpdateItemRequestDto("   ", "Body", energy("1.0"), null, null)));
+                new UpdateItemRequestDto("   ", bodyValue("Body"), energy("1.0"), null, null)));
 
         assertEquals("title value '' is invalid; expected non-blank text", exception.getMessage());
         verify(itemRepository, never()).save(any(Item.class));
@@ -298,6 +313,55 @@ class ItemServiceTests {
         assertSavedItemKeptOfficeContext();
         assertEquals(expectedResponse, response);
         verify(contextRepository, never()).findAllByIdInAndDeletedAtIsNull(any());
+    }
+
+    @Test
+    void patchItemBodyUpdatesOnlyBody() {
+        UUID itemId = UUID.randomUUID();
+        Item existingItem = new Item(new Title("Old title"), "Old body", energy("2.0"), Duration.ofMinutes(30));
+        ItemResponseDto expectedResponse = itemResponse(itemId, "Old title", "New body");
+
+        when(itemRepository.findByIdAndDeletedAtIsNull(itemId)).thenReturn(Optional.of(existingItem));
+        stubSavedItemResponse(expectedResponse);
+
+        ItemResponseDto response = itemService.patchItemBody(itemId, new PatchItemBodyRequestDto(bodyValue("New body")));
+
+        Item savedItem = capturedSavedItem();
+        assertEquals("Old title", savedItem.getTitle().value());
+        assertEquals("New body", savedItem.getBody().text());
+        assertEquals(energy("2.0"), savedItem.getEnergy());
+        assertEquals(Duration.ofMinutes(30), savedItem.getTime());
+        assertEquals(expectedResponse, response);
+    }
+
+    @Test
+    void patchItemPreservesOmittedContextsAndUpdatesEnergy() throws Exception {
+        UUID itemId = UUID.randomUUID();
+        Item existingItem = new Item(new Title("Old title"), null);
+        existingItem.addContext(new Context("office"));
+
+        when(itemRepository.findByIdAndDeletedAtIsNull(itemId)).thenReturn(Optional.of(existingItem));
+        stubSavedItemResponse(itemResponse(itemId, "Old title"));
+
+        itemService.patchItem(itemId, patchRequest("{\"energy\":4.5}"));
+
+        Item savedItem = capturedSavedItem();
+        assertEquals(energy("4.5"), savedItem.getEnergy());
+        assertEquals(1, savedItem.getContexts().size());
+        verify(contextRepository, never()).findAllByIdInAndDeletedAtIsNull(any());
+    }
+
+    @Test
+    void patchItemClearsContextsWithEmptyArray() throws Exception {
+        UUID itemId = UUID.randomUUID();
+        Item existingItem = oldItemWithContext();
+
+        when(itemRepository.findByIdAndDeletedAtIsNull(itemId)).thenReturn(Optional.of(existingItem));
+        stubSavedItemResponse(itemResponse(itemId, "Old title"));
+
+        itemService.patchItem(itemId, patchRequest("{\"contextIds\":[]}"));
+
+        assertEquals(0, capturedSavedItem().getContexts().size());
     }
 
     @Test
@@ -371,10 +435,15 @@ class ItemServiceTests {
         when(assetStorageService.fileName(relativePath)).thenReturn("file.pdf");
         when(assetStorageService.mediaType(relativePath)).thenReturn(MediaType.APPLICATION_PDF);
         when(assetStorageService.isImage(relativePath)).thenReturn(false);
+        when(itemAssetRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         ItemAssetResponseDto response = itemService.storeItemAsset(itemId, file);
 
-        assertEquals(new ItemAssetResponseDto(relativePath, "/assets/" + relativePath, "file.pdf", "application/pdf", false), response);
+        assertEquals(relativePath, response.relativePath());
+        assertEquals("/assets/" + relativePath, response.url());
+        assertEquals("file.pdf", response.fileName());
+        assertEquals("application/pdf", response.contentType());
+        assertFalse(response.image());
         verify(assetSyncService).requestSync("item asset uploaded");
     }
 
@@ -389,6 +458,54 @@ class ItemServiceTests {
 
         assertEquals("item not found", exception.getMessage());
         verify(assetStorageService, never()).storeItemAsset(any(), any());
+    }
+
+    @Test
+    void createItemRejectsBlockEntitiesBeforeAssetUpload() {
+        CreateItemRequestDto request = new CreateItemRequestDto(
+            "Capture file",
+            bodyWithBlockEntity(UUID.randomUUID().toString()),
+            null,
+            null,
+            null);
+
+        BusinessException exception = assertThrows(BusinessException.class, () -> itemService.createItem(request));
+
+        assertEquals("body.blockEntities value is invalid; expected uploaded assets on an existing item", exception.getMessage());
+        verify(itemRepository, never()).save(any(Item.class));
+    }
+
+    @Test
+    void updateItemRejectsMissingBlockEntityAsset() {
+        UUID itemId = UUID.randomUUID();
+        String assetId = UUID.randomUUID().toString();
+
+        when(itemRepository.findByIdAndDeletedAtIsNull(itemId)).thenReturn(Optional.of(new Item(new Title("Title"), null)));
+
+        BusinessException exception = assertThrows(
+            BusinessException.class,
+            () -> itemService.updateItem(itemId, new UpdateItemRequestDto("Title", bodyWithBlockEntity(assetId), null, null, null)));
+
+        assertEquals("body.blockEntities.assetId value '" + assetId + "' is invalid; expected asset owned by item '" + itemId + "'", exception.getMessage());
+        verify(itemRepository, never()).save(any(Item.class));
+    }
+
+    @Test
+    void updateItemAcceptsOwnedBlockEntityAsset() {
+        UUID itemId = UUID.randomUUID();
+        UUID assetId = UUID.randomUUID();
+        ItemResponseDto expectedResponse = itemResponse(itemId, "Title", "see asset");
+
+        when(itemRepository.findByIdAndDeletedAtIsNull(itemId)).thenReturn(Optional.of(new Item(new Title("Title"), null)));
+        when(itemAssetRepository.existsByIdAndItemId(assetId, itemId)).thenReturn(true);
+        stubSavedItemResponse(expectedResponse);
+
+        ItemResponseDto response = itemService.updateItem(
+            itemId,
+            new UpdateItemRequestDto("Title", bodyWithBlockEntity(assetId.toString()), null, null, null));
+
+        assertEquals(expectedResponse, response);
+        assertEquals(assetId.toString(), capturedSavedItem().getBody().blockEntities().getFirst().assetId());
     }
 
     @Test
@@ -438,7 +555,7 @@ class ItemServiceTests {
     }
 
     private ItemResponseDto itemResponse(UUID id, String title, String body) {
-        return new ItemResponseDto(id, title, body, null, null, "STUFF", Instant.now(), List.of());
+        return new ItemResponseDto(id, title, bodyValue(body), null, null, "STUFF", Instant.now(), List.of());
     }
 
     private ItemResponseDto itemResponseWithContexts(UUID notebookId, UUID streetId) {
@@ -459,7 +576,7 @@ class ItemServiceTests {
         return new ItemResponseDto(
             itemId,
             "New title",
-            null,
+            bodyValue(null),
             energy("5.0"),
             null,
             "STUFF",
@@ -471,7 +588,7 @@ class ItemServiceTests {
         return new ItemResponseDto(
             itemId,
             "New title",
-            null,
+            bodyValue(null),
             null,
             null,
             "STUFF",
@@ -482,6 +599,22 @@ class ItemServiceTests {
     private void stubSavedItemResponse(ItemResponseDto expectedResponse) {
         when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(itemMapper.toResponse(any(Item.class))).thenReturn(expectedResponse);
+    }
+
+    private ItemBody bodyValue(String text) {
+        return new ItemBody(text, List.of(), List.of(), List.of());
+    }
+
+    private ItemBody bodyWithBlockEntity(String assetId) {
+        return new ItemBody(
+            "see asset",
+            List.of(),
+            List.of(),
+            List.of(new BlockEntity("b1", "pdf", 0, 9, assetId, null)));
+    }
+
+    private PatchItemRequestDto patchRequest(String json) throws Exception {
+        return new PatchItemRequestDto(OBJECT_MAPPER.readTree(json));
     }
 
     private CreateItemRequestDto createItemWithContextsRequest(UUID notebookId, UUID streetId) {
@@ -504,7 +637,7 @@ class ItemServiceTests {
     private UpdateItemRequestDto normalizedUpdateRequest(String body) {
         return new UpdateItemRequestDto(
             " New\t title\r\nlater ",
-            body,
+            bodyValue(body),
             energy("7.5"),
             new ItemTimeRequestDto(2L, 15),
             null);
@@ -528,7 +661,7 @@ class ItemServiceTests {
     private void assertSavedTimedItem(String title, String body, String energyValue, Duration time) {
         Item savedItem = capturedSavedItem();
         assertEquals(title, savedItem.getTitle().value());
-        assertEquals(body, savedItem.getBody());
+        assertEquals(body, savedItem.getBody().text());
         assertEquals(energy(energyValue), savedItem.getEnergy());
         assertEquals(time, savedItem.getTime());
     }
@@ -536,7 +669,7 @@ class ItemServiceTests {
     private void assertSavedItemClearedBody() {
         Item savedItem = capturedSavedItem();
         assertEquals("New title", savedItem.getTitle().value());
-        assertEquals("", savedItem.getBody());
+        assertEquals("", savedItem.getBody().text());
         assertEquals(energy("3.0"), savedItem.getEnergy());
         assertNull(savedItem.getTime());
     }

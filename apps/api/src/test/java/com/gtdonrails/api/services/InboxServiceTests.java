@@ -13,6 +13,7 @@ import com.gtdonrails.api.entities.Item;
 import com.gtdonrails.api.enums.ItemStatus;
 import com.gtdonrails.api.mappers.ItemMapper;
 import com.gtdonrails.api.repositories.ItemRepository;
+import com.gtdonrails.api.types.ItemBody;
 import com.gtdonrails.api.types.Title;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
@@ -69,11 +70,15 @@ class InboxServiceTests {
         return new ItemResponseDto(
             UUID.randomUUID(),
             title,
-            body,
+            bodyValue(body),
             new BigDecimal(energy),
             null,
             "STUFF",
             Instant.now(),
             List.of());
+    }
+
+    private ItemBody bodyValue(String text) {
+        return new ItemBody(text, List.of(), List.of(), List.of());
     }
 }

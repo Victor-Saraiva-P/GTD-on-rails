@@ -10,6 +10,7 @@ import java.math.BigDecimal;
 import java.time.Duration;
 
 import com.gtdonrails.api.enums.ItemStatus;
+import com.gtdonrails.api.types.ItemBody;
 import com.gtdonrails.api.types.Title;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -43,16 +44,16 @@ class ItemTests {
 
         item.setBody(null);
 
-        assertEquals("", item.getBody());
+        assertEquals("", item.getBody().text());
     }
 
     @Test
     void setBodyNormalizesMarkdownText() {
         Item item = new Item(new Title("Capture idea"), "Details");
 
-        item.setBody(" line 1\r\nline 2 ");
+        item.setBody(new ItemBody(" line 1\r\nline 2 ", null, null, null));
 
-        assertEquals(" line 1\nline 2 ", item.getBody());
+        assertEquals(" line 1\nline 2 ", item.getBody().text());
     }
 
     @Test

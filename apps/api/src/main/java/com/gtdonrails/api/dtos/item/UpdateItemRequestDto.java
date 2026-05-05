@@ -6,7 +6,7 @@ import java.util.UUID;
 
 import com.gtdonrails.api.entities.Context;
 import com.gtdonrails.api.entities.Item;
-import com.gtdonrails.api.normalizers.ItemTextNormalizer;
+import com.gtdonrails.api.types.ItemBody;
 import com.gtdonrails.api.types.Title;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
@@ -20,8 +20,8 @@ public record UpdateItemRequestDto(
     @Size(max = Title.MAX_LENGTH, message = "expected at most " + Title.MAX_LENGTH + " characters")
     String title,
 
-    @Size(max = ItemTextNormalizer.MAX_BODY_LENGTH, message = "expected at most " + ItemTextNormalizer.MAX_BODY_LENGTH + " characters")
-    String body,
+    @Valid
+    ItemBody body,
 
     @DecimalMin(
         value = Item.MIN_ENERGY_VALUE,
