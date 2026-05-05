@@ -1,9 +1,10 @@
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ListPane } from "../components/ListPane";
 import { ListWorkspace } from "../components/ListWorkspace";
 import { RetryState } from "../components/RetryState";
 import { InboxStuffDetails } from "../features/inbox/InboxStuffDetails";
 import { buildFormattingBindings } from "../features/inbox/formattingKeybinds";
+import { MarkdownLinkComboDialog } from "../features/inbox/MarkdownLinkComboDialog";
 import type { InboxWorkspaceController } from "../features/inbox/useInboxWorkspaceController";
 import { LeaderMenu } from "../features/keybinds/LeaderMenu";
 import { useActiveScreen, useKeybindScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
@@ -35,18 +36,22 @@ function backToInboxFromKeybind(controller: InboxWorkspaceController, setActiveS
   }
 }
 
-function buildStuffDetailBindings(controller: InboxWorkspaceController, setActiveScreen: (screen: ScreenId) => void) {
+function buildStuffDetailBindings(
+  controller: InboxWorkspaceController,
+  setActiveScreen: (screen: ScreenId) => void,
+  openLinkCombo: () => void
+) {
   return [
     stuffDetailBinding("stuff-detail-page.edit-body", "Enter", "Edit selected body", () => editStuffBodyFromKeybind(controller)),
     stuffDetailBinding("stuff-detail-page.back-to-inbox", "Escape", "Back to inbox", () => backToInboxFromKeybind(controller, setActiveScreen)),
     stuffDetailBinding("stuff-detail-page.which-key", "k", "Show available keybinds", () => undefined, true),
-    ...buildFormattingBindings("stuff-detail")
+    ...buildFormattingBindings("stuff-detail", openLinkCombo)
   ];
 }
 
-function useStuffDetailBindings(controller: InboxWorkspaceController) {
+function useStuffDetailBindings(controller: InboxWorkspaceController, openLinkCombo: () => void) {
   const { setActiveScreen } = useActiveScreen();
-  const bindings = useMemo(() => buildStuffDetailBindings(controller, setActiveScreen), [controller, setActiveScreen]);
+  const bindings = useMemo(() => buildStuffDetailBindings(controller, setActiveScreen, openLinkCombo), [controller, setActiveScreen, openLinkCombo]);
 
   useRegisterKeybinds(bindings);
 }
@@ -128,10 +133,12 @@ function StuffDetailPane({ controller, setActiveScreen }: StuffDetailReadyProps)
  * @example <StuffDetailPage controller={controller} />
  */
 export function StuffDetailPage({ controller }: StuffDetailPageProps) {
+  const [isLinkComboOpen, setIsLinkComboOpen] = useState(false);
+  const openLinkCombo = useCallback(() => setIsLinkComboOpen(true), []);
   const { setActiveScreen } = useActiveScreen();
   useKeybindScreen("stuff-detail");
   useStuffDetailZone(controller);
-  useStuffDetailBindings(controller);
+  useStuffDetailBindings(controller, openLinkCombo);
 
   return (
     <ListWorkspace theme={stuffDetailListTheme} currentLabel={stuffDetailListTheme.label} modeLabel={controller.vimMode ?? undefined}>
@@ -139,6 +146,7 @@ export function StuffDetailPage({ controller }: StuffDetailPageProps) {
         <StuffDetailPane controller={controller} setActiveScreen={setActiveScreen} />
       </section>
       <LeaderMenu />
+      {isLinkComboOpen ? <MarkdownLinkComboDialog onClose={() => setIsLinkComboOpen(false)} /> : null}
     </ListWorkspace>
   );
 }

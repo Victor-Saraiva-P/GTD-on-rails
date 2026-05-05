@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 function uniqueTitle(): string {
   return `Formatting test ${Date.now()}`;
@@ -9,7 +9,7 @@ test.beforeEach(async ({ page }) => {
   await page.locator("main").click();
 });
 
-async function createStuff(page: any, title: string) {
+async function createStuff(page: Page, title: string) {
   await page.keyboard.press("a");
   const input = page.locator("input.tree-entry__input");
   await expect(input).toBeVisible();
@@ -18,13 +18,13 @@ async function createStuff(page: any, title: string) {
   await expect(page.getByRole("button", { name: title })).toBeVisible();
 }
 
-async function focusDetail(page: any) {
+async function focusDetail(page: Page) {
   await page.keyboard.press("l");
   const detailPane = page.locator(".inbox-pane--detail");
   await expect(detailPane).toHaveClass(/list-pane--active/);
 }
 
-async function openFullDetail(page: any) {
+async function openFullDetail(page: Page) {
   // We might be in editing mode after creating stuff, so we press Escape
   // to go to normal mode, and Escape again to go back to inbox list
   await page.keyboard.press("Escape");
@@ -36,7 +36,7 @@ async function openFullDetail(page: any) {
   await expect(page.locator(".stuff-detail-layout")).toBeVisible();
 }
 
-async function enterEditMode(page: any) {
+async function enterEditMode(page: Page) {
   await expect(async () => {
     await page.keyboard.press("Enter");
     await expect(page.locator(".cm-content")).toHaveAttribute("contenteditable", "true", { timeout: 500 });
@@ -167,6 +167,29 @@ test("space t t clears inline formatting", async ({ page }) => {
 
   await expect(page.locator(".cm-content")).toContainText("Bold text");
   await expect(page.locator(".cm-content")).not.toContainText("**");
+});
+
+test("space t l inserts markdown link from clipboard with p", async ({ page, context }) => {
+  const title = uniqueTitle();
+  const url = "https://www.google.com";
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await createStuff(page, title);
+  await focusDetail(page);
+  await page.evaluate((text) => navigator.clipboard.writeText(text), url);
+
+  await page.keyboard.press("i");
+  await page.keyboard.type("linkzinho ");
+  await page.keyboard.press("Escape");
+
+  await page.keyboard.press(" ");
+  await page.keyboard.press("t");
+  await page.keyboard.press("l");
+
+  const input = page.getByLabel("URL");
+  await expect(input).toBeVisible();
+  await page.keyboard.press("p");
+
+  await expect(page.locator(".cm-content")).toContainText(`[${url}](${url})`);
 });
 
 test("space m c c applies checked checklist", async ({ page }) => {

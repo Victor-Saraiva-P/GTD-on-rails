@@ -1,4 +1,5 @@
 import { ItemBodyMarkdownEditor } from "./ItemBodyMarkdownEditor";
+import { renderMarkdownLinks } from "./markdownLinks";
 import { formatStuffCreatedAt, getStuffBodyPreviewLines, type Stuff } from "./types";
 
 type InboxStuffDetailsProps = {
@@ -57,8 +58,11 @@ function formatBodyForDisplay(body: Stuff["body"]): string | null {
 }
 
 function renderInlineMarkdown(text: string) {
-  const parts = text.split(/(`.*?`|\*\*.*?\*\*|\*.*?\*)/g);
+  const parts = text.split(/(\[[^\]\n]+\]\([^)\s]+\)|`.*?`|\*\*.*?\*\*|\*.*?\*)/g);
   return parts.map((part, i) => {
+    if (/^\[[^\]\n]+\]\([^)\s]+\)$/.test(part)) {
+      return renderMarkdownLinks(part);
+    }
     if (part.startsWith("`") && part.endsWith("`") && part.length >= 2) {
       const inner = part.slice(1, -1);
       return (

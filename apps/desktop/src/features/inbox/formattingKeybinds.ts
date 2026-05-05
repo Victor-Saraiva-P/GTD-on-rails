@@ -26,7 +26,7 @@ function dispatchFormat(eventName: string, detail?: unknown) {
  *
  * @example buildFormattingBindings("inbox")
  */
-export function buildFormattingBindings(screen: ScreenId): KeybindDefinition[] {
+export function buildFormattingBindings(screen: ScreenId, openLinkCombo?: () => void): KeybindDefinition[] {
   const b = (id: string, key: string, description: string, run: () => void, sequence: string[]): KeybindDefinition => ({
     description,
     id: `${screen}.${id}`,
@@ -53,6 +53,7 @@ export function buildFormattingBindings(screen: ScreenId): KeybindDefinition[] {
     b("format-h3", "3", "Format as Heading 3", () => dispatchFormat(FORMAT_HEADING_EVENT, { level: 3 }), ["m", "3"]),
     b("format-bold", "b", "Format as Bold", () => dispatchFormat(FORMAT_BOLD_EVENT), ["t", "b"]),
     b("format-italic", "i", "Format as Italic", () => dispatchFormat(FORMAT_ITALIC_EVENT), ["t", "i"]),
+    b("format-link", "l", "Insert Link", () => openLinkCombo?.(), ["t", "l"]),
     b("format-code", "c", "Format as Code", () => dispatchFormat(FORMAT_CODE_EVENT), ["t", "c"]),
     b("format-clear-inline", "t", "Clear Inline Formatting", () => dispatchFormat(FORMAT_CLEAR_INLINE_EVENT), ["t", "t"])
   ];

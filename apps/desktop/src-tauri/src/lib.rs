@@ -21,6 +21,24 @@ fn read_clipboard_image() -> Result<Option<ClipboardImagePayload>, String> {
     }
 }
 
+#[tauri::command]
+fn read_clipboard_text() -> Result<Option<String>, String> {
+    #[cfg(target_os = "linux")]
+    {
+        return read_linux_clipboard_text();
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    {
+        Ok(None)
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn read_linux_clipboard_text() -> Result<Option<String>, String> {
+    Ok(linux_clipboard()?.wait_for_text().map(|text| text.to_string()))
+}
+
 #[cfg(target_os = "linux")]
 fn read_linux_clipboard_image() -> Result<Option<ClipboardImagePayload>, String> {
     let clipboard = linux_clipboard()?;
@@ -74,7 +92,7 @@ fn clipboard_image_payload(bytes: Vec<u8>) -> ClipboardImagePayload {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![read_clipboard_image])
+        .invoke_handler(tauri::generate_handler![read_clipboard_image, read_clipboard_text])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

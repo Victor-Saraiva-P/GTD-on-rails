@@ -13,6 +13,7 @@ import {
   runPostSaveEffects,
   type MarkdownBodySaveState
 } from "./bodyMarkdown";
+import { INSERT_MARKDOWN_LINK_EVENT, insertMarkdownLink, type InsertMarkdownLinkEventDetail } from "./markdownLinks";
 
 export type ItemBodyMarkdownEditorProps = {
   itemId: string;
@@ -285,6 +286,16 @@ function useCodeMirrorEditorView(
     window.addEventListener(FORMAT_HEADING_EVENT, handler);
     return () => window.removeEventListener(FORMAT_HEADING_EVENT, handler);
   }, []);
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      if (!editorViewRef.current) return;
+      const url = (event as CustomEvent<InsertMarkdownLinkEventDetail>).detail?.url;
+      if (url) insertMarkdownLink(editorViewRef.current, url);
+    };
+    window.addEventListener(INSERT_MARKDOWN_LINK_EVENT, handler);
+    return () => window.removeEventListener(INSERT_MARKDOWN_LINK_EVENT, handler);
+  }, []);
 }
 
 function mountEditorView(
@@ -411,6 +422,7 @@ function editorBehaviorExtensions(
     markdownBoldPlugin,
     markdownItalicPlugin,
     markdownCodePlugin,
+    markdownLinkPlugin,
     EditorView.updateListener.of((update) => {
       if (update.selectionSet || update.docChanged) {
         cursorCache.set(itemId, update.state.selection.toJSON());
@@ -970,6 +982,74 @@ const markdownItalicPlugin = ViewPlugin.fromClass(
 const codeTextDecoration = Decoration.mark({ class: "cm-code-text" });
 const codeMarkDecoration = Decoration.mark({ class: "cm-code-mark" });
 const hiddenCodeMark = Decoration.replace({});
+
+class MarkdownLinkWidget extends WidgetType {
+  constructor(private url: string) {
+    super();
+  }
+
+  eq(other: MarkdownLinkWidget): boolean {
+    return this.url === other.url;
+  }
+
+  toDOM(): HTMLElement {
+    const link = document.createElement("a");
+    link.className = "cm-markdown-link";
+    link.href = this.url;
+    link.rel = "noreferrer";
+    link.target = "_blank";
+    link.textContent = this.url;
+    return link;
+  }
+}
+
+const markdownLinkPlugin = ViewPlugin.fromClass(
+  class {
+    decorations: DecorationSet;
+
+    constructor(view: EditorView) {
+      this.decorations = this.buildDecorations(view);
+    }
+
+    update(update: ViewUpdate) {
+      if (update.docChanged || update.selectionSet || update.viewportChanged) {
+        this.decorations = this.buildDecorations(update.view);
+      }
+    }
+
+    buildDecorations(view: EditorView) {
+      const activeLines = selectedLineNumbers(view);
+      const builder = new RangeSetBuilder<Decoration>();
+      for (const { from, to } of view.visibleRanges) {
+        addMarkdownLinkDecorations(view, builder, activeLines, from, to);
+      }
+      return builder.finish();
+    }
+  },
+  { decorations: (v) => v.decorations }
+);
+
+function addMarkdownLinkDecorations(
+  view: EditorView,
+  builder: RangeSetBuilder<Decoration>,
+  activeLines: Set<number>,
+  from: number,
+  to: number
+) {
+  for (let pos = from; pos <= to;) {
+    const line = view.state.doc.lineAt(pos);
+    if (!activeLines.has(line.number)) addMarkdownLinksFromLine(line.from, line.text, builder);
+    pos = line.to + 1;
+  }
+}
+
+function addMarkdownLinksFromLine(lineFrom: number, lineText: string, builder: RangeSetBuilder<Decoration>) {
+  const markdownLinkPattern = /\[([^\]\n]+)\]\(([^)\s]+)\)/g;
+  for (const match of lineText.matchAll(markdownLinkPattern)) {
+    const from = lineFrom + (match.index ?? 0);
+    builder.add(from, from + match[0].length, Decoration.replace({ widget: new MarkdownLinkWidget(match[1]) }));
+  }
+}
 
 const markdownCodePlugin = ViewPlugin.fromClass(
   class {

@@ -109,6 +109,30 @@
   transform: translateX(calc(-1 * var(--inbox-line-text-shift)));
 }
 
+.inbox-detail__body-link {
+  color: #7dd3fc;
+  text-decoration: underline;
+  text-decoration-color: rgba(125, 211, 252, 0.48);
+  text-underline-offset: 3px;
+}
+
+.inbox-detail__body-link:hover,
+.inbox-detail__body-link:focus-visible {
+  color: #bae6fd;
+}
+
+.inbox-detail__codemirror .cm-markdown-link {
+  color: #7dd3fc;
+  text-decoration: underline;
+  text-decoration-color: rgba(125, 211, 252, 0.48);
+  text-underline-offset: 3px;
+}
+
+.inbox-detail__codemirror .cm-markdown-link:hover,
+.inbox-detail__codemirror .cm-markdown-link:focus-visible {
+  color: #bae6fd;
+}
+
 .inbox-detail__markdown-editor {
   display: grid;
   gap: 8px;
