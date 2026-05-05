@@ -36,6 +36,7 @@ export const FORMAT_DIVIDER_EVENT = "gtd:format-divider";
 export const FORMAT_QUOTE_EVENT = "gtd:format-quote";
 export const FORMAT_BOLD_EVENT = "gtd:format-bold";
 export const FORMAT_ITALIC_EVENT = "gtd:format-italic";
+export const FORMAT_CLEAR_INLINE_EVENT = "gtd:format-clear-inline";
 
 type ItemBodyMarkdownEditorFrameProps = {
   editorParentRef: RefObject<HTMLDivElement | null>;
@@ -248,6 +249,16 @@ function useCodeMirrorEditorView(
     };
     window.addEventListener(FORMAT_ITALIC_EVENT, handler);
     return () => window.removeEventListener(FORMAT_ITALIC_EVENT, handler);
+  }, []);
+
+  useEffect(() => {
+    const handler = () => {
+      if (editorViewRef.current) {
+        applyClearInlineFormatting(editorViewRef.current);
+      }
+    };
+    window.addEventListener(FORMAT_CLEAR_INLINE_EVENT, handler);
+    return () => window.removeEventListener(FORMAT_CLEAR_INLINE_EVENT, handler);
   }, []);
 
   useEffect(() => {
@@ -1271,6 +1282,33 @@ function applyItalic(view: EditorView) {
   });
 
   dispatch(state.update(transaction));
+  exitVisualModeAfterFormatting(view);
+}
+
+function applyClearInlineFormatting(view: EditorView) {
+  const { state, dispatch } = view;
+  const changes: { from: number; to: number; insert: string }[] = [];
+
+  for (const range of state.selection.ranges) {
+    const from = range.empty ? state.doc.lineAt(range.from).from : range.from;
+    const to = range.empty ? state.doc.lineAt(range.from).to : range.to;
+
+    syntaxTree(state).iterate({
+      from,
+      to,
+      enter: (node: any) => {
+        if (node.name === "EmphasisMark") {
+          changes.push({ from: node.from, to: node.to, insert: "" });
+        }
+      }
+    });
+  }
+
+  if (changes.length > 0) {
+    // Sort changes in reverse order so replacing doesn't shift the offsets
+    changes.sort((a, b) => b.from - a.from);
+    dispatch({ changes });
+  }
   exitVisualModeAfterFormatting(view);
 }
 
