@@ -849,6 +849,77 @@ const markdownBoldPlugin = ViewPlugin.fromClass(
   { decorations: (v) => v.decorations }
 );
 
+const italicTextDecoration = Decoration.mark({ class: "cm-italic-text" });
+const italicMarkDecoration = Decoration.mark({ class: "cm-italic-mark" });
+const hiddenItalicMark = Decoration.replace({});
+
+const markdownItalicPlugin = ViewPlugin.fromClass(
+  class {
+    decorations: DecorationSet;
+
+    constructor(view: EditorView) {
+      this.decorations = this.buildDecorations(view);
+    }
+
+    update(update: ViewUpdate) {
+      if (update.docChanged || update.selectionSet || update.viewportChanged) {
+        this.decorations = this.buildDecorations(update.view);
+      }
+    }
+
+    buildDecorations(view: EditorView) {
+      const activeLines = selectedLineNumbers(view);
+      const markDecos: [number, number, Decoration][] = [];
+
+      for (const { from, to } of view.visibleRanges) {
+        syntaxTree(view.state).iterate({
+          from,
+          to,
+          enter: (node: any) => {
+            if (node.name === "Emphasis") {
+              let child = node.node.firstChild;
+              let contentFrom = -1;
+              let contentTo = -1;
+              
+              while (child) {
+                if (child.name === "EmphasisMark") {
+                   const line = view.state.doc.lineAt(child.from);
+                   const isActive = activeLines.has(line.number);
+                   if (isActive) {
+                     markDecos.push([child.from, child.to, italicMarkDecoration]);
+                   } else {
+                     markDecos.push([child.from, child.to, hiddenItalicMark]);
+                   }
+                   if (contentFrom === -1) {
+                     contentFrom = child.to;
+                   } else {
+                     contentTo = child.from;
+                   }
+                }
+                child = child.nextSibling;
+              }
+              
+              if (contentFrom !== -1 && contentTo !== -1 && contentFrom < contentTo) {
+                 markDecos.push([contentFrom, contentTo, italicTextDecoration]);
+              }
+            }
+          }
+        });
+      }
+
+      const all = markDecos.sort((a, b) => a[0] !== b[0] ? a[0] - b[0] : a[1] - b[1]);
+      const builder = new RangeSetBuilder<Decoration>();
+      for (const [from, to, deco] of all) {
+        if (from < to) {
+          builder.add(from, to, deco);
+        }
+      }
+      return builder.finish();
+    }
+  },
+  { decorations: (v) => v.decorations }
+);
+
 function selectedLineNumbers(view: EditorView): Set<number> {
   const activeLines = new Set<number>();
   for (const range of view.state.selection.ranges) {

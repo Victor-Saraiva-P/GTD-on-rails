@@ -4,7 +4,7 @@ import { ListWorkspace } from "../components/ListWorkspace";
 import { RetryState } from "../components/RetryState";
 import { InboxList } from "../features/inbox/InboxList";
 import { InboxStuffDetails } from "../features/inbox/InboxStuffDetails";
-import { FORMAT_BOLD_EVENT, FORMAT_ITALIC_EVENT, FORMAT_BULLET_EVENT, FORMAT_CHECKLIST_CHECKED_EVENT, FORMAT_CHECKLIST_EVENT, FORMAT_CHECKLIST_UNCHECKED_EVENT, FORMAT_DIVIDER_EVENT, FORMAT_HEADING_EVENT, FORMAT_LETTERED_LIST_EVENT, FORMAT_NUMBERED_LIST_EVENT, FORMAT_NORMAL_TEXT_EVENT, FORMAT_QUOTE_EVENT, FORMAT_TABLE_EVENT } from "../features/inbox/ItemBodyMarkdownEditor";
+import { FORMAT_BOLD_EVENT, FORMAT_ITALIC_EVENT, FORMAT_BULLET_EVENT, FORMAT_CHECKLIST_CHECKED_EVENT, FORMAT_CHECKLIST_EVENT, FORMAT_CHECKLIST_UNCHECKED_EVENT, FORMAT_DIVIDER_EVENT, FORMAT_HEADING_EVENT, FORMAT_LETTERED_LIST_EVENT, FORMAT_NUMBERED_LIST_EVENT, FORMAT_NORMAL_TEXT_EVENT, FORMAT_QUOTE_EVENT } from "../features/inbox/ItemBodyMarkdownEditor";
 import type { InboxWorkspaceController } from "../features/inbox/useInboxWorkspaceController";
 import { LeaderMenu } from "../features/keybinds/LeaderMenu";
 import { useActiveScreen, useKeybindScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
