@@ -59,6 +59,8 @@ function normalizedInitialBody(initialBody: string | null | undefined): string {
   }
 }
 
+const cursorCache = new Map<string, any>();
+
 function ItemBodyMarkdownEditorFrame(props: ItemBodyMarkdownEditorFrameProps) {
   return (
     <div className="inbox-detail__markdown-editor">
@@ -335,11 +337,28 @@ function createEditorView(
   onVimModeChangeRef: MutableRefObject<ItemBodyMarkdownEditorProps["onVimModeChange"]>,
   setSaveState: (state: MarkdownBodySaveState) => void
 ): EditorView {
+  let selection;
+  if (cursorCache.has(props.itemId)) {
+    try {
+      selection = EditorSelection.fromJSON(cursorCache.get(props.itemId));
+      const docLength = normalizedInitialBody(props.initialBody).length;
+      for (const range of selection.ranges) {
+        if (range.from > docLength || range.to > docLength) {
+          selection = undefined;
+          break;
+        }
+      }
+    } catch {
+      selection = undefined;
+    }
+  }
+
   const view = new EditorView({
     parent,
     state: EditorState.create({
       doc: normalizedInitialBody(props.initialBody),
-      extensions: editorExtensions(props.readOnly === true, autosaveTrackerRef, onAutosaveRef, onSaveRef, onExitNormalModeRef, onVimModeChangeRef, setSaveState)
+      selection,
+      extensions: editorExtensions(props.itemId, props.readOnly === true, autosaveTrackerRef, onAutosaveRef, onSaveRef, onExitNormalModeRef, onVimModeChangeRef, setSaveState)
     })
   });
   const initialMode = resolveVimMode(view);
@@ -349,6 +368,7 @@ function createEditorView(
 }
 
 function editorExtensions(
+  itemId: string,
   readOnly: boolean,
   autosaveTrackerRef: MutableRefObject<AutosaveTracker>,
   onAutosaveRef: MutableRefObject<ItemBodyMarkdownEditorProps["onAutosave"]>,
@@ -359,12 +379,13 @@ function editorExtensions(
 ) {
   return [
     vim(),
-    ...editorBehaviorExtensions(readOnly, autosaveTrackerRef, onAutosaveRef, onSaveRef, onExitNormalModeRef, onVimModeChangeRef, setSaveState),
+    ...editorBehaviorExtensions(itemId, readOnly, autosaveTrackerRef, onAutosaveRef, onSaveRef, onExitNormalModeRef, onVimModeChangeRef, setSaveState),
     ...editorKeymapExtensions(onAutosaveRef, onSaveRef, setSaveState)
   ];
 }
 
 function editorBehaviorExtensions(
+  itemId: string,
   readOnly: boolean,
   autosaveTrackerRef: MutableRefObject<AutosaveTracker>,
   onAutosaveRef: MutableRefObject<ItemBodyMarkdownEditorProps["onAutosave"]>,
@@ -390,9 +411,12 @@ function editorBehaviorExtensions(
     markdownBoldPlugin,
     markdownItalicPlugin,
     markdownCodePlugin,
-    EditorView.updateListener.of((update) =>
-      autosaveAfterFinishedEdit(update.view, update.docChanged, readOnly, autosaveTrackerRef, onAutosaveRef, onVimModeChangeRef, setSaveState)
-    ),
+    EditorView.updateListener.of((update) => {
+      if (update.selectionSet || update.docChanged) {
+        cursorCache.set(itemId, update.state.selection.toJSON());
+      }
+      autosaveAfterFinishedEdit(update.view, update.docChanged, readOnly, autosaveTrackerRef, onAutosaveRef, onVimModeChangeRef, setSaveState);
+    }),
     normalModeEscapeHandler(readOnly, autosaveTrackerRef, onSaveRef, onExitNormalModeRef, setSaveState)
   ];
 }

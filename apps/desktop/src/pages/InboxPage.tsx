@@ -84,7 +84,7 @@ function focusInboxList(controller: InboxWorkspaceController) {
 }
 
 function openStuffDetailScreen(controller: InboxWorkspaceController, setActiveScreen: (screen: ScreenId) => void) {
-  if (controller.selectedItem && !controller.editingBodyId) {
+  if (controller.selectedItem) {
     setActiveScreen("stuff-detail");
   }
 }
@@ -100,7 +100,8 @@ function buildInboxBindings(controller: InboxWorkspaceController, setActiveScree
     inboxBinding("inbox.edit-body-from-list", "l", "Edit selected body", "inbox-list", () => editBodyFromListKeybind(controller)),
     inboxBinding("inbox.edit-body", "Enter", "Edit selected body", "stuff-detail", () => editBodyFromKeybind(controller)),
     inboxBinding("inbox.focus-list", "h", "Focus inbox list", "stuff-detail", () => focusInboxList(controller)),
-    inboxBinding("inbox.open-detail-screen", "Enter", "Open full stuff detail", "inbox-list", () => openStuffDetailScreen(controller, setActiveScreen), true, ["Enter"]),
+    inboxBinding("inbox.open-detail-screen-from-list", "Enter", "Open full stuff detail", "inbox-list", () => openStuffDetailScreen(controller, setActiveScreen), true, ["Enter"]),
+    inboxBinding("inbox.open-detail-screen-from-detail", "Enter", "Open full stuff detail", "stuff-detail", () => openStuffDetailScreen(controller, setActiveScreen), true, ["Enter"]),
     inboxBinding("inbox.which-key-list", "k", "Show available keybinds", "inbox-list", () => undefined, true),
     inboxBinding("inbox.which-key-detail", "k", "Show available keybinds", "stuff-detail", () => undefined, true),
     ...buildFormattingBindings("inbox")

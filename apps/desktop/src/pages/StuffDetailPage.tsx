@@ -54,7 +54,10 @@ function useStuffDetailBindings(controller: InboxWorkspaceController) {
 function useStuffDetailZone(controller: InboxWorkspaceController) {
   useEffect(() => {
     controller.setActiveZone("stuff-detail");
-  }, [controller]);
+    if (!controller.editingBodyId && controller.selectedItem) {
+      controller.startEditingSelectedStuffBody();
+    }
+  }, [controller.setActiveZone, controller.editingBodyId, controller.selectedItem, controller.startEditingSelectedStuffBody]);
 }
 
 function commitStuffBody(controller: InboxWorkspaceController, body: string): Promise<void> {
