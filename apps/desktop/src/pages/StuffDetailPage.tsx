@@ -3,6 +3,7 @@ import { ListPane } from "../components/ListPane";
 import { ListWorkspace } from "../components/ListWorkspace";
 import { RetryState } from "../components/RetryState";
 import { InboxStuffDetails } from "../features/inbox/InboxStuffDetails";
+import { buildFormattingBindings } from "../features/inbox/formattingKeybinds";
 import type { InboxWorkspaceController } from "../features/inbox/useInboxWorkspaceController";
 import { LeaderMenu } from "../features/keybinds/LeaderMenu";
 import { useActiveScreen, useKeybindScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
@@ -38,7 +39,8 @@ function buildStuffDetailBindings(controller: InboxWorkspaceController, setActiv
   return [
     stuffDetailBinding("stuff-detail-page.edit-body", "Enter", "Edit selected body", () => editStuffBodyFromKeybind(controller)),
     stuffDetailBinding("stuff-detail-page.back-to-inbox", "Escape", "Back to inbox", () => backToInboxFromKeybind(controller, setActiveScreen)),
-    stuffDetailBinding("stuff-detail-page.which-key", "k", "Show available keybinds", () => undefined, true)
+    stuffDetailBinding("stuff-detail-page.which-key", "k", "Show available keybinds", () => undefined, true),
+    ...buildFormattingBindings("stuff-detail")
   ];
 }
 

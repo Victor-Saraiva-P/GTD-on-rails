@@ -4,7 +4,7 @@ import { ListWorkspace } from "../components/ListWorkspace";
 import { RetryState } from "../components/RetryState";
 import { InboxList } from "../features/inbox/InboxList";
 import { InboxStuffDetails } from "../features/inbox/InboxStuffDetails";
-import { FORMAT_BOLD_EVENT, FORMAT_ITALIC_EVENT, FORMAT_CLEAR_INLINE_EVENT, FORMAT_CODE_EVENT, FORMAT_BULLET_EVENT, FORMAT_CHECKLIST_CHECKED_EVENT, FORMAT_CHECKLIST_EVENT, FORMAT_CHECKLIST_UNCHECKED_EVENT, FORMAT_DIVIDER_EVENT, FORMAT_HEADING_EVENT, FORMAT_LETTERED_LIST_EVENT, FORMAT_NUMBERED_LIST_EVENT, FORMAT_NORMAL_TEXT_EVENT, FORMAT_QUOTE_EVENT } from "../features/inbox/ItemBodyMarkdownEditor";
+import { buildFormattingBindings } from "../features/inbox/formattingKeybinds";
 import type { InboxWorkspaceController } from "../features/inbox/useInboxWorkspaceController";
 import { LeaderMenu } from "../features/keybinds/LeaderMenu";
 import { useActiveScreen, useKeybindScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
@@ -89,62 +89,6 @@ function openStuffDetailScreen(controller: InboxWorkspaceController, setActiveSc
   }
 }
 
-function formatAsBulletFromKeybind() {
-  window.dispatchEvent(new CustomEvent(FORMAT_BULLET_EVENT));
-}
-
-function formatAsNumberedListFromKeybind() {
-  window.dispatchEvent(new CustomEvent(FORMAT_NUMBERED_LIST_EVENT));
-}
-
-function formatAsNormalTextFromKeybind() {
-  window.dispatchEvent(new CustomEvent(FORMAT_NORMAL_TEXT_EVENT));
-}
-
-function formatAsLetteredListFromKeybind() {
-  window.dispatchEvent(new CustomEvent(FORMAT_LETTERED_LIST_EVENT));
-}
-
-function formatAsChecklistFromKeybind() {
-  window.dispatchEvent(new CustomEvent(FORMAT_CHECKLIST_EVENT));
-}
-
-function formatAsCheckedChecklistFromKeybind() {
-  window.dispatchEvent(new CustomEvent(FORMAT_CHECKLIST_CHECKED_EVENT));
-}
-
-function formatAsUncheckedChecklistFromKeybind() {
-  window.dispatchEvent(new CustomEvent(FORMAT_CHECKLIST_UNCHECKED_EVENT));
-}
-
-function formatAsDividerFromKeybind() {
-  window.dispatchEvent(new CustomEvent(FORMAT_DIVIDER_EVENT));
-}
-
-function formatAsQuoteFromKeybind() {
-  window.dispatchEvent(new CustomEvent(FORMAT_QUOTE_EVENT));
-}
-
-function formatAsHeadingFromKeybind(level: 1 | 2 | 3) {
-  window.dispatchEvent(new CustomEvent(FORMAT_HEADING_EVENT, { detail: { level } }));
-}
-
-function formatAsBoldFromKeybind() {
-  window.dispatchEvent(new CustomEvent(FORMAT_BOLD_EVENT));
-}
-
-function formatAsItalicFromKeybind() {
-  window.dispatchEvent(new CustomEvent(FORMAT_ITALIC_EVENT));
-}
-
-function formatAsClearInlineFromKeybind() {
-  window.dispatchEvent(new CustomEvent(FORMAT_CLEAR_INLINE_EVENT));
-}
-
-function formatAsCodeFromKeybind() {
-  window.dispatchEvent(new CustomEvent(FORMAT_CODE_EVENT));
-}
-
 function buildInboxBindings(controller: InboxWorkspaceController, setActiveScreen: (screen: ScreenId) => void) {
   return [
     inboxBinding("inbox.create-stuff", "a", "Add new stuff", "inbox-list", () => createStuffFromKeybind(controller)),
@@ -157,26 +101,12 @@ function buildInboxBindings(controller: InboxWorkspaceController, setActiveScree
     inboxBinding("inbox.edit-body", "Enter", "Edit selected body", "stuff-detail", () => editBodyFromKeybind(controller)),
     inboxBinding("inbox.focus-list", "h", "Focus inbox list", "stuff-detail", () => focusInboxList(controller)),
     inboxBinding("inbox.open-detail-screen", "Enter", "Open full stuff detail", "stuff-detail", () => openStuffDetailScreen(controller, setActiveScreen), true, ["Enter"]),
-    inboxBinding("inbox.format-bullet", "b", "Format as Bullet Point", "stuff-detail", () => formatAsBulletFromKeybind(), true, ["m", "b"]),
-    inboxBinding("inbox.format-numbered-list", "n", "Format as Numbered List", "stuff-detail", () => formatAsNumberedListFromKeybind(), true, ["m", "n"]),
-    inboxBinding("inbox.format-lettered-list", "l", "Format as Lettered List", "stuff-detail", () => formatAsLetteredListFromKeybind(), true, ["m", "l"]),
-    inboxBinding("inbox.format-checklist", "c", "Format as Checklist", "stuff-detail", () => formatAsChecklistFromKeybind(), true, ["m", "c"]),
-    inboxBinding("inbox.format-checklist-checked", "c", "Format as Checked Checklist", "stuff-detail", () => formatAsCheckedChecklistFromKeybind(), true, ["m", "c", "c"]),
-    inboxBinding("inbox.format-checklist-unchecked", "u", "Format as Unchecked Checklist", "stuff-detail", () => formatAsUncheckedChecklistFromKeybind(), true, ["m", "c", "u"]),
-    inboxBinding("inbox.format-divider", "d", "Insert Divider", "stuff-detail", () => formatAsDividerFromKeybind(), true, ["m", "d"]),
-    inboxBinding("inbox.format-quote", "q", "Format as Quote", "stuff-detail", () => formatAsQuoteFromKeybind(), true, ["m", "q"]),
-    inboxBinding("inbox.format-normal-text", "t", "Format as Text", "stuff-detail", () => formatAsNormalTextFromKeybind(), true, ["m", "t"]),
-    inboxBinding("inbox.format-h1", "1", "Format as Heading 1", "stuff-detail", () => formatAsHeadingFromKeybind(1), true, ["m", "1"]),
-    inboxBinding("inbox.format-h2", "2", "Format as Heading 2", "stuff-detail", () => formatAsHeadingFromKeybind(2), true, ["m", "2"]),
-    inboxBinding("inbox.format-h3", "3", "Format as Heading 3", "stuff-detail", () => formatAsHeadingFromKeybind(3), true, ["m", "3"]),
-    inboxBinding("inbox.format-bold", "b", "Format as Bold", "stuff-detail", () => formatAsBoldFromKeybind(), true, ["t", "b"]),
-    inboxBinding("inbox.format-italic", "i", "Format as Italic", "stuff-detail", () => formatAsItalicFromKeybind(), true, ["t", "i"]),
-    inboxBinding("inbox.format-code", "c", "Format as Code", "stuff-detail", () => formatAsCodeFromKeybind(), true, ["t", "c"]),
-    inboxBinding("inbox.format-clear-inline", "t", "Clear Inline Formatting", "stuff-detail", () => formatAsClearInlineFromKeybind(), true, ["t", "t"]),
     inboxBinding("inbox.which-key-list", "k", "Show available keybinds", "inbox-list", () => undefined, true),
-    inboxBinding("inbox.which-key-detail", "k", "Show available keybinds", "stuff-detail", () => undefined, true)
+    inboxBinding("inbox.which-key-detail", "k", "Show available keybinds", "stuff-detail", () => undefined, true),
+    ...buildFormattingBindings("inbox")
   ];
 }
+
 
 function useInboxBindings(controller: InboxWorkspaceController) {
   const { setActiveScreen } = useActiveScreen();
