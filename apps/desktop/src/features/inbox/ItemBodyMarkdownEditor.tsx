@@ -527,26 +527,30 @@ function useCodeMirrorEditorView(
         if (editorViewRef.current) {
            const view = editorViewRef.current;
            const range = view.state.selection.main;
-           const token = `⟦asset:${e.detail.assetId}⟧`;
-           const changeSet = ChangeSet.of({from: range.from, to: range.to, insert: token}, view.state.doc.length);
-           const mappedBody = mapBodyRangesThroughChanges(view.state.field(itemBodyStateField), changeSet);
-           const body = insertBlockEntity(mappedBody, {
-              type: e.detail.image ? "image" : "file",
-              from: changeSet.mapPos(range.from, 1),
-              to: changeSet.mapPos(range.to, -1) + token.length,
-              assetId: e.detail.assetId,
-              attrs: {
-                displayName: e.detail.displayName,
+            const token = `⟦asset:${e.detail.assetId}⟧`;
+            const changeSet = ChangeSet.of({from: range.from, to: range.to, insert: token}, view.state.doc.length);
+            const mappedBody = mapBodyRangesThroughChanges(view.state.field(itemBodyStateField), changeSet);
+            const entityFrom = changeSet.mapPos(range.from, -1);
+            const entityTo = entityFrom + token.length;
+            const body = insertBlockEntity(mappedBody, {
+               type: e.detail.image ? "image" : "file",
+               from: entityFrom,
+               to: entityTo,
+               assetId: e.detail.assetId,
+               attrs: {
+                 displayName: e.detail.displayName,
                 contentType: e.detail.contentType,
                 url: e.detail.url
               }
-           });
-           view.dispatch({
-             changes: changeSet,
-             effects: itemBodyStateEffect.of(body)
-           });
-        }
-      }) as EventListener,
+            });
+            view.dispatch({
+              changes: changeSet,
+              selection: EditorSelection.cursor(entityTo),
+              effects: itemBodyStateEffect.of(body)
+            });
+            setTimeout(() => view.focus(), 0);
+         }
+       }) as EventListener,
     };
 
     for (const [evt, handler] of Object.entries(handlers)) {

@@ -122,6 +122,7 @@
 }
 
 .inbox-detail__body-image,
+.inbox-detail__body-preview .cm-markdown-image,
 .inbox-detail__codemirror .cm-markdown-image {
   display: block;
   max-width: min(100%, 760px);

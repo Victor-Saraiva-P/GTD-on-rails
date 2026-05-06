@@ -25,7 +25,11 @@ type ClipboardImagePayload = {
  * @example await readMarkdownAssetClipboardFile()
  */
 export async function readMarkdownAssetClipboardFile(): Promise<File | null> {
-  return (await readBrowserClipboardAsset()) ?? (await readTauriClipboardImageAsset());
+  return (
+    (await readTauriClipboardFileAsset()) ??
+    (await readBrowserClipboardAsset()) ??
+    (await readTauriClipboardImageAsset())
+  );
 }
 
 function assetExtension(mimeType: string): string {
@@ -57,6 +61,15 @@ async function readTauriClipboardImageAsset(): Promise<File | null> {
   try {
     const clipboardImage = await invoke<ClipboardImagePayload | null>("read_clipboard_image");
     return clipboardImage ? fileFromClipboardPayload(clipboardImage) : null;
+  } catch {
+    return null;
+  }
+}
+
+async function readTauriClipboardFileAsset(): Promise<File | null> {
+  try {
+    const clipboardFile = await invoke<ClipboardImagePayload | null>("read_clipboard_file_asset");
+    return clipboardFile ? fileFromClipboardPayload(clipboardFile) : null;
   } catch {
     return null;
   }

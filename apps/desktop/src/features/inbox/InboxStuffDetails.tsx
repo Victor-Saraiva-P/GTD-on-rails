@@ -26,6 +26,8 @@ function InboxDetailHeader({ item }: Pick<InboxStuffDetailsProps, "item">) {
 
 type EditingInboxStuffDetailsProps = Omit<InboxStuffDetailsProps, "editing" | "onCancelEditing">;
 
+const ASSET_TOKEN_PATTERN = /(\[\[asset:([0-9a-fA-F-]{36})\]\]|\[asset:([0-9a-fA-F-]{36})\]|⟦asset:([0-9a-fA-F-]{36})⟧)/g;
+
 function EditingInboxStuffDetails(props: EditingInboxStuffDetailsProps) {
   return (
     <div className="inbox-detail">
@@ -46,9 +48,10 @@ function renderInlineBody(text: string, inlineMarks: ItemBody["inlineMarks"], bl
   if (from >= to) return null;
   const applicableMarks = inlineMarks.filter(m => Math.max(m.from, from) < Math.min(m.to, to));
   const applicableEntities = blockEntities.filter(e => Math.max(e.from, from) < Math.min(e.to, to));
+  const segmentText = text.substring(from, to);
   
   if (applicableMarks.length === 0 && applicableEntities.length === 0) {
-    return text.substring(from, to);
+    return renderAssetTokens(segmentText, blockEntities);
   }
 
   const nodes = [];
@@ -95,6 +98,36 @@ function renderInlineBody(text: string, inlineMarks: ItemBody["inlineMarks"], bl
      currentPos = nextBoundary;
   }
   return nodes;
+}
+
+function renderAssetTokens(value: string, blockEntities: ItemBody["blockEntities"]) {
+  const nodes: React.ReactNode[] = [];
+  let currentIndex = 0;
+  for (const match of value.matchAll(ASSET_TOKEN_PATTERN)) {
+    nodes.push(value.substring(currentIndex, match.index));
+    nodes.push(renderAssetToken(match[2] ?? match[3] ?? match[4], blockEntities));
+    currentIndex = (match.index ?? 0) + match[0].length;
+  }
+
+  nodes.push(value.substring(currentIndex));
+  return nodes.length === 1 ? value : nodes;
+}
+
+function renderAssetToken(assetId: string, blockEntities: ItemBody["blockEntities"]) {
+  const entity = blockEntities.find((candidate) => candidate.assetId === assetId);
+  if (!entity) {
+    return <a className="cm-markdown-link" href={`#asset-${assetId}`} key={assetId}>[ASSET] {assetId}</a>;
+  }
+
+  return renderBlockEntity(entity, assetId);
+}
+
+function renderBlockEntity(entity: ItemBody["blockEntities"][number], key: string) {
+  if (entity.type === "image" || entity.attrs?.contentType?.startsWith("image/")) {
+    return <img alt={entity.attrs?.displayName || "image"} className="cm-markdown-image" key={key} src={buildApiUrl(entity.attrs?.url || "")} />;
+  }
+
+  return <a className="cm-markdown-link" href={buildApiUrl(entity.attrs?.url || "")} key={key} rel="noreferrer" target="_blank">[{entity.type.toUpperCase()}] {entity.attrs?.displayName || entity.assetId}</a>;
 }
 
 function ReadOnlyInboxStuffDetails({ item }: Pick<InboxStuffDetailsProps, "item">) {
