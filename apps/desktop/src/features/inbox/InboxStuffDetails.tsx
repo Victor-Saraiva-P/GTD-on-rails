@@ -147,6 +147,30 @@ function ReadOnlyInboxStuffDetails({ item }: Pick<InboxStuffDetailsProps, "item"
                </div>
              );
            }
+           if (block?.type === "numbered") {
+             const indentStr = lineText.match(/^\s*/)?.[0] ?? "";
+             return (
+               <div className="inbox-detail__body-line" key={index}>
+                 <span className="inbox-detail__line-number">{index + 1}</span>
+                 <span className="inbox-detail__line-content">
+                   {indentStr}<span className="cm-numbered-mark">1. </span>
+                   {renderInlineBody(body.text, body.inlineMarks, from + indentStr.length, to)}
+                 </span>
+               </div>
+             );
+           }
+           if (block?.type === "lettered") {
+             const indentStr = lineText.match(/^\s*/)?.[0] ?? "";
+             return (
+               <div className="inbox-detail__body-line" key={index}>
+                 <span className="inbox-detail__line-number">{index + 1}</span>
+                 <span className="inbox-detail__line-content">
+                   {indentStr}<span className="cm-lettered-mark">a. </span>
+                   {renderInlineBody(body.text, body.inlineMarks, from + indentStr.length, to)}
+                 </span>
+               </div>
+             );
+           }
            if (block?.type === "checklist") {
              const indentStr = lineText.match(/^\s*/)?.[0] ?? "";
              const isChecked = block.attrs?.checked ?? false;
