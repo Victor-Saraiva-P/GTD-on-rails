@@ -61,3 +61,7 @@
   without the other.
 - Before committing, check `git status --short` and stage only files that
   belong to the intended change.
+
+## UI Consistency
+
+- The preview mode and the stuff detail views must be visually identical and render all elements (e.g. PDF previews, images) identically to the edit mode. This applies to all elements.
