@@ -70,13 +70,7 @@ function renderInlineBody(text: string, inlineMarks: ItemBody["inlineMarks"], bl
        if (currentPos === Math.max(from, entity.from)) {
          nodes.push(
            <span key={`entity-${entity.id}-${currentPos}`} className="cm-block-entity">
-             {entity.type === "image" ? (
-               <img src={buildApiUrl(entity.attrs?.url || "")} alt={entity.attrs?.displayName || "image"} className="cm-markdown-image" />
-             ) : (
-               <a href={buildApiUrl(entity.attrs?.url || "")} className="cm-markdown-link" target="_blank" rel="noreferrer">
-                 [{entity.type.toUpperCase()}] {entity.attrs?.displayName}
-               </a>
-             )}
+             {renderBlockEntity(entity, `entity-content-${entity.id}-${currentPos}`)}
            </span>
          );
        }
