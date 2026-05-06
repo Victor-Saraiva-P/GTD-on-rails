@@ -440,7 +440,6 @@ class ItemServiceTests {
         ItemAssetResponseDto response = itemService.storeItemAsset(itemId, file);
 
         assertEquals(relativePath, response.relativePath());
-        assertEquals("/assets/" + relativePath, response.url());
         assertEquals("file.pdf", response.fileName());
         assertEquals("application/pdf", response.contentType());
         assertFalse(response.image());

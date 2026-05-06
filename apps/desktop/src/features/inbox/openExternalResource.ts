@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { bytesToBase64, readDocumentAssetBytes } from "./assetFiles";
 import { buildApiUrl } from "../../config/env";
 import type { BlockEntity } from "./types.ts";
 
@@ -28,22 +29,21 @@ export async function openAssetWithDefaultApp(entity: BlockEntity): Promise<void
 }
 
 async function openTauriAsset(entity: BlockEntity, url: string): Promise<void> {
-  const bytesBase64 = await assetBytesBase64(url);
+  const bytesBase64 = await assetBytesBase64(entity, url);
   await invoke("open_temp_asset", {
     bytesBase64,
     fileName: entity.attrs?.displayName || entity.assetId
   });
 }
 
-async function assetBytesBase64(url: string): Promise<string> {
-  const buffer = await (await fetch(url)).arrayBuffer();
-  return bytesToBase64(new Uint8Array(buffer));
+async function assetBytesBase64(entity: BlockEntity, url: string): Promise<string> {
+  const relativePath = entity.attrs?.relativePath ?? entity.attrs?.localPath;
+  const bytes = relativePath ? await readDocumentAssetBytes(relativePath) : await fetchAssetBytes(url);
+  return bytesToBase64(bytes);
 }
 
-function bytesToBase64(bytes: Uint8Array): string {
-  let binary = "";
-  bytes.forEach((byte) => { binary += String.fromCharCode(byte); });
-  return btoa(binary);
+async function fetchAssetBytes(url: string): Promise<Uint8Array> {
+  return new Uint8Array(await (await fetch(url)).arrayBuffer());
 }
 
 function isTauriRuntime(): boolean {

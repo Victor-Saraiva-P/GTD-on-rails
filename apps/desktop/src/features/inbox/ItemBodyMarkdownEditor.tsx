@@ -4,9 +4,9 @@ import { EditorState } from "@codemirror/state";
 import { Decoration, drawSelection, EditorView, highlightActiveLine, keymap, lineNumbers, ViewPlugin, WidgetType, type ViewUpdate, type DecorationSet } from "@codemirror/view";
 import { getCM, Vim, vim, type CodeMirrorV } from "@replit/codemirror-vim";
 import { useEffect, useRef, useState, type MutableRefObject, type RefObject } from "react";
+import { createAssetObjectUrl } from "./assetFiles";
 import { normalizeBodyForClient, mapBodyRangesThroughChanges, toggleInlineMark, setLineBlock, toggleChecklist, insertBlockEntity, clearLineBlock, applyInlineMark, reconcileBlockEntityTokenRanges } from "./itemBodyUtils";
 import { type ItemBody, type BlockEntity } from "./types";
-import { buildApiUrl } from "../../config/env";
 import { INSERT_MARKDOWN_LINK_EVENT, type InsertMarkdownLinkEventDetail } from "./markdownLinks";
 import { INSERT_BLOCK_ENTITY_EVENT, type InsertBlockEntityEventDetail } from "./MarkdownAssetComboDialog";
 import { findOpenableEditorTarget } from "./openEditorTarget";
@@ -81,24 +81,29 @@ class BlockEntityWidget extends WidgetType {
     const el = document.createElement("span");
     el.className = "cm-block-entity";
     
-    if (this.entity.type === "image") {
-      const img = document.createElement("img");
-      img.src = buildApiUrl(this.entity.attrs?.url || "");
-      img.alt = this.entity.attrs?.displayName || "image";
-      img.className = "cm-markdown-image";
-      el.appendChild(img);
+    if (isImageBlockEntity(this.entity)) {
+      appendImagePreview(el, this.entity);
     } else if (isPdfBlockEntity(this.entity)) {
       el.appendChild(pdfPreviewElement(this.entity));
     } else {
       const link = document.createElement("a");
-      link.href = buildApiUrl(this.entity.attrs?.url || "");
       link.textContent = `[${this.entity.type.toUpperCase()}] ${this.entity.attrs?.displayName}`;
       link.className = "cm-markdown-link";
       link.target = "_blank";
+      void setAssetLinkHref(el, link, this.entity);
       el.appendChild(link);
     }
     return el;
   }
+
+  destroy(dom: HTMLElement): void {
+    const objectUrl = dom.dataset.objectUrl ?? dom.querySelector<HTMLElement>("[data-object-url]")?.dataset.objectUrl;
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+  }
+}
+
+function isImageBlockEntity(entity: BlockEntity): boolean {
+  return entity.type === "image" || entity.attrs?.contentType?.startsWith("image/") === true;
 }
 
 function isPdfBlockEntity(entity: BlockEntity): boolean {
@@ -109,20 +114,49 @@ function pdfPreviewElement(entity: BlockEntity): HTMLElement {
   const figure = document.createElement("figure");
   const frame = document.createElement("object");
   const link = document.createElement("a");
-  const url = buildApiUrl(entity.attrs?.url || "");
 
   figure.className = "cm-pdf-preview";
   frame.className = "cm-pdf-preview__frame";
-  frame.data = `${url}#page=1&toolbar=0&navpanes=0&scrollbar=0`;
   frame.type = "application/pdf";
   link.className = "cm-markdown-link";
-  link.href = url;
   link.rel = "noreferrer";
   link.target = "_blank";
   link.textContent = "Open PDF";
   frame.appendChild(link);
   figure.appendChild(frame);
+  void setPdfPreviewSource(figure, frame, link, entity);
   return figure;
+}
+
+function appendImagePreview(root: HTMLElement, entity: BlockEntity): void {
+  const img = document.createElement("img");
+  img.alt = entity.attrs?.displayName || "image";
+  img.className = "cm-markdown-image";
+  root.appendChild(img);
+  void setImagePreviewSource(root, img, entity);
+}
+
+async function setImagePreviewSource(root: HTMLElement, img: HTMLImageElement, entity: BlockEntity): Promise<void> {
+  const assetUrl = await createAssetObjectUrl(entityAssetRelativePath(entity), entity.attrs?.contentType, entity.attrs?.url);
+  if (assetUrl.revoke) root.dataset.objectUrl = assetUrl.url;
+  img.src = assetUrl.url;
+}
+
+async function setPdfPreviewSource(root: HTMLElement, frame: HTMLObjectElement, link: HTMLAnchorElement, entity: BlockEntity): Promise<void> {
+  const assetUrl = await createAssetObjectUrl(entityAssetRelativePath(entity), entity.attrs?.contentType, entity.attrs?.url);
+  if (assetUrl.revoke) root.dataset.objectUrl = assetUrl.url;
+  frame.data = `${assetUrl.url}#page=1&toolbar=0&navpanes=0&scrollbar=0`;
+  link.href = assetUrl.url;
+}
+
+async function setAssetLinkHref(root: HTMLElement, link: HTMLAnchorElement, entity: BlockEntity): Promise<void> {
+  const assetUrl = await createAssetObjectUrl(entityAssetRelativePath(entity), entity.attrs?.contentType, entity.attrs?.url);
+  if (assetUrl.revoke) root.dataset.objectUrl = assetUrl.url;
+  link.href = assetUrl.url;
+}
+
+function entityAssetRelativePath(entity: BlockEntity): string | undefined {
+  return entity.attrs?.relativePath ?? entity.attrs?.localPath;
 }
 
 class MarkdownLinkWidget extends WidgetType {
@@ -580,11 +614,13 @@ function useCodeMirrorEditorView(
                from: entityFrom,
                to: entityTo,
                assetId: e.detail.assetId,
-               attrs: {
+                attrs: {
                  displayName: e.detail.displayName,
-                contentType: e.detail.contentType,
-                url: e.detail.url
-              }
+                 contentType: e.detail.contentType,
+                 relativePath: e.detail.relativePath,
+                 localPath: e.detail.relativePath,
+                 url: e.detail.url
+               }
             });
             view.dispatch({
               changes: changeSet,

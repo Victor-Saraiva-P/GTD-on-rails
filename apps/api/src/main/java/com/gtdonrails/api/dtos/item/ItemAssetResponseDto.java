@@ -5,7 +5,6 @@ import java.util.UUID;
 public record ItemAssetResponseDto(
     UUID id,
     String relativePath,
-    String url,
     String fileName,
     String contentType,
     boolean image

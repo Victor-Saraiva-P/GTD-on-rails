@@ -96,7 +96,7 @@ public class ItemBodyNormalizer {
     }
 
     private static BlockEntityAttrs normalizeAttrs(BlockEntityAttrs attrs) {
-        return attrs == null ? null : new BlockEntityAttrs(attrs.displayName(), attrs.contentType(), attrs.url(), attrs.localPath());
+        return attrs == null ? null : new BlockEntityAttrs(attrs.displayName(), attrs.contentType(), attrs.relativePath(), attrs.url(), attrs.localPath());
     }
 
     private static int clamp(int value, int max) {

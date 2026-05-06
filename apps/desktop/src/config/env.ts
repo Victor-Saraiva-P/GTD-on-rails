@@ -1,4 +1,5 @@
 const defaultApiBaseUrl = "http://127.0.0.1:8080";
+const defaultDataRootDirectoryName = "dev-gtd-on-rails";
 const defaultUndoRedoMaxStackSize = 50;
 
 function normalizeApiBaseUrl(rawValue: string): string {
@@ -26,6 +27,10 @@ export const apiBaseUrl = normalizeApiBaseUrl(
   viteEnv.VITE_API_BASE_URL ?? defaultApiBaseUrl
 );
 
+export const dataRootDirectoryName = normalizeDataRootDirectoryName(
+  viteEnv.VITE_DATA_ROOT_DIRECTORY_NAME ?? defaultDataRootDirectoryName
+);
+
 export const undoRedoMaxStackSize = normalizeNumber(
   viteEnv.VITE_UNDO_REDO_MAX_STACK_SIZE,
   defaultUndoRedoMaxStackSize
@@ -48,6 +53,24 @@ export function buildApiUrl(pathname: string): string {
   const normalizedPathname = pathname.startsWith("/") ? pathname : `/${pathname}`;
 
   return `${apiBaseUrl}${normalizedPathname}`;
+}
+
+/**
+ * Builds a Documents-relative asset path for the Tauri fs plugin.
+ *
+ * @example buildDocumentAssetPath("items/id/file.pdf")
+ */
+export function buildDocumentAssetPath(relativePath: string): string {
+  const normalizedPath = relativePath.startsWith("/") ? relativePath.slice(1) : relativePath;
+  return `${dataRootDirectoryName}/assets/${normalizedPath}`;
+}
+
+function normalizeDataRootDirectoryName(rawValue: string): string {
+  const trimmedValue = rawValue.trim();
+  if (!/^[a-zA-Z0-9._-]+$/.test(trimmedValue)) {
+    throw new Error(`VITE_DATA_ROOT_DIRECTORY_NAME value '${rawValue}' is invalid; expected a safe directory name.`);
+  }
+  return trimmedValue;
 }
 
 /**

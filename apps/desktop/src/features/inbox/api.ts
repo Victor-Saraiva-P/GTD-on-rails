@@ -12,7 +12,7 @@ type InboxStuffResponse = {
 export type StuffAssetResponse = {
   id: string;
   relativePath: string;
-  url: string;
+  url?: string;
   fileName: string;
   contentType: string;
   image: boolean;

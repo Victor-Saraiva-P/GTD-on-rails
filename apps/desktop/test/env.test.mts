@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { apiBaseUrl, buildApiUrl, buildApiUrlWithVersion } from "../src/config/env.ts";
+import { apiBaseUrl, dataRootDirectoryName, buildApiUrl, buildApiUrlWithVersion, buildDocumentAssetPath } from "../src/config/env.ts";
 
 test("apiBaseUrl is a non-empty string", () => {
   assert.ok(apiBaseUrl.length > 0);
@@ -30,4 +30,9 @@ test("buildApiUrlWithVersion adds version query param", () => {
 test("buildApiUrlWithVersion does not add version if undefined", () => {
   const url = buildApiUrlWithVersion("/assets/icon.png");
   assert.equal(url, `${apiBaseUrl}/assets/icon.png`);
+});
+
+test("buildDocumentAssetPath uses configured data root directory", () => {
+  assert.equal(dataRootDirectoryName, "dev-gtd-on-rails");
+  assert.equal(buildDocumentAssetPath("items/id/file.pdf"), "dev-gtd-on-rails/assets/items/id/file.pdf");
 });

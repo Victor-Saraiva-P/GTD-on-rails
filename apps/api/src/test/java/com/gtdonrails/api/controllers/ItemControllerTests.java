@@ -410,7 +410,7 @@ class ItemControllerTests {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(notNullValue()))
             .andExpect(jsonPath("$.relativePath").value(org.hamcrest.Matchers.matchesPattern("items/" + item.getId() + "/[0-9a-f-]+/file\\.pdf")))
-            .andExpect(jsonPath("$.url").value(org.hamcrest.Matchers.matchesPattern("/assets/items/" + item.getId() + "/[0-9a-f-]+/file\\.pdf")))
+            .andExpect(jsonPath("$.url").doesNotExist())
             .andExpect(jsonPath("$.fileName").value("file.pdf"))
             .andExpect(jsonPath("$.contentType").value("application/pdf"))
             .andExpect(jsonPath("$.image").value(false));

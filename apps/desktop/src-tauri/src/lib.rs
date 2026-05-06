@@ -1,5 +1,5 @@
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::Serialize;
@@ -115,11 +115,15 @@ fn safe_temp_file_character(character: char) -> char {
 }
 
 fn open_with_default_app(target: &str) -> Result<(), String> {
-    default_open_command(target).spawn().map_err(|error| {
-        format!(
+    default_open_command(target)
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .map_err(|error| {
+            format!(
             "open target value '{target}' is invalid; expected OS-openable path or URL: {error}"
         )
-    })?;
+        })?;
     Ok(())
 }
 
@@ -431,6 +435,7 @@ mod tests {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_fs::init())
         .invoke_handler(tauri::generate_handler![
             read_clipboard_image,
             read_clipboard_text,

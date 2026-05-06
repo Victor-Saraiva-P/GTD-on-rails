@@ -45,6 +45,7 @@ export type BlockEntity = {
   attrs?: {
     displayName?: string;
     contentType?: string;
+    relativePath?: string;
     url?: string;
     localPath?: string;
   };

@@ -20,7 +20,8 @@ export type InsertBlockEntityEventDetail = {
   assetId: string;
   displayName: string;
   contentType: string;
-  url: string;
+  relativePath?: string;
+  url?: string;
   image: boolean;
 };
 
@@ -37,8 +38,8 @@ type AssetFilePayload = {
 
 type AssetFileHandler = (file: File | null) => Promise<void>;
 
-export function dispatchInsertBlockEntity(assetId: string, displayName: string, contentType: string, url: string, image: boolean) {
-  const detail: InsertBlockEntityEventDetail = { assetId, displayName, contentType, url, image };
+export function dispatchInsertBlockEntity(assetId: string, displayName: string, contentType: string, url: string | undefined, image: boolean, relativePath?: string) {
+  const detail: InsertBlockEntityEventDetail = { assetId, displayName, contentType, relativePath, url, image };
   window.dispatchEvent(new CustomEvent(INSERT_BLOCK_ENTITY_EVENT, { detail }));
 }
 
@@ -267,7 +268,7 @@ function fileExtension(fileName: string): string {
 async function uploadMarkdownAsset(itemId: string, file: File, onClose: () => void, setStatusMessage: (message: string | null) => void, onFailure: () => void) {
   try {
     const asset = await uploadStuffAsset(itemId, file);
-    dispatchInsertBlockEntity(asset.id, asset.fileName, asset.contentType, asset.url, asset.image);
+    dispatchInsertBlockEntity(asset.id, asset.fileName, asset.contentType, asset.url, asset.image, asset.relativePath);
     onClose();
   } catch (error) {
     onFailure();

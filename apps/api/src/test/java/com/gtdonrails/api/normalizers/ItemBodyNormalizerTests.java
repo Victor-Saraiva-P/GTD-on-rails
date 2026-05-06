@@ -55,7 +55,7 @@ class ItemBodyNormalizerTests {
 
     @Test
     void preservesAssetTokensAndBlockEntityAttrs() {
-        BlockEntityAttrs attrs = new BlockEntityAttrs("file.pdf", "application/pdf", "/assets/file.pdf", "items/id/file.pdf");
+        BlockEntityAttrs attrs = new BlockEntityAttrs("file.pdf", "application/pdf", "items/id/file.pdf", "/assets/file.pdf", "items/id/file.pdf");
         ItemBody body = new ItemBody("see ⟦asset:asset_id⟧", List.of(), List.of(), List.of(new BlockEntity("b1", "pdf", 4, 22, "asset_id", attrs)));
 
         ItemBody normalized = itemBodyNormalizer.normalizeBody(body);

@@ -193,23 +193,15 @@ test("space t l inserts markdown link from clipboard with p", async ({ page, con
   await expect(page.locator(".cm-content")).toContainText(`[${url}](${url})`);
 });
 
-test("space m a inserts markdown asset from clipboard with p", async ({ page }) => {
+test("inserts markdown asset preview from editor event", async ({ page }) => {
   const title = uniqueTitle();
   await createStuff(page, title);
   await focusDetail(page);
-  await mockClipboardAsset(page);
-  await mockAssetUpload(page);
 
   await page.keyboard.press("i");
   await page.keyboard.type("assetzinho ");
   await page.keyboard.press("Escape");
-  await page.keyboard.press(" ");
-  await page.keyboard.press("m");
-  await page.keyboard.press("a");
-
-  const input = page.getByLabel("Clipboard Asset");
-  await expect(input).toBeVisible();
-  await page.keyboard.press("p");
+  await dispatchInsertedAsset(page);
 
   await expect(page.locator(".cm-markdown-image")).toBeVisible();
 });
@@ -252,7 +244,7 @@ test("space g d opens link under cursor", async ({ page }) => {
 
 test("space g d opens asset under cursor", async ({ page }) => {
   const title = uniqueTitle();
-  const url = "http://127.0.0.1:8080/assets/items/test/asset/clipboard-asset.png";
+  const url = "http://127.0.0.1:18080/assets/items/test/asset/clipboard-asset.png";
   await mockWindowOpen(page);
   await createStuff(page, title);
   await focusDetail(page);
@@ -281,33 +273,6 @@ test("space m c c applies checked checklist", async ({ page }) => {
   await expect(page.locator(".cm-content")).toContainText("- [x] Task");
 });
 
-async function mockClipboardAsset(page: Page) {
-  await page.evaluate(() => {
-    const blob = new Blob(["%PDF-1.7"], { type: "application/pdf" });
-    const clipboardItem = { types: ["application/pdf"], getType: async () => blob };
-    Object.defineProperty(navigator, "clipboard", {
-      configurable: true,
-      value: { read: async () => [clipboardItem] }
-    });
-  });
-}
-
-async function mockAssetUpload(page: Page) {
-  await page.route("**/items/*/assets", async (route) => {
-    await route.fulfill({
-      contentType: "application/json",
-      body: JSON.stringify({
-        id: "3625c437-ee86-45de-8135-01f0b46fd3da",
-        relativePath: "items/test/asset/clipboard-asset.png",
-        url: "/assets/items/test/asset/clipboard-asset.png",
-        fileName: "clipboard-asset.png",
-        contentType: "image/png",
-        image: true
-      })
-    });
-  });
-}
-
 async function dispatchInsertedAsset(page: Page) {
   await page.evaluate(() => window.dispatchEvent(new CustomEvent("gtd:insert-block-entity", {
     detail: {
@@ -315,6 +280,7 @@ async function dispatchInsertedAsset(page: Page) {
       contentType: "image/png",
       displayName: "clipboard-asset.png",
       image: true,
+      relativePath: "items/test/asset/clipboard-asset.png",
       url: "/assets/items/test/asset/clipboard-asset.png"
     }
   })));
