@@ -84,6 +84,8 @@ class BlockEntityWidget extends WidgetType {
       img.alt = this.entity.attrs?.displayName || "image";
       img.className = "cm-markdown-image";
       el.appendChild(img);
+    } else if (isPdfBlockEntity(this.entity)) {
+      el.appendChild(pdfPreviewElement(this.entity));
     } else {
       const link = document.createElement("a");
       link.href = buildApiUrl(this.entity.attrs?.url || "");
@@ -94,6 +96,30 @@ class BlockEntityWidget extends WidgetType {
     }
     return el;
   }
+}
+
+function isPdfBlockEntity(entity: BlockEntity): boolean {
+  return entity.attrs?.contentType === "application/pdf" || entity.attrs?.url?.toLowerCase().endsWith(".pdf") === true;
+}
+
+function pdfPreviewElement(entity: BlockEntity): HTMLElement {
+  const figure = document.createElement("figure");
+  const frame = document.createElement("object");
+  const link = document.createElement("a");
+  const url = buildApiUrl(entity.attrs?.url || "");
+
+  figure.className = "cm-pdf-preview";
+  frame.className = "cm-pdf-preview__frame";
+  frame.data = `${url}#page=1&toolbar=0&navpanes=0&scrollbar=0`;
+  frame.type = "application/pdf";
+  link.className = "cm-markdown-link";
+  link.href = url;
+  link.rel = "noreferrer";
+  link.target = "_blank";
+  link.textContent = "Open PDF";
+  frame.appendChild(link);
+  figure.appendChild(frame);
+  return figure;
 }
 
 class MarkdownLinkWidget extends WidgetType {
@@ -146,7 +172,7 @@ const itemBodyDecorationsPlugin = ViewPlugin.fromClass(class {
     this.decorations = this.build(view);
   }
   update(update: ViewUpdate) {
-    if (update.docChanged || update.viewportChanged || update.selectionSet) {
+    if (update.docChanged || update.viewportChanged) {
       this.decorations = this.build(update.view);
     }
   }
@@ -299,7 +325,10 @@ const itemBodyDecorationsPlugin = ViewPlugin.fromClass(class {
     }
     return builder.finish();
   }
-}, {decorations: v => v.decorations});
+}, {
+  decorations: v => v.decorations,
+  provide: plugin => EditorView.atomicRanges.of((view) => view.plugin(plugin)?.decorations ?? Decoration.none)
+});
 
 
 export function ItemBodyMarkdownEditor(props: ItemBodyMarkdownEditorProps) {

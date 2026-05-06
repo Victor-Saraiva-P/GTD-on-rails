@@ -126,8 +126,26 @@ function renderBlockEntity(entity: ItemBody["blockEntities"][number], key: strin
   if (entity.type === "image" || entity.attrs?.contentType?.startsWith("image/")) {
     return <img alt={entity.attrs?.displayName || "image"} className="cm-markdown-image" key={key} src={buildApiUrl(entity.attrs?.url || "")} />;
   }
+  if (isPdfEntity(entity)) {
+    return <PdfPreview entity={entity} key={key} />;
+  }
 
   return <a className="cm-markdown-link" href={buildApiUrl(entity.attrs?.url || "")} key={key} rel="noreferrer" target="_blank">[{entity.type.toUpperCase()}] {entity.attrs?.displayName || entity.assetId}</a>;
+}
+
+function isPdfEntity(entity: ItemBody["blockEntities"][number]): boolean {
+  return entity.attrs?.contentType === "application/pdf" || entity.attrs?.url?.toLowerCase().endsWith(".pdf") === true;
+}
+
+function PdfPreview({ entity }: { entity: ItemBody["blockEntities"][number] }) {
+  const url = buildApiUrl(entity.attrs?.url || "");
+  return (
+    <figure className="cm-pdf-preview">
+      <object className="cm-pdf-preview__frame" data={`${url}#page=1&toolbar=0&navpanes=0&scrollbar=0`} type="application/pdf">
+        <a className="cm-markdown-link" href={url} rel="noreferrer" target="_blank">Open PDF</a>
+      </object>
+    </figure>
+  );
 }
 
 function ReadOnlyInboxStuffDetails({ item }: Pick<InboxStuffDetailsProps, "item">) {

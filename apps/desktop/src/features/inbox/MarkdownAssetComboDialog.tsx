@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebview, type DragDropEvent } from "@tauri-apps/api/webview";
-import { useEffect, useRef, useState, type ChangeEvent, type DragEvent as ReactDragEvent, type RefObject } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type DragEvent as ReactDragEvent, type MutableRefObject, type RefObject } from "react";
 import { readMarkdownAssetClipboardFile } from "./markdownAssetClipboard";
 import { uploadStuffAsset } from "./api";
 
@@ -51,9 +51,10 @@ export function MarkdownAssetComboDialog({ itemId, onClose }: MarkdownAssetCombo
   const inputRef = useRef<HTMLInputElement | null>(null);
   const dialogRef = useRef<HTMLElement | null>(null);
   const previousFocusRef = useRef<HTMLElement | null>(activeElement());
+  const isUploadingRef = useRef(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isDragActive, setIsDragActive] = useState(false);
-  const handleFile = (file: File | null) => uploadMarkdownAssetFile(itemId, file, onClose, setStatusMessage);
+  const handleFile = (file: File | null) => uploadMarkdownAssetFile(itemId, file, isUploadingRef, onClose, setStatusMessage);
 
   useAssetDialogKeys(onClose, handleFile);
   useTauriAssetDrop(handleFile, setIsDragActive, setStatusMessage, itemId);
@@ -131,7 +132,9 @@ function dragLeave(event: ReactDragEvent<HTMLElement>, setIsDragActive: (active:
 function dropAssetFile(event: ReactDragEvent<HTMLElement>, setIsDragActive: (active: boolean) => void, handleFile: AssetFileHandler) {
   event.preventDefault();
   setIsDragActive(false);
-  void handleFile(extractFile(event.dataTransfer));
+  if (event.dataTransfer.files.length > 0) {
+    void handleFile(extractFile(event.dataTransfer));
+  }
 }
 
 function extractFile(source: DataTransfer | null): File | null {
@@ -242,9 +245,11 @@ function removeWindowDropPrevention() {
   window.removeEventListener("drop", preventWindowDrop);
 }
 
-async function uploadMarkdownAssetFile(itemId: string, file: File | null, onClose: () => void, setStatusMessage: (message: string | null) => void) {
+async function uploadMarkdownAssetFile(itemId: string, file: File | null, isUploadingRef: MutableRefObject<boolean>, onClose: () => void, setStatusMessage: (message: string | null) => void) {
+  if (isUploadingRef.current) return;
   if (!file || !isSupportedAssetFile(file)) return setStatusMessage("Choose a supported PDF, Word, Excel, or image file.");
-  await uploadMarkdownAsset(itemId, file, onClose, setStatusMessage);
+  isUploadingRef.current = true;
+  await uploadMarkdownAsset(itemId, file, onClose, setStatusMessage, () => { isUploadingRef.current = false; });
 }
 
 function isSupportedAssetFile(file: File): boolean {
@@ -259,12 +264,13 @@ function fileExtension(fileName: string): string {
   return fileName.split(".").pop()?.toLowerCase() ?? "";
 }
 
-async function uploadMarkdownAsset(itemId: string, file: File, onClose: () => void, setStatusMessage: (message: string | null) => void) {
+async function uploadMarkdownAsset(itemId: string, file: File, onClose: () => void, setStatusMessage: (message: string | null) => void, onFailure: () => void) {
   try {
     const asset = await uploadStuffAsset(itemId, file);
     dispatchInsertBlockEntity(asset.id, asset.fileName, asset.contentType, asset.url, asset.image);
     onClose();
   } catch (error) {
+    onFailure();
     setStatusMessage(error instanceof Error ? error.message : "Failed to upload asset.");
   }
 }
