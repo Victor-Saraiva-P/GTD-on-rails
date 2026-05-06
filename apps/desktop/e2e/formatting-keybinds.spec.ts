@@ -236,6 +236,33 @@ test("undoing dd restores markdown asset preview", async ({ page }) => {
   await expect(page.locator(".cm-content")).not.toContainText(token);
 });
 
+test("space g d opens link under cursor", async ({ page }) => {
+  const title = uniqueTitle();
+  const url = "https://example.com/docs";
+  await mockWindowOpen(page);
+  await createStuff(page, title);
+  await focusDetail(page);
+
+  await dispatchInsertedLink(page, url);
+  await page.keyboard.press("0");
+  await openCursorTarget(page);
+
+  await expectOpenedUrl(page, url);
+});
+
+test("space g d opens asset under cursor", async ({ page }) => {
+  const title = uniqueTitle();
+  const url = "http://127.0.0.1:8080/assets/items/test/asset/clipboard-asset.png";
+  await mockWindowOpen(page);
+  await createStuff(page, title);
+  await focusDetail(page);
+
+  await dispatchInsertedAsset(page);
+  await openCursorTarget(page);
+
+  await expectOpenedUrl(page, url);
+});
+
 test("space m c c applies checked checklist", async ({ page }) => {
   const title = uniqueTitle();
   await createStuff(page, title);
@@ -291,4 +318,34 @@ async function dispatchInsertedAsset(page: Page) {
       url: "/assets/items/test/asset/clipboard-asset.png"
     }
   })));
+}
+
+async function dispatchInsertedLink(page: Page, url: string) {
+  await page.evaluate((href) => window.dispatchEvent(new CustomEvent("gtd:insert-markdown-link", {
+    detail: { text: "Example", url: href }
+  })), url);
+}
+
+async function expectOpenedUrl(page: Page, url: string) {
+  await expect.poll(() => openedUrls(page)).toContain(url);
+}
+
+async function mockWindowOpen(page: Page) {
+  await page.evaluate(() => {
+    (window as any).__openedUrls = [];
+    window.open = (url?: string | URL) => {
+      (window as any).__openedUrls.push(String(url));
+      return null;
+    };
+  });
+}
+
+async function openedUrls(page: Page): Promise<string[]> {
+  return page.evaluate(() => (window as any).__openedUrls ?? []);
+}
+
+async function openCursorTarget(page: Page) {
+  await page.keyboard.press(" ");
+  await page.keyboard.press("g");
+  await page.keyboard.press("d");
 }

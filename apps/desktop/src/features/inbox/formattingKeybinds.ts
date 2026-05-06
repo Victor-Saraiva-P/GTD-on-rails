@@ -12,7 +12,8 @@ import {
   FORMAT_LETTERED_LIST_EVENT,
   FORMAT_NUMBERED_LIST_EVENT,
   FORMAT_NORMAL_TEXT_EVENT,
-  FORMAT_QUOTE_EVENT
+  FORMAT_QUOTE_EVENT,
+  OPEN_CURSOR_TARGET_EVENT
 } from "./ItemBodyMarkdownEditor";
 import type { KeybindDefinition, ScreenId } from "../keybinds/types";
 
@@ -56,6 +57,7 @@ export function buildFormattingBindings(screen: ScreenId, openLinkComboCb?: () =
     b("format-italic", "i", "Format as Italic", () => dispatchFormat(FORMAT_ITALIC_EVENT), ["t", "i"]),
     b("format-link", "l", "Insert Link", () => openLinkComboCb?.(), ["t", "l"]),
     b("format-code", "c", "Format as Code", () => dispatchFormat(FORMAT_CODE_EVENT), ["t", "c"]),
-    b("format-clear-inline", "t", "Clear Inline Formatting", () => dispatchFormat(FORMAT_CLEAR_INLINE_EVENT), ["t", "t"])
+    b("format-clear-inline", "t", "Clear Inline Formatting", () => dispatchFormat(FORMAT_CLEAR_INLINE_EVENT), ["t", "t"]),
+    b("open-cursor-target", "d", "Open Link or Asset", () => dispatchFormat(OPEN_CURSOR_TARGET_EVENT), ["g", "d"])
   ];
 }

@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::Serialize;
 
@@ -60,6 +61,86 @@ fn read_clipboard_text() -> Result<Option<String>, String> {
     #[cfg(not(target_os = "linux"))]
     {
         Ok(None)
+    }
+}
+
+#[tauri::command]
+fn open_external_url(url: String) -> Result<(), String> {
+    open_with_default_app(&url)
+}
+
+#[tauri::command]
+fn open_temp_asset(bytes_base64: String, file_name: String) -> Result<(), String> {
+    use base64::Engine;
+
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(bytes_base64)
+        .map_err(|error| format!("asset bytes value is invalid; expected base64 bytes: {error}"))?;
+    let path = temporary_asset_path(&file_name);
+    std::fs::write(&path, bytes).map_err(|error| {
+        format!(
+            "asset file path value '{}' is invalid; expected writable temp file: {error}",
+            path.display()
+        )
+    })?;
+    open_with_default_app(path.to_string_lossy().as_ref())
+}
+
+fn temporary_asset_path(file_name: &str) -> PathBuf {
+    let millis = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_millis();
+    std::env::temp_dir().join(format!(
+        "gtd-open-asset-{millis}-{}",
+        safe_temp_file_name(file_name)
+    ))
+}
+
+fn safe_temp_file_name(file_name: &str) -> String {
+    let safe: String = file_name.chars().map(safe_temp_file_character).collect();
+    if safe.trim_matches('-').is_empty() {
+        "asset".to_string()
+    } else {
+        safe
+    }
+}
+
+fn safe_temp_file_character(character: char) -> char {
+    if character.is_ascii_alphanumeric() || matches!(character, '.' | '_' | '-') {
+        character
+    } else {
+        '-'
+    }
+}
+
+fn open_with_default_app(target: &str) -> Result<(), String> {
+    default_open_command(target).spawn().map_err(|error| {
+        format!(
+            "open target value '{target}' is invalid; expected OS-openable path or URL: {error}"
+        )
+    })?;
+    Ok(())
+}
+
+fn default_open_command(target: &str) -> Command {
+    #[cfg(target_os = "linux")]
+    {
+        let mut command = Command::new("xdg-open");
+        command.arg(target);
+        command
+    }
+    #[cfg(target_os = "macos")]
+    {
+        let mut command = Command::new("open");
+        command.arg(target);
+        command
+    }
+    #[cfg(target_os = "windows")]
+    {
+        let mut command = Command::new("cmd");
+        command.args(["/C", "start", "", target]);
+        command
     }
 }
 
@@ -354,7 +435,9 @@ pub fn run() {
             read_clipboard_image,
             read_clipboard_text,
             read_clipboard_file_asset,
-            read_asset_file_path
+            read_asset_file_path,
+            open_external_url,
+            open_temp_asset
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

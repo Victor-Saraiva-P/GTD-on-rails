@@ -9,6 +9,8 @@ import { type ItemBody, type BlockEntity } from "./types";
 import { buildApiUrl } from "../../config/env";
 import { INSERT_MARKDOWN_LINK_EVENT, type InsertMarkdownLinkEventDetail } from "./markdownLinks";
 import { INSERT_BLOCK_ENTITY_EVENT, type InsertBlockEntityEventDetail } from "./MarkdownAssetComboDialog";
+import { findOpenableEditorTarget } from "./openEditorTarget";
+import { openAssetWithDefaultApp, openExternalUrl } from "./openExternalResource";
 
 export type MarkdownBodySaveState = "saved" | "unsaved" | "saving" | "error";
 
@@ -36,6 +38,7 @@ export const FORMAT_BOLD_EVENT = "gtd:format-bold";
 export const FORMAT_ITALIC_EVENT = "gtd:format-italic";
 export const FORMAT_CODE_EVENT = "gtd:format-code";
 export const FORMAT_CLEAR_INLINE_EVENT = "gtd:format-clear-inline";
+export const OPEN_CURSOR_TARGET_EVENT = "gtd:open-cursor-target";
 
 type AutosaveTracker = {
   hasUnsavedChanges: boolean;
@@ -408,6 +411,14 @@ function exitVisualModeAfterFormatting(view: EditorView) {
   }
 }
 
+async function openCursorTarget(view: EditorView): Promise<void> {
+  const body = view.state.field(itemBodyStateField);
+  const target = findOpenableEditorTarget(body, view.state.selection.main.head);
+  if (!target) return;
+  if (target.type === "link") return openExternalUrl(target.url);
+  return openAssetWithDefaultApp(target.entity);
+}
+
 function useCodeMirrorEditorView(
   editorParentRef: RefObject<HTMLDivElement | null>,
   props: ItemBodyMarkdownEditorProps,
@@ -542,6 +553,9 @@ function useCodeMirrorEditorView(
       [FORMAT_HEADING_EVENT]: ((e: CustomEvent<{level: 1|2|3}>) => {
         if (editorViewRef.current) dispatchFormatToEditor(editorViewRef.current, (b, from, to) => setLineBlock(b, `heading${e.detail?.level}` as any, from, to));
       }) as EventListener,
+      [OPEN_CURSOR_TARGET_EVENT]: () => {
+        if (editorViewRef.current) void openCursorTarget(editorViewRef.current);
+      },
       [INSERT_MARKDOWN_LINK_EVENT]: ((e: CustomEvent<InsertMarkdownLinkEventDetail>) => {
         if (editorViewRef.current) {
            const view = editorViewRef.current;
