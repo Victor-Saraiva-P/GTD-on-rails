@@ -18,7 +18,7 @@ describe("inbox API", () => {
     globalThis.fetch = originalFetch;
   });
 
-  const dummyBody = "# Details\n\n- Next action";
+  const dummyBody = { text: "# Details\n\n- Next action", inlineMarks: [], lineBlocks: [], blockEntities: [] };
 
   test("fetchInboxStuffs returns mapped stuff array", async () => {
     const mockResponse = [
@@ -32,7 +32,7 @@ describe("inbox API", () => {
     const stuffs = await fetchInboxStuffs();
     assert.equal(stuffs.length, 1);
     assert.equal(stuffs[0].id, "1");
-    assert.equal(stuffs[0].body, "");
+    assert.deepEqual(stuffs[0].body, { text: "", inlineMarks: [], lineBlocks: [], blockEntities: [] });
   });
 
   test("createStuff sends correct payload", async () => {
@@ -80,11 +80,11 @@ describe("inbox API", () => {
 
     const updated = await updateStuffTitle(item, "New Title");
     assert.equal(updated.title, "New Title");
-    assert.equal(updated.body, dummyBody);
+    assert.deepEqual(updated.body, dummyBody);
   });
 
   test("updateStuffBody only changes body", async () => {
-    const item: Stuff = { id: "4", title: "Title", body: "", status: "INBOX", createdAt: "2026-05-01T00:00:00Z" };
+    const item: Stuff = { id: "4", title: "Title", body: { text: "", inlineMarks: [], lineBlocks: [], blockEntities: [] }, status: "INBOX", createdAt: "2026-05-01T00:00:00Z" };
     const mockResponse = { ...item, body: dummyBody };
 
     globalThis.fetch = mock.fn(async (input, init) => {
@@ -95,6 +95,6 @@ describe("inbox API", () => {
 
     const updated = await updateStuffBody(item, dummyBody);
     assert.equal(updated.title, "Title");
-    assert.equal(updated.body, dummyBody);
+    assert.deepEqual(updated.body, dummyBody);
   });
 });

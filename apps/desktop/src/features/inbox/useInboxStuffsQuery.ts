@@ -9,7 +9,7 @@ import {
   updateStuffBody as updateStuffBodyRequest,
   updateStuffTitle as updateStuffTitleRequest
 } from "./api";
-import type { Stuff } from "./types";
+import type { Stuff, ItemBody } from "./types";
 
 type InboxStuffsQueryState = {
   stuffs: Stuff[];
@@ -18,10 +18,10 @@ type InboxStuffsQueryState = {
   isDeleting: boolean;
   isUpdating: boolean;
   errorMessage: string | null;
-  createStuff: (title: string, body?: string) => Promise<Stuff>;
+  createStuff: (title: string, body?: ItemBody) => Promise<Stuff>;
   deleteStuff: (id: string) => Promise<void>;
   restoreStuff: (id: string) => Promise<void>;
-  updateStuffBody: (item: Stuff, body: string) => Promise<Stuff>;
+  updateStuffBody: (item: Stuff, body: ItemBody) => Promise<Stuff>;
   updateStuffTitle: (item: Stuff, title: string) => Promise<Stuff>;
   reload: () => void;
 };
@@ -105,7 +105,7 @@ function completeInboxMutation(state: InboxLoadState, triggerSyncStatusPolling: 
   triggerSyncStatusPolling();
 }
 
-async function createInboxStuff(title: string, body: string, state: InboxLoadState, mutations: InboxMutationState, triggerSyncStatusPolling: () => void) {
+async function createInboxStuff(title: string, body: ItemBody | undefined, state: InboxLoadState, mutations: InboxMutationState, triggerSyncStatusPolling: () => void) {
   mutations.setIsCreating(true);
 
   try {
@@ -166,10 +166,10 @@ function useInboxStuffsMutations(state: InboxLoadState, mutations: InboxMutation
   const { triggerSyncStatusPolling } = useSyncStatus();
 
   return {
-    createStuff: (title: string, body = "") => createInboxStuff(title, body, state, mutations, triggerSyncStatusPolling),
+    createStuff: (title: string, body?: ItemBody) => createInboxStuff(title, body, state, mutations, triggerSyncStatusPolling),
     deleteStuff: (id: string) => deleteInboxStuff(id, state, mutations, triggerSyncStatusPolling),
     restoreStuff: (id: string) => restoreInboxStuff(id, state, mutations, triggerSyncStatusPolling),
-    updateStuffBody: (item: Stuff, body: string) => updateInboxStuff(() => updateStuffBodyRequest(item, body), state, mutations, triggerSyncStatusPolling),
+    updateStuffBody: (item: Stuff, body: ItemBody) => updateInboxStuff(() => updateStuffBodyRequest(item, body), state, mutations, triggerSyncStatusPolling),
     updateStuffTitle: (item: Stuff, title: string) => updateInboxStuff(() => updateStuffTitleRequest(item, title), state, mutations, triggerSyncStatusPolling)
   };
 }

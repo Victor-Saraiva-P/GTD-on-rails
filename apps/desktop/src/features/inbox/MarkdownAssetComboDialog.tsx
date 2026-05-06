@@ -1,8 +1,22 @@
 import { useState } from "react";
 import { TerminalComboDialog } from "../../components/TerminalComboDialog";
-import { dispatchInsertMarkdownLink } from "./markdownLinks";
 import { readMarkdownAssetClipboardFile } from "./markdownAssetClipboard";
 import { uploadStuffAsset } from "./api";
+
+export const INSERT_BLOCK_ENTITY_EVENT = "gtd:insert-block-entity";
+
+export type InsertBlockEntityEventDetail = {
+  assetId: string;
+  displayName: string;
+  contentType: string;
+  url: string;
+  image: boolean;
+};
+
+export function dispatchInsertBlockEntity(assetId: string, displayName: string, contentType: string, url: string, image: boolean) {
+  const detail: InsertBlockEntityEventDetail = { assetId, displayName, contentType, url, image };
+  window.dispatchEvent(new CustomEvent(INSERT_BLOCK_ENTITY_EVENT, { detail }));
+}
 
 type MarkdownAssetComboDialogProps = {
   itemId: string;
@@ -55,7 +69,7 @@ async function uploadMarkdownAsset(
 ) {
   try {
     const asset = await uploadStuffAsset(itemId, file);
-    dispatchInsertMarkdownLink(asset.url, asset.fileName, asset.image);
+    dispatchInsertBlockEntity(asset.id, asset.fileName, asset.contentType, asset.url, asset.image);
     onClose();
   } catch (error) {
     setStatusMessage(error instanceof Error ? error.message : "Failed to upload asset.");

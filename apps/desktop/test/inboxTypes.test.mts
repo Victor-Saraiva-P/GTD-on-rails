@@ -9,20 +9,20 @@ import {
 
 test("getStuffBodyLines returns no lines for an empty body", () => {
   assert.deepEqual(getStuffBodyLines(null), []);
-  assert.deepEqual(getStuffBodyLines(""), []);
+  assert.deepEqual(getStuffBodyLines({ text: "", inlineMarks: [], lineBlocks: [], blockEntities: [] }), []);
 });
 
 test("getStuffBodyLines trims text and removes bullet markers", () => {
   const body = "  - Capture idea\n* Clarify next action\n• Ship it  ";
   assert.deepEqual(
-    getStuffBodyLines(body),
+    getStuffBodyLines({ text: body, inlineMarks: [], lineBlocks: [], blockEntities: [] }),
     ["Capture idea", "Clarify next action", "Ship it"]
   );
 });
 
 test("getStuffBodyPreviewLines preserves blank lines and spacing", () => {
   const body = "  first line\n\nthird line  ";
-  assert.deepEqual(getStuffBodyPreviewLines(body), ["  first line", "", "third line  "]);
+  assert.deepEqual(getStuffBodyPreviewLines({ text: body, inlineMarks: [], lineBlocks: [], blockEntities: [] }), ["  first line", "", "third line  "]);
   assert.deepEqual(getStuffBodyPreviewLines(null), []);
 });
 

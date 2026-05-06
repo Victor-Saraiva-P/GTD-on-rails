@@ -1,7 +1,66 @@
+export type InlineMark = {
+  id: string;
+  type:
+    | "bold"
+    | "italic"
+    | "inlineCode"
+    | "link"
+    | "highlight"
+    | "textColor"
+    | "backgroundColor";
+  from: number;
+  to: number;
+  attrs?: {
+    href?: string;
+    color?: string;
+  };
+};
+
+export type LineBlock = {
+  id: string;
+  type:
+    | "paragraph"
+    | "heading1"
+    | "heading2"
+    | "heading3"
+    | "bullet"
+    | "numbered"
+    | "lettered"
+    | "quote"
+    | "checklist"
+    | "divider";
+  from: number;
+  to: number;
+  attrs?: {
+    checked?: boolean;
+  };
+};
+
+export type BlockEntity = {
+  id: string;
+  type: "image" | "pdf" | "docx" | "xlsx" | "file";
+  from: number;
+  to: number;
+  assetId: string;
+  attrs?: {
+    displayName?: string;
+    contentType?: string;
+    url?: string;
+    localPath?: string;
+  };
+};
+
+export type ItemBody = {
+  text: string;
+  inlineMarks: InlineMark[];
+  lineBlocks: LineBlock[];
+  blockEntities: BlockEntity[];
+};
+
 export type Stuff = {
   id: string;
   title: string;
-  body: string;
+  body: ItemBody;
   status: string;
   createdAt: string;
 };
@@ -11,12 +70,12 @@ export type Stuff = {
  *
  * @example getStuffBodyLines(stuff.body)
  */
-export function getStuffBodyLines(body: string | null | undefined): string[] {
-  if (!body) {
+export function getStuffBodyLines(body: ItemBody | null | undefined): string[] {
+  if (!body || !body.text) {
     return [];
   }
 
-  return body
+  return body.text
     .split("\n")
     .map((line) => line.trim().replace(/^[-*•]\s+/, ""))
     .filter(Boolean);
@@ -27,12 +86,12 @@ export function getStuffBodyLines(body: string | null | undefined): string[] {
  *
  * @example getStuffBodyPreviewLines("line 1\n\nline 3")
  */
-export function getStuffBodyPreviewLines(body: string | null | undefined): string[] {
-  if (!body) {
+export function getStuffBodyPreviewLines(body: ItemBody | null | undefined): string[] {
+  if (!body || !body.text) {
     return [];
   }
 
-  return body.split("\n");
+  return body.text.split("\n");
 }
 
 /**

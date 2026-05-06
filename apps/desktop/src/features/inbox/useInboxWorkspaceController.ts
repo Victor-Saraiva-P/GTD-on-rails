@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useUndoRedoHistory } from "../history/useUndoRedoHistory";
 import { useActiveZone } from "../keybinds/hooks";
 import { useInboxStuffsQuery } from "./useInboxStuffsQuery";
-import type { Stuff } from "./types";
+import type { Stuff, ItemBody } from "./types";
 
 const DRAFT_STUFF_ID = "__draft_stuff__";
 
@@ -10,7 +10,7 @@ function buildDraftStuff(): Stuff {
   return {
     id: DRAFT_STUFF_ID,
     title: "",
-    body: "",
+    body: { text: "", inlineMarks: [], lineBlocks: [], blockEntities: [] },
     status: "INBOX",
     createdAt: new Date().toISOString()
   };
@@ -312,14 +312,14 @@ async function commitNormalizedTitle(
   finishTitleEdit(model, updatedStuff, shouldContinueToBody);
 }
 
-async function commitEditingSelectedStuffBodyAction(model: InboxModel, body: string) {
+async function commitEditingSelectedStuffBodyAction(model: InboxModel, body: ItemBody) {
   const selectedItem = model.selection.selectedItem;
 
   if (!selectedItem || model.bodyEdit.editingBodyId !== selectedItem.id) {
     return;
   }
 
-  if (selectedItem.body === body) {
+  if (selectedItem.body.text === body.text && JSON.stringify(selectedItem.body) === JSON.stringify(body)) {
     clearBodyEdit(model);
     return;
   }
@@ -336,10 +336,10 @@ function resetWorkspaceAction(model: InboxModel) {
   model.zone.setActiveZone("inbox-list");
 }
 
-async function autosaveEditingSelectedStuffBodyAction(model: InboxModel, body: string) {
+async function autosaveEditingSelectedStuffBodyAction(model: InboxModel, body: ItemBody) {
   const selectedItem = model.selection.selectedItem;
 
-  if (!selectedItem || model.bodyEdit.editingBodyId !== selectedItem.id || selectedItem.body === body) {
+  if (!selectedItem || model.bodyEdit.editingBodyId !== selectedItem.id || (selectedItem.body.text === body.text && JSON.stringify(selectedItem.body) === JSON.stringify(body))) {
     return;
   }
 
@@ -350,11 +350,11 @@ async function autosaveEditingSelectedStuffBodyAction(model: InboxModel, body: s
 
 function useInboxWorkspaceActions(model: InboxModel) {
   return {
-    autosaveEditingSelectedStuffBody: (body: string) => autosaveEditingSelectedStuffBodyAction(model, body),
+    autosaveEditingSelectedStuffBody: (body: ItemBody) => autosaveEditingSelectedStuffBodyAction(model, body),
     cancelEditingSelectedStuff: () => cancelEditingSelectedStuffAction(model),
     cancelEditingSelectedStuffBody: () => clearBodyEdit(model),
     commitEditingSelectedStuff: () => commitEditingSelectedStuffAction(model),
-    commitEditingSelectedStuffBody: (body: string) => commitEditingSelectedStuffBodyAction(model, body),
+    commitEditingSelectedStuffBody: (body: ItemBody) => commitEditingSelectedStuffBodyAction(model, body),
     createNewStuff: () => Promise.resolve(createNewStuffAction(model)),
     deleteSelectedStuff: () => deleteSelectedStuffAction(model),
     undo: () => undoAction(model),

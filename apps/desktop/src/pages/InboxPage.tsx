@@ -8,6 +8,7 @@ import { buildFormattingBindings } from "../features/inbox/formattingKeybinds";
 import { MarkdownAssetComboDialog } from "../features/inbox/MarkdownAssetComboDialog";
 import { MarkdownLinkComboDialog } from "../features/inbox/MarkdownLinkComboDialog";
 import type { InboxWorkspaceController } from "../features/inbox/useInboxWorkspaceController";
+import type { ItemBody } from "../features/inbox/types";
 import { LeaderMenu } from "../features/keybinds/LeaderMenu";
 import { useActiveScreen, useKeybindScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
 import type { FocusZoneId, KeybindDefinition, ScreenId } from "../features/keybinds/types";
@@ -141,15 +142,15 @@ function commitStuffTitle(controller: InboxWorkspaceController) {
   });
 }
 
-function commitStuffBody(controller: InboxWorkspaceController, body: string): Promise<void> {
+function commitStuffBody(controller: InboxWorkspaceController, body: ItemBody): Promise<void> {
   return controller.commitEditingSelectedStuffBody(body);
 }
 
-function autosaveStuffBody(controller: InboxWorkspaceController, body: string): Promise<void> {
+function autosaveStuffBody(controller: InboxWorkspaceController, body: ItemBody): Promise<void> {
   return controller.autosaveEditingSelectedStuffBody(body);
 }
 
-async function exitBodyEditingFromNormalMode(controller: InboxWorkspaceController, body: string): Promise<void> {
+async function exitBodyEditingFromNormalMode(controller: InboxWorkspaceController, body: ItemBody): Promise<void> {
   await controller.commitEditingSelectedStuffBody(body);
   controller.setActiveZone("inbox-list");
 }

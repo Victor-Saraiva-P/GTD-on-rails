@@ -1,13 +1,13 @@
 import { ItemBodyMarkdownEditor } from "./ItemBodyMarkdownEditor";
-import { renderMarkdownLinks } from "./markdownLinks";
-import { formatStuffCreatedAt, getStuffBodyPreviewLines, type Stuff } from "./types";
+import { formatStuffCreatedAt, getStuffBodyPreviewLines, type Stuff, type ItemBody } from "./types";
+import { buildApiUrl } from "../../config/env";
 
 type InboxStuffDetailsProps = {
   item: Stuff;
   editing: boolean;
-  onAutosaveEditing: (body: string) => Promise<void>;
-  onCommitEditing: (body: string) => Promise<void>;
-  onExitEditingFromNormalMode: (body: string) => Promise<void>;
+  onAutosaveEditing: (body: ItemBody) => Promise<void>;
+  onCommitEditing: (body: ItemBody) => Promise<void>;
+  onExitEditingFromNormalMode: (body: ItemBody) => Promise<void>;
   onCancelEditing: () => void;
   onVimModeChange?: (mode: "NORMAL" | "INSERT" | "VISUAL") => void;
 };
@@ -42,156 +42,179 @@ function EditingInboxStuffDetails(props: EditingInboxStuffDetailsProps) {
   );
 }
 
-/** Returns {level, mark, content} for ATX headings H1-H4, or null. */
-function parseHeadingLine(line: string): { level: number; mark: string; content: string } | null {
-  const match = line.match(/^(#{1,3}) (.*)/);
-  if (!match) return null;
-  return { level: match[1].length, mark: match[1] + " ", content: match[2] };
-}
-
-function formatBodyForDisplay(body: Stuff["body"]): string | null {
-  if (!body) {
-    return null;
+function renderInlineBody(text: string, inlineMarks: ItemBody["inlineMarks"], from: number, to: number) {
+  if (from >= to) return null;
+  const applicableMarks = inlineMarks.filter(m => Math.max(m.from, from) < Math.min(m.to, to));
+  
+  if (applicableMarks.length === 0) {
+    return text.substring(from, to);
   }
 
-  return body;
-}
-
-function renderInlineMarkdown(text: string) {
-  const parts = text.split(/(!?\[[^\]\n]+\]\([^)\s]+\)|`.*?`|\*\*.*?\*\*|\*.*?\*)/g);
-  return parts.map((part, i) => {
-    if (/^!?\[[^\]\n]+\]\([^)\s]+\)$/.test(part)) {
-      return renderMarkdownLinks(part);
-    }
-    if (part.startsWith("`") && part.endsWith("`") && part.length >= 2) {
-      const inner = part.slice(1, -1);
-      return (
-        <span key={i} className="cm-code-text">
-          <span className="cm-code-mark">`</span>
-          {inner}
-          <span className="cm-code-mark">`</span>
-        </span>
-      );
-    } else if (part.startsWith("**") && part.endsWith("**") && part.length >= 4) {
-      const inner = part.slice(2, -2);
-      return (
-        <span key={i} className="cm-bold-text">
-          <span className="cm-bold-mark">**</span>
-          {inner}
-          <span className="cm-bold-mark">**</span>
-        </span>
-      );
-    } else if (part.startsWith("*") && part.endsWith("*") && part.length >= 2 && !part.startsWith("**")) {
-      const inner = part.slice(1, -1);
-      return (
-        <span key={i} className="cm-italic-text">
-          <span className="cm-italic-mark">*</span>
-          {inner}
-          <span className="cm-italic-mark">*</span>
-        </span>
-      );
-    }
-    return <span key={i}>{part}</span>;
-  });
+  // Simplified renderer: split into segments and render. This assumes marks don't partially overlap in a way that breaks React. 
+  // It's better to just render characters individually to handle overlaps gracefully.
+  const nodes = [];
+  let currentPos = from;
+  while (currentPos < to) {
+     const nextBoundary = Math.min(to, ...applicableMarks.flatMap(m => [Math.max(from, m.from), Math.min(to, m.to)]).filter(x => x > currentPos));
+     
+     if (nextBoundary === Infinity || nextBoundary <= currentPos) break; // Should not happen
+     
+     const segmentMarks = applicableMarks.filter(m => m.from <= currentPos && m.to >= nextBoundary);
+     
+     let el: React.ReactNode = text.substring(currentPos, nextBoundary);
+     for (const mark of segmentMarks) {
+        if (mark.type === "bold") el = <span className="cm-bold-text">{el}</span>;
+        else if (mark.type === "italic") el = <span className="cm-italic-text">{el}</span>;
+        else if (mark.type === "inlineCode") el = <span className="cm-code-text">{el}</span>;
+        else if (mark.type === "link") el = <a href={mark.attrs?.href} className="cm-markdown-link" target="_blank" rel="noreferrer">{el}</a>;
+     }
+     
+     nodes.push(<span key={currentPos}>{el}</span>);
+     currentPos = nextBoundary;
+  }
+  return nodes;
 }
 
 function ReadOnlyInboxStuffDetails({ item }: Pick<InboxStuffDetailsProps, "item">) {
-  const displayBody = formatBodyForDisplay(item.body);
-  const previewLines = getStuffBodyPreviewLines(displayBody);
+  const body = item.body;
+
+  if (!body || !body.text) {
+    return (
+      <div className="inbox-detail">
+        <InboxDetailHeader item={item} />
+        <p className="pane-state">No details yet for this stuff.</p>
+      </div>
+    );
+  }
+
+  const lines = getStuffBodyPreviewLines(body);
+  const docLength = body.text.length;
 
   return (
     <div className="inbox-detail">
       <InboxDetailHeader item={item} />
-      {displayBody ? (
-        <div className="inbox-detail__body inbox-detail__body-preview" aria-label="Selected item details">
-          {previewLines.map((line, index) => {
-            const heading = parseHeadingLine(line);
-            if (heading) {
-              const cls = `cm-md-heading-${heading.level}`;
+      <div className="inbox-detail__body inbox-detail__body-preview" aria-label="Selected item details">
+        {lines.map((lineText, index) => {
+           // To get exact character offset for each line, we could accumulate lengths.
+           const from = body.text.split("\n").slice(0, index).join("\n").length + (index > 0 ? 1 : 0);
+           const to = from + lineText.length;
+           
+           const blocks = body.lineBlocks.filter(b => b.from <= to && b.from >= from);
+           const block = blocks[0]; // assuming one block per line max for rendering
+           
+           const lineEntities = body.blockEntities.filter(e => e.from >= from && e.to <= to);
+
+           if (block?.type === "heading1") {
+             return (
+               <div className="inbox-detail__body-line" key={index}>
+                 <span className="inbox-detail__line-number">{index + 1}</span>
+                 <span className="inbox-detail__line-content cm-md-heading-1">
+                   {renderInlineBody(body.text, body.inlineMarks, from, to)}
+                 </span>
+               </div>
+             );
+           }
+           if (block?.type === "heading2") {
+             return (
+               <div className="inbox-detail__body-line" key={index}>
+                 <span className="inbox-detail__line-number">{index + 1}</span>
+                 <span className="inbox-detail__line-content cm-md-heading-2">
+                   {renderInlineBody(body.text, body.inlineMarks, from, to)}
+                 </span>
+               </div>
+             );
+           }
+           if (block?.type === "heading3") {
+             return (
+               <div className="inbox-detail__body-line" key={index}>
+                 <span className="inbox-detail__line-number">{index + 1}</span>
+                 <span className="inbox-detail__line-content cm-md-heading-3">
+                   {renderInlineBody(body.text, body.inlineMarks, from, to)}
+                 </span>
+               </div>
+             );
+           }
+           if (block?.type === "bullet") {
+             const indentStr = lineText.match(/^\s*/)?.[0] ?? "";
+             const level = Math.floor(indentStr.length / 2) % 3;
+             return (
+               <div className="inbox-detail__body-line" key={index}>
+                 <span className="inbox-detail__line-number">{index + 1}</span>
+                 <span className="inbox-detail__line-content">
+                   {indentStr}<span className={`cm-bullet-mark cm-bullet-level-${level}`}>• </span>
+                   {renderInlineBody(body.text, body.inlineMarks, from + indentStr.length, to)}
+                 </span>
+               </div>
+             );
+           }
+           if (block?.type === "checklist") {
+             const indentStr = lineText.match(/^\s*/)?.[0] ?? "";
+             const isChecked = block.attrs?.checked ?? false;
+             return (
+               <div className="inbox-detail__body-line" key={index}>
+                 <span className="inbox-detail__line-number">{index + 1}</span>
+                 <span className="inbox-detail__line-content">
+                   {indentStr}
+                   <span className={isChecked ? "cm-checklist-box cm-checklist-box--checked" : "cm-checklist-box"} />
+                   <span className={isChecked ? "cm-checklist-text cm-checklist-text--checked" : "cm-checklist-text"}>
+                     {renderInlineBody(body.text, body.inlineMarks, from + indentStr.length, to)}
+                   </span>
+                 </span>
+               </div>
+             );
+           }
+           if (block?.type === "divider") {
+             return (
+               <div className="inbox-detail__body-line" key={index}>
+                 <span className="inbox-detail__line-number">{index + 1}</span>
+                 <span className="inbox-detail__line-content">
+                   <span className="cm-divider" />
+                 </span>
+               </div>
+             );
+           }
+           if (block?.type === "quote") {
+             const indentStr = lineText.match(/^\s*/)?.[0] ?? "";
+             return (
+               <div className="inbox-detail__body-line" key={index}>
+                 <span className="inbox-detail__line-number">{index + 1}</span>
+                 <span className="inbox-detail__line-content cm-quote-line">
+                   {indentStr}<span className="cm-quote-mark">▌ </span>
+                   {renderInlineBody(body.text, body.inlineMarks, from + indentStr.length, to)}
+                 </span>
+               </div>
+             );
+           }
+
+           // Check for entity block rendering on this line
+           if (lineEntities.length > 0 && lineText.trim().startsWith("⟦asset:")) {
+              const entity = lineEntities[0];
               return (
-                <div className="inbox-detail__body-line" key={`${index}:${line}`}>
-                  <span className="inbox-detail__line-number">{index + 1}</span>
-                  <span className={`inbox-detail__line-content ${cls}`}>
-                    {renderInlineMarkdown(heading.content)}
-                  </span>
-                </div>
-              );
-            }
-            const checklistMatch = line.match(/^(\s*)([-*+]\s+\[[ xX]\]\s+)(.*)/);
-            if (checklistMatch) {
-              const [_, indent, checkbox, content] = checklistMatch;
-              const isChecked = /\[[xX]\]\s+$/.test(checkbox);
-              const textClassName = isChecked ? "cm-checklist-text cm-checklist-text--checked" : "cm-checklist-text";
-              return (
-                <div className="inbox-detail__body-line" key={`${index}:${line}`}>
-                  <span className="inbox-detail__line-number">{index + 1}</span>
-                  <span className="inbox-detail__line-content">
-                    {indent}
-                    <span className={isChecked ? "cm-checklist-box cm-checklist-box--checked" : "cm-checklist-box"} />
-                    <span className={textClassName}>{renderInlineMarkdown(content)}</span>
-                  </span>
-                </div>
-              );
-            }
-            const dividerMatch = line.match(/^\s*---\s*$/);
-            if (dividerMatch) {
-              return (
-                <div className="inbox-detail__body-line" key={`${index}:${line}`}>
-                  <span className="inbox-detail__line-number">{index + 1}</span>
-                  <span className="inbox-detail__line-content">
-                    <span className="cm-divider" />
-                  </span>
-                </div>
-              );
-            }
-            const quoteMatch = line.match(/^(\s*)>\s+(.*)$/);
-            if (quoteMatch) {
-              const [_, indent, content] = quoteMatch;
-              return (
-                <div className="inbox-detail__body-line" key={`${index}:${line}`}>
-                  <span className="inbox-detail__line-number">{index + 1}</span>
-                  <span className="inbox-detail__line-content cm-quote-line">
-                    {indent}
-                    <span className="cm-quote-mark" />
-                    {renderInlineMarkdown(content)}
-                  </span>
-                </div>
-              );
-            }
-            const bulletMatch = line.match(/^(\s*)([-*+]\s+)(.*)/);
-            if (bulletMatch) {
-              const [_, indent, bullet, content] = bulletMatch;
-              const level = Math.floor(indent.length / 2) % 3;
-              return (
-                <div className="inbox-detail__body-line" key={`${index}:${line}`}>
-                  <span className="inbox-detail__line-number">{index + 1}</span>
-                  <span className="inbox-detail__line-content">
-                    {indent}<span className={`cm-bullet-mark cm-bullet-level-${level}`}>{bullet}</span>{renderInlineMarkdown(content)}
-                  </span>
-                </div>
-              );
-            }
-            const numberedMatch = line.match(/^(\s*)(\d+\.\s+)(.*)/);
-            if (numberedMatch) {
-              const [_, indent, number, content] = numberedMatch;
-              return (
-                <div className="inbox-detail__body-line" key={`${index}:${line}`}>
-                  <span className="inbox-detail__line-number">{index + 1}</span>
-                  <span className="inbox-detail__line-content">{indent}{number}{renderInlineMarkdown(content)}</span>
-                </div>
-              );
-            }
-            return (
-              <div className="inbox-detail__body-line" key={`${index}:${line}`}>
-                <span className="inbox-detail__line-number">{index + 1}</span>
-                <span className="inbox-detail__line-content">{line ? renderInlineMarkdown(line) : "\u00A0"}</span>
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <p className="pane-state">No details yet for this stuff.</p>
-      )}
+               <div className="inbox-detail__body-line" key={index}>
+                 <span className="inbox-detail__line-number">{index + 1}</span>
+                 <span className="inbox-detail__line-content cm-block-entity">
+                   {entity.type === "image" ? (
+                     <img src={buildApiUrl(entity.attrs?.url || "")} alt={entity.attrs?.displayName || "image"} className="cm-markdown-image" />
+                   ) : (
+                     <a href={buildApiUrl(entity.attrs?.url || "")} className="cm-markdown-link" target="_blank" rel="noreferrer">
+                       [{entity.type.toUpperCase()}] {entity.attrs?.displayName}
+                     </a>
+                   )}
+                 </span>
+               </div>
+             );
+           }
+
+           return (
+             <div className="inbox-detail__body-line" key={index}>
+               <span className="inbox-detail__line-number">{index + 1}</span>
+               <span className="inbox-detail__line-content">
+                 {lineText ? renderInlineBody(body.text, body.inlineMarks, from, to) : "\u00A0"}
+               </span>
+             </div>
+           );
+        })}
+      </div>
     </div>
   );
 }

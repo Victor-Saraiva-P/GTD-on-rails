@@ -7,6 +7,7 @@ import { buildFormattingBindings } from "../features/inbox/formattingKeybinds";
 import { MarkdownAssetComboDialog } from "../features/inbox/MarkdownAssetComboDialog";
 import { MarkdownLinkComboDialog } from "../features/inbox/MarkdownLinkComboDialog";
 import type { InboxWorkspaceController } from "../features/inbox/useInboxWorkspaceController";
+import type { ItemBody } from "../features/inbox/types";
 import { LeaderMenu } from "../features/keybinds/LeaderMenu";
 import { useActiveScreen, useKeybindScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
 import type { KeybindDefinition, ScreenId } from "../features/keybinds/types";
@@ -67,18 +68,18 @@ function useStuffDetailZone(controller: InboxWorkspaceController) {
   }, [controller.setActiveZone, controller.editingBodyId, controller.selectedItem, controller.startEditingSelectedStuffBody]);
 }
 
-function commitStuffBody(controller: InboxWorkspaceController, body: string): Promise<void> {
+function commitStuffBody(controller: InboxWorkspaceController, body: ItemBody): Promise<void> {
   return controller.commitEditingSelectedStuffBody(body);
 }
 
-function autosaveStuffBody(controller: InboxWorkspaceController, body: string): Promise<void> {
+function autosaveStuffBody(controller: InboxWorkspaceController, body: ItemBody): Promise<void> {
   return controller.autosaveEditingSelectedStuffBody(body);
 }
 
 async function exitBodyEditingToInbox(
   controller: InboxWorkspaceController,
   setActiveScreen: (screen: ScreenId) => void,
-  body: string
+  body: ItemBody
 ): Promise<void> {
   await controller.commitEditingSelectedStuffBody(body);
   controller.setActiveZone("inbox-list");

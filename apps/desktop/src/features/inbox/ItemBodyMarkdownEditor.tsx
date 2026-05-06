@@ -1,28 +1,24 @@
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
-import { markdown } from "@codemirror/lang-markdown";
-import { syntaxTree } from "@codemirror/language";
-import { EditorSelection, RangeSetBuilder } from "@codemirror/state";
+import { EditorSelection, RangeSetBuilder, StateEffect, StateField } from "@codemirror/state";
 import { EditorState } from "@codemirror/state";
 import { Decoration, drawSelection, EditorView, highlightActiveLine, keymap, lineNumbers, ViewPlugin, WidgetType, type ViewUpdate, type DecorationSet } from "@codemirror/view";
 import { getCM, Vim, vim, type CodeMirrorV } from "@replit/codemirror-vim";
 import { useEffect, useRef, useState, type MutableRefObject, type RefObject } from "react";
-import {
-  createSaveItemBodyCommand,
-  normalizeMarkdownBody,
-  saveNormalizedMarkdownBody,
-  runPostSaveEffects,
-  type MarkdownBodySaveState
-} from "./bodyMarkdown";
+import { normalizeBodyForClient, mapBodyRangesThroughChanges, toggleInlineMark, setLineBlock, toggleChecklist, insertBlockEntity, clearLineBlock, applyInlineMark } from "./itemBodyUtils";
+import { type ItemBody, type BlockEntity } from "./types";
 import { buildApiUrl } from "../../config/env";
-import { INSERT_MARKDOWN_LINK_EVENT, insertMarkdownLink, markdownMatches, type InsertMarkdownLinkEventDetail } from "./markdownLinks";
+import { INSERT_MARKDOWN_LINK_EVENT, type InsertMarkdownLinkEventDetail } from "./markdownLinks";
+import { INSERT_BLOCK_ENTITY_EVENT, type InsertBlockEntityEventDetail } from "./MarkdownAssetComboDialog";
+
+export type MarkdownBodySaveState = "saved" | "unsaved" | "saving" | "error";
 
 export type ItemBodyMarkdownEditorProps = {
   itemId: string;
-  initialBody?: string | null;
+  initialBody?: ItemBody | null;
   readOnly?: boolean;
-  onAutosave?: (body: string) => Promise<void>;
-  onSave?: (body: string) => Promise<void>;
-  onExitNormalMode?: (body: string) => Promise<void>;
+  onAutosave?: (body: ItemBody) => Promise<void>;
+  onSave?: (body: ItemBody) => Promise<void>;
+  onExitNormalMode?: (body: ItemBody) => Promise<void>;
   onVimModeChange?: (mode: "NORMAL" | "INSERT" | "VISUAL") => void;
 };
 
@@ -41,10 +37,6 @@ export const FORMAT_ITALIC_EVENT = "gtd:format-italic";
 export const FORMAT_CODE_EVENT = "gtd:format-code";
 export const FORMAT_CLEAR_INLINE_EVENT = "gtd:format-clear-inline";
 
-type ItemBodyMarkdownEditorFrameProps = {
-  editorParentRef: RefObject<HTMLDivElement | null>;
-};
-
 type AutosaveTracker = {
   hasUnsavedChanges: boolean;
   isSaving: boolean;
@@ -53,29 +45,263 @@ type AutosaveTracker = {
   changeId: number;
 };
 
-function normalizedInitialBody(initialBody: string | null | undefined): string {
-  try {
-    return normalizeMarkdownBody(initialBody);
-  } catch {
-    return "";
+const cursorCache = new Map<string, any>();
+
+export const itemBodyStateEffect = StateEffect.define<ItemBody>();
+
+export const itemBodyStateField = StateField.define<ItemBody>({
+  create() {
+    return { text: "", inlineMarks: [], lineBlocks: [], blockEntities: [] };
+  },
+  update(value, tr) {
+    let nextValue = mapBodyRangesThroughChanges(value, tr.changes);
+    for (const e of tr.effects) {
+      if (e.is(itemBodyStateEffect)) {
+        nextValue = { ...nextValue, ...e.value };
+      }
+    }
+    nextValue.text = tr.state.doc.toString();
+    return nextValue;
+  }
+});
+
+class BlockEntityWidget extends WidgetType {
+  constructor(private entity: BlockEntity) {
+    super();
+  }
+
+  eq(other: BlockEntityWidget): boolean {
+    return this.entity.id === other.entity.id;
+  }
+
+  toDOM(): HTMLElement {
+    const el = document.createElement("span");
+    el.className = "cm-block-entity";
+    
+    if (this.entity.type === "image") {
+      const img = document.createElement("img");
+      img.src = buildApiUrl(this.entity.attrs?.url || "");
+      img.alt = this.entity.attrs?.displayName || "image";
+      img.className = "cm-markdown-image";
+      el.appendChild(img);
+    } else {
+      const link = document.createElement("a");
+      link.href = buildApiUrl(this.entity.attrs?.url || "");
+      link.textContent = `[${this.entity.type.toUpperCase()}] ${this.entity.attrs?.displayName}`;
+      link.className = "cm-markdown-link";
+      link.target = "_blank";
+      el.appendChild(link);
+    }
+    return el;
   }
 }
 
-const cursorCache = new Map<string, any>();
+class MarkdownLinkWidget extends WidgetType {
+  constructor(private text: string, private url: string) {
+    super();
+  }
 
-function ItemBodyMarkdownEditorFrame(props: ItemBodyMarkdownEditorFrameProps) {
-  return (
-    <div className="inbox-detail__markdown-editor">
-      <div ref={props.editorParentRef} className="inbox-detail__codemirror" />
-    </div>
-  );
+  eq(other: MarkdownLinkWidget): boolean {
+    return this.text === other.text && this.url === other.url;
+  }
+
+  toDOM(): HTMLElement {
+    const link = document.createElement("a");
+    link.className = "cm-markdown-link";
+    link.href = this.url;
+    link.rel = "noreferrer";
+    link.target = "_blank";
+    link.textContent = this.text;
+    return link;
+  }
 }
 
-/**
- * Mounts a CodeMirror Markdown editor for one GTD item body.
- *
- * @example <ItemBodyMarkdownEditor itemId={item.id} initialBody={item.body} onSave={saveBody} />
- */
+class ChecklistBoxWidget extends WidgetType {
+  constructor(private checked: boolean) {
+    super();
+  }
+
+  eq(other: ChecklistBoxWidget): boolean {
+    return this.checked === other.checked;
+  }
+
+  toDOM(): HTMLElement {
+    const box = document.createElement("span");
+    box.className = this.checked ? "cm-checklist-box cm-checklist-box--checked" : "cm-checklist-box";
+    return box;
+  }
+}
+
+class DividerWidget extends WidgetType {
+  toDOM(): HTMLElement {
+    const divider = document.createElement("span");
+    divider.className = "cm-divider";
+    return divider;
+  }
+}
+
+const itemBodyDecorationsPlugin = ViewPlugin.fromClass(class {
+  decorations: DecorationSet;
+  constructor(view: EditorView) {
+    this.decorations = this.build(view);
+  }
+  update(update: ViewUpdate) {
+    if (update.docChanged || update.viewportChanged || update.selectionSet) {
+      this.decorations = this.build(update.view);
+    }
+  }
+  build(view: EditorView) {
+    const body = view.state.field(itemBodyStateField);
+    const builder = new RangeSetBuilder<Decoration>();
+    const docLength = view.state.doc.length;
+    const decos: {from: number, to: number, deco: Decoration}[] = [];
+
+    for (const block of body.lineBlocks) {
+      if (block.from > docLength) continue;
+      const validFrom = Math.max(0, block.from);
+      
+      const line = view.state.doc.lineAt(validFrom);
+
+      if (block.type === "heading1") {
+        decos.push({from: line.from, to: line.from, deco: Decoration.line({class: "cm-md-heading-1"})});
+      } else if (block.type === "heading2") {
+        decos.push({from: line.from, to: line.from, deco: Decoration.line({class: "cm-md-heading-2"})});
+      } else if (block.type === "heading3") {
+        decos.push({from: line.from, to: line.from, deco: Decoration.line({class: "cm-md-heading-3"})});
+      } else if (block.type === "bullet") {
+        decos.push({from: line.from, to: line.from, deco: Decoration.line({class: "cm-bullet-line"})});
+        const textIndent = line.text.match(/^\s*/)?.[0].length || 0;
+        const level = Math.floor(textIndent / 2) % 3;
+        decos.push({
+          from: line.from + textIndent,
+          to: line.from + textIndent,
+          deco: Decoration.widget({
+            widget: new class extends WidgetType {
+              toDOM() {
+                const el = document.createElement("span");
+                el.className = `cm-bullet-mark cm-bullet-level-${level}`;
+                el.textContent = "• ";
+                return el;
+              }
+            }()
+          })
+        });
+      } else if (block.type === "checklist") {
+        const textIndent = line.text.match(/^\s*/)?.[0].length || 0;
+        decos.push({
+          from: line.from + textIndent,
+          to: line.from + textIndent,
+          deco: Decoration.widget({
+            widget: new ChecklistBoxWidget(block.attrs?.checked ?? false)
+          })
+        });
+        const textDeco = block.attrs?.checked ? "cm-checklist-text cm-checklist-text--checked" : "cm-checklist-text";
+        decos.push({from: line.from, to: line.from, deco: Decoration.line({class: textDeco})});
+      } else if (block.type === "divider") {
+        decos.push({
+          from: line.from,
+          to: line.to,
+          deco: Decoration.replace({widget: new DividerWidget()})
+        });
+      } else if (block.type === "quote") {
+        decos.push({from: line.from, to: line.from, deco: Decoration.line({class: "cm-quote-line"})});
+        const textIndent = line.text.match(/^\s*/)?.[0].length || 0;
+        decos.push({
+          from: line.from + textIndent,
+          to: line.from + textIndent,
+          deco: Decoration.widget({
+            widget: new class extends WidgetType {
+              toDOM() {
+                const el = document.createElement("span");
+                el.className = "cm-quote-mark";
+                el.textContent = "▌ ";
+                return el;
+              }
+            }()
+          })
+        });
+      } else if (block.type === "numbered") {
+        const textIndent = line.text.match(/^\s*/)?.[0].length || 0;
+        decos.push({
+          from: line.from + textIndent,
+          to: line.from + textIndent,
+          deco: Decoration.widget({
+            widget: new class extends WidgetType {
+              toDOM() {
+                const el = document.createElement("span");
+                el.className = "cm-numbered-mark";
+                el.textContent = "1. ";
+                return el;
+              }
+            }()
+          })
+        });
+      } else if (block.type === "lettered") {
+        const textIndent = line.text.match(/^\s*/)?.[0].length || 0;
+        decos.push({
+          from: line.from + textIndent,
+          to: line.from + textIndent,
+          deco: Decoration.widget({
+            widget: new class extends WidgetType {
+              toDOM() {
+                const el = document.createElement("span");
+                el.className = "cm-lettered-mark";
+                el.textContent = "a. ";
+                return el;
+              }
+            }()
+          })
+        });
+      }
+    }
+
+    for (const mark of body.inlineMarks) {
+      if (mark.from >= docLength) continue;
+      const validFrom = Math.max(0, mark.from);
+      const validTo = Math.min(docLength, mark.to);
+      if (validFrom >= validTo) continue;
+
+      if (mark.type === "bold") {
+        decos.push({from: validFrom, to: validTo, deco: Decoration.mark({class: "cm-bold-text"})});
+      } else if (mark.type === "italic") {
+        decos.push({from: validFrom, to: validTo, deco: Decoration.mark({class: "cm-italic-text"})});
+      } else if (mark.type === "inlineCode") {
+        decos.push({from: validFrom, to: validTo, deco: Decoration.mark({class: "cm-code-text"})});
+      } else if (mark.type === "link") {
+        decos.push({from: validFrom, to: validTo, deco: Decoration.replace({widget: new MarkdownLinkWidget(view.state.sliceDoc(validFrom, validTo), mark.attrs?.href || "")})});
+      }
+    }
+
+    for (const entity of body.blockEntities) {
+      if (entity.from > docLength) continue;
+      const validFrom = Math.max(0, entity.from);
+      const validTo = Math.min(docLength, entity.to);
+      if (validFrom >= validTo) continue;
+      decos.push({from: validFrom, to: validTo, deco: Decoration.replace({widget: new BlockEntityWidget(entity)})});
+    }
+
+    decos.sort((a,b) => {
+      if (a.from !== b.from) return a.from - b.from;
+      const isLineA = a.deco.spec.line ? 1 : 0;
+      const isLineB = b.deco.spec.line ? 1 : 0;
+      if (isLineA !== isLineB) return isLineB - isLineA;
+      return a.to - b.to;
+    });
+    
+    for (const {from, to, deco} of decos) {
+      if (from <= to) {
+         try {
+           builder.add(from, to, deco);
+         } catch (e) {
+           // ignore overlapping replace/widget errors for safety
+         }
+      }
+    }
+    return builder.finish();
+  }
+}, {decorations: v => v.decorations});
+
+
 export function ItemBodyMarkdownEditor(props: ItemBodyMarkdownEditorProps) {
   const editorParentRef = useRef<HTMLDivElement | null>(null);
   const [, setSaveState] = useState<MarkdownBodySaveState>("saved");
@@ -102,7 +328,11 @@ export function ItemBodyMarkdownEditor(props: ItemBodyMarkdownEditorProps) {
     setSaveState
   );
 
-  return <ItemBodyMarkdownEditorFrame editorParentRef={editorParentRef} />;
+  return (
+    <div className="inbox-detail__markdown-editor">
+      <div ref={editorParentRef} className="inbox-detail__codemirror" />
+    </div>
+  );
 }
 
 function useLatestCallbackRef<T>(callback: T) {
@@ -110,8 +340,43 @@ function useLatestCallbackRef<T>(callback: T) {
   useEffect(() => {
     callbackRef.current = callback;
   }, [callback]);
-
   return callbackRef;
+}
+
+function dispatchFormatToEditor(view: EditorView, updater: (body: ItemBody, from: number, to: number) => ItemBody) {
+  let body = view.state.field(itemBodyStateField);
+  for (const range of view.state.selection.ranges) {
+    const startLine = view.state.doc.lineAt(range.from);
+    const endLine = view.state.doc.lineAt(range.to);
+    for (let i = startLine.number; i <= endLine.number; i++) {
+       const line = view.state.doc.line(i);
+       body = updater(body, line.from, line.to);
+    }
+  }
+  view.dispatch({
+    effects: itemBodyStateEffect.of(body)
+  });
+  exitVisualModeAfterFormatting(view);
+}
+
+function dispatchInlineFormatToEditor(view: EditorView, updater: (body: ItemBody, from: number, to: number) => ItemBody) {
+  let body = view.state.field(itemBodyStateField);
+  for (const range of view.state.selection.ranges) {
+    if (!range.empty) {
+      body = updater(body, range.from, range.to);
+    }
+  }
+  view.dispatch({
+    effects: itemBodyStateEffect.of(body)
+  });
+  exitVisualModeAfterFormatting(view);
+}
+
+function exitVisualModeAfterFormatting(view: EditorView) {
+  const cm = getCM(view);
+  if (cm?.state?.vim?.visualMode) {
+    Vim.exitVisualMode(cm as CodeMirrorV);
+  }
 }
 
 function useCodeMirrorEditorView(
@@ -125,6 +390,7 @@ function useCodeMirrorEditorView(
   setSaveState: (state: MarkdownBodySaveState) => void
 ) {
   const editorViewRef = useRef<EditorView | null>(null);
+  
   useEffect(() => {
     autosaveTrackerRef.current = {
       hasUnsavedChanges: false,
@@ -133,305 +399,163 @@ function useCodeMirrorEditorView(
       lastInsertMode: null,
       changeId: 0
     };
-    return mountEditorView(
-      editorParentRef.current,
-      editorViewRef,
-      props,
-      autosaveTrackerRef,
-      onAutosaveRef,
-      onSaveRef,
-      onExitNormalModeRef,
-      onVimModeChangeRef,
-      setSaveState
-    );
+    if (!editorParentRef.current) return;
+    
+    const body = normalizeBodyForClient(props.initialBody);
+    let selection;
+    if (cursorCache.has(props.itemId)) {
+      try {
+        selection = EditorSelection.fromJSON(cursorCache.get(props.itemId));
+        for (const range of selection.ranges) {
+          if (range.from > body.text.length || range.to > body.text.length) {
+            selection = undefined;
+            break;
+          }
+        }
+      } catch {
+        selection = undefined;
+      }
+    }
+
+    const view = new EditorView({
+      parent: editorParentRef.current,
+      state: EditorState.create({
+        doc: body.text,
+        selection,
+        extensions: [
+          itemBodyStateField.init(() => body),
+          vim(),
+          lineNumbers(),
+          history(),
+          drawSelection(),
+          highlightActiveLine(),
+          EditorState.readOnly.of(props.readOnly === true),
+          EditorView.editable.of(!props.readOnly),
+          EditorView.lineWrapping,
+          itemBodyDecorationsPlugin,
+          EditorView.updateListener.of((update) => {
+            if (update.selectionSet || update.docChanged) {
+              cursorCache.set(props.itemId, update.state.selection.toJSON());
+            }
+            autosaveAfterFinishedEdit(update.view, update.docChanged || update.transactions.some(tr => tr.effects.some(e => e.is(itemBodyStateEffect))), props.readOnly === true, autosaveTrackerRef, onAutosaveRef, onVimModeChangeRef, setSaveState);
+          }),
+          EditorView.domEventHandlers({
+            keydown: (event, v) => {
+              const isEscape = event.key === "Escape";
+              const isCtrlH = event.key === "h" && event.ctrlKey;
+              if (props.readOnly || (!isEscape && !isCtrlH) || getCM(v)?.state?.vim?.insertMode !== false) {
+                return false;
+              }
+              event.preventDefault();
+              void saveAndExitOnNormalMode(v, onSaveRef.current, onExitNormalModeRef.current, setSaveState);
+              return true;
+            }
+          }),
+          keymap.of([{ key: "Mod-s", run: () => {
+             saveMarkdownBody(onAutosaveRef.current ?? onSaveRef.current, editorViewRef.current?.state.field(itemBodyStateField) as ItemBody, setSaveState);
+             return true;
+          } }]),
+          keymap.of([...historyKeymap, ...defaultKeymap])
+        ]
+      })
+    });
+    
+    editorViewRef.current = view;
+    if (!props.readOnly) view.focus();
+    const initialMode = getCM(view)?.state?.vim?.insertMode ? "INSERT" : "NORMAL";
+    view.contentDOM.dataset.vimMode = initialMode === "INSERT" ? "insert" : "normal";
+    onVimModeChangeRef.current?.(initialMode);
+
+    return () => {
+      view.destroy();
+      editorViewRef.current = null;
+    };
   }, [props.itemId, props.readOnly]);
 
   useEffect(() => {
-    const handler = () => {
-      if (editorViewRef.current) {
-        applyBulletPoints(editorViewRef.current);
-      }
-    };
-    window.addEventListener(FORMAT_BULLET_EVENT, handler);
-    return () => window.removeEventListener(FORMAT_BULLET_EVENT, handler);
-  }, []);
-
-  useEffect(() => {
-    const handler = () => {
-      if (editorViewRef.current) {
-        applyNumberedList(editorViewRef.current);
-      }
-    };
-    window.addEventListener(FORMAT_NUMBERED_LIST_EVENT, handler);
-    return () => window.removeEventListener(FORMAT_NUMBERED_LIST_EVENT, handler);
-  }, []);
-
-  useEffect(() => {
-    const handler = () => {
-      if (editorViewRef.current) {
-        applyNormalText(editorViewRef.current);
-      }
-    };
-    window.addEventListener(FORMAT_NORMAL_TEXT_EVENT, handler);
-    return () => window.removeEventListener(FORMAT_NORMAL_TEXT_EVENT, handler);
-  }, []);
-
-  useEffect(() => {
-    const handler = () => {
-      if (editorViewRef.current) {
-        applyLetteredList(editorViewRef.current);
-      }
-    };
-    window.addEventListener(FORMAT_LETTERED_LIST_EVENT, handler);
-    return () => window.removeEventListener(FORMAT_LETTERED_LIST_EVENT, handler);
-  }, []);
-
-  useEffect(() => {
-    const handler = () => {
-      if (editorViewRef.current) {
-        applyChecklist(editorViewRef.current);
-      }
-    };
-    window.addEventListener(FORMAT_CHECKLIST_EVENT, handler);
-    return () => window.removeEventListener(FORMAT_CHECKLIST_EVENT, handler);
-  }, []);
-
-  useEffect(() => {
-    const handler = () => {
-      if (editorViewRef.current) {
-        applyChecklist(editorViewRef.current, true);
-      }
-    };
-    window.addEventListener(FORMAT_CHECKLIST_CHECKED_EVENT, handler);
-    return () => window.removeEventListener(FORMAT_CHECKLIST_CHECKED_EVENT, handler);
-  }, []);
-
-  useEffect(() => {
-    const handler = () => {
-      if (editorViewRef.current) {
-        applyChecklist(editorViewRef.current, false);
-      }
-    };
-    window.addEventListener(FORMAT_CHECKLIST_UNCHECKED_EVENT, handler);
-    return () => window.removeEventListener(FORMAT_CHECKLIST_UNCHECKED_EVENT, handler);
-  }, []);
-
-  useEffect(() => {
-    const handler = () => {
-      if (editorViewRef.current) {
-        applyDivider(editorViewRef.current);
-      }
-    };
-    window.addEventListener(FORMAT_DIVIDER_EVENT, handler);
-    return () => window.removeEventListener(FORMAT_DIVIDER_EVENT, handler);
-  }, []);
-
-  useEffect(() => {
-    const handler = () => {
-      if (editorViewRef.current) {
-        applyQuote(editorViewRef.current);
-      }
-    };
-    window.addEventListener(FORMAT_QUOTE_EVENT, handler);
-    return () => window.removeEventListener(FORMAT_QUOTE_EVENT, handler);
-  }, []);
-
-  useEffect(() => {
-    const handler = () => {
-      if (editorViewRef.current) {
-        applyBold(editorViewRef.current);
-      }
-    };
-    window.addEventListener(FORMAT_BOLD_EVENT, handler);
-    return () => window.removeEventListener(FORMAT_BOLD_EVENT, handler);
-  }, []);
-
-  useEffect(() => {
-    const handler = () => {
-      if (editorViewRef.current) {
-        applyItalic(editorViewRef.current);
-      }
-    };
-    window.addEventListener(FORMAT_ITALIC_EVENT, handler);
-    return () => window.removeEventListener(FORMAT_ITALIC_EVENT, handler);
-  }, []);
-
-  useEffect(() => {
-    const handler = () => {
-      if (editorViewRef.current) {
-        applyClearInlineFormatting(editorViewRef.current);
-      }
-    };
-    window.addEventListener(FORMAT_CLEAR_INLINE_EVENT, handler);
-    return () => window.removeEventListener(FORMAT_CLEAR_INLINE_EVENT, handler);
-  }, []);
-
-  useEffect(() => {
-    const handler = () => {
-      if (editorViewRef.current) {
-        applyCode(editorViewRef.current);
-      }
-    };
-    window.addEventListener(FORMAT_CODE_EVENT, handler);
-    return () => window.removeEventListener(FORMAT_CODE_EVENT, handler);
-  }, []);
-
-  useEffect(() => {
-    const handler = (e: Event) => {
-      if (!editorViewRef.current) return;
-      const level = (e as CustomEvent<{ level: 1 | 2 | 3 }>).detail?.level;
-      if (level >= 1 && level <= 3) {
-        applyHeading(editorViewRef.current, level as 1 | 2 | 3);
-      }
-    };
-    window.addEventListener(FORMAT_HEADING_EVENT, handler);
-    return () => window.removeEventListener(FORMAT_HEADING_EVENT, handler);
-  }, []);
-
-  useEffect(() => {
-    const handler = (event: Event) => {
-      if (!editorViewRef.current) return;
-      const detail = (event as CustomEvent<InsertMarkdownLinkEventDetail>).detail;
-      if (detail?.url) insertMarkdownLink(editorViewRef.current, detail.url, detail.text, detail.image === true);
-    };
-    window.addEventListener(INSERT_MARKDOWN_LINK_EVENT, handler);
-    return () => window.removeEventListener(INSERT_MARKDOWN_LINK_EVENT, handler);
-  }, []);
-}
-
-function mountEditorView(
-  parent: HTMLDivElement | null,
-  editorViewRef: MutableRefObject<EditorView | null>,
-  props: ItemBodyMarkdownEditorProps,
-  autosaveTrackerRef: MutableRefObject<AutosaveTracker>,
-  onAutosaveRef: MutableRefObject<ItemBodyMarkdownEditorProps["onAutosave"]>,
-  onSaveRef: MutableRefObject<ItemBodyMarkdownEditorProps["onSave"]>,
-  onExitNormalModeRef: MutableRefObject<ItemBodyMarkdownEditorProps["onExitNormalMode"]>,
-  onVimModeChangeRef: MutableRefObject<ItemBodyMarkdownEditorProps["onVimModeChange"]>,
-  setSaveState: (state: MarkdownBodySaveState) => void
-) {
-  if (!parent) {
-    return undefined;
-  }
-
-  const view = createEditorView(parent, props, autosaveTrackerRef, onAutosaveRef, onSaveRef, onExitNormalModeRef, onVimModeChangeRef, setSaveState);
-  editorViewRef.current = view;
-  focusEditableEditorView(view, props.readOnly === true, autosaveTrackerRef);
-  return () => destroyEditorView(view, editorViewRef);
-}
-
-function focusEditableEditorView(
-  view: EditorView,
-  readOnly: boolean,
-  autosaveTrackerRef: MutableRefObject<AutosaveTracker>
-) {
-  if (!readOnly) {
-    view.focus();
-  }
-
-  const tracker = autosaveTrackerRef.current;
-  const insertMode = getCM(view)?.state?.vim?.insertMode ?? null;
-  tracker.lastInsertMode = insertMode;
-}
-
-function destroyEditorView(view: EditorView, editorViewRef: MutableRefObject<EditorView | null>) {
-  view.destroy();
-  editorViewRef.current = null;
-}
-
-function createEditorView(
-  parent: HTMLDivElement,
-  props: ItemBodyMarkdownEditorProps,
-  autosaveTrackerRef: MutableRefObject<AutosaveTracker>,
-  onAutosaveRef: MutableRefObject<ItemBodyMarkdownEditorProps["onAutosave"]>,
-  onSaveRef: MutableRefObject<ItemBodyMarkdownEditorProps["onSave"]>,
-  onExitNormalModeRef: MutableRefObject<ItemBodyMarkdownEditorProps["onExitNormalMode"]>,
-  onVimModeChangeRef: MutableRefObject<ItemBodyMarkdownEditorProps["onVimModeChange"]>,
-  setSaveState: (state: MarkdownBodySaveState) => void
-): EditorView {
-  let selection;
-  if (cursorCache.has(props.itemId)) {
-    try {
-      selection = EditorSelection.fromJSON(cursorCache.get(props.itemId));
-      const docLength = normalizedInitialBody(props.initialBody).length;
-      for (const range of selection.ranges) {
-        if (range.from > docLength || range.to > docLength) {
-          selection = undefined;
-          break;
+    const handlers: Record<string, EventListener> = {
+      [FORMAT_BULLET_EVENT]: () => {
+        if (editorViewRef.current) dispatchFormatToEditor(editorViewRef.current, (b, from, to) => setLineBlock(b, "bullet", from, to));
+      },
+      [FORMAT_NUMBERED_LIST_EVENT]: () => {
+        if (editorViewRef.current) dispatchFormatToEditor(editorViewRef.current, (b, from, to) => setLineBlock(b, "numbered", from, to));
+      },
+      [FORMAT_LETTERED_LIST_EVENT]: () => {
+        if (editorViewRef.current) dispatchFormatToEditor(editorViewRef.current, (b, from, to) => setLineBlock(b, "lettered", from, to));
+      },
+      [FORMAT_CHECKLIST_EVENT]: () => {
+        if (editorViewRef.current) dispatchFormatToEditor(editorViewRef.current, (b, from, to) => toggleChecklist(b, from, to, false));
+      },
+      [FORMAT_CHECKLIST_CHECKED_EVENT]: () => {
+        if (editorViewRef.current) dispatchFormatToEditor(editorViewRef.current, (b, from, to) => toggleChecklist(b, from, to, true));
+      },
+      [FORMAT_CHECKLIST_UNCHECKED_EVENT]: () => {
+        if (editorViewRef.current) dispatchFormatToEditor(editorViewRef.current, (b, from, to) => toggleChecklist(b, from, to, false));
+      },
+      [FORMAT_DIVIDER_EVENT]: () => {
+        if (editorViewRef.current) dispatchFormatToEditor(editorViewRef.current, (b, from, to) => setLineBlock(b, "divider", from, to));
+      },
+      [FORMAT_QUOTE_EVENT]: () => {
+        if (editorViewRef.current) dispatchFormatToEditor(editorViewRef.current, (b, from, to) => setLineBlock(b, "quote", from, to));
+      },
+      [FORMAT_NORMAL_TEXT_EVENT]: () => {
+        if (editorViewRef.current) dispatchFormatToEditor(editorViewRef.current, (b, from, to) => clearLineBlock(b, from, to));
+      },
+      [FORMAT_BOLD_EVENT]: () => {
+        if (editorViewRef.current) dispatchInlineFormatToEditor(editorViewRef.current, (b, from, to) => toggleInlineMark(b, "bold", from, to));
+      },
+      [FORMAT_ITALIC_EVENT]: () => {
+        if (editorViewRef.current) dispatchInlineFormatToEditor(editorViewRef.current, (b, from, to) => toggleInlineMark(b, "italic", from, to));
+      },
+      [FORMAT_CODE_EVENT]: () => {
+        if (editorViewRef.current) dispatchInlineFormatToEditor(editorViewRef.current, (b, from, to) => toggleInlineMark(b, "inlineCode", from, to));
+      },
+      [FORMAT_HEADING_EVENT]: ((e: CustomEvent<{level: 1|2|3}>) => {
+        if (editorViewRef.current) dispatchFormatToEditor(editorViewRef.current, (b, from, to) => setLineBlock(b, `heading${e.detail?.level}` as any, from, to));
+      }) as EventListener,
+      [INSERT_MARKDOWN_LINK_EVENT]: ((e: CustomEvent<InsertMarkdownLinkEventDetail>) => {
+        if (editorViewRef.current) {
+           const view = editorViewRef.current;
+           const range = view.state.selection.main;
+           view.dispatch({
+             changes: {from: range.from, to: range.to, insert: e.detail.text},
+             effects: itemBodyStateEffect.of(applyInlineMark(view.state.field(itemBodyStateField), "link", range.from, range.from + (e.detail.text || "").length, {href: e.detail.url}))
+           });
         }
-      }
-    } catch {
-      selection = undefined;
+      }) as EventListener,
+      [INSERT_BLOCK_ENTITY_EVENT]: ((e: CustomEvent<InsertBlockEntityEventDetail>) => {
+        if (editorViewRef.current) {
+           const view = editorViewRef.current;
+           const range = view.state.selection.main;
+           const token = `⟦asset:${e.detail.assetId}⟧`;
+           const body = insertBlockEntity(view.state.field(itemBodyStateField), {
+              type: e.detail.image ? "image" : "file",
+              from: range.from,
+              to: range.from + token.length,
+              assetId: e.detail.assetId,
+              attrs: {
+                displayName: e.detail.displayName,
+                contentType: e.detail.contentType,
+                url: e.detail.url
+              }
+           });
+           view.dispatch({
+             changes: {from: range.from, to: range.to, insert: token},
+             effects: itemBodyStateEffect.of(body)
+           });
+        }
+      }) as EventListener,
+    };
+
+    for (const [evt, handler] of Object.entries(handlers)) {
+      window.addEventListener(evt, handler);
     }
-  }
-
-  const view = new EditorView({
-    parent,
-    state: EditorState.create({
-      doc: normalizedInitialBody(props.initialBody),
-      selection,
-      extensions: editorExtensions(props.itemId, props.readOnly === true, autosaveTrackerRef, onAutosaveRef, onSaveRef, onExitNormalModeRef, onVimModeChangeRef, setSaveState)
-    })
-  });
-  const initialMode = resolveVimMode(view);
-  view.contentDOM.dataset.vimMode = initialMode === "INSERT" ? "insert" : "normal";
-  onVimModeChangeRef.current?.(initialMode);
-  return view;
-}
-
-function editorExtensions(
-  itemId: string,
-  readOnly: boolean,
-  autosaveTrackerRef: MutableRefObject<AutosaveTracker>,
-  onAutosaveRef: MutableRefObject<ItemBodyMarkdownEditorProps["onAutosave"]>,
-  onSaveRef: MutableRefObject<ItemBodyMarkdownEditorProps["onSave"]>,
-  onExitNormalModeRef: MutableRefObject<ItemBodyMarkdownEditorProps["onExitNormalMode"]>,
-  onVimModeChangeRef: MutableRefObject<ItemBodyMarkdownEditorProps["onVimModeChange"]>,
-  setSaveState: (state: MarkdownBodySaveState) => void
-) {
-  return [
-    vim(),
-    ...editorBehaviorExtensions(itemId, readOnly, autosaveTrackerRef, onAutosaveRef, onSaveRef, onExitNormalModeRef, onVimModeChangeRef, setSaveState),
-    ...editorKeymapExtensions(onAutosaveRef, onSaveRef, setSaveState)
-  ];
-}
-
-function editorBehaviorExtensions(
-  itemId: string,
-  readOnly: boolean,
-  autosaveTrackerRef: MutableRefObject<AutosaveTracker>,
-  onAutosaveRef: MutableRefObject<ItemBodyMarkdownEditorProps["onAutosave"]>,
-  onSaveRef: MutableRefObject<ItemBodyMarkdownEditorProps["onSave"]>,
-  onExitNormalModeRef: MutableRefObject<ItemBodyMarkdownEditorProps["onExitNormalMode"]>,
-  onVimModeChangeRef: MutableRefObject<ItemBodyMarkdownEditorProps["onVimModeChange"]>,
-  setSaveState: (state: MarkdownBodySaveState) => void
-) {
-  return [
-    lineNumbers(),
-    history(),
-    drawSelection(),
-    highlightActiveLine(),
-    markdown(),
-    EditorState.readOnly.of(readOnly),
-    EditorView.editable.of(!readOnly),
-    EditorView.lineWrapping,
-    markdownBulletsPlugin,
-    markdownHeadingsPlugin,
-    markdownChecklistPlugin,
-    markdownDividerPlugin,
-    markdownQuotePlugin,
-    markdownBoldPlugin,
-    markdownItalicPlugin,
-    markdownCodePlugin,
-    markdownLinkPlugin,
-    EditorView.updateListener.of((update) => {
-      if (update.selectionSet || update.docChanged) {
-        cursorCache.set(itemId, update.state.selection.toJSON());
+    return () => {
+      for (const [evt, handler] of Object.entries(handlers)) {
+        window.removeEventListener(evt, handler);
       }
-      autosaveAfterFinishedEdit(update.view, update.docChanged, readOnly, autosaveTrackerRef, onAutosaveRef, onVimModeChangeRef, setSaveState);
-    }),
-    normalModeEscapeHandler(readOnly, autosaveTrackerRef, onSaveRef, onExitNormalModeRef, setSaveState)
-  ];
+    };
+  }, []);
 }
 
 function autosaveAfterFinishedEdit(
@@ -443,29 +567,16 @@ function autosaveAfterFinishedEdit(
   onVimModeChangeRef: MutableRefObject<ItemBodyMarkdownEditorProps["onVimModeChange"]>,
   setSaveState: (state: MarkdownBodySaveState) => void
 ) {
-  const mode = resolveVimMode(view);
-  view.contentDOM.dataset.vimMode = mode === "INSERT" ? "insert" : "normal";
+  const insertMode = getCM(view)?.state?.vim?.insertMode ?? null;
+  const mode = insertMode ? "INSERT" : (getCM(view)?.state?.vim?.visualMode ? "VISUAL" : "NORMAL");
+  view.contentDOM.dataset.vimMode = mode.toLowerCase();
   onVimModeChangeRef.current?.(mode);
 
   const tracker = autosaveTrackerRef.current;
-  const insertMode = getCM(view)?.state?.vim?.insertMode ?? null;
   const exitedInsert = tracker.lastInsertMode === true && insertMode === false;
   if (exitedInsert) {
     tracker.lastInsertExitAt = Date.now();
   }
-  updateAutosaveTracker(tracker, docChanged, insertMode, setSaveState);
-  if (readOnly || tracker.isSaving || !shouldAutosave(tracker, docChanged, exitedInsert, insertMode)) {
-    return;
-  }
-  void saveChangedMarkdownBody(view, tracker, onAutosaveRef.current, setSaveState);
-}
-
-function updateAutosaveTracker(
-  tracker: AutosaveTracker,
-  docChanged: boolean,
-  insertMode: boolean | null,
-  setSaveState: (state: MarkdownBodySaveState) => void
-) {
   if (docChanged) {
     tracker.hasUnsavedChanges = true;
     tracker.changeId += 1;
@@ -474,1173 +585,42 @@ function updateAutosaveTracker(
   if (insertMode !== null) {
     tracker.lastInsertMode = insertMode;
   }
-}
-
-function shouldAutosave(
-  tracker: AutosaveTracker,
-  docChanged: boolean,
-  exitedInsert: boolean,
-  insertMode: boolean | null
-): boolean {
-  return tracker.hasUnsavedChanges && (exitedInsert || (docChanged && insertMode === false));
-}
-
-async function saveChangedMarkdownBody(
-  view: EditorView,
-  tracker: AutosaveTracker,
-  onAutosave: ItemBodyMarkdownEditorProps["onAutosave"],
-  setSaveState: (state: MarkdownBodySaveState) => void
-) {
+  
+  if (readOnly || tracker.isSaving || (!tracker.hasUnsavedChanges || !(exitedInsert || (docChanged && insertMode === false)))) {
+    return;
+  }
   const saveVersion = tracker.changeId;
   tracker.isSaving = true;
   setSaveState("saving");
-  try {
-    await saveNormalizedMarkdownBody(view.state.doc.toString(), async (body) => onAutosave?.(body));
-    await runPostSaveEffects();
-    markAutosaveComplete(tracker, saveVersion, setSaveState);
-  } catch (error: unknown) {
-    console.error("Failed to autosave markdown body", error);
-    setSaveState("error");
-  } finally {
+  onAutosaveRef.current?.(view.state.field(itemBodyStateField)).then(() => {
+    if (tracker.changeId === saveVersion) {
+      tracker.hasUnsavedChanges = false;
+      setSaveState("saved");
+    }
+  }).catch(() => setSaveState("error")).finally(() => {
     tracker.isSaving = false;
-  }
-}
-
-function markAutosaveComplete(
-  tracker: AutosaveTracker,
-  saveVersion: number,
-  setSaveState: (state: MarkdownBodySaveState) => void
-) {
-  if (tracker.changeId !== saveVersion) {
-    return;
-  }
-  tracker.hasUnsavedChanges = false;
-  setSaveState("saved");
-}
-
-function normalModeEscapeHandler(
-  readOnly: boolean,
-  autosaveTrackerRef: MutableRefObject<AutosaveTracker>,
-  onSaveRef: MutableRefObject<ItemBodyMarkdownEditorProps["onSave"]>,
-  onExitNormalModeRef: MutableRefObject<ItemBodyMarkdownEditorProps["onExitNormalMode"]>,
-  setSaveState: (state: MarkdownBodySaveState) => void
-) {
-  return EditorView.domEventHandlers({
-    keydown: (event, view) => {
-      const isEscape = event.key === "Escape";
-      const isCtrlH = event.key === "h" && event.ctrlKey;
-
-      if (readOnly || (!isEscape && !isCtrlH) || !isVimNormalMode(view)) {
-        return false;
-      }
-
-      if (autosaveTrackerRef.current.lastInsertMode === true) {
-        return false;
-      }
-
-      if (isRecentInsertExit(autosaveTrackerRef.current)) {
-        return false;
-      }
-
-      event.preventDefault();
-      void saveAndExitOnNormalMode(view, onSaveRef.current, onExitNormalModeRef.current, setSaveState).catch((error: unknown) => {
-        console.error("Failed to save markdown body when leaving Vim normal mode", error);
-        setSaveState("error");
-      });
-      return true;
-    }
   });
-}
-
-/** Returns the Decoration for a bullet at a given indent level (cycles 0→1→2→0…). */
-function bulletDecorationForLevel(indentSpaces: number): Decoration {
-  const level = Math.floor(indentSpaces / 2) % 3;
-  return Decoration.mark({ class: `cm-bullet-mark cm-bullet-level-${level}` });
-}
-
-function bulletMarkerTo(view: EditorView, from: number, to: number): number {
-  const marker = view.state.sliceDoc(from, to);
-  if (/\s$/.test(marker)) {
-    return to;
-  }
-  return view.state.sliceDoc(to, to + 1) === " " ? to + 1 : to;
-}
-
-const markdownBulletsPlugin = ViewPlugin.fromClass(
-  class {
-    decorations: DecorationSet;
-
-    constructor(view: EditorView) {
-      this.decorations = this.buildDecorations(view);
-    }
-
-    update(update: ViewUpdate) {
-      if (update.docChanged || update.selectionSet || update.viewportChanged) {
-        this.decorations = this.buildDecorations(update.view);
-      }
-    }
-
-    buildDecorations(view: EditorView) {
-      const activeLines = selectedLineNumbers(view);
-      const builder = new RangeSetBuilder<Decoration>();
-      for (const { from, to } of view.visibleRanges) {
-        syntaxTree(view.state).iterate({
-          from,
-          to,
-          enter: (node: any) => {
-            if (node.name === "ListMark") {
-              const text = view.state.sliceDoc(node.from, node.to);
-              if (/^[-*+]\s*$/.test(text)) {
-                const line = view.state.doc.lineAt(node.from);
-                if (activeLines.has(line.number)) {
-                  return;
-                }
-                const indent = line.text.match(/^(\s*)/)?.[1].length ?? 0;
-                builder.add(node.from, bulletMarkerTo(view, node.from, node.to), bulletDecorationForLevel(indent));
-              }
-            }
-          }
-        });
-      }
-      return builder.finish();
-    }
-  },
-  {
-    decorations: (v) => v.decorations
-  }
-);
-
-class ChecklistBoxWidget extends WidgetType {
-  constructor(private checked: boolean) {
-    super();
-  }
-
-  eq(other: ChecklistBoxWidget): boolean {
-    return this.checked === other.checked;
-  }
-
-  toDOM(): HTMLElement {
-    const box = document.createElement("span");
-    box.className = this.checked ? "cm-checklist-box cm-checklist-box--checked" : "cm-checklist-box";
-    return box;
-  }
-}
-
-class DividerWidget extends WidgetType {
-  toDOM(): HTMLElement {
-    const divider = document.createElement("span");
-    divider.className = "cm-divider";
-    return divider;
-  }
-}
-
-
-const checklistTextDecoration = Decoration.mark({ class: "cm-checklist-text" });
-const checklistCheckedTextDecoration = Decoration.mark({ class: "cm-checklist-text cm-checklist-text--checked" });
-
-const headingMark = Decoration.mark({ class: "cm-heading-mark" });
-const hiddenHeadingPrefix = Decoration.replace({});
-
-const headingLineDecorations: Record<number, Decoration> = {
-  1: Decoration.line({ class: "cm-md-heading-1" }),
-  2: Decoration.line({ class: "cm-md-heading-2" }),
-  3: Decoration.line({ class: "cm-md-heading-3" }),
-};
-
-const markdownHeadingsPlugin = ViewPlugin.fromClass(
-  class {
-    decorations: DecorationSet;
-
-    constructor(view: EditorView) {
-      this.decorations = this.buildDecorations(view);
-    }
-
-    update(update: ViewUpdate) {
-      if (update.docChanged || update.selectionSet || update.viewportChanged) {
-        this.decorations = this.buildDecorations(update.view);
-      }
-    }
-
-    buildDecorations(view: EditorView) {
-      // Collect line and mark decorations separately, then merge sorted by from.
-      const activeLines = selectedLineNumbers(view);
-      const lineDecos: [number, number, Decoration][] = [];
-      const markDecos: [number, number, Decoration][] = [];
-
-      for (const { from, to } of view.visibleRanges) {
-        syntaxTree(view.state).iterate({
-          from,
-          to,
-          enter: (node: any) => {
-            const headingMatch = node.name.match(/^ATXHeading(\d)$/);
-            if (headingMatch) {
-              const level = parseInt(headingMatch[1], 10);
-              const deco = headingLineDecorations[level];
-              if (deco) {
-                const line = view.state.doc.lineAt(node.from);
-                lineDecos.push([line.from, line.from, deco]);
-              }
-            }
-            if (node.name === "HeaderMark") {
-              markDecos.push(headingPrefixDecoration(view, activeLines, node.from, node.to));
-            }
-          }
-        });
-      }
-
-      // Line decos must come before mark decos at the same `from` position.
-      const all = [
-        ...lineDecos,
-        ...markDecos,
-      ].sort((a, b) => a[0] !== b[0] ? a[0] - b[0] : a[1] - b[1]);
-
-      const builder = new RangeSetBuilder<Decoration>();
-      for (const [from, to, deco] of all) {
-        builder.add(from, to, deco);
-      }
-      return builder.finish();
-    }
-  },
-  { decorations: (v) => v.decorations }
-);
-
-const markdownChecklistPlugin = ViewPlugin.fromClass(
-  class {
-    decorations: DecorationSet;
-
-    constructor(view: EditorView) {
-      this.decorations = this.buildDecorations(view);
-    }
-
-    update(update: ViewUpdate) {
-      if (update.docChanged || update.selectionSet || update.viewportChanged) {
-        this.decorations = this.buildDecorations(update.view);
-      }
-    }
-
-    buildDecorations(view: EditorView) {
-      const activeLines = selectedLineNumbers(view);
-      const builder = new RangeSetBuilder<Decoration>();
-      for (const { from, to } of view.visibleRanges) {
-        for (let pos = from; pos <= to;) {
-          const line = view.state.doc.lineAt(pos);
-          const match = line.text.match(/^(\s*)([-*+]\s+\[[ xX]\]\s+)(.*)$/);
-          if (match) {
-            if (activeLines.has(line.number)) {
-              pos = line.to + 1;
-              continue;
-            }
-            const indent = match[1].length;
-            const marker = match[2];
-            const isChecked = /\[[xX]\]/.test(marker);
-            const markerFrom = line.from + indent;
-            const markerTo = markerFrom + marker.length;
-            builder.add(markerFrom, markerTo, Decoration.replace({ widget: new ChecklistBoxWidget(isChecked) }));
-            const contentFrom = markerTo;
-            if (contentFrom < line.to) {
-              const textDeco = isChecked ? checklistCheckedTextDecoration : checklistTextDecoration;
-              builder.add(contentFrom, line.to, textDeco);
-            }
-          }
-          pos = line.to + 1;
-        }
-      }
-      return builder.finish();
-    }
-  },
-  { decorations: (v) => v.decorations }
-);
-
-const markdownDividerPlugin = ViewPlugin.fromClass(
-  class {
-    decorations: DecorationSet;
-
-    constructor(view: EditorView) {
-      this.decorations = this.buildDecorations(view);
-    }
-
-    update(update: ViewUpdate) {
-      if (update.docChanged || update.selectionSet || update.viewportChanged) {
-        this.decorations = this.buildDecorations(update.view);
-      }
-    }
-
-    buildDecorations(view: EditorView) {
-      const activeLines = selectedLineNumbers(view);
-      const builder = new RangeSetBuilder<Decoration>();
-      for (const { from, to } of view.visibleRanges) {
-        for (let pos = from; pos <= to;) {
-          const line = view.state.doc.lineAt(pos);
-          if (isDividerLine(line.text)) {
-            if (!activeLines.has(line.number)) {
-              builder.add(line.from, line.to, Decoration.replace({ widget: new DividerWidget() }));
-            }
-          }
-          pos = line.to + 1;
-        }
-      }
-      return builder.finish();
-    }
-  },
-  { decorations: (v) => v.decorations }
-);
-
-const quoteLineDecoration = Decoration.line({ class: "cm-quote-line" });
-const quoteMarkDecoration = Decoration.mark({ class: "cm-quote-mark" });
-const hiddenQuotePrefix = Decoration.replace({});
-
-const markdownQuotePlugin = ViewPlugin.fromClass(
-  class {
-    decorations: DecorationSet;
-
-    constructor(view: EditorView) {
-      this.decorations = this.buildDecorations(view);
-    }
-
-    update(update: ViewUpdate) {
-      if (update.docChanged || update.selectionSet || update.viewportChanged) {
-        this.decorations = this.buildDecorations(update.view);
-      }
-    }
-
-    buildDecorations(view: EditorView) {
-      const activeLines = selectedLineNumbers(view);
-      const lineDecos: [number, number, Decoration][] = [];
-      const markDecos: [number, number, Decoration][] = [];
-
-      for (const { from, to } of view.visibleRanges) {
-        for (let pos = from; pos <= to;) {
-          const line = view.state.doc.lineAt(pos);
-          const match = line.text.match(/^(\s*)(>\s+)(.*)$/);
-          if (match) {
-            const markerFrom = line.from + match[1].length;
-            const markerTo = markerFrom + match[2].length;
-            
-            if (!activeLines.has(line.number)) {
-              lineDecos.push([line.from, line.from, quoteLineDecoration]);
-              markDecos.push([markerFrom, markerTo, hiddenQuotePrefix]);
-            } else {
-              markDecos.push([markerFrom, markerTo, quoteMarkDecoration]);
-            }
-          }
-          pos = line.to + 1;
-        }
-      }
-
-      const all = [...lineDecos, ...markDecos].sort((a, b) => a[0] !== b[0] ? a[0] - b[0] : a[1] - b[1]);
-      const builder = new RangeSetBuilder<Decoration>();
-      for (const [from, to, deco] of all) {
-        builder.add(from, to, deco);
-      }
-      return builder.finish();
-    }
-  },
-  { decorations: (v) => v.decorations }
-);
-
-const boldTextDecoration = Decoration.mark({ class: "cm-bold-text" });
-const boldMarkDecoration = Decoration.mark({ class: "cm-bold-mark" });
-const hiddenBoldMark = Decoration.replace({});
-
-const markdownBoldPlugin = ViewPlugin.fromClass(
-  class {
-    decorations: DecorationSet;
-
-    constructor(view: EditorView) {
-      this.decorations = this.buildDecorations(view);
-    }
-
-    update(update: ViewUpdate) {
-      if (update.docChanged || update.selectionSet || update.viewportChanged) {
-        this.decorations = this.buildDecorations(update.view);
-      }
-    }
-
-    buildDecorations(view: EditorView) {
-      const activeLines = selectedLineNumbers(view);
-      const markDecos: [number, number, Decoration][] = [];
-
-      for (const { from, to } of view.visibleRanges) {
-        syntaxTree(view.state).iterate({
-          from,
-          to,
-          enter: (node: any) => {
-            if (node.name === "StrongEmphasis") {
-              let child = node.node.firstChild;
-              let contentFrom = -1;
-              let contentTo = -1;
-              
-              while (child) {
-                if (child.name === "EmphasisMark") {
-                   const line = view.state.doc.lineAt(child.from);
-                   const isActive = activeLines.has(line.number);
-                   if (isActive) {
-                     markDecos.push([child.from, child.to, boldMarkDecoration]);
-                   } else {
-                     markDecos.push([child.from, child.to, hiddenBoldMark]);
-                   }
-                   if (contentFrom === -1) {
-                     contentFrom = child.to;
-                   } else {
-                     contentTo = child.from;
-                   }
-                }
-                child = child.nextSibling;
-              }
-              
-              if (contentFrom !== -1 && contentTo !== -1 && contentFrom < contentTo) {
-                 markDecos.push([contentFrom, contentTo, boldTextDecoration]);
-              }
-            }
-          }
-        });
-      }
-
-      const all = markDecos.sort((a, b) => a[0] !== b[0] ? a[0] - b[0] : a[1] - b[1]);
-      const builder = new RangeSetBuilder<Decoration>();
-      for (const [from, to, deco] of all) {
-        if (from < to) {
-          builder.add(from, to, deco);
-        }
-      }
-      return builder.finish();
-    }
-  },
-  { decorations: (v) => v.decorations }
-);
-
-const italicTextDecoration = Decoration.mark({ class: "cm-italic-text" });
-const italicMarkDecoration = Decoration.mark({ class: "cm-italic-mark" });
-const hiddenItalicMark = Decoration.replace({});
-
-const markdownItalicPlugin = ViewPlugin.fromClass(
-  class {
-    decorations: DecorationSet;
-
-    constructor(view: EditorView) {
-      this.decorations = this.buildDecorations(view);
-    }
-
-    update(update: ViewUpdate) {
-      if (update.docChanged || update.selectionSet || update.viewportChanged) {
-        this.decorations = this.buildDecorations(update.view);
-      }
-    }
-
-    buildDecorations(view: EditorView) {
-      const activeLines = selectedLineNumbers(view);
-      const markDecos: [number, number, Decoration][] = [];
-
-      for (const { from, to } of view.visibleRanges) {
-        syntaxTree(view.state).iterate({
-          from,
-          to,
-          enter: (node: any) => {
-            if (node.name === "Emphasis") {
-              let child = node.node.firstChild;
-              let contentFrom = -1;
-              let contentTo = -1;
-              
-              while (child) {
-                if (child.name === "EmphasisMark") {
-                   const line = view.state.doc.lineAt(child.from);
-                   const isActive = activeLines.has(line.number);
-                   if (isActive) {
-                     markDecos.push([child.from, child.to, italicMarkDecoration]);
-                   } else {
-                     markDecos.push([child.from, child.to, hiddenItalicMark]);
-                   }
-                   if (contentFrom === -1) {
-                     contentFrom = child.to;
-                   } else {
-                     contentTo = child.from;
-                   }
-                }
-                child = child.nextSibling;
-              }
-              
-              if (contentFrom !== -1 && contentTo !== -1 && contentFrom < contentTo) {
-                 markDecos.push([contentFrom, contentTo, italicTextDecoration]);
-              }
-            }
-          }
-        });
-      }
-
-      const all = markDecos.sort((a, b) => a[0] !== b[0] ? a[0] - b[0] : a[1] - b[1]);
-      const builder = new RangeSetBuilder<Decoration>();
-      for (const [from, to, deco] of all) {
-        if (from < to) {
-          builder.add(from, to, deco);
-        }
-      }
-      return builder.finish();
-    }
-  },
-  { decorations: (v) => v.decorations }
-);
-
-const codeTextDecoration = Decoration.mark({ class: "cm-code-text" });
-const codeMarkDecoration = Decoration.mark({ class: "cm-code-mark" });
-const hiddenCodeMark = Decoration.replace({});
-
-class MarkdownLinkWidget extends WidgetType {
-  constructor(private text: string, private url: string) {
-    super();
-  }
-
-  eq(other: MarkdownLinkWidget): boolean {
-    return this.text === other.text && this.url === other.url;
-  }
-
-  toDOM(): HTMLElement {
-    const link = document.createElement("a");
-    link.className = "cm-markdown-link";
-    link.href = this.url;
-    link.rel = "noreferrer";
-    link.target = "_blank";
-    link.textContent = this.text;
-    return link;
-  }
-}
-
-class MarkdownImageWidget extends WidgetType {
-  constructor(private text: string, private url: string) {
-    super();
-  }
-
-  eq(other: MarkdownImageWidget): boolean {
-    return this.text === other.text && this.url === other.url;
-  }
-
-  toDOM(): HTMLElement {
-    const image = document.createElement("img");
-    image.alt = this.text;
-    image.className = "cm-markdown-image";
-    image.src = buildApiUrl(this.url);
-    return image;
-  }
-}
-
-const markdownLinkPlugin = ViewPlugin.fromClass(
-  class {
-    decorations: DecorationSet;
-
-    constructor(view: EditorView) {
-      this.decorations = this.buildDecorations(view);
-    }
-
-    update(update: ViewUpdate) {
-      if (update.docChanged || update.selectionSet || update.viewportChanged) {
-        this.decorations = this.buildDecorations(update.view);
-      }
-    }
-
-    buildDecorations(view: EditorView) {
-      const activeLines = selectedLineNumbers(view);
-      const builder = new RangeSetBuilder<Decoration>();
-      for (const { from, to } of view.visibleRanges) {
-        addMarkdownLinkDecorations(view, builder, activeLines, from, to);
-      }
-      return builder.finish();
-    }
-  },
-  { decorations: (v) => v.decorations }
-);
-
-function addMarkdownLinkDecorations(
-  view: EditorView,
-  builder: RangeSetBuilder<Decoration>,
-  activeLines: Set<number>,
-  from: number,
-  to: number
-) {
-  for (let pos = from; pos <= to;) {
-    const line = view.state.doc.lineAt(pos);
-    if (!activeLines.has(line.number)) addMarkdownLinksFromLine(line.from, line.text, builder);
-    pos = line.to + 1;
-  }
-}
-
-function addMarkdownLinksFromLine(lineFrom: number, lineText: string, builder: RangeSetBuilder<Decoration>) {
-  for (const match of markdownMatches(lineText)) {
-    const from = lineFrom + match.index;
-    const widget = match.image ? new MarkdownImageWidget(match.text, match.href) : new MarkdownLinkWidget(match.text, match.href);
-    builder.add(from, from + match.raw.length, Decoration.replace({ widget }));
-  }
-}
-
-const markdownCodePlugin = ViewPlugin.fromClass(
-  class {
-    decorations: DecorationSet;
-
-    constructor(view: EditorView) {
-      this.decorations = this.buildDecorations(view);
-    }
-
-    update(update: ViewUpdate) {
-      if (update.docChanged || update.selectionSet || update.viewportChanged) {
-        this.decorations = this.buildDecorations(update.view);
-      }
-    }
-
-    buildDecorations(view: EditorView) {
-      const activeLines = selectedLineNumbers(view);
-      const markDecos: [number, number, Decoration][] = [];
-
-      for (const { from, to } of view.visibleRanges) {
-        syntaxTree(view.state).iterate({
-          from,
-          to,
-          enter: (node: any) => {
-            if (node.name === "InlineCode") {
-              let child = node.node.firstChild;
-              let contentFrom = -1;
-              let contentTo = -1;
-              
-              while (child) {
-                if (child.name === "CodeMark") {
-                   const line = view.state.doc.lineAt(child.from);
-                   const isActive = activeLines.has(line.number);
-                   if (isActive) {
-                     markDecos.push([child.from, child.to, codeMarkDecoration]);
-                   } else {
-                     markDecos.push([child.from, child.to, hiddenCodeMark]);
-                   }
-                   if (contentFrom === -1) {
-                     contentFrom = child.to;
-                   } else {
-                     contentTo = child.from;
-                   }
-                }
-                child = child.nextSibling;
-              }
-              
-              if (contentFrom !== -1 && contentTo !== -1 && contentFrom < contentTo) {
-                 markDecos.push([contentFrom, contentTo, codeTextDecoration]);
-              }
-            }
-          }
-        });
-      }
-
-      const all = markDecos.sort((a, b) => a[0] !== b[0] ? a[0] - b[0] : a[1] - b[1]);
-      const builder = new RangeSetBuilder<Decoration>();
-      for (const [from, to, deco] of all) {
-        if (from < to) {
-          builder.add(from, to, deco);
-        }
-      }
-      return builder.finish();
-    }
-  },
-  { decorations: (v) => v.decorations }
-);
-
-function selectedLineNumbers(view: EditorView): Set<number> {
-  const activeLines = new Set<number>();
-  for (const range of view.state.selection.ranges) {
-    activeLines.add(view.state.doc.lineAt(range.head).number);
-  }
-  return activeLines;
-}
-
-function headingPrefixDecoration(
-  view: EditorView,
-  activeLines: Set<number>,
-  from: number,
-  to: number
-): [number, number, Decoration] {
-  const line = view.state.doc.lineAt(from);
-  if (activeLines.has(line.number)) {
-    return [from, to, headingMark];
-  }
-  const prefixTo = view.state.sliceDoc(to, to + 1) === " " ? to + 1 : to;
-  return [from, prefixTo, hiddenHeadingPrefix];
-}
-
-/** Regex matching any markdown block prefix: bullets, numbered lists, or headings. */
-const MARKDOWN_PREFIX_RE = /^(\s*)(#{1,6}\s+|>\s+|[-*+]\s+\[[ xX]\]\s+|[-*+]\s+|\d+\.\s+|[a-zA-Z]\.\s+)?/;
-
-function isDividerLine(lineText: string): boolean {
-  return /^\s*---\s*$/.test(lineText);
-}
-
-/**
- * Strips any existing markdown block prefix (heading or bullet) from a line.
- * Returns the indent and content without the prefix.
- */
-function stripMarkdownPrefix(text: string): { indent: string; prefixLen: number; content: string } {
-  const match = text.match(MARKDOWN_PREFIX_RE);
-  const indent = match?.[1] ?? "";
-  const prefix = match?.[2] ?? "";
-  return { indent, prefixLen: indent.length + prefix.length, content: text.slice(indent.length + prefix.length) };
-}
-
-function iterateSelectedLines(
-  state: ReturnType<typeof EditorView.prototype.state.toJSON>["doc"] extends never ? never : EditorView["state"],
-  cb: (line: ReturnType<typeof EditorView.prototype.state.doc.line>, startLine: number, endLine: number) => void
-) {
-  for (const range of state.selection.ranges) {
-    const startLine = state.doc.lineAt(range.from).number;
-    let endLine = state.doc.lineAt(range.to).number;
-    if (range.to > range.from && range.to === state.doc.line(endLine).from) endLine--;
-    for (let i = startLine; i <= endLine; i++) {
-      cb(state.doc.line(i), startLine, endLine);
-    }
-  }
-}
-
-function exitVisualModeAfterFormatting(view: EditorView) {
-  const cm = getCM(view);
-  if (cm?.state?.vim?.visualMode) {
-    Vim.exitVisualMode(cm as CodeMirrorV);
-  }
-}
-
-function applyBulletPoints(view: EditorView) {
-  const { state, dispatch } = view;
-  const changes: { from: number; to?: number; insert: string }[] = [];
-
-  iterateSelectedLines(state, (line, startLine, endLine) => {
-    const { indent, prefixLen, content } = stripMarkdownPrefix(line.text);
-    const existingPrefix = line.text.slice(indent.length, prefixLen);
-    const isBullet = /^[-*+]\s+/.test(existingPrefix);
-
-    if (!isBullet && (content.trim().length > 0 || startLine === endLine)) {
-      // replace any heading prefix with bullet
-      changes.push({ from: line.from + indent.length, to: line.from + prefixLen, insert: "- " });
-    }
-  });
-
-  if (changes.length > 0) dispatch({ changes });
-  exitVisualModeAfterFormatting(view);
-}
-
-function applyNumberedList(view: EditorView) {
-  const { state, dispatch } = view;
-  const changes: { from: number; to?: number; insert: string }[] = [];
-  let number = 1;
-
-  iterateSelectedLines(state, (line, startLine, endLine) => {
-    const { indent, prefixLen, content } = stripMarkdownPrefix(line.text);
-    const existingPrefix = line.text.slice(indent.length, prefixLen);
-    const numberedPrefix = `${number}. `;
-
-    if (content.trim().length > 0 || startLine === endLine) {
-      if (existingPrefix !== numberedPrefix) {
-        changes.push({ from: line.from + indent.length, to: line.from + prefixLen, insert: numberedPrefix });
-      }
-      number += 1;
-    }
-  });
-
-  if (changes.length > 0) dispatch({ changes });
-  exitVisualModeAfterFormatting(view);
-}
-
-function applyHeading(view: EditorView, level: 1 | 2 | 3) {
-  const { state, dispatch } = view;
-  const hashes = "#".repeat(level) + " ";
-  const changes: { from: number; to?: number; insert: string }[] = [];
-
-  iterateSelectedLines(state, (line, startLine, endLine) => {
-    const { indent, prefixLen, content } = stripMarkdownPrefix(line.text);
-    const existingPrefix = line.text.slice(indent.length, prefixLen);
-    const sameHeading = existingPrefix === hashes;
-
-    if (!sameHeading && (content.trim().length > 0 || startLine === endLine)) {
-      // replace existing prefix (bullet or different heading) with new heading
-      changes.push({ from: line.from + indent.length, to: line.from + prefixLen, insert: hashes });
-    }
-  });
-
-  if (changes.length > 0) dispatch({ changes });
-  exitVisualModeAfterFormatting(view);
-}
-
-function applyNormalText(view: EditorView) {
-  const { state, dispatch } = view;
-  const changes: { from: number; to?: number; insert: string }[] = [];
-
-  iterateSelectedLines(state, (line, startLine, endLine) => {
-    const { indent, prefixLen, content } = stripMarkdownPrefix(line.text);
-    const hasPrefix = prefixLen > indent.length;
-    if (hasPrefix && (content.trim().length > 0 || startLine === endLine)) {
-      changes.push({ from: line.from + indent.length, to: line.from + prefixLen, insert: "" });
-    }
-  });
-
-  if (changes.length > 0) dispatch({ changes });
-  exitVisualModeAfterFormatting(view);
-}
-
-function applyLetteredList(view: EditorView) {
-  const { state, dispatch } = view;
-  const changes: { from: number; to?: number; insert: string }[] = [];
-  let index = 0;
-
-  iterateSelectedLines(state, (line, startLine, endLine) => {
-    const { indent, prefixLen, content } = stripMarkdownPrefix(line.text);
-    if (content.trim().length === 0 && startLine !== endLine) {
-      return;
-    }
-    const letter = String.fromCharCode(97 + (index % 26));
-    const letterPrefix = `${letter}. `;
-    const existingPrefix = line.text.slice(indent.length, prefixLen);
-    if (existingPrefix !== letterPrefix) {
-      changes.push({ from: line.from + indent.length, to: line.from + prefixLen, insert: letterPrefix });
-    }
-    index += 1;
-  });
-
-  if (changes.length > 0) dispatch({ changes });
-  exitVisualModeAfterFormatting(view);
-}
-
-function applyChecklist(view: EditorView, checked?: boolean) {
-  const { state, dispatch } = view;
-  const changes: { from: number; to?: number; insert: string }[] = [];
-
-  iterateSelectedLines(state, (line, startLine, endLine) => {
-    const { indent, prefixLen, content } = stripMarkdownPrefix(line.text);
-    if (content.trim().length === 0 && startLine !== endLine) {
-      return;
-    }
-    const existingPrefix = line.text.slice(indent.length, prefixLen);
-    if (/^[-*+]\s+\[[ xX]\]\s+/.test(existingPrefix) && checked === undefined) {
-      return;
-    }
-    if (checked === true) {
-      changes.push({ from: line.from + indent.length, to: line.from + prefixLen, insert: "- [x] " });
-      return;
-    }
-    if (checked === false) {
-      changes.push({ from: line.from + indent.length, to: line.from + prefixLen, insert: "- [ ] " });
-      return;
-    }
-    changes.push({ from: line.from + indent.length, to: line.from + prefixLen, insert: "- [ ] " });
-  });
-
-  if (changes.length > 0) dispatch({ changes });
-  exitVisualModeAfterFormatting(view);
-}
-
-function applyDivider(view: EditorView) {
-  const { state, dispatch } = view;
-  const changes: { from: number; to?: number; insert: string }[] = [];
-
-  iterateSelectedLines(state, (line) => {
-    const { indent, prefixLen } = stripMarkdownPrefix(line.text);
-    changes.push({ from: line.from + indent.length, to: line.from + prefixLen, insert: "---" });
-  });
-
-  if (changes.length > 0) dispatch({ changes });
-  exitVisualModeAfterFormatting(view);
-}
-
-function applyQuote(view: EditorView) {
-  const { state, dispatch } = view;
-  const changes: { from: number; to?: number; insert: string }[] = [];
-  const isSingleCursor = state.selection.ranges.length === 1 && state.selection.main.empty;
-  let newCursor: number | null = null;
-
-  iterateSelectedLines(state, (line, startLine, endLine) => {
-    const { indent, prefixLen, content } = stripMarkdownPrefix(line.text);
-    const existingPrefix = line.text.slice(indent.length, prefixLen);
-    const isQuote = /^>\s+/.test(existingPrefix);
-    const shouldApply = !isQuote && (content.trim().length > 0 || startLine === endLine);
-    if (shouldApply) {
-      changes.push({ from: line.from + indent.length, to: line.from + prefixLen, insert: "> " });
-      if (isSingleCursor && newCursor === null && state.doc.lineAt(state.selection.main.from).number === line.number) {
-        newCursor = line.from + indent.length + 2;
-      }
-    }
-  });
-
-  if (changes.length > 0) {
-    dispatch({
-      changes,
-      selection: newCursor === null ? undefined : EditorSelection.cursor(newCursor)
-    });
-  }
-  exitVisualModeAfterFormatting(view);
-}
-
-function applyBold(view: EditorView) {
-  const { state, dispatch } = view;
-
-  const transaction = state.changeByRange(range => {
-    if (range.empty) {
-      const before = state.sliceDoc(Math.max(0, range.from - 2), range.from);
-      const after = state.sliceDoc(range.from, Math.min(state.doc.length, range.from + 2));
-      if (before === "**" && after === "**") {
-        return {
-          changes: [
-            {from: range.from - 2, to: range.from, insert: ""},
-            {from: range.from, to: range.from + 2, insert: ""}
-          ],
-          range: EditorSelection.cursor(range.from - 2)
-        };
-      } else {
-        return {
-          changes: [{from: range.from, insert: "****"}],
-          range: EditorSelection.cursor(range.from + 2)
-        };
-      }
-    } else {
-      const selectedText = state.sliceDoc(range.from, range.to);
-      const isSelectedBold = selectedText.startsWith("**") && selectedText.endsWith("**") && selectedText.length >= 4;
-      
-      if (isSelectedBold) {
-        return {
-          changes: [
-            {from: range.from, to: range.from + 2, insert: ""},
-            {from: range.to - 2, to: range.to, insert: ""}
-          ],
-          range: EditorSelection.range(range.from, range.to - 4)
-        };
-      }
-
-      const before = state.sliceDoc(Math.max(0, range.from - 2), range.from);
-      const after = state.sliceDoc(range.to, Math.min(state.doc.length, range.to + 2));
-      
-      if (before === "**" && after === "**") {
-        return {
-          changes: [
-            {from: range.from - 2, to: range.from, insert: ""},
-            {from: range.to, to: range.to + 2, insert: ""}
-          ],
-          range: EditorSelection.range(range.from - 2, range.to - 2)
-        };
-      } else {
-        return {
-          changes: [
-            {from: range.from, insert: "**"},
-            {from: range.to, insert: "**"}
-          ],
-          range: EditorSelection.range(range.from + 2, range.to + 2)
-        };
-      }
-    }
-  });
-
-  dispatch(state.update(transaction));
-  exitVisualModeAfterFormatting(view);
-}
-
-function applyItalic(view: EditorView) {
-  const { state, dispatch } = view;
-
-  const transaction = state.changeByRange(range => {
-    if (range.empty) {
-      const before = state.sliceDoc(Math.max(0, range.from - 1), range.from);
-      const after = state.sliceDoc(range.from, Math.min(state.doc.length, range.from + 1));
-      if (before === "*" && after === "*") {
-        return {
-          changes: [
-            {from: range.from - 1, to: range.from, insert: ""},
-            {from: range.from, to: range.from + 1, insert: ""}
-          ],
-          range: EditorSelection.cursor(range.from - 1)
-        };
-      } else {
-        return {
-          changes: [{from: range.from, insert: "**"}],
-          range: EditorSelection.cursor(range.from + 1)
-        };
-      }
-    } else {
-      const selectedText = state.sliceDoc(range.from, range.to);
-      const isSelectedItalic = selectedText.startsWith("*") && selectedText.endsWith("*") && selectedText.length >= 2 && !selectedText.startsWith("**");
-      
-      if (isSelectedItalic) {
-        return {
-          changes: [
-            {from: range.from, to: range.from + 1, insert: ""},
-            {from: range.to - 1, to: range.to, insert: ""}
-          ],
-          range: EditorSelection.range(range.from, range.to - 2)
-        };
-      }
-
-      const before = state.sliceDoc(Math.max(0, range.from - 1), range.from);
-      const after = state.sliceDoc(range.to, Math.min(state.doc.length, range.to + 1));
-      
-      if (before === "*" && after === "*") {
-        return {
-          changes: [
-            {from: range.from - 1, to: range.from, insert: ""},
-            {from: range.to, to: range.to + 1, insert: ""}
-          ],
-          range: EditorSelection.range(range.from - 1, range.to - 1)
-        };
-      } else {
-        return {
-          changes: [
-            {from: range.from, insert: "*"},
-            {from: range.to, insert: "*"}
-          ],
-          range: EditorSelection.range(range.from + 1, range.to + 1)
-        };
-      }
-    }
-  });
-
-  dispatch(state.update(transaction));
-  exitVisualModeAfterFormatting(view);
-}
-
-function applyClearInlineFormatting(view: EditorView) {
-  const { state, dispatch } = view;
-  const changes: { from: number; to: number; insert: string }[] = [];
-
-  for (const range of state.selection.ranges) {
-    const from = range.empty ? state.doc.lineAt(range.from).from : range.from;
-    const to = range.empty ? state.doc.lineAt(range.from).to : range.to;
-
-    syntaxTree(state).iterate({
-      from,
-      to,
-      enter: (node: any) => {
-        if (node.name === "EmphasisMark") {
-          changes.push({ from: node.from, to: node.to, insert: "" });
-        }
-      }
-    });
-  }
-
-  if (changes.length > 0) {
-    // Sort changes in reverse order so replacing doesn't shift the offsets
-    changes.sort((a, b) => b.from - a.from);
-    dispatch({ changes });
-  }
-  exitVisualModeAfterFormatting(view);
-}
-
-function applyCode(view: EditorView) {
-  const { state, dispatch } = view;
-
-  const transaction = state.changeByRange(range => {
-    if (range.empty) {
-      const before = state.sliceDoc(Math.max(0, range.from - 1), range.from);
-      const after = state.sliceDoc(range.from, Math.min(state.doc.length, range.from + 1));
-      if (before === "`" && after === "`") {
-        return {
-          changes: [
-            {from: range.from - 1, to: range.from, insert: ""},
-            {from: range.from, to: range.from + 1, insert: ""}
-          ],
-          range: EditorSelection.cursor(range.from - 1)
-        };
-      } else {
-        return {
-          changes: [{from: range.from, insert: "``"}],
-          range: EditorSelection.cursor(range.from + 1)
-        };
-      }
-    } else {
-      const selectedText = state.sliceDoc(range.from, range.to);
-      const isSelectedCode = selectedText.startsWith("`") && selectedText.endsWith("`") && selectedText.length >= 2;
-      
-      if (isSelectedCode) {
-        return {
-          changes: [
-            {from: range.from, to: range.from + 1, insert: ""},
-            {from: range.to - 1, to: range.to, insert: ""}
-          ],
-          range: EditorSelection.range(range.from, range.to - 2)
-        };
-      }
-
-      const before = state.sliceDoc(Math.max(0, range.from - 1), range.from);
-      const after = state.sliceDoc(range.to, Math.min(state.doc.length, range.to + 1));
-      
-      if (before === "`" && after === "`") {
-        return {
-          changes: [
-            {from: range.from - 1, to: range.from, insert: ""},
-            {from: range.to, to: range.to + 1, insert: ""}
-          ],
-          range: EditorSelection.range(range.from - 1, range.to - 1)
-        };
-      } else {
-        return {
-          changes: [
-            {from: range.from, insert: "`"},
-            {from: range.to, insert: "`"}
-          ],
-          range: EditorSelection.range(range.from + 1, range.to + 1)
-        };
-      }
-    }
-  });
-
-  dispatch(state.update(transaction));
-  exitVisualModeAfterFormatting(view);
-}
-
-function isRecentInsertExit(tracker: AutosaveTracker): boolean {
-  if (tracker.lastInsertExitAt === null) {
-    return false;
-  }
-  return Date.now() - tracker.lastInsertExitAt < 150;
-}
-
-function resolveVimMode(view: EditorView): "NORMAL" | "INSERT" | "VISUAL" {
-  const cm = getCM(view);
-  const vimState = cm?.state?.vim;
-  if (!vimState) return "NORMAL";
-  if (vimState.visualMode) return "VISUAL";
-  if (vimState.insertMode) return "INSERT";
-  return "NORMAL";
-}
-
-function isVimNormalMode(view: EditorView): boolean {
-  return resolveVimMode(view) === "NORMAL";
 }
 
 async function saveAndExitOnNormalMode(
   view: EditorView,
-  onSave: ItemBodyMarkdownEditorProps["onSave"],
-  onExitNormalMode: ItemBodyMarkdownEditorProps["onExitNormalMode"],
+  onSave: ItemBodyMarkdownEditorProps["onSave"] | undefined,
+  onExitNormalMode: ItemBodyMarkdownEditorProps["onExitNormalMode"] | undefined,
   setSaveState: (state: MarkdownBodySaveState) => void
 ) {
   setSaveState("saving");
-  const savedBody = await saveNormalizedMarkdownBody(view.state.doc.toString(), async (body) => onSave?.(body));
+  const body = view.state.field(itemBodyStateField);
+  if (onSave) await onSave(body);
   setSaveState("saved");
-  await onExitNormalMode?.(savedBody);
-}
-
-function editorKeymapExtensions(
-  onAutosaveRef: MutableRefObject<ItemBodyMarkdownEditorProps["onAutosave"]>,
-  onSaveRef: MutableRefObject<ItemBodyMarkdownEditorProps["onSave"]>,
-  setSaveState: (state: MarkdownBodySaveState) => void
-) {
-  return [
-    keymap.of([{ key: "Mod-s", run: saveMarkdownBodyCommand(onAutosaveRef, onSaveRef, setSaveState) }]),
-    keymap.of([...historyKeymap, ...defaultKeymap])
-  ];
-}
-
-function saveMarkdownBodyCommand(
-  onAutosaveRef: MutableRefObject<ItemBodyMarkdownEditorProps["onAutosave"]>,
-  onSaveRef: MutableRefObject<ItemBodyMarkdownEditorProps["onSave"]>,
-  setSaveState: (state: MarkdownBodySaveState) => void
-) {
-  return createSaveItemBodyCommand(
-    async (body) => saveMarkdownBody(onAutosaveRef.current ?? onSaveRef.current, body, setSaveState),
-    runPostSaveEffects,
-    () => setSaveState("error")
-  );
+  if (onExitNormalMode) await onExitNormalMode(body);
 }
 
 async function saveMarkdownBody(
-  onSave: ItemBodyMarkdownEditorProps["onSave"],
-  body: string,
+  onSave: ItemBodyMarkdownEditorProps["onSave"] | undefined,
+  body: ItemBody,
   setSaveState: (state: MarkdownBodySaveState) => void
 ): Promise<void> {
   setSaveState("saving");
-  await onSave?.(body);
+  if (onSave) await onSave(body);
   setSaveState("saved");
 }
