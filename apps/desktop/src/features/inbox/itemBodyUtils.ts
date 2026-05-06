@@ -1,5 +1,7 @@
 import { ChangeSet } from "@codemirror/state";
-import { type ItemBody, type InlineMark, type LineBlock, type BlockEntity } from "./types";
+import { type ItemBody, type InlineMark, type LineBlock, type BlockEntity } from "./types.ts";
+
+const ASSET_TOKEN_PATTERN = /(\[\[asset:([0-9a-fA-F-]{36})\]\]|\[asset:([0-9a-fA-F-]{36})\]|⟦asset:([0-9a-fA-F-]{36})⟧)/g;
 
 export function normalizeBodyForClient(body: ItemBody | string | null | undefined): ItemBody {
   if (!body) {
@@ -20,29 +22,27 @@ export function mapBodyRangesThroughChanges(body: ItemBody, changes: ChangeSet):
   const mapRange = (from: number, to: number) => {
     const newFrom = changes.mapPos(from, 1);
     const newTo = changes.mapPos(to, -1);
-    return { newFrom, newTo, valid: newFrom <= newTo };
+    return { newFrom, newTo };
   };
 
   const newInlineMarks = body.inlineMarks
     .map(mark => {
-      const { newFrom, newTo, valid } = mapRange(mark.from, mark.to);
-      return valid && newFrom < newTo ? { ...mark, from: newFrom, to: newTo } : null;
+      const { newFrom, newTo } = mapRange(mark.from, mark.to);
+      return newFrom <= newTo && newFrom < newTo ? { ...mark, from: newFrom, to: newTo } : null;
     })
     .filter((m): m is InlineMark => m !== null);
 
   const newLineBlocks = body.lineBlocks
     .map(block => {
-      const { newFrom, newTo, valid } = mapRange(block.from, block.to);
-      return valid ? { ...block, from: newFrom, to: newTo } : null;
+      const { newFrom, newTo } = mapRange(block.from, block.to);
+      return newFrom <= newTo ? { ...block, from: newFrom, to: newTo } : null;
     })
     .filter((m): m is LineBlock => m !== null);
 
-  const newBlockEntities = body.blockEntities
-    .map(entity => {
-      const { newFrom, newTo, valid } = mapRange(entity.from, entity.to);
-      return valid ? { ...entity, from: newFrom, to: newTo } : null;
-    })
-    .filter((m): m is BlockEntity => m !== null);
+  const newBlockEntities = body.blockEntities.map(entity => {
+    const { newFrom, newTo } = mapRange(entity.from, entity.to);
+    return { ...entity, from: newFrom, to: newTo };
+  });
 
   return {
     ...body,
@@ -133,4 +133,27 @@ export function insertBlockEntity(body: ItemBody, entity: Omit<BlockEntity, "id"
     ...body,
     blockEntities: [...body.blockEntities, { ...entity, id: crypto.randomUUID() }]
   };
+}
+
+export function reconcileBlockEntityTokenRanges(body: ItemBody): ItemBody {
+  const assetTokenRanges = assetTokenRangesById(body.text);
+  const blockEntities = body.blockEntities.map((entity) => {
+    const range = assetTokenRanges.get(entity.assetId);
+    return range ? { ...entity, from: range.from, to: range.to } : entity;
+  });
+
+  return { ...body, blockEntities };
+}
+
+function assetTokenRangesById(text: string): Map<string, { from: number; to: number }> {
+  const ranges = new Map<string, { from: number; to: number }>();
+  for (const match of text.matchAll(ASSET_TOKEN_PATTERN)) {
+    ranges.set(match[2] ?? match[3] ?? match[4], assetTokenRange(match));
+  }
+  return ranges;
+}
+
+function assetTokenRange(match: RegExpMatchArray): { from: number; to: number } {
+  const from = match.index ?? 0;
+  return { from, to: from + match[0].length };
 }

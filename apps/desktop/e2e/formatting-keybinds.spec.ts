@@ -10,6 +10,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 async function createStuff(page: Page, title: string) {
+  await page.keyboard.press("h");
   await page.keyboard.press("a");
   const input = page.locator("input.tree-entry__input");
   await expect(input).toBeVisible();
@@ -202,7 +203,6 @@ test("space m a inserts markdown asset from clipboard with p", async ({ page }) 
   await page.keyboard.press("i");
   await page.keyboard.type("assetzinho ");
   await page.keyboard.press("Escape");
-
   await page.keyboard.press(" ");
   await page.keyboard.press("m");
   await page.keyboard.press("a");
@@ -211,7 +211,29 @@ test("space m a inserts markdown asset from clipboard with p", async ({ page }) 
   await expect(input).toBeVisible();
   await page.keyboard.press("p");
 
-  await expect(page.locator(".cm-content")).toContainText("![clipboard-asset.png](/assets/items/test/asset/clipboard-asset.png)");
+  await expect(page.locator(".cm-markdown-image")).toBeVisible();
+});
+
+test("undoing dd restores markdown asset preview", async ({ page }) => {
+  const title = uniqueTitle();
+  const token = "⟦asset:3625c437-ee86-45de-8135-01f0b46fd3da⟧";
+  await createStuff(page, title);
+  await focusDetail(page);
+
+  await page.keyboard.press("i");
+  await page.keyboard.type("asset line ");
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".cm-content")).toHaveAttribute("data-vim-mode", "normal");
+  await dispatchInsertedAsset(page);
+  await expect(page.locator(".cm-markdown-image")).toBeVisible();
+
+  await page.keyboard.press("d");
+  await page.keyboard.press("d");
+  await expect(page.locator(".cm-markdown-image")).not.toBeVisible();
+
+  await page.keyboard.press("u");
+  await expect(page.locator(".cm-markdown-image")).toBeVisible();
+  await expect(page.locator(".cm-content")).not.toContainText(token);
 });
 
 test("space m c c applies checked checklist", async ({ page }) => {
@@ -248,6 +270,7 @@ async function mockAssetUpload(page: Page) {
     await route.fulfill({
       contentType: "application/json",
       body: JSON.stringify({
+        id: "3625c437-ee86-45de-8135-01f0b46fd3da",
         relativePath: "items/test/asset/clipboard-asset.png",
         url: "/assets/items/test/asset/clipboard-asset.png",
         fileName: "clipboard-asset.png",
@@ -256,4 +279,16 @@ async function mockAssetUpload(page: Page) {
       })
     });
   });
+}
+
+async function dispatchInsertedAsset(page: Page) {
+  await page.evaluate(() => window.dispatchEvent(new CustomEvent("gtd:insert-block-entity", {
+    detail: {
+      assetId: "3625c437-ee86-45de-8135-01f0b46fd3da",
+      contentType: "image/png",
+      displayName: "clipboard-asset.png",
+      image: true,
+      url: "/assets/items/test/asset/clipboard-asset.png"
+    }
+  })));
 }

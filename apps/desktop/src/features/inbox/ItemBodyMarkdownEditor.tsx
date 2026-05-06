@@ -4,7 +4,7 @@ import { EditorState } from "@codemirror/state";
 import { Decoration, drawSelection, EditorView, highlightActiveLine, keymap, lineNumbers, ViewPlugin, WidgetType, type ViewUpdate, type DecorationSet } from "@codemirror/view";
 import { getCM, Vim, vim, type CodeMirrorV } from "@replit/codemirror-vim";
 import { useEffect, useRef, useState, type MutableRefObject, type RefObject } from "react";
-import { normalizeBodyForClient, mapBodyRangesThroughChanges, toggleInlineMark, setLineBlock, toggleChecklist, insertBlockEntity, clearLineBlock, applyInlineMark } from "./itemBodyUtils";
+import { normalizeBodyForClient, mapBodyRangesThroughChanges, toggleInlineMark, setLineBlock, toggleChecklist, insertBlockEntity, clearLineBlock, applyInlineMark, reconcileBlockEntityTokenRanges } from "./itemBodyUtils";
 import { type ItemBody, type BlockEntity } from "./types";
 import { buildApiUrl } from "../../config/env";
 import { INSERT_MARKDOWN_LINK_EVENT, type InsertMarkdownLinkEventDetail } from "./markdownLinks";
@@ -61,7 +61,7 @@ export const itemBodyStateField = StateField.define<ItemBody>({
       }
     }
     nextValue.text = tr.state.doc.toString();
-    return nextValue;
+    return reconcileBlockEntityTokenRanges(nextValue);
   }
 });
 
