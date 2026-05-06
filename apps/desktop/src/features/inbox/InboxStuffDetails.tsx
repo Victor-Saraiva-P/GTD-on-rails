@@ -42,23 +42,45 @@ function EditingInboxStuffDetails(props: EditingInboxStuffDetailsProps) {
   );
 }
 
-function renderInlineBody(text: string, inlineMarks: ItemBody["inlineMarks"], from: number, to: number) {
+function renderInlineBody(text: string, inlineMarks: ItemBody["inlineMarks"], blockEntities: ItemBody["blockEntities"], from: number, to: number) {
   if (from >= to) return null;
   const applicableMarks = inlineMarks.filter(m => Math.max(m.from, from) < Math.min(m.to, to));
+  const applicableEntities = blockEntities.filter(e => Math.max(e.from, from) < Math.min(e.to, to));
   
-  if (applicableMarks.length === 0) {
+  if (applicableMarks.length === 0 && applicableEntities.length === 0) {
     return text.substring(from, to);
   }
 
-  // Simplified renderer: split into segments and render. This assumes marks don't partially overlap in a way that breaks React. 
-  // It's better to just render characters individually to handle overlaps gracefully.
   const nodes = [];
   let currentPos = from;
   while (currentPos < to) {
-     const nextBoundary = Math.min(to, ...applicableMarks.flatMap(m => [Math.max(from, m.from), Math.min(to, m.to)]).filter(x => x > currentPos));
+     const nextBoundary = Math.min(to, 
+       ...applicableMarks.flatMap(m => [Math.max(from, m.from), Math.min(to, m.to)]).filter(x => x > currentPos),
+       ...applicableEntities.flatMap(e => [Math.max(from, e.from), Math.min(to, e.to)]).filter(x => x > currentPos)
+     );
      
-     if (nextBoundary === Infinity || nextBoundary <= currentPos) break; // Should not happen
+     if (nextBoundary === Infinity || nextBoundary <= currentPos) break;
      
+     const segmentEntities = applicableEntities.filter(e => e.from <= currentPos && e.to >= nextBoundary);
+     if (segmentEntities.length > 0) {
+       const entity = segmentEntities[0];
+       if (currentPos === Math.max(from, entity.from)) {
+         nodes.push(
+           <span key={`entity-${entity.id}-${currentPos}`} className="cm-block-entity">
+             {entity.type === "image" ? (
+               <img src={buildApiUrl(entity.attrs?.url || "")} alt={entity.attrs?.displayName || "image"} className="cm-markdown-image" />
+             ) : (
+               <a href={buildApiUrl(entity.attrs?.url || "")} className="cm-markdown-link" target="_blank" rel="noreferrer">
+                 [{entity.type.toUpperCase()}] {entity.attrs?.displayName}
+               </a>
+             )}
+           </span>
+         );
+       }
+       currentPos = nextBoundary;
+       continue;
+     }
+
      const segmentMarks = applicableMarks.filter(m => m.from <= currentPos && m.to >= nextBoundary);
      
      let el: React.ReactNode = text.substring(currentPos, nextBoundary);
@@ -109,7 +131,7 @@ function ReadOnlyInboxStuffDetails({ item }: Pick<InboxStuffDetailsProps, "item"
                <div className="inbox-detail__body-line" key={index}>
                  <span className="inbox-detail__line-number">{index + 1}</span>
                  <span className="inbox-detail__line-content cm-md-heading-1">
-                   {renderInlineBody(body.text, body.inlineMarks, from, to)}
+                   {renderInlineBody(body.text, body.inlineMarks, body.blockEntities, from, to)}
                  </span>
                </div>
              );
@@ -119,7 +141,7 @@ function ReadOnlyInboxStuffDetails({ item }: Pick<InboxStuffDetailsProps, "item"
                <div className="inbox-detail__body-line" key={index}>
                  <span className="inbox-detail__line-number">{index + 1}</span>
                  <span className="inbox-detail__line-content cm-md-heading-2">
-                   {renderInlineBody(body.text, body.inlineMarks, from, to)}
+                   {renderInlineBody(body.text, body.inlineMarks, body.blockEntities, from, to)}
                  </span>
                </div>
              );
@@ -129,7 +151,7 @@ function ReadOnlyInboxStuffDetails({ item }: Pick<InboxStuffDetailsProps, "item"
                <div className="inbox-detail__body-line" key={index}>
                  <span className="inbox-detail__line-number">{index + 1}</span>
                  <span className="inbox-detail__line-content cm-md-heading-3">
-                   {renderInlineBody(body.text, body.inlineMarks, from, to)}
+                   {renderInlineBody(body.text, body.inlineMarks, body.blockEntities, from, to)}
                  </span>
                </div>
              );
@@ -142,7 +164,7 @@ function ReadOnlyInboxStuffDetails({ item }: Pick<InboxStuffDetailsProps, "item"
                  <span className="inbox-detail__line-number">{index + 1}</span>
                  <span className="inbox-detail__line-content">
                    {indentStr}<span className={`cm-bullet-mark cm-bullet-level-${level}`}>• </span>
-                   {renderInlineBody(body.text, body.inlineMarks, from + indentStr.length, to)}
+                   {renderInlineBody(body.text, body.inlineMarks, body.blockEntities, from + indentStr.length, to)}
                  </span>
                </div>
              );
@@ -154,7 +176,7 @@ function ReadOnlyInboxStuffDetails({ item }: Pick<InboxStuffDetailsProps, "item"
                  <span className="inbox-detail__line-number">{index + 1}</span>
                  <span className="inbox-detail__line-content">
                    {indentStr}<span className="cm-numbered-mark">1. </span>
-                   {renderInlineBody(body.text, body.inlineMarks, from + indentStr.length, to)}
+                   {renderInlineBody(body.text, body.inlineMarks, body.blockEntities, from + indentStr.length, to)}
                  </span>
                </div>
              );
@@ -166,7 +188,7 @@ function ReadOnlyInboxStuffDetails({ item }: Pick<InboxStuffDetailsProps, "item"
                  <span className="inbox-detail__line-number">{index + 1}</span>
                  <span className="inbox-detail__line-content">
                    {indentStr}<span className="cm-lettered-mark">a. </span>
-                   {renderInlineBody(body.text, body.inlineMarks, from + indentStr.length, to)}
+                   {renderInlineBody(body.text, body.inlineMarks, body.blockEntities, from + indentStr.length, to)}
                  </span>
                </div>
              );
@@ -181,7 +203,7 @@ function ReadOnlyInboxStuffDetails({ item }: Pick<InboxStuffDetailsProps, "item"
                    {indentStr}
                    <span className={isChecked ? "cm-checklist-box cm-checklist-box--checked" : "cm-checklist-box"} />
                    <span className={isChecked ? "cm-checklist-text cm-checklist-text--checked" : "cm-checklist-text"}>
-                     {renderInlineBody(body.text, body.inlineMarks, from + indentStr.length, to)}
+                     {renderInlineBody(body.text, body.inlineMarks, body.blockEntities, from + indentStr.length, to)}
                    </span>
                  </span>
                </div>
@@ -204,26 +226,7 @@ function ReadOnlyInboxStuffDetails({ item }: Pick<InboxStuffDetailsProps, "item"
                  <span className="inbox-detail__line-number">{index + 1}</span>
                  <span className="inbox-detail__line-content cm-quote-line">
                    {indentStr}<span className="cm-quote-mark">▌ </span>
-                   {renderInlineBody(body.text, body.inlineMarks, from + indentStr.length, to)}
-                 </span>
-               </div>
-             );
-           }
-
-           // Check for entity block rendering on this line
-           if (lineEntities.length > 0 && lineText.trim().startsWith("⟦asset:")) {
-              const entity = lineEntities[0];
-              return (
-               <div className="inbox-detail__body-line" key={index}>
-                 <span className="inbox-detail__line-number">{index + 1}</span>
-                 <span className="inbox-detail__line-content cm-block-entity">
-                   {entity.type === "image" ? (
-                     <img src={buildApiUrl(entity.attrs?.url || "")} alt={entity.attrs?.displayName || "image"} className="cm-markdown-image" />
-                   ) : (
-                     <a href={buildApiUrl(entity.attrs?.url || "")} className="cm-markdown-link" target="_blank" rel="noreferrer">
-                       [{entity.type.toUpperCase()}] {entity.attrs?.displayName}
-                     </a>
-                   )}
+                   {renderInlineBody(body.text, body.inlineMarks, body.blockEntities, from + indentStr.length, to)}
                  </span>
                </div>
              );
@@ -233,7 +236,7 @@ function ReadOnlyInboxStuffDetails({ item }: Pick<InboxStuffDetailsProps, "item"
              <div className="inbox-detail__body-line" key={index}>
                <span className="inbox-detail__line-number">{index + 1}</span>
                <span className="inbox-detail__line-content">
-                 {lineText ? renderInlineBody(body.text, body.inlineMarks, from, to) : "\u00A0"}
+                 {lineText ? renderInlineBody(body.text, body.inlineMarks, body.blockEntities, from, to) : "\u00A0"}
                </span>
              </div>
            );

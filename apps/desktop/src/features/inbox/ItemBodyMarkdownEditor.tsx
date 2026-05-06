@@ -1,5 +1,5 @@
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
-import { EditorSelection, RangeSetBuilder, StateEffect, StateField } from "@codemirror/state";
+import { EditorSelection, RangeSetBuilder, StateEffect, StateField, ChangeSet } from "@codemirror/state";
 import { EditorState } from "@codemirror/state";
 import { Decoration, drawSelection, EditorView, highlightActiveLine, keymap, lineNumbers, ViewPlugin, WidgetType, type ViewUpdate, type DecorationSet } from "@codemirror/view";
 import { getCM, Vim, vim, type CodeMirrorV } from "@replit/codemirror-vim";
@@ -528,10 +528,12 @@ function useCodeMirrorEditorView(
            const view = editorViewRef.current;
            const range = view.state.selection.main;
            const token = `⟦asset:${e.detail.assetId}⟧`;
-           const body = insertBlockEntity(view.state.field(itemBodyStateField), {
+           const changeSet = ChangeSet.of({from: range.from, to: range.to, insert: token}, view.state.doc.length);
+           const mappedBody = mapBodyRangesThroughChanges(view.state.field(itemBodyStateField), changeSet);
+           const body = insertBlockEntity(mappedBody, {
               type: e.detail.image ? "image" : "file",
-              from: range.from,
-              to: range.from + token.length,
+              from: changeSet.mapPos(range.from, 1),
+              to: changeSet.mapPos(range.to, -1) + token.length,
               assetId: e.detail.assetId,
               attrs: {
                 displayName: e.detail.displayName,
@@ -540,7 +542,7 @@ function useCodeMirrorEditorView(
               }
            });
            view.dispatch({
-             changes: {from: range.from, to: range.to, insert: token},
+             changes: changeSet,
              effects: itemBodyStateEffect.of(body)
            });
         }
