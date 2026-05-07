@@ -67,8 +67,8 @@ class InboxControllerTests {
             .andExpect(jsonPath("$[0].id").value(visibleItem.getId().toString()))
             .andExpect(jsonPath("$[0].title").value("Visible item"))
             .andExpect(jsonPath("$[0].energy").value(1.0))
-            .andExpect(jsonPath("$[0].time.hours").value(0))
-            .andExpect(jsonPath("$[0].time.minutes").value(45))
+            .andExpect(jsonPath("$[0].estimatedTime.hours").value(0))
+            .andExpect(jsonPath("$[0].estimatedTime.minutes").value(45))
             .andExpect(jsonPath("$[0].createdAt", notNullValue()));
     }
 

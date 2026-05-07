@@ -73,7 +73,7 @@ class ItemControllerTests {
               "title": "Capture rent receipt",
               "body": %s,
               "energy": 3.5,
-              "time": {
+              "estimatedTime": {
                 "hours": 1,
                 "minutes": 45
               }
@@ -104,7 +104,7 @@ class ItemControllerTests {
             .andExpect(jsonPath("$.title").value("Quick capture"))
             .andExpect(jsonPath("$.body.text").value(""))
             .andExpect(jsonPath("$.energy").value(nullValue()))
-            .andExpect(jsonPath("$.time").value(nullValue()))
+            .andExpect(jsonPath("$.estimatedTime").value(nullValue()))
             .andExpect(jsonPath("$.contexts", hasSize(0)));
     }
 
@@ -129,7 +129,7 @@ class ItemControllerTests {
                     """.formatted(bodyJson("Need to process later"))))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.energy").value(nullValue()))
-            .andExpect(jsonPath("$.time").value(nullValue()));
+            .andExpect(jsonPath("$.estimatedTime").value(nullValue()));
     }
 
     @Test
@@ -213,7 +213,7 @@ class ItemControllerTests {
               "title": "   ",
               "body": %s,
               "energy": 1.0,
-              "time": {
+              "estimatedTime": {
                 "hours": 1,
                 "minutes": 0
               }
@@ -245,7 +245,7 @@ class ItemControllerTests {
             .andExpect(jsonPath("$.title").value("Old title"))
             .andExpect(jsonPath("$.body.text").value("New body only"))
             .andExpect(jsonPath("$.energy").value(1.0))
-            .andExpect(jsonPath("$.time.minutes").value(20));
+            .andExpect(jsonPath("$.estimatedTime.minutes").value(20));
     }
 
     @Test
@@ -264,7 +264,7 @@ class ItemControllerTests {
             .andExpect(jsonPath("$.title").value("Old title"))
             .andExpect(jsonPath("$.body.text").value("Old body"))
             .andExpect(jsonPath("$.energy").value(4.5))
-            .andExpect(jsonPath("$.time.minutes").value(20))
+            .andExpect(jsonPath("$.estimatedTime.minutes").value(20))
             .andExpect(jsonPath("$.contexts", hasSize(1)));
     }
 
@@ -342,7 +342,7 @@ class ItemControllerTests {
                     {
                       "title": "Capture rent receipt",
                       "body": %s,
-                      "time": {
+                      "estimatedTime": {
                         "hours": 1,
                         "minutes": 60
                       }
@@ -350,7 +350,7 @@ class ItemControllerTests {
                     """.formatted(bodyJson("Need to process later"))))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString(
-                "Field 'time.minutes' value '60': time.minutes must be less than or equal to 59")));
+                "Field 'estimatedTime.minutes' value '60': estimatedTime.minutes must be less than or equal to 59")));
     }
 
     @Test
@@ -462,7 +462,7 @@ class ItemControllerTests {
               "title": "New title",
               "body": %s,
               "energy": 6.5,
-              "time": { "hours": 2, "minutes": 5 }
+              "estimatedTime": { "hours": 2, "minutes": 5 }
             }
             """.formatted(bodyJson("New body"));
     }
@@ -473,7 +473,7 @@ class ItemControllerTests {
               "title": "Capture rent receipt",
               "body": %s,
               "energy": 4.0,
-              "time": { "hours": 0, "minutes": 30 },
+              "estimatedTime": { "hours": 0, "minutes": 30 },
               "contextIds": ["%s", "%s"]
             }
             """.formatted(bodyJson("Need to process later"), home.getId(), street.getId());
@@ -485,7 +485,7 @@ class ItemControllerTests {
               "title": "New title",
               "body": null,
               "energy": 5.0,
-              "time": { "hours": 3, "minutes": 10 },
+              "estimatedTime": { "hours": 3, "minutes": 10 },
               "contextIds": ["%s"]
             }
             """.formatted(office.getId());
@@ -497,7 +497,7 @@ class ItemControllerTests {
               "title": "Updated title",
               "body": %s,
               "energy": 7.0,
-              "time": { "hours": 1, "minutes": 20 }
+              "estimatedTime": { "hours": 1, "minutes": 20 }
             }
             """.formatted(bodyJson("Updated body"));
     }
@@ -517,8 +517,8 @@ class ItemControllerTests {
             .andExpect(jsonPath("$.title").value("Capture idea"))
             .andExpect(jsonPath("$.body.text").value("Need to process later"))
             .andExpect(jsonPath("$.energy").value(2.0))
-            .andExpect(jsonPath("$.time.hours").value(1))
-            .andExpect(jsonPath("$.time.minutes").value(15))
+            .andExpect(jsonPath("$.estimatedTime.hours").value(1))
+            .andExpect(jsonPath("$.estimatedTime.minutes").value(15))
             .andExpect(jsonPath("$.status").value("STUFF"))
             .andExpect(jsonPath("$.createdAt", notNullValue()));
     }
@@ -529,8 +529,8 @@ class ItemControllerTests {
             .andExpect(jsonPath("$.title").value("Capture rent receipt"))
             .andExpect(jsonPath("$.body.text").value("Need to process later"))
             .andExpect(jsonPath("$.energy").value(3.5))
-            .andExpect(jsonPath("$.time.hours").value(1))
-            .andExpect(jsonPath("$.time.minutes").value(45))
+            .andExpect(jsonPath("$.estimatedTime.hours").value(1))
+            .andExpect(jsonPath("$.estimatedTime.minutes").value(45))
             .andExpect(jsonPath("$.status").value("STUFF"))
             .andExpect(jsonPath("$.createdAt", notNullValue()))
             .andExpect(jsonPath("$.contexts", hasSize(0)));
@@ -539,8 +539,8 @@ class ItemControllerTests {
     private void assertCreatedItemWithContexts(ResultActions result) throws Exception {
         result.andExpect(status().isCreated())
             .andExpect(jsonPath("$.energy").value(4.0))
-            .andExpect(jsonPath("$.time.hours").value(0))
-            .andExpect(jsonPath("$.time.minutes").value(30))
+            .andExpect(jsonPath("$.estimatedTime.hours").value(0))
+            .andExpect(jsonPath("$.estimatedTime.minutes").value(30))
             .andExpect(jsonPath("$.contexts", hasSize(2)))
             .andExpect(jsonPath("$.contexts[0].name").value("home"))
             .andExpect(jsonPath("$.contexts[1].name").value("street"));
@@ -561,8 +561,8 @@ class ItemControllerTests {
             .andExpect(jsonPath("$.title").value("New title"))
             .andExpect(jsonPath("$.body.text").value("New body"))
             .andExpect(jsonPath("$.energy").value(6.5))
-            .andExpect(jsonPath("$.time.hours").value(2))
-            .andExpect(jsonPath("$.time.minutes").value(5))
+            .andExpect(jsonPath("$.estimatedTime.hours").value(2))
+            .andExpect(jsonPath("$.estimatedTime.minutes").value(5))
             .andExpect(jsonPath("$.createdAt", notNullValue()))
             .andExpect(jsonPath("$.contexts", hasSize(0)));
     }
@@ -571,8 +571,8 @@ class ItemControllerTests {
         result.andExpect(status().isOk())
             .andExpect(jsonPath("$.body.text").value(""))
             .andExpect(jsonPath("$.energy").value(5.0))
-            .andExpect(jsonPath("$.time.hours").value(3))
-            .andExpect(jsonPath("$.time.minutes").value(10))
+            .andExpect(jsonPath("$.estimatedTime.hours").value(3))
+            .andExpect(jsonPath("$.estimatedTime.minutes").value(10))
             .andExpect(jsonPath("$.contexts", hasSize(1)))
             .andExpect(jsonPath("$.contexts[0].name").value("office"))
             .andExpect(jsonPath("$.createdAt", notNullValue()));
@@ -583,8 +583,8 @@ class ItemControllerTests {
             .andExpect(jsonPath("$.title").value("Updated title"))
             .andExpect(jsonPath("$.body.text").value("Updated body"))
             .andExpect(jsonPath("$.energy").value(7.0))
-            .andExpect(jsonPath("$.time.hours").value(1))
-            .andExpect(jsonPath("$.time.minutes").value(20))
+            .andExpect(jsonPath("$.estimatedTime.hours").value(1))
+            .andExpect(jsonPath("$.estimatedTime.minutes").value(20))
             .andExpect(jsonPath("$.contexts", hasSize(1)))
             .andExpect(jsonPath("$.contexts[0].name").value("office"));
     }

@@ -91,8 +91,8 @@ public class ItemService {
         Title title = new Title(itemTextNormalizer.normalizeTitle(request.title()));
         ItemBody body = itemBodyNormalizer.normalizeBody(request.body());
         rejectCreateBlockEntities(body);
-        Duration time = request.time() == null ? null : request.time().toDuration();
-        Item item = new Item(title, (String) null, request.energy(), time);
+        Duration estimatedTime = request.estimatedTime() == null ? null : request.estimatedTime().toDuration();
+        Item item = new Item(title, (String) null, request.energy(), estimatedTime);
         item.setBody(body);
         item.replaceContexts(findContextsOrThrow(request.contextIds()));
         ItemResponseDto response = itemMapper.toResponse(itemRepository.save(item));
@@ -157,7 +157,7 @@ public class ItemService {
         item.setTitle(title);
         item.setBody(body);
         item.setEnergy(request.energy());
-        item.setTime(request.time() == null ? null : request.time().toDuration());
+        item.setEstimatedTime(request.estimatedTime() == null ? null : request.estimatedTime().toDuration());
     }
 
     private void patchItemFields(Item item, PatchItemRequestDto request) {
@@ -167,8 +167,8 @@ public class ItemService {
         if (request.hasEnergy()) {
             item.setEnergy(request.energy());
         }
-        if (request.hasTime()) {
-            item.setTime(request.time() == null ? null : request.time().toDuration());
+        if (request.hasEstimatedTime()) {
+            item.setEstimatedTime(request.estimatedTime() == null ? null : request.estimatedTime().toDuration());
         }
         if (request.hasContextIds()) {
             item.replaceContexts(findContextsOrThrow(request.contextIds()));

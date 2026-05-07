@@ -62,8 +62,8 @@ public class Item extends AuditableEntity {
     private BigDecimal energy;
 
     @Convert(converter = DurationMinutesConverter.class)
-    @Column(name = "time_minutes")
-    private Duration time;
+    @Column(name = "estimated_time_minutes")
+    private Duration estimatedTime;
 
     @ManyToMany
     @JoinTable(
@@ -84,11 +84,11 @@ public class Item extends AuditableEntity {
         this(title, body, energy, null);
     }
 
-    public Item(Title title, String body, BigDecimal energy, Duration time) {
+    public Item(Title title, String body, BigDecimal energy, Duration estimatedTime) {
         setTitle(title);
         setBody(new ItemBody(body, null, null, null));
         setEnergy(energy);
-        setTime(time);
+        setEstimatedTime(estimatedTime);
     }
 
     /**
@@ -149,25 +149,25 @@ public class Item extends AuditableEntity {
     /**
      * Stores optional time estimates when they use whole-minute precision.
      *
-     * <p>Example: {@code item.setTime(Duration.ofMinutes(90))}.</p>
+     * <p>Example: {@code item.setEstimatedTime(Duration.ofMinutes(90))}.</p>
      */
-    public void setTime(Duration time) {
-        if (time == null) {
-            this.time = null;
+    public void setEstimatedTime(Duration estimatedTime) {
+        if (estimatedTime == null) {
+            this.estimatedTime = null;
             return;
         }
 
-        if (time.isNegative()) {
+        if (estimatedTime.isNegative()) {
             throw new IllegalArgumentException(
-                "time value '" + time + "' is invalid; expected greater than or equal to " + MIN_TIME_VALUE);
+                "time value '" + estimatedTime + "' is invalid; expected greater than or equal to " + MIN_TIME_VALUE);
         }
 
-        if (time.getSeconds() % 60 != 0 || time.getNano() != 0) {
+        if (estimatedTime.getSeconds() % 60 != 0 || estimatedTime.getNano() != 0) {
             throw new IllegalArgumentException(
-                "time value '" + time + "' is invalid; expected whole-minute Duration");
+                "time value '" + estimatedTime + "' is invalid; expected whole-minute Duration");
         }
 
-        this.time = time;
+        this.estimatedTime = estimatedTime;
     }
 
     /**

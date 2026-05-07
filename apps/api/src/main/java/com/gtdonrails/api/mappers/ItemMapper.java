@@ -53,11 +53,11 @@ public class ItemMapper {
     }
 
     private ItemTimeDto toTimeDto(Item item) {
-        if (item.getTime() == null) {
+        if (item.getEstimatedTime() == null) {
             return null;
         }
 
-        long totalMinutes = item.getTime().toMinutes();
+        long totalMinutes = item.getEstimatedTime().toMinutes();
 
         return new ItemTimeDto(totalMinutes / 60, (int) (totalMinutes % 60));
     }

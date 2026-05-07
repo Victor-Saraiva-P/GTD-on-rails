@@ -35,7 +35,7 @@ public record CreateItemRequestDto(
     BigDecimal energy,
 
     @Valid
-    ItemTimeRequestDto time,
+    ItemTimeRequestDto estimatedTime,
 
     @Size(
         max = Context.MAX_CONTEXTS_PER_ITEM,

@@ -180,7 +180,7 @@ class ItemServiceTests {
         assertEquals("Capture idea", savedItem.getTitle().value());
         assertEquals("", savedItem.getBody().text());
         assertNull(savedItem.getEnergy());
-        assertNull(savedItem.getTime());
+        assertNull(savedItem.getEstimatedTime());
         assertEquals(expectedResponse, response);
     }
 
@@ -330,7 +330,7 @@ class ItemServiceTests {
         assertEquals("Old title", savedItem.getTitle().value());
         assertEquals("New body", savedItem.getBody().text());
         assertEquals(energy("2.0"), savedItem.getEnergy());
-        assertEquals(Duration.ofMinutes(30), savedItem.getTime());
+        assertEquals(Duration.ofMinutes(30), savedItem.getEstimatedTime());
         assertEquals(expectedResponse, response);
     }
 
@@ -662,7 +662,7 @@ class ItemServiceTests {
         assertEquals(title, savedItem.getTitle().value());
         assertEquals(body, savedItem.getBody().text());
         assertEquals(energy(energyValue), savedItem.getEnergy());
-        assertEquals(time, savedItem.getTime());
+        assertEquals(time, savedItem.getEstimatedTime());
     }
 
     private void assertSavedItemClearedBody() {
@@ -670,14 +670,14 @@ class ItemServiceTests {
         assertEquals("New title", savedItem.getTitle().value());
         assertEquals("", savedItem.getBody().text());
         assertEquals(energy("3.0"), savedItem.getEnergy());
-        assertNull(savedItem.getTime());
+        assertNull(savedItem.getEstimatedTime());
     }
 
     private void assertSavedItemHasHomeContext() {
         Item savedItem = capturedSavedItem();
         assertSavedItemHasContext(savedItem, "home");
         assertEquals(energy("5.0"), savedItem.getEnergy());
-        assertNull(savedItem.getTime());
+        assertNull(savedItem.getEstimatedTime());
     }
 
     private void assertSavedItemHasContext(Item savedItem, String name) {
@@ -689,6 +689,6 @@ class ItemServiceTests {
         Item savedItem = capturedSavedItem();
         assertSavedItemHasContext(savedItem, "office");
         assertNull(savedItem.getEnergy());
-        assertNull(savedItem.getTime());
+        assertNull(savedItem.getEstimatedTime());
     }
 }

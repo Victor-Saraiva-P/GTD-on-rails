@@ -35,12 +35,12 @@ public class PatchItemRequestDto {
         return node == null || node.isNull() ? null : new BigDecimal(node.asText());
     }
 
-    public boolean hasTime() {
-        return hasField("time");
+    public boolean hasEstimatedTime() {
+        return hasField("estimatedTime");
     }
 
-    public ItemTimeRequestDto time() {
-        JsonNode node = root.get("time");
+    public ItemTimeRequestDto estimatedTime() {
+        JsonNode node = root.get("estimatedTime");
         if (node == null || node.isNull()) {
             return null;
         }

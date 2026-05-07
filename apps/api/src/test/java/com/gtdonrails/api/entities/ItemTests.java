@@ -127,45 +127,45 @@ class ItemTests {
     void constructorWithoutTimeSetsNullTime() {
         Item item = new Item(new Title("Capture idea"), null);
 
-        assertNull(item.getTime());
+        assertNull(item.getEstimatedTime());
     }
 
     @Test
-    void setTimeUpdatesTime() {
+    void setEstimatedTimeUpdatesTime() {
         Item item = new Item(new Title("Capture idea"), null);
 
-        item.setTime(Duration.ofHours(1).plusMinutes(30));
+        item.setEstimatedTime(Duration.ofHours(1).plusMinutes(30));
 
-        assertEquals(Duration.ofMinutes(90), item.getTime());
+        assertEquals(Duration.ofMinutes(90), item.getEstimatedTime());
     }
 
     @Test
-    void setTimeAllowsNull() {
+    void setEstimatedTimeAllowsNull() {
         Item item = new Item(new Title("Capture idea"), null, new BigDecimal("3.0"), Duration.ofMinutes(45));
 
-        item.setTime(null);
+        item.setEstimatedTime(null);
 
-        assertNull(item.getTime());
+        assertNull(item.getEstimatedTime());
     }
 
     @Test
-    void setTimeRejectsNegativeDuration() {
+    void setEstimatedTimeRejectsNegativeDuration() {
         Item item = new Item(new Title("Capture idea"), null);
 
         IllegalArgumentException exception = assertThrows(
             IllegalArgumentException.class,
-            () -> item.setTime(Duration.ofMinutes(-1)));
+            () -> item.setEstimatedTime(Duration.ofMinutes(-1)));
 
         assertEquals("time value 'PT-1M' is invalid; expected greater than or equal to PT0M", exception.getMessage());
     }
 
     @Test
-    void setTimeRejectsSecondsPrecision() {
+    void setEstimatedTimeRejectsSecondsPrecision() {
         Item item = new Item(new Title("Capture idea"), null);
 
         IllegalArgumentException exception = assertThrows(
             IllegalArgumentException.class,
-            () -> item.setTime(Duration.ofSeconds(30)));
+            () -> item.setEstimatedTime(Duration.ofSeconds(30)));
 
         assertEquals("time value 'PT30S' is invalid; expected whole-minute Duration", exception.getMessage());
     }
