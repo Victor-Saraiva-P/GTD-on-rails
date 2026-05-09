@@ -65,3 +65,7 @@
 ## UI Consistency
 
 - The preview mode and the stuff detail views must be visually identical and render all elements (e.g. PDF previews, images) identically to the edit mode. This applies to all elements.
+
+## Processing
+
+- During processing, it is possible to cancel at any time by pressing `esc`. Therefore, backend requests and data persistence must only be performed at the very end of the flow.
