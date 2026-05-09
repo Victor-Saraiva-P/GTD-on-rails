@@ -5,6 +5,7 @@ import {
   createStuff as createStuffRequest,
   deleteStuff as deleteStuffRequest,
   fetchInboxStuffs,
+  processStuff as processStuffRequest,
   restoreStuff as restoreStuffRequest,
   updateStuffBody as updateStuffBodyRequest,
   updateStuffTitle as updateStuffTitleRequest
@@ -20,6 +21,7 @@ type InboxStuffsQueryState = {
   errorMessage: string | null;
   createStuff: (title: string, body?: ItemBody) => Promise<Stuff>;
   deleteStuff: (id: string) => Promise<void>;
+  processStuff: (item: Stuff, energy: number | null, estimatedTimeMinutes: number | null, contextIds: string[]) => Promise<Stuff>;
   restoreStuff: (id: string) => Promise<void>;
   updateStuffBody: (item: Stuff, body: ItemBody) => Promise<Stuff>;
   updateStuffTitle: (item: Stuff, title: string) => Promise<Stuff>;
@@ -168,6 +170,7 @@ function useInboxStuffsMutations(state: InboxLoadState, mutations: InboxMutation
   return {
     createStuff: (title: string, body?: ItemBody) => createInboxStuff(title, body, state, mutations, triggerSyncStatusPolling),
     deleteStuff: (id: string) => deleteInboxStuff(id, state, mutations, triggerSyncStatusPolling),
+    processStuff: (item: Stuff, energy: number | null, estimatedTimeMinutes: number | null, contextIds: string[]) => updateInboxStuff(() => processStuffRequest(item, energy, estimatedTimeMinutes, contextIds), state, mutations, triggerSyncStatusPolling),
     restoreStuff: (id: string) => restoreInboxStuff(id, state, mutations, triggerSyncStatusPolling),
     updateStuffBody: (item: Stuff, body: ItemBody) => updateInboxStuff(() => updateStuffBodyRequest(item, body), state, mutations, triggerSyncStatusPolling),
     updateStuffTitle: (item: Stuff, title: string) => updateInboxStuff(() => updateStuffTitleRequest(item, title), state, mutations, triggerSyncStatusPolling)

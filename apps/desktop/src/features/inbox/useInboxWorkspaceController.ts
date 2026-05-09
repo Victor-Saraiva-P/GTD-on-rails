@@ -348,6 +348,19 @@ async function autosaveEditingSelectedStuffBodyAction(model: InboxModel, body: I
   clearPendingBodyEdit(model);
 }
 
+async function processSelectedStuffAction(model: InboxModel, energy: number | null, estimatedTimeMinutes: number | null, contextId: string) {
+  const selectedItem = model.selection.selectedItem;
+
+  if (!selectedItem) {
+    return;
+  }
+
+  const updatedStuff = await model.query.processStuff(selectedItem, energy, estimatedTimeMinutes, [contextId]);
+  model.selection.setSelectedId(updatedStuff.id);
+  clearAllEditing(model);
+  model.zone.setActiveZone("inbox-list");
+}
+
 function useInboxWorkspaceActions(model: InboxModel) {
   return {
     autosaveEditingSelectedStuffBody: (body: ItemBody) => autosaveEditingSelectedStuffBodyAction(model, body),
@@ -357,6 +370,7 @@ function useInboxWorkspaceActions(model: InboxModel) {
     commitEditingSelectedStuffBody: (body: ItemBody) => commitEditingSelectedStuffBodyAction(model, body),
     createNewStuff: () => Promise.resolve(createNewStuffAction(model)),
     deleteSelectedStuff: () => deleteSelectedStuffAction(model),
+    processSelectedStuff: (energy: number | null, estimatedTimeMinutes: number | null, contextId: string) => processSelectedStuffAction(model, energy, estimatedTimeMinutes, contextId),
     undo: () => undoAction(model),
     redo: () => redoAction(model),
     selectNextStuff: model.selection.selectNextStuff,

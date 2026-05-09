@@ -5,6 +5,7 @@ import {
   fetchInboxStuffs,
   createStuff,
   deleteStuff,
+  processStuff,
   restoreStuff,
   updateStuffTitle,
   updateStuffBody
@@ -96,5 +97,23 @@ describe("inbox API", () => {
     const updated = await updateStuffBody(item, dummyBody);
     assert.equal(updated.title, "Title");
     assert.deepEqual(updated.body, dummyBody);
+  });
+
+  test("processStuff sends next action metadata payload", async () => {
+    const item: Stuff = { id: "5", title: "Task", body: dummyBody, status: "INBOX", createdAt: "2026-05-01T00:00:00Z" };
+    const context = { id: "ctx-1", name: "office" };
+    const mockResponse = { ...item, energy: 4.5, estimatedTime: { hours: 1, minutes: 30 }, contexts: [context] };
+
+    globalThis.fetch = mock.fn(async (input, init) => {
+      assert.ok(input.toString().endsWith("/items/5"));
+      assert.equal(init?.method, "PATCH");
+      assert.equal(init?.body, JSON.stringify({ energy: 4.5, estimatedTime: { hours: 1, minutes: 30 }, contextIds: ["ctx-1"] }));
+      return new Response(JSON.stringify(mockResponse), { status: 200 });
+    });
+
+    const updated = await processStuff(item, 4.5, 90, ["ctx-1"]);
+    assert.equal(updated.energy, 4.5);
+    assert.deepEqual(updated.estimatedTime, { hours: 1, minutes: 30 });
+    assert.deepEqual(updated.contexts, [context]);
   });
 });

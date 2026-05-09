@@ -14,12 +14,25 @@ type InboxStuffDetailsProps = {
 };
 
 function InboxDetailHeader({ item }: Pick<InboxStuffDetailsProps, "item">) {
-  const createdAtLabel = `created: ${formatStuffCreatedAt(item.createdAt).toLowerCase()}`;
+  let metaParts = [`created: ${formatStuffCreatedAt(item.createdAt).toLowerCase()}`];
+  
+  if (item.energy !== undefined && item.energy !== null) {
+    metaParts.push(`energy: ${item.energy}`);
+  }
+  
+  if (item.estimatedTime) {
+    const hoursPart = item.estimatedTime.hours > 0 ? `${item.estimatedTime.hours}h ` : "";
+    metaParts.push(`time: ${hoursPart}${item.estimatedTime.minutes}min`);
+  }
+  
+  if (item.contexts && item.contexts.length > 0) {
+    metaParts.push(`contexts: ${item.contexts.map(c => c.name).join(", ")}`);
+  }
 
   return (
     <>
       <h1 className="inbox-detail__title">{item.title}</h1>
-      <p className="inbox-detail__meta">{createdAtLabel}</p>
+      <p className="inbox-detail__meta">{metaParts.join(" | ")}</p>
       <div className="inbox-detail__divider" />
     </>
   );

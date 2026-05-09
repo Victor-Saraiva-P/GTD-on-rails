@@ -1,8 +1,10 @@
 package com.gtdonrails.api.controllers;
 
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -106,5 +108,15 @@ class InboxControllerTests {
         mockMvc.perform(get("/inbox").header("Origin", "http://127.0.0.1:1420"))
             .andExpect(status().isOk())
             .andExpect(header().string("Access-Control-Allow-Origin", "http://127.0.0.1:1420"));
+    }
+
+    @Test
+    void allowsDesktopDevOriginToPatchItems() throws Exception {
+        mockMvc.perform(options("/items/00000000-0000-0000-0000-000000000001")
+                .header("Origin", "http://127.0.0.1:1420")
+                .header("Access-Control-Request-Method", "PATCH"))
+            .andExpect(status().isOk())
+            .andExpect(header().string("Access-Control-Allow-Origin", "http://127.0.0.1:1420"))
+            .andExpect(header().string("Access-Control-Allow-Methods", containsString("PATCH")));
     }
 }

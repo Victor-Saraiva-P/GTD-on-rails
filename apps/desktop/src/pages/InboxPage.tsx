@@ -13,6 +13,7 @@ import { LeaderMenu } from "../features/keybinds/LeaderMenu";
 import { useActiveScreen, useKeybindScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
 import type { FocusZoneId, KeybindDefinition, ScreenId } from "../features/keybinds/types";
 import { inboxListTheme } from "../features/lists/listThemes";
+import { ProcessingDialog } from "../features/processing/ProcessingDialog";
 
 type InboxPageProps = {
   controller: InboxWorkspaceController;
@@ -92,11 +93,18 @@ function openStuffDetailScreen(controller: InboxWorkspaceController, setActiveSc
   }
 }
 
+function openProcessingFromKeybind(controller: InboxWorkspaceController, openProcessing: () => void) {
+  if (canEditSelectedStuff(controller)) {
+    openProcessing();
+  }
+}
+
 function buildInboxBindings(
   controller: InboxWorkspaceController,
   setActiveScreen: (screen: ScreenId) => void,
   openLinkCombo: () => void,
-  openAssetCombo: () => void
+  openAssetCombo: () => void,
+  openProcessing: () => void
 ) {
   return [
     inboxBinding("inbox.create-stuff", "a", "Add new stuff", "inbox-list", () => createStuffFromKeybind(controller)),
@@ -104,6 +112,8 @@ function buildInboxBindings(
     inboxBinding("inbox.delete-stuff-detail", "d", "Delete selected stuff", "stuff-detail", () => deleteStuffFromKeybind(controller)),
     inboxBinding("inbox.undo-list", "u", "Undo last deletion", "inbox-list", () => void controller.undo()),
     inboxBinding("inbox.undo-detail", "u", "Undo last deletion", "stuff-detail", () => void controller.undo()),
+    inboxBinding("inbox.process-list", "p", "Process selected stuff", "inbox-list", () => openProcessingFromKeybind(controller, openProcessing)),
+    inboxBinding("inbox.process-detail", "p", "Process selected stuff", "stuff-detail", () => openProcessingFromKeybind(controller, openProcessing)),
     { ...inboxBinding("inbox.redo-list", "r", "Redo last action", "inbox-list", () => void controller.redo()), ctrl: true },
     { ...inboxBinding("inbox.redo-detail", "r", "Redo last action", "stuff-detail", () => void controller.redo()), ctrl: true },
     inboxBinding("inbox.edit-title", "Enter", "Edit selected title", "inbox-list", () => editTitleFromKeybind(controller)),
@@ -121,9 +131,9 @@ function buildInboxBindings(
 }
 
 
-function useInboxBindings(controller: InboxWorkspaceController, openLinkCombo: () => void, openAssetCombo: () => void) {
+function useInboxBindings(controller: InboxWorkspaceController, openLinkCombo: () => void, openAssetCombo: () => void, openProcessing: () => void) {
   const { setActiveScreen } = useActiveScreen();
-  const bindings = useMemo(() => buildInboxBindings(controller, setActiveScreen, openLinkCombo, openAssetCombo), [controller, setActiveScreen, openLinkCombo, openAssetCombo]);
+  const bindings = useMemo(() => buildInboxBindings(controller, setActiveScreen, openLinkCombo, openAssetCombo, openProcessing), [controller, setActiveScreen, openLinkCombo, openAssetCombo, openProcessing]);
 
   useRegisterKeybinds(bindings);
 }
@@ -251,11 +261,17 @@ function InboxPanes({ controller }: InboxPageProps) {
 export function InboxPage({ controller }: InboxPageProps) {
   const [isLinkComboOpen, setIsLinkComboOpen] = useState(false);
   const [isAssetComboOpen, setIsAssetComboOpen] = useState(false);
+  const [isProcessingOpen, setIsProcessingOpen] = useState(false);
   const openLinkCombo = useCallback(() => setIsLinkComboOpen(true), []);
   const openAssetCombo = useCallback(() => setIsAssetComboOpen(true), []);
+  const openProcessing = useCallback(() => setIsProcessingOpen(true), []);
+  const processSelectedItem = (energy: number | null, time: number | null, contextId: string) => {
+    void controller.processSelectedStuff(energy, time, contextId);
+    setIsProcessingOpen(false);
+  };
   useKeybindScreen("inbox");
   useInboxZone(controller);
-  useInboxBindings(controller, openLinkCombo, openAssetCombo);
+  useInboxBindings(controller, openLinkCombo, openAssetCombo, openProcessing);
 
   return (
     <ListWorkspace theme={inboxListTheme} currentLabel={inboxListTheme.label} modeLabel={controller.vimMode ?? undefined}>
@@ -263,6 +279,7 @@ export function InboxPage({ controller }: InboxPageProps) {
       <LeaderMenu />
       {isLinkComboOpen ? <MarkdownLinkComboDialog onClose={() => setIsLinkComboOpen(false)} /> : null}
       {isAssetComboOpen && controller.selectedItem ? <MarkdownAssetComboDialog itemId={controller.selectedItem.id} onClose={() => setIsAssetComboOpen(false)} /> : null}
+      {isProcessingOpen && controller.selectedItem ? <ProcessingDialog item={controller.selectedItem} onClose={() => setIsProcessingOpen(false)} onProcess={processSelectedItem} /> : null}
     </ListWorkspace>
   );
 }

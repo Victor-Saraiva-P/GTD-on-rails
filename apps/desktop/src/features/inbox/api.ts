@@ -5,6 +5,9 @@ type InboxStuffResponse = {
   id: string;
   title: string;
   body: ItemBody | string | null;
+  energy?: number | null;
+  estimatedTime?: { hours: number; minutes: number } | null;
+  contexts?: Array<{ id: string; name: string }>;
   status: string;
   createdAt: string;
 };
@@ -112,6 +115,34 @@ export async function updateStuffBody(item: Stuff, body: ItemBody): Promise<Stuf
   });
 }
 
+/**
+ * Updates a stuff's processing metadata (energy, estimated time, and contexts).
+ *
+ * @example await processStuff(stuff, 4.5, 90, ["context-id"])
+ */
+export async function processStuff(
+  item: Stuff,
+  energy: number | null,
+  estimatedTimeMinutes: number | null,
+  contextIds: string[]
+): Promise<Stuff> {
+  const estimatedTime = estimatedTimeMinutes !== null ? {
+    hours: Math.floor(estimatedTimeMinutes / 60),
+    minutes: estimatedTimeMinutes % 60
+  } : null;
+  const payload = { energy, estimatedTime, contextIds };
+
+  const response = await apiJson<InboxStuffResponse>(`/items/${item.id}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+
+  return toStuff(response);
+}
+
 async function updateStuff(
   item: Stuff,
   payload: {
@@ -147,6 +178,9 @@ function toStuff(item: InboxStuffResponse): Stuff {
     id: item.id,
     title: item.title,
     body: parsedBody,
+    energy: item.energy ?? null,
+    estimatedTime: item.estimatedTime ?? null,
+    contexts: item.contexts ?? [],
     status: item.status,
     createdAt: item.createdAt
   };

@@ -285,6 +285,26 @@ class ItemControllerTests {
     }
 
     @Test
+    void patchesNextActionProcessingMetadata() throws Exception {
+        Context office = contextRepository.save(new Context("office"));
+        Item item = itemRepository.save(new Item(new Title("Next action"), null));
+
+        patchItem(item, """
+            {
+              "energy": 4.5,
+              "estimatedTime": { "hours": 1, "minutes": 30 },
+              "contextIds": ["%s"]
+            }
+            """.formatted(office.getId()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.energy").value(4.5))
+            .andExpect(jsonPath("$.estimatedTime.hours").value(1))
+            .andExpect(jsonPath("$.estimatedTime.minutes").value(30))
+            .andExpect(jsonPath("$.contexts", hasSize(1)))
+            .andExpect(jsonPath("$.contexts[0].name").value("office"));
+    }
+
+    @Test
     void normalizesMarkdownBodyLineEndings() throws Exception {
         ResultActions result = createItem("""
             {
