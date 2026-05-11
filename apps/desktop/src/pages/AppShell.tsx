@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
+import { clearAssetObjectUrlCache } from "../features/inbox/assetFiles";
 import { useInboxWorkspaceController, type InboxWorkspaceController } from "../features/inbox/useInboxWorkspaceController";
 import { useActiveScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
 import type { KeybindDefinition } from "../features/keybinds/types";
@@ -39,6 +40,10 @@ export function AppShell() {
   const { activeScreen, setActiveScreen } = useActiveScreen();
   const inboxController = useInboxWorkspaceController();
   const navigationBindings = useMemo(() => buildNavigationBindings(setActiveScreen, inboxController), [setActiveScreen, inboxController]);
+
+  useEffect(() => {
+    if (activeScreen === "contexts") clearAssetObjectUrlCache();
+  }, [activeScreen]);
 
   useRegisterKeybinds(navigationBindings);
 

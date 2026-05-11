@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { createAssetObjectUrl } from "./assetFiles";
+import { buildApiUrl } from "../../config/env.ts";
+import { getCachedAssetObjectUrl, getCachedPdfFirstPagePreviewUrl } from "./assetFiles";
 
 type FilePreviewProps = {
   contentType?: string;
@@ -24,25 +25,34 @@ export function FilePreview(props: FilePreviewProps) {
   if (state.status === "loading") return <span className="pane-state">Loading asset...</span>;
   if (state.status === "error") return <span className="pane-state">{state.message}</span>;
   if (isImagePreview(props)) return <img alt={props.displayName || "image"} className="cm-markdown-image" src={state.objectUrl} />;
-  if (isPdfPreview(props)) return <PdfFilePreview objectUrl={state.objectUrl} />;
+  if (isPdfPreview(props)) return <PdfFilePreview displayName={props.displayName} fallbackUrl={props.fallbackUrl} previewUrl={state.objectUrl} />;
   return <a className="cm-markdown-link" href={state.objectUrl} rel="noreferrer" target="_blank">Open {props.displayName || "asset"}</a>;
 }
 
 function useAssetObjectUrl(props: FilePreviewProps, setState: (state: PreviewState) => void): void {
   useEffect(() => {
     let disposed = false;
-    let objectUrl: string | null = null;
-    createAssetObjectUrl(props.relativePath, props.contentType, props.fallbackUrl).then((assetUrl) => {
-      if (disposed) return revokeIfNeeded(assetUrl.url, assetUrl.revoke);
-      objectUrl = assetUrl.revoke ? assetUrl.url : null;
+    cachedPreviewUrl(props).then((assetUrl) => {
+      if (disposed) return;
       setState({ status: "ready", objectUrl: assetUrl.url });
     }).catch((error) => { if (!disposed) setState({ status: "error", message: assetErrorMessage(error) }); });
-    return () => { disposed = true; if (objectUrl) URL.revokeObjectURL(objectUrl); };
+    return () => { disposed = true; };
   }, [props.contentType, props.fallbackUrl, props.relativePath, setState]);
 }
 
-function PdfFilePreview({ objectUrl }: { objectUrl: string }) {
-  return <figure className="cm-pdf-preview"><iframe className="cm-pdf-preview__frame" src={objectUrl} title="PDF preview" /></figure>;
+async function cachedPreviewUrl(props: FilePreviewProps) {
+  if (!isPdfPreview(props)) return getCachedAssetObjectUrl(props.relativePath, props.contentType, props.fallbackUrl);
+  return (await getCachedPdfFirstPagePreviewUrl(props.relativePath)) ?? { url: "", revoke: false };
+}
+
+function PdfFilePreview({ displayName, fallbackUrl, previewUrl }: { displayName?: string; fallbackUrl?: string; previewUrl: string }) {
+  const openUrl = fallbackUrl ? buildApiUrl(fallbackUrl) : previewUrl;
+  return (
+    <figure className="cm-pdf-preview">
+      {previewUrl ? <img alt={displayName || "PDF first page"} className="cm-pdf-preview__image" src={previewUrl} /> : null}
+      <figcaption><a className="cm-markdown-link" href={openUrl} rel="noreferrer" target="_blank">Open {displayName || "PDF"}</a></figcaption>
+    </figure>
+  );
 }
 
 function isImagePreview(props: FilePreviewProps): boolean {
@@ -59,8 +69,4 @@ function imagePath(relativePath: string): boolean {
 
 function assetErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Failed to load asset preview.";
-}
-
-function revokeIfNeeded(objectUrl: string, shouldRevoke: boolean): void {
-  if (shouldRevoke) URL.revokeObjectURL(objectUrl);
 }

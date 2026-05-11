@@ -4,11 +4,12 @@ import { ListWorkspace } from "../components/ListWorkspace";
 import { RetryState } from "../components/RetryState";
 import { InboxList } from "../features/inbox/InboxList";
 import { InboxStuffDetails } from "../features/inbox/InboxStuffDetails";
+import { preloadAssetObjectUrl } from "../features/inbox/assetFiles";
 import { buildFormattingBindings } from "../features/inbox/formattingKeybinds";
 import { MarkdownAssetComboDialog } from "../features/inbox/MarkdownAssetComboDialog";
 import { MarkdownLinkComboDialog } from "../features/inbox/MarkdownLinkComboDialog";
 import type { InboxWorkspaceController } from "../features/inbox/useInboxWorkspaceController";
-import type { ItemBody } from "../features/inbox/types";
+import type { BlockEntity, ItemBody, Stuff } from "../features/inbox/types";
 import { LeaderMenu } from "../features/keybinds/LeaderMenu";
 import { useActiveScreen, useKeybindScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
 import type { FocusZoneId, KeybindDefinition, ScreenId } from "../features/keybinds/types";
@@ -18,6 +19,8 @@ import { ProcessingDialog } from "../features/processing/ProcessingDialog";
 type InboxPageProps = {
   controller: InboxWorkspaceController;
 };
+
+const ASSET_PREFETCH_RADIUS = 1;
 
 function inboxBinding(
   id: string,
@@ -41,6 +44,26 @@ function canEditInbox(controller: InboxWorkspaceController): boolean {
 
 function canEditSelectedStuff(controller: InboxWorkspaceController): boolean {
   return canEditInbox(controller) && Boolean(controller.selectedItem);
+}
+
+function isPreviewableEntity(entity: BlockEntity): boolean {
+  return entity.type === "image" || entity.type === "pdf" || entity.attrs?.contentType?.startsWith("image/") === true || entity.attrs?.contentType === "application/pdf";
+}
+
+function prefetchBlockEntityAsset(entity: BlockEntity): void {
+  if (!isPreviewableEntity(entity)) return;
+  const relativePath = entity.attrs?.relativePath ?? entity.attrs?.localPath;
+  void preloadAssetObjectUrl(relativePath, entity.attrs?.contentType, entity.attrs?.url).catch(() => undefined);
+}
+
+function prefetchStuffAssets(item: Stuff): void {
+  item.body.blockEntities.forEach(prefetchBlockEntityAsset);
+}
+
+function prefetchNearbyInboxAssets(stuffs: Stuff[], selectedIndex: number): void {
+  const startIndex = Math.max(0, selectedIndex - ASSET_PREFETCH_RADIUS);
+  const endIndex = Math.min(stuffs.length - 1, selectedIndex + ASSET_PREFETCH_RADIUS);
+  for (let index = startIndex; index <= endIndex; index += 1) prefetchStuffAssets(stuffs[index]);
 }
 
 function runInboxAsyncAction(canRun: boolean, action: () => Promise<void>, message: string) {
@@ -144,6 +167,13 @@ function useInboxZone(controller: InboxWorkspaceController) {
       controller.setActiveZone(controller.editingBodyId ? "stuff-detail" : "inbox-list");
     }
   }, [controller.activeZone, controller.editingBodyId, controller.setActiveZone]);
+}
+
+function useInboxAssetPreload(controller: InboxWorkspaceController) {
+  useEffect(() => {
+    if (controller.selectedIndex < 0) return;
+    prefetchNearbyInboxAssets(controller.stuffs, controller.selectedIndex);
+  }, [controller.selectedIndex, controller.stuffs]);
 }
 
 function commitStuffTitle(controller: InboxWorkspaceController) {
@@ -271,6 +301,7 @@ export function InboxPage({ controller }: InboxPageProps) {
   };
   useKeybindScreen("inbox");
   useInboxZone(controller);
+  useInboxAssetPreload(controller);
   useInboxBindings(controller, openLinkCombo, openAssetCombo, openProcessing);
 
   return (
