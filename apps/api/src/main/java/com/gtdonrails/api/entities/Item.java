@@ -88,6 +88,7 @@ public class Item extends AuditableEntity {
         if (nextAction != null && nextAction.getItem() != this) {
             nextAction.setItem(this);
         }
+        status = inferStatus();
     }
 
     @PrePersist

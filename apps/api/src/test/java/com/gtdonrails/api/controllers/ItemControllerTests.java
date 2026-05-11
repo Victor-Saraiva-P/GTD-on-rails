@@ -1,12 +1,10 @@
 package com.gtdonrails.api.controllers;
 
-import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -54,64 +52,44 @@ class ItemControllerTests {
     }
 
     @Test
-    void createsStuffWithoutNextActionMetadata() throws Exception {
-        mockMvc.perform(post("/items")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("""
-                    {
-                      "title": "Capture rent receipt",
-                      "body": {"text":"Receipt details","inlineMarks":[],"lineBlocks":[],"blockEntities":[]}
-                    }
-                    """))
-            .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.title").value("Capture rent receipt"))
-            .andExpect(jsonPath("$.body.text").value("Receipt details"))
-            .andExpect(jsonPath("$.energy").value(nullValue()))
-            .andExpect(jsonPath("$.estimatedTime").value(nullValue()))
-            .andExpect(jsonPath("$.contexts", hasSize(0)))
-            .andExpect(jsonPath("$.status").value("STUFF"));
-    }
-
-    @Test
-    void getsItem() throws Exception {
-        Item item = itemRepository.save(new Item(new Title("Capture idea"), "Details"));
+    void removedGenericItemEndpointsAreNotMapped() throws Exception {
+        Item item = itemRepository.save(new Item(new Title("Capture idea"), null));
 
         mockMvc.perform(get("/items/{id}", item.getId()))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.id").value(item.getId().toString()))
-            .andExpect(jsonPath("$.title").value("Capture idea"))
-            .andExpect(jsonPath("$.body.text").value("Details"));
+            .andExpect(status().isMethodNotAllowed());
+        mockMvc.perform(post("/items").contentType(MediaType.APPLICATION_JSON).content("{}"))
+            .andExpect(status().isNotFound());
+        mockMvc.perform(patch("/items/{id}", item.getId()).contentType(MediaType.APPLICATION_JSON).content("{}"))
+            .andExpect(status().isMethodNotAllowed());
     }
 
     @Test
-    void updatesItemTitleAndBody() throws Exception {
+    void patchesItemTitleOnly() throws Exception {
         Item item = itemRepository.save(new Item(new Title("Old title"), "Old body"));
 
-        mockMvc.perform(put("/items/{id}", item.getId())
+        mockMvc.perform(patch("/items/{id}/title", item.getId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\" New title \"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.title").value("New title"))
+            .andExpect(jsonPath("$.body.text").value("Old body"));
+    }
+
+    @Test
+    void patchesItemBodyOnly() throws Exception {
+        Item item = itemRepository.save(new Item(new Title("Old title"), "Old body"));
+
+        mockMvc.perform(patch("/items/{id}/body", item.getId())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
-                      "title": "New title",
                       "body": {"text":"New body","inlineMarks":[],"lineBlocks":[],"blockEntities":[]}
                     }
                     """))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.title").value("New title"))
+            .andExpect(jsonPath("$.title").value("Old title"))
             .andExpect(jsonPath("$.body.text").value("New body"))
-            .andExpect(jsonPath("$.energy").value(nullValue()))
-            .andExpect(jsonPath("$.contexts", hasSize(0)));
-    }
-
-    @Test
-    void patchesTitleOnly() throws Exception {
-        Item item = itemRepository.save(new Item(new Title("Old title"), "Old body"));
-
-        mockMvc.perform(patch("/items/{id}", item.getId())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"title\":\"New title\"}"))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.title").value("New title"))
-            .andExpect(jsonPath("$.body.text").value("Old body"));
+            .andExpect(jsonPath("$.energy").value(nullValue()));
     }
 
     @Test
@@ -121,13 +99,13 @@ class ItemControllerTests {
         mockMvc.perform(delete("/items/{id}", item.getId()))
             .andExpect(status().isNoContent());
 
-        mockMvc.perform(get("/items/{id}", item.getId()))
+        mockMvc.perform(get("/inbox/{id}", item.getId()))
             .andExpect(status().isNotFound());
 
         mockMvc.perform(post("/items/{id}/restore", item.getId()))
             .andExpect(status().isNoContent());
 
-        mockMvc.perform(get("/items/{id}", item.getId()))
+        mockMvc.perform(get("/inbox/{id}", item.getId()))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(item.getId().toString()));
     }

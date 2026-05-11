@@ -1,11 +1,11 @@
 package com.gtdonrails.api.controllers;
 
-import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
-import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -14,6 +14,7 @@ import java.lang.reflect.Field;
 import java.time.Instant;
 
 import com.gtdonrails.api.entities.AuditableEntity;
+import com.gtdonrails.api.entities.Context;
 import com.gtdonrails.api.entities.Item;
 import com.gtdonrails.api.repositories.ContextRepository;
 import com.gtdonrails.api.repositories.ItemRepository;
@@ -23,6 +24,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -52,7 +54,31 @@ class InboxControllerTests {
     }
 
     @Test
-    void listsOnlyNonDeletedInboxItems() throws Exception {
+    void createsStuffWithTitleOnly() throws Exception {
+        mockMvc.perform(post("/inbox")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\" Capture idea \"}"))
+            .andExpect(status().isCreated())
+            .andExpect(header().string("Location", containsString("/inbox/")))
+            .andExpect(jsonPath("$.id", notNullValue()))
+            .andExpect(jsonPath("$.title").value("Capture idea"))
+            .andExpect(jsonPath("$.body.text").value(""))
+            .andExpect(jsonPath("$.createdAt", notNullValue()));
+    }
+
+    @Test
+    void getsOnlyActiveStuff() throws Exception {
+        Item stuff = itemRepository.save(new Item(new Title("Visible stuff"), "Body"));
+
+        mockMvc.perform(get("/inbox/{id}", stuff.getId()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(stuff.getId().toString()))
+            .andExpect(jsonPath("$.title").value("Visible stuff"))
+            .andExpect(jsonPath("$.body.text").value("Body"));
+    }
+
+    @Test
+    void listsOnlyNonDeletedInboxStuff() throws Exception {
         Item visibleItem = itemRepository.save(new Item(new Title("Visible item"), null));
         Item deletedItem = itemRepository.save(new Item(new Title("Deleted item"), null));
         deletedItem.softDelete();
@@ -63,8 +89,6 @@ class InboxControllerTests {
             .andExpect(jsonPath("$", hasSize(1)))
             .andExpect(jsonPath("$[0].id").value(visibleItem.getId().toString()))
             .andExpect(jsonPath("$[0].title").value("Visible item"))
-            .andExpect(jsonPath("$[0].energy").value(nullValue()))
-            .andExpect(jsonPath("$[0].estimatedTime").value(nullValue()))
             .andExpect(jsonPath("$[0].createdAt", notNullValue()));
     }
 
@@ -77,11 +101,56 @@ class InboxControllerTests {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$", hasSize(2)))
             .andExpect(jsonPath("$[0].id").value(newerItem.getId().toString()))
-            .andExpect(jsonPath("$[0].title").value("Newer item"))
-            .andExpect(jsonPath("$[0].energy").value(nullValue()))
-            .andExpect(jsonPath("$[1].id").value(olderItem.getId().toString()))
-            .andExpect(jsonPath("$[1].title").value("Older item"))
-            .andExpect(jsonPath("$[1].energy").value(nullValue()));
+            .andExpect(jsonPath("$[1].id").value(olderItem.getId().toString()));
+    }
+
+    @Test
+    void convertsStuffToNextActionAndRemovesItFromInbox() throws Exception {
+        Context context = contextRepository.save(new Context("office"));
+        Item stuff = itemRepository.save(new Item(new Title("Call Ana"), null));
+
+        mockMvc.perform(post("/inbox/{id}/next-action", stuff.getId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "energy": 4.5,
+                      "estimatedTime": { "hours": 1, "minutes": 30 },
+                      "contextIds": ["%s"]
+                    }
+                    """.formatted(context.getId())))
+            .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/inbox/{id}", stuff.getId()))
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void rejectsConversionWithoutRequiredNextActionFields() throws Exception {
+        Item stuff = itemRepository.save(new Item(new Title("Call Ana"), null));
+
+        mockMvc.perform(post("/inbox/{id}/next-action", stuff.getId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.detail", containsString("energy is required")))
+            .andExpect(jsonPath("$.detail", containsString("estimatedTime is required")))
+            .andExpect(jsonPath("$.detail", containsString("contextIds is required")));
+    }
+
+    @Test
+    void allowsDesktopDevOrigin() throws Exception {
+        mockMvc.perform(get("/inbox").header("Origin", "http://127.0.0.1:1420"))
+            .andExpect(status().isOk())
+            .andExpect(header().string("Access-Control-Allow-Origin", "http://127.0.0.1:1420"));
+    }
+
+    @Test
+    void allowsDesktopDevOriginToPatchItems() throws Exception {
+        mockMvc.perform(options("/items/00000000-0000-0000-0000-000000000001/title")
+                .header("Origin", "http://127.0.0.1:1420")
+                .header("Access-Control-Request-Method", "PATCH"))
+            .andExpect(status().isOk())
+            .andExpect(header().string("Access-Control-Allow-Methods", containsString("PATCH")));
     }
 
     private Item saveItemCreatedAt(String title, Instant createdAt) throws Exception {
@@ -95,22 +164,5 @@ class InboxControllerTests {
         Field field = AuditableEntity.class.getDeclaredField(fieldName);
         field.setAccessible(true);
         field.set(item, value);
-    }
-
-    @Test
-    void allowsDesktopDevOrigin() throws Exception {
-        mockMvc.perform(get("/inbox").header("Origin", "http://127.0.0.1:1420"))
-            .andExpect(status().isOk())
-            .andExpect(header().string("Access-Control-Allow-Origin", "http://127.0.0.1:1420"));
-    }
-
-    @Test
-    void allowsDesktopDevOriginToPatchItems() throws Exception {
-        mockMvc.perform(options("/items/00000000-0000-0000-0000-000000000001")
-                .header("Origin", "http://127.0.0.1:1420")
-                .header("Access-Control-Request-Method", "PATCH"))
-            .andExpect(status().isOk())
-            .andExpect(header().string("Access-Control-Allow-Origin", "http://127.0.0.1:1420"))
-            .andExpect(header().string("Access-Control-Allow-Methods", containsString("PATCH")));
     }
 }

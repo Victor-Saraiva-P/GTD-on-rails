@@ -2,12 +2,10 @@ package com.gtdonrails.api.services;
 
 import java.util.UUID;
 
-import com.gtdonrails.api.dtos.item.CreateItemRequestDto;
 import com.gtdonrails.api.dtos.item.ItemAssetResponseDto;
 import com.gtdonrails.api.dtos.item.ItemResponseDto;
 import com.gtdonrails.api.dtos.item.PatchItemBodyRequestDto;
-import com.gtdonrails.api.dtos.item.PatchItemRequestDto;
-import com.gtdonrails.api.dtos.item.UpdateItemRequestDto;
+import com.gtdonrails.api.dtos.item.UpdateItemTitleRequestDto;
 import com.gtdonrails.api.entities.Item;
 import com.gtdonrails.api.entities.ItemAsset;
 import com.gtdonrails.api.exceptions.item.ItemNotFoundException;
@@ -19,9 +17,9 @@ import com.gtdonrails.api.persistence.bootstrap.model.PersistenceChangeType;
 import com.gtdonrails.api.persistence.bootstrap.services.PersistenceGitSyncService;
 import com.gtdonrails.api.repositories.ItemAssetRepository;
 import com.gtdonrails.api.repositories.ItemRepository;
+import com.gtdonrails.api.types.BlockEntity;
 import com.gtdonrails.api.types.ItemBody;
 import com.gtdonrails.api.types.Title;
-import com.gtdonrails.api.types.BlockEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -62,48 +60,6 @@ public class ItemService {
     }
 
     /**
-     * Returns one active item as an API response.
-     *
-     * <p>Example: {@code itemService.getItem(itemId)}.</p>
-     */
-    @Transactional(readOnly = true)
-    public ItemResponseDto getItem(UUID id) {
-        return itemMapper.toResponse(findItem(id));
-    }
-
-    /**
-     * Creates an item after normalizing request text and resolving contexts.
-     *
-     * <p>Example: {@code itemService.createItem(request)}.</p>
-     */
-    @Transactional
-    public ItemResponseDto createItem(CreateItemRequestDto request) {
-        Title title = new Title(itemTextNormalizer.normalizeTitle(request.title()));
-        ItemBody body = itemBodyNormalizer.normalizeBody(request.body());
-        rejectCreateBlockEntities(body);
-        Item item = new Item(title, null);
-        item.setBody(body);
-        ItemResponseDto response = itemMapper.toResponse(itemRepository.save(item));
-        requestPersistenceSyncAfterCommit("item created", PersistenceChangeType.CREATE_ITEM);
-        return response;
-    }
-
-    /**
-     * Updates an active item and replaces contexts only when context ids are provided.
-     *
-     * <p>Example: {@code itemService.updateItem(itemId, request)}.</p>
-     */
-    @Transactional
-    public ItemResponseDto updateItem(UUID id, UpdateItemRequestDto request) {
-        Item item = findItem(id);
-        updateItemFields(id, item, request);
-
-        ItemResponseDto response = itemMapper.toResponse(itemRepository.save(item));
-        requestPersistenceSyncAfterCommit("item updated", PersistenceChangeType.UPDATE_ITEM);
-        return response;
-    }
-
-    /**
      * Updates only body metadata for an active item.
      *
      * <p>Example: {@code itemService.patchItemBody(itemId, request)}.</p>
@@ -120,32 +76,17 @@ public class ItemService {
     }
 
     /**
-     * Updates only provided item metadata fields.
+     * Updates only the shared item title.
      *
-     * <p>Example: {@code itemService.patchItem(itemId, request)}.</p>
+     * <p>Example: {@code itemService.updateItemTitle(itemId, request)}.</p>
      */
     @Transactional
-    public ItemResponseDto patchItem(UUID id, PatchItemRequestDto request) {
+    public ItemResponseDto updateItemTitle(UUID id, UpdateItemTitleRequestDto request) {
         Item item = findItem(id);
-        patchItemFields(item, request);
+        item.setTitle(new Title(itemTextNormalizer.normalizeTitle(request.title())));
         ItemResponseDto response = itemMapper.toResponse(itemRepository.save(item));
-        requestPersistenceSyncAfterCommit("item metadata updated", PersistenceChangeType.UPDATE_ITEM);
+        requestPersistenceSyncAfterCommit("item title updated", PersistenceChangeType.UPDATE_ITEM);
         return response;
-    }
-
-    private void updateItemFields(UUID itemId, Item item, UpdateItemRequestDto request) {
-        Title title = new Title(itemTextNormalizer.normalizeTitle(request.title()));
-        ItemBody body = itemBodyNormalizer.normalizeBody(request.body());
-        validateBlockEntityAssets(itemId, body);
-
-        item.setTitle(title);
-        item.setBody(body);
-    }
-
-    private void patchItemFields(Item item, PatchItemRequestDto request) {
-        if (request.hasTitle()) {
-            item.setTitle(new Title(itemTextNormalizer.normalizeTitle(request.title())));
-        }
     }
 
     /**
@@ -200,14 +141,6 @@ public class ItemService {
 
     private void requestAssetSyncAfterCommit(String reason) {
         afterCommitExecutor.run(() -> assetSyncService.requestSync(reason));
-    }
-
-    private void rejectCreateBlockEntities(ItemBody body) {
-        if (body.blockEntities().isEmpty()) {
-            return;
-        }
-
-        throw new BusinessException("body.blockEntities value is invalid; expected uploaded assets on an existing item");
     }
 
     private void validateBlockEntityAssets(UUID itemId, ItemBody body) {

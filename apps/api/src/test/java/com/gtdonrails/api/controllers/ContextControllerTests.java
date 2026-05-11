@@ -225,9 +225,8 @@ class ContextControllerTests {
         mockMvc.perform(delete("/contexts/{id}", context.getId()))
             .andExpect(status().isNoContent());
 
-        mockMvc.perform(get("/items/{id}", item.getId()))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.contexts", hasSize(0)));
+        mockMvc.perform(get("/contexts/{id}/items", context.getId()))
+            .andExpect(status().isNotFound());
     }
 
     @Test

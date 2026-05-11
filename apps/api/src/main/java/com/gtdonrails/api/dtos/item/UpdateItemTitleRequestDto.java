@@ -1,17 +1,12 @@
 package com.gtdonrails.api.dtos.item;
 
-import com.gtdonrails.api.types.ItemBody;
 import com.gtdonrails.api.types.Title;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-import jakarta.validation.Valid;
 
-public record CreateItemRequestDto(
+public record UpdateItemTitleRequestDto(
     @NotBlank(message = "expected non-blank text")
     @Size(max = Title.MAX_LENGTH, message = "expected at most " + Title.MAX_LENGTH + " characters")
-    String title,
-
-    @Valid
-    ItemBody body
+    String title
 ) {
 }
