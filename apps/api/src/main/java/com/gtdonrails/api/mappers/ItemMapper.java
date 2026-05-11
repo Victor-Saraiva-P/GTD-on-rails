@@ -6,6 +6,7 @@ import com.gtdonrails.api.dtos.context.ContextItemResponseDto;
 import com.gtdonrails.api.dtos.item.ItemResponseDto;
 import com.gtdonrails.api.dtos.item.ItemTimeDto;
 import com.gtdonrails.api.entities.Item;
+import com.gtdonrails.api.entities.NextAction;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -23,15 +24,17 @@ public class ItemMapper {
      * <p>Example: {@code itemMapper.toResponse(item)}.</p>
      */
     public ItemResponseDto toResponse(Item item) {
+        NextAction nextAction = item.getNextAction();
+
         return new ItemResponseDto(
             item.getId(),
             item.getTitle().value(),
             item.getBody(),
-            item.getEnergy(),
-            toTimeDto(item),
+            nextAction == null ? null : nextAction.getEnergy(),
+            toTimeDto(nextAction),
             item.getStatus().name(),
             item.getCreatedAt(),
-            item.getContexts().stream()
+            nextAction == null ? java.util.List.of() : nextAction.getContexts().stream()
                 .filter(context -> !context.isDeleted())
                 .sorted(Comparator.comparing(context -> context.getName().toLowerCase()))
                 .map(contextMapper::toResponse)
@@ -52,12 +55,12 @@ public class ItemMapper {
         );
     }
 
-    private ItemTimeDto toTimeDto(Item item) {
-        if (item.getEstimatedTime() == null) {
+    private ItemTimeDto toTimeDto(NextAction nextAction) {
+        if (nextAction == null) {
             return null;
         }
 
-        long totalMinutes = item.getEstimatedTime().toMinutes();
+        long totalMinutes = nextAction.getEstimatedTime().toMinutes();
 
         return new ItemTimeDto(totalMinutes / 60, (int) (totalMinutes % 60));
     }

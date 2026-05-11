@@ -1,13 +1,8 @@
 package com.gtdonrails.api.entities;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import java.math.BigDecimal;
-import java.time.Duration;
 
 import com.gtdonrails.api.enums.ItemStatus;
 import com.gtdonrails.api.types.ItemBody;
@@ -57,153 +52,14 @@ class ItemTests {
     }
 
     @Test
-    void constructorWithoutEnergySetsNullEnergy() {
+    void constructorWithoutNextActionSetsNullNextAction() {
         Item item = new Item(new Title("Capture idea"), null);
 
-        assertNull(item.getEnergy());
+        assertNull(item.getNextAction());
     }
 
     @Test
-    void setEnergyUpdatesEnergy() {
-        Item item = new Item(new Title("Capture idea"), null);
-
-        item.setEnergy(new BigDecimal("4.5"));
-
-        assertEquals(new BigDecimal("4.5"), item.getEnergy());
-    }
-
-    @Test
-    void setEnergyDefaultsToZeroWhenNull() {
-        Item item = new Item(new Title("Capture idea"), null, new BigDecimal("3.0"));
-
-        item.setEnergy(null);
-
-        assertNull(item.getEnergy());
-    }
-
-    @Test
-    void setEnergyRejectsMoreThanOneDecimalPlace() {
-        Item item = new Item(new Title("Capture idea"), null);
-
-        IllegalArgumentException exception = assertThrows(
-            IllegalArgumentException.class,
-            () -> item.setEnergy(new BigDecimal("4.25")));
-
-        assertEquals("energy value '4.25' is invalid; expected up to 1 decimal place", exception.getMessage());
-    }
-
-    @Test
-    void setEnergyAcceptsWholeNumbersAndNormalizesScale() {
-        Item item = new Item(new Title("Capture idea"), null);
-
-        item.setEnergy(new BigDecimal("7"));
-
-        assertEquals(new BigDecimal("7.0"), item.getEnergy());
-    }
-
-    @Test
-    void setEnergyRejectsValuesBelowRange() {
-        Item item = new Item(new Title("Capture idea"), null);
-
-        IllegalArgumentException exception = assertThrows(
-            IllegalArgumentException.class,
-            () -> item.setEnergy(new BigDecimal("-0.1")));
-
-        assertEquals("energy value '-0.1' is invalid; expected between 0.0 and 10.0", exception.getMessage());
-    }
-
-    @Test
-    void setEnergyRejectsValuesAboveRange() {
-        Item item = new Item(new Title("Capture idea"), null);
-
-        IllegalArgumentException exception = assertThrows(
-            IllegalArgumentException.class,
-            () -> item.setEnergy(new BigDecimal("10.1")));
-
-        assertEquals("energy value '10.1' is invalid; expected between 0.0 and 10.0", exception.getMessage());
-    }
-
-    @Test
-    void constructorWithoutTimeSetsNullTime() {
-        Item item = new Item(new Title("Capture idea"), null);
-
-        assertNull(item.getEstimatedTime());
-    }
-
-    @Test
-    void setEstimatedTimeUpdatesTime() {
-        Item item = new Item(new Title("Capture idea"), null);
-
-        item.setEstimatedTime(Duration.ofHours(1).plusMinutes(30));
-
-        assertEquals(Duration.ofMinutes(90), item.getEstimatedTime());
-    }
-
-    @Test
-    void setEstimatedTimeAllowsNull() {
-        Item item = new Item(new Title("Capture idea"), null, new BigDecimal("3.0"), Duration.ofMinutes(45));
-
-        item.setEstimatedTime(null);
-
-        assertNull(item.getEstimatedTime());
-    }
-
-    @Test
-    void setEstimatedTimeRejectsNegativeDuration() {
-        Item item = new Item(new Title("Capture idea"), null);
-
-        IllegalArgumentException exception = assertThrows(
-            IllegalArgumentException.class,
-            () -> item.setEstimatedTime(Duration.ofMinutes(-1)));
-
-        assertEquals("time value 'PT-1M' is invalid; expected greater than or equal to PT0M", exception.getMessage());
-    }
-
-    @Test
-    void setEstimatedTimeRejectsSecondsPrecision() {
-        Item item = new Item(new Title("Capture idea"), null);
-
-        IllegalArgumentException exception = assertThrows(
-            IllegalArgumentException.class,
-            () -> item.setEstimatedTime(Duration.ofSeconds(30)));
-
-        assertEquals("time value 'PT30S' is invalid; expected whole-minute Duration", exception.getMessage());
-    }
-
-    @Test
-    void addContextAddsContextToItem() {
-        Item item = new Item(new Title("Capture idea"), null);
-        Context context = new Context("notebook");
-
-        item.addContext(context);
-
-        assertTrue(item.getContexts().contains(context));
-    }
-
-    @Test
-    void addContextRejectsNull() {
-        Item item = new Item(new Title("Capture idea"), null);
-
-        IllegalArgumentException exception = assertThrows(
-            IllegalArgumentException.class,
-            () -> item.addContext(null));
-
-        assertEquals("context value 'null' is invalid; expected Context", exception.getMessage());
-    }
-
-    @Test
-    void removeContextRemovesContextFromItem() {
-        Item item = new Item(new Title("Capture idea"), null);
-        Context context = new Context("college");
-        item.addContext(context);
-
-        item.removeContext(context);
-
-        assertFalse(item.getContexts().contains(context));
-    }
-
-    @Test
-    void setsStatusToStuffWhenItemIsPersisted() {
+    void setsStatusToStuffWhenItemIsPersistedWithoutNextAction() {
         Item item = new Item(new Title("Capture idea"), null);
 
         item.prePersist();
@@ -212,12 +68,12 @@ class ItemTests {
     }
 
     @Test
-    void keepsStatusAsStuffWhenItemIsUpdated() {
+    void setsStatusToNextActionWhenItemHasNextAction() {
         Item item = new Item(new Title("Capture idea"), null);
+        new NextAction(item, java.math.BigDecimal.ONE, java.time.Duration.ZERO, java.util.Set.of(new Context("home")));
+
         item.prePersist();
 
-        item.preUpdate();
-
-        assertEquals(ItemStatus.STUFF, item.getStatus());
+        assertEquals(ItemStatus.NEXT_ACTION, item.getStatus());
     }
 }

@@ -3,6 +3,7 @@ package com.gtdonrails.api.controllers;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -10,8 +11,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.lang.reflect.Field;
-import java.math.BigDecimal;
-import java.time.Duration;
 import java.time.Instant;
 
 import com.gtdonrails.api.entities.AuditableEntity;
@@ -34,10 +33,6 @@ import org.springframework.web.context.WebApplicationContext;
 @Tag("integration")
 class InboxControllerTests {
 
-    private static BigDecimal energy(String value) {
-        return new BigDecimal(value);
-    }
-
     @Autowired
     private WebApplicationContext webApplicationContext;
 
@@ -58,8 +53,8 @@ class InboxControllerTests {
 
     @Test
     void listsOnlyNonDeletedInboxItems() throws Exception {
-        Item visibleItem = itemRepository.save(new Item(new Title("Visible item"), null, energy("1.0"), Duration.ofMinutes(45)));
-        Item deletedItem = itemRepository.save(new Item(new Title("Deleted item"), null, energy("2.0"), Duration.ofMinutes(15)));
+        Item visibleItem = itemRepository.save(new Item(new Title("Visible item"), null));
+        Item deletedItem = itemRepository.save(new Item(new Title("Deleted item"), null));
         deletedItem.softDelete();
         itemRepository.save(deletedItem);
 
@@ -68,30 +63,29 @@ class InboxControllerTests {
             .andExpect(jsonPath("$", hasSize(1)))
             .andExpect(jsonPath("$[0].id").value(visibleItem.getId().toString()))
             .andExpect(jsonPath("$[0].title").value("Visible item"))
-            .andExpect(jsonPath("$[0].energy").value(1.0))
-            .andExpect(jsonPath("$[0].estimatedTime.hours").value(0))
-            .andExpect(jsonPath("$[0].estimatedTime.minutes").value(45))
+            .andExpect(jsonPath("$[0].energy").value(nullValue()))
+            .andExpect(jsonPath("$[0].estimatedTime").value(nullValue()))
             .andExpect(jsonPath("$[0].createdAt", notNullValue()));
     }
 
     @Test
     void listsStuffOrderedByCreatedAtDescending() throws Exception {
-        Item olderItem = saveItemCreatedAt("Older item", "1.0", Instant.parse("2026-01-01T10:00:00Z"));
-        Item newerItem = saveItemCreatedAt("Newer item", "2.0", Instant.parse("2026-01-01T10:01:00Z"));
+        Item olderItem = saveItemCreatedAt("Older item", Instant.parse("2026-01-01T10:00:00Z"));
+        Item newerItem = saveItemCreatedAt("Newer item", Instant.parse("2026-01-01T10:01:00Z"));
 
         mockMvc.perform(get("/inbox"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$", hasSize(2)))
             .andExpect(jsonPath("$[0].id").value(newerItem.getId().toString()))
             .andExpect(jsonPath("$[0].title").value("Newer item"))
-            .andExpect(jsonPath("$[0].energy").value(2.0))
+            .andExpect(jsonPath("$[0].energy").value(nullValue()))
             .andExpect(jsonPath("$[1].id").value(olderItem.getId().toString()))
             .andExpect(jsonPath("$[1].title").value("Older item"))
-            .andExpect(jsonPath("$[1].energy").value(1.0));
+            .andExpect(jsonPath("$[1].energy").value(nullValue()));
     }
 
-    private Item saveItemCreatedAt(String title, String energy, Instant createdAt) throws Exception {
-        Item item = new Item(new Title(title), null, energy(energy));
+    private Item saveItemCreatedAt(String title, Instant createdAt) throws Exception {
+        Item item = new Item(new Title(title), null);
         setAuditField(item, "createdAt", createdAt);
         setAuditField(item, "updatedAt", createdAt);
         return itemRepository.saveAndFlush(item);

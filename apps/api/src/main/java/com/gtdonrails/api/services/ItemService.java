@@ -1,9 +1,5 @@
 package com.gtdonrails.api.services;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.time.Duration;
 import java.util.UUID;
 
 import com.gtdonrails.api.dtos.item.CreateItemRequestDto;
@@ -12,10 +8,8 @@ import com.gtdonrails.api.dtos.item.ItemResponseDto;
 import com.gtdonrails.api.dtos.item.PatchItemBodyRequestDto;
 import com.gtdonrails.api.dtos.item.PatchItemRequestDto;
 import com.gtdonrails.api.dtos.item.UpdateItemRequestDto;
-import com.gtdonrails.api.entities.Context;
 import com.gtdonrails.api.entities.Item;
 import com.gtdonrails.api.entities.ItemAsset;
-import com.gtdonrails.api.exceptions.context.ContextNotFoundException;
 import com.gtdonrails.api.exceptions.item.ItemNotFoundException;
 import com.gtdonrails.api.exceptions.shared.BusinessException;
 import com.gtdonrails.api.mappers.ItemMapper;
@@ -23,7 +17,6 @@ import com.gtdonrails.api.normalizers.ItemBodyNormalizer;
 import com.gtdonrails.api.normalizers.ItemTextNormalizer;
 import com.gtdonrails.api.persistence.bootstrap.model.PersistenceChangeType;
 import com.gtdonrails.api.persistence.bootstrap.services.PersistenceGitSyncService;
-import com.gtdonrails.api.repositories.ContextRepository;
 import com.gtdonrails.api.repositories.ItemAssetRepository;
 import com.gtdonrails.api.repositories.ItemRepository;
 import com.gtdonrails.api.types.ItemBody;
@@ -38,7 +31,6 @@ public class ItemService {
 
     private final ItemRepository itemRepository;
     private final ItemAssetRepository itemAssetRepository;
-    private final ContextRepository contextRepository;
     private final ItemMapper itemMapper;
     private final ItemTextNormalizer itemTextNormalizer;
     private final ItemBodyNormalizer itemBodyNormalizer;
@@ -50,7 +42,6 @@ public class ItemService {
     public ItemService(
         ItemRepository itemRepository,
         ItemAssetRepository itemAssetRepository,
-        ContextRepository contextRepository,
         ItemMapper itemMapper,
         ItemTextNormalizer itemTextNormalizer,
         ItemBodyNormalizer itemBodyNormalizer,
@@ -61,7 +52,6 @@ public class ItemService {
     ) {
         this.itemRepository = itemRepository;
         this.itemAssetRepository = itemAssetRepository;
-        this.contextRepository = contextRepository;
         this.itemMapper = itemMapper;
         this.itemTextNormalizer = itemTextNormalizer;
         this.itemBodyNormalizer = itemBodyNormalizer;
@@ -91,10 +81,8 @@ public class ItemService {
         Title title = new Title(itemTextNormalizer.normalizeTitle(request.title()));
         ItemBody body = itemBodyNormalizer.normalizeBody(request.body());
         rejectCreateBlockEntities(body);
-        Duration estimatedTime = request.estimatedTime() == null ? null : request.estimatedTime().toDuration();
-        Item item = new Item(title, (String) null, request.energy(), estimatedTime);
+        Item item = new Item(title, null);
         item.setBody(body);
-        item.replaceContexts(findContextsOrThrow(request.contextIds()));
         ItemResponseDto response = itemMapper.toResponse(itemRepository.save(item));
         requestPersistenceSyncAfterCommit("item created", PersistenceChangeType.CREATE_ITEM);
         return response;
@@ -109,10 +97,6 @@ public class ItemService {
     public ItemResponseDto updateItem(UUID id, UpdateItemRequestDto request) {
         Item item = findItem(id);
         updateItemFields(id, item, request);
-
-        if (request.contextIds() != null) {
-            item.replaceContexts(findContextsOrThrow(request.contextIds()));
-        }
 
         ItemResponseDto response = itemMapper.toResponse(itemRepository.save(item));
         requestPersistenceSyncAfterCommit("item updated", PersistenceChangeType.UPDATE_ITEM);
@@ -156,22 +140,11 @@ public class ItemService {
 
         item.setTitle(title);
         item.setBody(body);
-        item.setEnergy(request.energy());
-        item.setEstimatedTime(request.estimatedTime() == null ? null : request.estimatedTime().toDuration());
     }
 
     private void patchItemFields(Item item, PatchItemRequestDto request) {
         if (request.hasTitle()) {
             item.setTitle(new Title(itemTextNormalizer.normalizeTitle(request.title())));
-        }
-        if (request.hasEnergy()) {
-            item.setEnergy(request.energy());
-        }
-        if (request.hasEstimatedTime()) {
-            item.setEstimatedTime(request.estimatedTime() == null ? null : request.estimatedTime().toDuration());
-        }
-        if (request.hasContextIds()) {
-            item.replaceContexts(findContextsOrThrow(request.contextIds()));
         }
     }
 
@@ -219,21 +192,6 @@ public class ItemService {
     private Item findItem(UUID id) {
         return itemRepository.findByIdAndDeletedAtIsNull(id)
             .orElseThrow(() -> new ItemNotFoundException("item not found"));
-    }
-
-    private Set<Context> findContextsOrThrow(List<UUID> contextIds) {
-        if (contextIds == null || contextIds.isEmpty()) {
-            return Set.of();
-        }
-
-        Set<UUID> uniqueContextIds = new HashSet<>(contextIds);
-        List<Context> contexts = contextRepository.findAllByIdInAndDeletedAtIsNull(uniqueContextIds);
-
-        if (contexts.size() != uniqueContextIds.size()) {
-            throw new ContextNotFoundException("context not found");
-        }
-
-        return new HashSet<>(contexts);
     }
 
     private void requestPersistenceSyncAfterCommit(String reason, PersistenceChangeType changeType) {

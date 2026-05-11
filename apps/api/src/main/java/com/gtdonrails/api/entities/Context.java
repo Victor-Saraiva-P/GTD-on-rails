@@ -35,7 +35,7 @@ public class Context extends AuditableEntity {
     private String iconAssetPath;
 
     @ManyToMany(mappedBy = "contexts")
-    private Set<Item> items = new HashSet<>();
+    private final Set<NextAction> nextActions = new HashSet<>();
 
     public Context() {
     }

@@ -9,6 +9,7 @@ import com.gtdonrails.api.dtos.context.ContextResponseDto;
 import com.gtdonrails.api.dtos.context.CreateContextRequestDto;
 import com.gtdonrails.api.dtos.context.UpdateContextRequestDto;
 import com.gtdonrails.api.entities.Context;
+import com.gtdonrails.api.entities.NextAction;
 import com.gtdonrails.api.exceptions.context.ContextNotFoundException;
 import com.gtdonrails.api.mappers.ContextMapper;
 import com.gtdonrails.api.mappers.ItemMapper;
@@ -16,7 +17,7 @@ import com.gtdonrails.api.normalizers.ContextNameNormalizer;
 import com.gtdonrails.api.persistence.bootstrap.model.PersistenceChangeType;
 import com.gtdonrails.api.persistence.bootstrap.services.PersistenceGitSyncService;
 import com.gtdonrails.api.repositories.ContextRepository;
-import com.gtdonrails.api.repositories.ItemRepository;
+import com.gtdonrails.api.repositories.NextActionRepository;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,7 +27,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class ContextService {
 
     private final ContextRepository contextRepository;
-    private final ItemRepository itemRepository;
+    private final NextActionRepository nextActionRepository;
     private final ContextMapper contextMapper;
     private final ItemMapper itemMapper;
     private final ContextNameNormalizer contextNameNormalizer;
@@ -37,15 +38,17 @@ public class ContextService {
 
     public ContextService(
         ContextRepository contextRepository,
-        ItemRepository itemRepository,
+        NextActionRepository nextActionRepository,
         ContextMapper contextMapper,
         ItemMapper itemMapper,
         ContextNameNormalizer contextNameNormalizer,
         AssetStorageService assetStorageService,
-        AssetSyncService assetSyncService, PersistenceGitSyncService persistenceGitSyncService,
-        AfterCommitExecutor afterCommitExecutor) {
+        AssetSyncService assetSyncService,
+        PersistenceGitSyncService persistenceGitSyncService,
+        AfterCommitExecutor afterCommitExecutor
+    ) {
         this.contextRepository = contextRepository;
-        this.itemRepository = itemRepository;
+        this.nextActionRepository = nextActionRepository;
         this.contextMapper = contextMapper;
         this.itemMapper = itemMapper;
         this.contextNameNormalizer = contextNameNormalizer;
@@ -88,17 +91,19 @@ public class ContextService {
         findContext(id);
 
         if (limit == null) {
-            return itemRepository.findAllByContexts_IdAndDeletedAtIsNullOrderByUpdatedAtDesc(id)
+            return nextActionRepository.findAllByContexts_IdAndItem_DeletedAtIsNullOrderByItem_UpdatedAtDesc(id)
                 .stream()
+                .map(NextAction::getItem)
                 .map(itemMapper::toContextItemResponse)
                 .toList();
         }
 
-        return itemRepository.findAllByContexts_IdAndDeletedAtIsNullOrderByUpdatedAtDesc(
+        return nextActionRepository.findAllByContexts_IdAndItem_DeletedAtIsNullOrderByItem_UpdatedAtDesc(
                 id,
                 PageRequest.of(0, limit)
             )
             .stream()
+            .map(NextAction::getItem)
             .map(itemMapper::toContextItemResponse)
             .toList();
     }
@@ -141,7 +146,7 @@ public class ContextService {
     @Transactional
     public void deleteContext(UUID id) {
         Context context = findContext(id);
-        new HashSet<>(context.getItems()).forEach(item -> item.removeContext(context));
+        new HashSet<>(context.getNextActions()).forEach(nextAction -> nextAction.removeContext(context));
         assetStorageService.deleteAsset(context.getIconAssetPath());
         context.softDelete();
         contextRepository.save(context);

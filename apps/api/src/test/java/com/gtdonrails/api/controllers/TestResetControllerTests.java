@@ -6,8 +6,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.math.BigDecimal;
+import java.time.Duration;
+import java.util.Set;
+
 import com.gtdonrails.api.entities.Context;
 import com.gtdonrails.api.entities.Item;
+import com.gtdonrails.api.entities.NextAction;
 import com.gtdonrails.api.repositories.ContextRepository;
 import com.gtdonrails.api.repositories.ItemRepository;
 import com.gtdonrails.api.types.Title;
@@ -48,7 +53,7 @@ class TestResetControllerTests {
     void resetsItemsAndContexts() throws Exception {
         Context context = contextRepository.save(new Context("home"));
         Item item = new Item(new Title("Capture idea"), null);
-        item.addContext(context);
+        new NextAction(item, BigDecimal.ONE, Duration.ZERO, Set.of(context));
         itemRepository.save(item);
 
         mockMvc.perform(post("/test/reset"))

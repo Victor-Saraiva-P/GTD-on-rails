@@ -11,11 +11,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.lang.reflect.Field;
+import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.Instant;
+import java.util.Set;
 
 import com.gtdonrails.api.entities.AuditableEntity;
 import com.gtdonrails.api.entities.Context;
 import com.gtdonrails.api.entities.Item;
+import com.gtdonrails.api.entities.NextAction;
 import com.gtdonrails.api.repositories.ContextRepository;
 import com.gtdonrails.api.repositories.ItemRepository;
 import com.gtdonrails.api.types.Title;
@@ -215,7 +219,7 @@ class ContextControllerTests {
     void deletingContextRemovesItFromRelatedItems() throws Exception {
         Context context = contextRepository.save(new Context("home"));
         Item item = new Item(new Title("Capture idea"), null);
-        item.addContext(context);
+        new NextAction(item, BigDecimal.ONE, Duration.ZERO, Set.of(context));
         item = itemRepository.saveAndFlush(item);
 
         mockMvc.perform(delete("/contexts/{id}", context.getId()))
@@ -243,7 +247,7 @@ class ContextControllerTests {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$", hasSize(3)))
             .andExpect(jsonPath("$[0].id").value(newest.getId().toString()))
-            .andExpect(jsonPath("$[0].status").value("STUFF"))
+            .andExpect(jsonPath("$[0].status").value("NEXT_ACTION"))
             .andExpect(jsonPath("$[0].body").doesNotExist())
             .andExpect(jsonPath("$[0].title").value("Newest item"))
             .andExpect(jsonPath("$[1].title").value("Middle item"))
@@ -303,7 +307,7 @@ class ContextControllerTests {
 
     private Item saveContextItem(Context context, String title, Instant updatedAt) throws Exception {
         Item item = new Item(new Title(title), null);
-        item.addContext(context);
+        new NextAction(item, BigDecimal.ONE, Duration.ZERO, Set.of(context));
         setAuditField(item, "createdAt", updatedAt);
         setAuditField(item, "updatedAt", updatedAt);
         return itemRepository.saveAndFlush(item);

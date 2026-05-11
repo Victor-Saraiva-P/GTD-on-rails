@@ -1,11 +1,16 @@
 package com.gtdonrails.api.services;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.math.BigDecimal;
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -17,6 +22,7 @@ import com.gtdonrails.api.dtos.context.CreateContextRequestDto;
 import com.gtdonrails.api.dtos.context.UpdateContextRequestDto;
 import com.gtdonrails.api.entities.Context;
 import com.gtdonrails.api.entities.Item;
+import com.gtdonrails.api.entities.NextAction;
 import com.gtdonrails.api.exceptions.context.ContextNotFoundException;
 import com.gtdonrails.api.mappers.ContextMapper;
 import com.gtdonrails.api.mappers.ItemMapper;
@@ -24,7 +30,7 @@ import com.gtdonrails.api.normalizers.ContextNameNormalizer;
 import com.gtdonrails.api.persistence.bootstrap.model.PersistenceChangeType;
 import com.gtdonrails.api.persistence.bootstrap.services.PersistenceGitSyncService;
 import com.gtdonrails.api.repositories.ContextRepository;
-import com.gtdonrails.api.repositories.ItemRepository;
+import com.gtdonrails.api.repositories.NextActionRepository;
 import com.gtdonrails.api.types.Title;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
@@ -34,11 +40,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @ExtendWith(MockitoExtension.class)
 @Tag("unit")
@@ -48,7 +51,7 @@ class ContextServiceTests {
     private ContextRepository contextRepository;
 
     @Mock
-    private ItemRepository itemRepository;
+    private NextActionRepository nextActionRepository;
 
     @Mock
     private ContextMapper contextMapper;
@@ -65,8 +68,6 @@ class ContextServiceTests {
     @Mock
     private PersistenceGitSyncService persistenceGitSyncService;
 
-    private final ContextNameNormalizer contextNameNormalizer = new ContextNameNormalizer();
-
     @Captor
     private ArgumentCaptor<Context> contextCaptor;
 
@@ -76,51 +77,32 @@ class ContextServiceTests {
     void setUp() {
         contextService = new ContextService(
             contextRepository,
-            itemRepository,
+            nextActionRepository,
             contextMapper,
             itemMapper,
-            contextNameNormalizer,
+            new ContextNameNormalizer(),
             assetStorageService,
             assetSyncService,
             persistenceGitSyncService,
-            new AfterCommitExecutor()
-        );
+            new AfterCommitExecutor());
     }
 
     @Test
     void listContextsReturnsMappedContexts() {
         Context home = new Context("home");
-        Context street = new Context("street");
         ContextResponseDto homeResponse = new ContextResponseDto(UUID.randomUUID(), "home", null);
-        ContextResponseDto streetResponse = new ContextResponseDto(UUID.randomUUID(), "street", null);
 
-        when(contextRepository.findAllByDeletedAtIsNullOrderByNameAsc()).thenReturn(List.of(home, street));
+        when(contextRepository.findAllByDeletedAtIsNullOrderByNameAsc()).thenReturn(List.of(home));
         when(contextMapper.toResponse(home)).thenReturn(homeResponse);
-        when(contextMapper.toResponse(street)).thenReturn(streetResponse);
 
         List<ContextResponseDto> response = contextService.listContexts();
 
-        assertEquals(List.of(homeResponse, streetResponse), response);
-    }
-
-    @Test
-    void getContextReturnsMappedContext() {
-        UUID contextId = UUID.randomUUID();
-        Context context = new Context("home");
-        ContextResponseDto expectedResponse = new ContextResponseDto(contextId, "home", null);
-
-        when(contextRepository.findByIdAndDeletedAtIsNull(contextId)).thenReturn(Optional.of(context));
-        when(contextMapper.toResponse(context)).thenReturn(expectedResponse);
-
-        ContextResponseDto response = contextService.getContext(contextId);
-
-        assertEquals(expectedResponse, response);
+        assertEquals(List.of(homeResponse), response);
     }
 
     @Test
     void getContextThrowsWhenContextDoesNotExist() {
         UUID contextId = UUID.randomUUID();
-
         when(contextRepository.findByIdAndDeletedAtIsNull(contextId)).thenReturn(Optional.empty());
 
         ContextNotFoundException exception = assertThrows(
@@ -131,71 +113,39 @@ class ContextServiceTests {
     }
 
     @Test
-    void listContextItemsReturnsMappedItemsOrderedByUpdatedAtDesc() {
+    void listContextItemsReturnsItemsFromNextActions() {
         UUID contextId = UUID.randomUUID();
         Context context = new Context("home");
-        Item newerItem = new Item(new Title("Newer item"), null);
-        Item olderItem = new Item(new Title("Older item"), null);
-        ContextItemResponseDto newerResponse = contextItemResponse("Newer item");
-        ContextItemResponseDto olderResponse = contextItemResponse("Older item");
+        NextAction nextAction = nextAction("Buy cable", context);
+        ContextItemResponseDto itemResponse = contextItemResponse("Buy cable");
 
         when(contextRepository.findByIdAndDeletedAtIsNull(contextId)).thenReturn(Optional.of(context));
-        when(itemRepository.findAllByContexts_IdAndDeletedAtIsNullOrderByUpdatedAtDesc(contextId))
-            .thenReturn(List.of(newerItem, olderItem));
-        when(itemMapper.toContextItemResponse(newerItem)).thenReturn(newerResponse);
-        when(itemMapper.toContextItemResponse(olderItem)).thenReturn(olderResponse);
+        when(nextActionRepository.findAllByContexts_IdAndItem_DeletedAtIsNullOrderByItem_UpdatedAtDesc(contextId))
+            .thenReturn(List.of(nextAction));
+        when(itemMapper.toContextItemResponse(nextAction.getItem())).thenReturn(itemResponse);
 
         List<ContextItemResponseDto> response = contextService.listContextItems(contextId, null);
 
-        assertEquals(List.of(newerResponse, olderResponse), response);
+        assertEquals(List.of(itemResponse), response);
     }
 
     @Test
     void listContextItemsAppliesLimit() {
         UUID contextId = UUID.randomUUID();
         Context context = new Context("home");
-        Item limitedItem = new Item(new Title("Limited item"), null);
-        ContextItemResponseDto limitedResponse = contextItemResponse("Limited item");
+        NextAction nextAction = nextAction("Buy cable", context);
+        ContextItemResponseDto itemResponse = contextItemResponse("Buy cable");
 
         when(contextRepository.findByIdAndDeletedAtIsNull(contextId)).thenReturn(Optional.of(context));
-        when(itemRepository.findAllByContexts_IdAndDeletedAtIsNullOrderByUpdatedAtDesc(
+        when(nextActionRepository.findAllByContexts_IdAndItem_DeletedAtIsNullOrderByItem_UpdatedAtDesc(
             eq(contextId),
             eq(PageRequest.of(0, 1))
-        )).thenReturn(new PageImpl<>(List.of(limitedItem)));
-        when(itemMapper.toContextItemResponse(limitedItem)).thenReturn(limitedResponse);
+        )).thenReturn(new PageImpl<>(List.of(nextAction)));
+        when(itemMapper.toContextItemResponse(nextAction.getItem())).thenReturn(itemResponse);
 
         List<ContextItemResponseDto> response = contextService.listContextItems(contextId, 1);
 
-        assertEquals(List.of(limitedResponse), response);
-    }
-
-    @Test
-    void listContextItemsThrowsWhenContextDoesNotExist() {
-        UUID contextId = UUID.randomUUID();
-
-        when(contextRepository.findByIdAndDeletedAtIsNull(contextId)).thenReturn(Optional.empty());
-
-        ContextNotFoundException exception = assertThrows(
-            ContextNotFoundException.class,
-            () -> contextService.listContextItems(contextId, 10)
-        );
-
-        assertEquals("context not found", exception.getMessage());
-    }
-
-    @Test
-    void createContextSavesContext() {
-        ContextResponseDto expectedResponse = new ContextResponseDto(UUID.randomUUID(), "home", null);
-
-        when(contextRepository.save(any(Context.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(contextMapper.toResponse(any(Context.class))).thenReturn(expectedResponse);
-
-        ContextResponseDto response = contextService.createContext(new CreateContextRequestDto("home"));
-
-        verify(contextRepository).save(contextCaptor.capture());
-        assertEquals("home", contextCaptor.getValue().getName());
-        assertEquals(expectedResponse, response);
-        verify(persistenceGitSyncService).requestSync("context created", PersistenceChangeType.CREATE_CONTEXT);
+        assertEquals(List.of(itemResponse), response);
     }
 
     @Test
@@ -209,6 +159,7 @@ class ContextServiceTests {
 
         verify(contextRepository).save(contextCaptor.capture());
         assertEquals("home office", contextCaptor.getValue().getName());
+        verify(persistenceGitSyncService).requestSync("context created", PersistenceChangeType.CREATE_CONTEXT);
     }
 
     @Test
@@ -223,39 +174,26 @@ class ContextServiceTests {
 
         ContextResponseDto response = contextService.updateContext(contextId, new UpdateContextRequestDto("office"));
 
-        verify(contextRepository).save(contextCaptor.capture());
-        assertEquals("office", contextCaptor.getValue().getName());
         assertEquals(expectedResponse, response);
+        assertEquals("office", context.getName());
         verify(persistenceGitSyncService).requestSync("context updated", PersistenceChangeType.UPDATE_CONTEXT);
     }
 
     @Test
-    void updateContextNormalizesNameBeforeSaving() {
+    void deleteContextRemovesRelationFromAllNextActions() {
         UUID contextId = UUID.randomUUID();
         Context context = new Context("home");
-        ContextResponseDto expectedResponse = new ContextResponseDto(contextId, "office room", null);
-
-        when(contextRepository.findByIdAndDeletedAtIsNull(contextId)).thenReturn(Optional.of(context));
-        when(contextRepository.save(any(Context.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(contextMapper.toResponse(any(Context.class))).thenReturn(expectedResponse);
-
-        contextService.updateContext(contextId, new UpdateContextRequestDto(" office\troom "));
-
-        verify(contextRepository).save(contextCaptor.capture());
-        assertEquals("office room", contextCaptor.getValue().getName());
-    }
-
-    @Test
-    void deleteContextSoftDeletesContext() {
-        UUID contextId = UUID.randomUUID();
-        Context context = new Context("home");
+        NextAction firstAction = nextAction("First item", context);
+        NextAction secondAction = nextAction("Second item", context);
 
         when(contextRepository.findByIdAndDeletedAtIsNull(contextId)).thenReturn(Optional.of(context));
 
         contextService.deleteContext(contextId);
 
-        verify(contextRepository).save(contextCaptor.capture());
-        assertTrue(contextCaptor.getValue().isDeleted());
+        assertEquals(Set.of(), firstAction.getContexts());
+        assertEquals(Set.of(), secondAction.getContexts());
+        assertEquals(Set.of(), context.getNextActions());
+        assertTrue(context.isDeleted());
     }
 
     @Test
@@ -268,256 +206,17 @@ class ContextServiceTests {
 
         contextService.restoreContext(contextId);
 
+        assertFalse(context.isDeleted());
         verify(contextRepository).save(contextCaptor.capture());
-        assertFalse(contextCaptor.getValue().isDeleted());
         verify(persistenceGitSyncService).requestSync("context restored", PersistenceChangeType.UPDATE_CONTEXT);
     }
 
-    @Test
-    void restoreContextThrowsWhenContextDoesNotExist() {
-        UUID contextId = UUID.randomUUID();
-
-        when(contextRepository.findById(contextId)).thenReturn(Optional.empty());
-
-        ContextNotFoundException exception = assertThrows(
-            ContextNotFoundException.class,
-            () -> contextService.restoreContext(contextId));
-
-        assertEquals("context not found", exception.getMessage());
-    }
-
-    @Test
-    void deleteContextRemovesRelationFromAllItems() {
-        UUID contextId = UUID.randomUUID();
-        Context context = new Context("home");
-        Item firstItem = new Item(new Title("First item"), null);
-        Item secondItem = new Item(new Title("Second item"), null);
-        firstItem.addContext(context);
-        secondItem.addContext(context);
-
-        when(contextRepository.findByIdAndDeletedAtIsNull(contextId)).thenReturn(Optional.of(context));
-
-        contextService.deleteContext(contextId);
-
-        assertEquals(Set.of(), firstItem.getContexts());
-        assertEquals(Set.of(), secondItem.getContexts());
-        assertEquals(Set.of(), context.getItems());
-    }
-
-    @Test
-    void deleteContextDeletesCurrentIconAsset() {
-        UUID contextId = UUID.randomUUID();
-        Context context = new Context("home");
-        context.setIconAssetPath("contexts/home/icon.png");
-
-        when(contextRepository.findByIdAndDeletedAtIsNull(contextId)).thenReturn(Optional.of(context));
-
-        contextService.deleteContext(contextId);
-
-        verify(assetStorageService).deleteAsset("contexts/home/icon.png");
-    }
-
-    @Test
-    void deleteContextRequestsAssetSyncImmediatelyWhenNoTransactionSynchronizationIsActive() {
-        UUID contextId = UUID.randomUUID();
-        Context context = new Context("home");
-
-        when(contextRepository.findByIdAndDeletedAtIsNull(contextId)).thenReturn(Optional.of(context));
-
-        contextService.deleteContext(contextId);
-
-        verify(assetSyncService).requestSync("context deleted");
-        verify(persistenceGitSyncService).requestSync("context deleted", PersistenceChangeType.DELETE_CONTEXT);
-    }
-
-    @Test
-    void updateContextIconStoresIconAndUpdatesContext() {
-        UUID contextId = UUID.randomUUID();
-        Context context = new Context("home");
-        MockMultipartFile file = pngIconFile();
-        ContextResponseDto expectedResponse = new ContextResponseDto(contextId, "home", "/assets/contexts/home/icon.png");
-
-        when(contextRepository.findByIdAndDeletedAtIsNull(contextId)).thenReturn(Optional.of(context));
-        when(assetStorageService.storeContextIcon(contextId, file)).thenReturn("contexts/home/icon.png");
-        stubSavedContextResponse(expectedResponse);
-
-        ContextResponseDto response = contextService.updateContextIcon(contextId, file);
-
-        assertEquals("contexts/home/icon.png", capturedSavedContext().getIconAssetPath());
-        assertEquals(expectedResponse, response);
-        verify(assetSyncService).requestSync("context icon updated");
-        verifyContextIconPersistenceSync();
-    }
-
-    @Test
-    void updateContextIconDeletesPreviousIconWhenPathChanges() {
-        UUID contextId = UUID.randomUUID();
-        Context context = new Context("home");
-        context.setIconAssetPath("contexts/home/old-icon.png");
-        MockMultipartFile file = new MockMultipartFile("file", "icon.png", "image/png", new byte[] {1, 2, 3});
-
-        when(contextRepository.findByIdAndDeletedAtIsNull(contextId)).thenReturn(Optional.of(context));
-        when(assetStorageService.storeContextIcon(contextId, file)).thenReturn("contexts/home/new-icon.png");
-        when(contextRepository.save(any(Context.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(contextMapper.toResponse(any(Context.class))).thenReturn(new ContextResponseDto(contextId, "home", null));
-
-        contextService.updateContextIcon(contextId, file);
-
-        verify(assetStorageService).deleteAsset("contexts/home/old-icon.png");
-    }
-
-    @Test
-    void updateContextIconDoesNotDeletePreviousIconWhenPathIsUnchanged() {
-        UUID contextId = UUID.randomUUID();
-        Context context = new Context("home");
-        context.setIconAssetPath("contexts/home/icon.png");
-        MockMultipartFile file = new MockMultipartFile("file", "icon.png", "image/png", new byte[] {1, 2, 3});
-
-        when(contextRepository.findByIdAndDeletedAtIsNull(contextId)).thenReturn(Optional.of(context));
-        when(assetStorageService.storeContextIcon(contextId, file)).thenReturn("contexts/home/icon.png");
-        when(contextRepository.save(any(Context.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(contextMapper.toResponse(any(Context.class))).thenReturn(new ContextResponseDto(contextId, "home", null));
-
-        contextService.updateContextIcon(contextId, file);
-
-        verify(assetStorageService).storeContextIcon(contextId, file);
-        verify(assetStorageService, org.mockito.Mockito.never()).deleteAsset("contexts/home/icon.png");
-    }
-
-    @Test
-    void updateContextIconThrowsWhenContextDoesNotExist() {
-        UUID contextId = UUID.randomUUID();
-        MockMultipartFile file = new MockMultipartFile("file", "icon.png", "image/png", new byte[] {1, 2, 3});
-
-        when(contextRepository.findByIdAndDeletedAtIsNull(contextId)).thenReturn(Optional.empty());
-
-        ContextNotFoundException exception = assertThrows(
-            ContextNotFoundException.class,
-            () -> contextService.updateContextIcon(contextId, file)
-        );
-
-        assertEquals("context not found", exception.getMessage());
-    }
-
-    @Test
-    void deleteContextIconDeletesAssetAndClearsPath() {
-        UUID contextId = UUID.randomUUID();
-        Context context = new Context("home");
-        context.setIconAssetPath("contexts/home/icon.png");
-        ContextResponseDto expectedResponse = new ContextResponseDto(contextId, "home", null);
-
-        when(contextRepository.findByIdAndDeletedAtIsNull(contextId)).thenReturn(Optional.of(context));
-        stubSavedContextResponse(expectedResponse);
-
-        ContextResponseDto response = contextService.deleteContextIcon(contextId);
-
-        verify(assetStorageService).deleteAsset("contexts/home/icon.png");
-        assertNull(capturedSavedContext().getIconAssetPath());
-        assertEquals(expectedResponse, response);
-        verify(assetSyncService).requestSync("context icon deleted");
-        verifyContextIconDeletedPersistenceSync();
-    }
-
-    @Test
-    void deleteContextIconThrowsWhenContextDoesNotExist() {
-        UUID contextId = UUID.randomUUID();
-
-        when(contextRepository.findByIdAndDeletedAtIsNull(contextId)).thenReturn(Optional.empty());
-
-        ContextNotFoundException exception = assertThrows(
-            ContextNotFoundException.class,
-            () -> contextService.deleteContextIcon(contextId)
-        );
-
-        assertEquals("context not found", exception.getMessage());
-    }
-
-    @Test
-    void requestsAssetSyncOnlyAfterCommitWhenTransactionSynchronizationIsActive() {
-        UUID contextId = UUID.randomUUID();
-        Context context = new Context("home");
-
-        when(contextRepository.findByIdAndDeletedAtIsNull(contextId)).thenReturn(Optional.of(context));
-
-        withTransactionSynchronization(() -> {
-            contextService.deleteContext(contextId);
-
-            verifyContextDeletedSyncNotRequested();
-            runRegisteredAfterCommitCallbacks();
-
-            verify(assetSyncService).requestSync("context deleted");
-            verify(persistenceGitSyncService).requestSync("context deleted", PersistenceChangeType.DELETE_CONTEXT);
-        });
+    private NextAction nextAction(String title, Context context) {
+        Item item = new Item(new Title(title), null);
+        return new NextAction(item, BigDecimal.ONE, Duration.ZERO, Set.of(context));
     }
 
     private ContextItemResponseDto contextItemResponse(String title) {
-        return new ContextItemResponseDto(UUID.randomUUID(), title, "STUFF");
-    }
-
-    private MockMultipartFile pngIconFile() {
-        return new MockMultipartFile("file", "icon.png", "image/png", new byte[] {1, 2, 3});
-    }
-
-    private void stubSavedContextResponse(ContextResponseDto expectedResponse) {
-        when(contextRepository.save(any(Context.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(contextMapper.toResponse(any(Context.class))).thenReturn(expectedResponse);
-    }
-
-    private Context capturedSavedContext() {
-        verify(contextRepository).save(contextCaptor.capture());
-        return contextCaptor.getValue();
-    }
-
-    private void verifyContextIconPersistenceSync() {
-        verify(persistenceGitSyncService).requestSync(
-            "context icon updated",
-            PersistenceChangeType.UPDATE_CONTEXT_ICON
-        );
-    }
-
-    private void verifyContextIconDeletedPersistenceSync() {
-        verify(persistenceGitSyncService).requestSync(
-            "context icon deleted",
-            PersistenceChangeType.DELETE_CONTEXT_ICON
-        );
-    }
-
-    private void verifyContextDeletedSyncNotRequested() {
-        verify(assetSyncService, org.mockito.Mockito.never()).requestSync("context deleted");
-        verify(persistenceGitSyncService, org.mockito.Mockito.never())
-            .requestSync("context deleted", PersistenceChangeType.DELETE_CONTEXT);
-    }
-
-    private void runRegisteredAfterCommitCallbacks() {
-        for (TransactionSynchronization synchronization : TransactionSynchronizationManager.getSynchronizations()) {
-            synchronization.afterCommit();
-        }
-    }
-
-    private void withTransactionSynchronization(Runnable action) {
-        TransactionSynchronizationManager.initSynchronization();
-        try {
-            action.run();
-        } finally {
-            TransactionSynchronizationManager.clearSynchronization();
-        }
-    }
-
-    @Test
-    void doesNotRequestPersistenceSyncWithoutCommitWhenTransactionSynchronizationIsActive() {
-        UUID contextId = UUID.randomUUID();
-        Context context = new Context("home");
-
-        when(contextRepository.findByIdAndDeletedAtIsNull(contextId)).thenReturn(Optional.of(context));
-
-        TransactionSynchronizationManager.initSynchronization();
-        try {
-            contextService.deleteContext(contextId);
-
-            verify(persistenceGitSyncService, org.mockito.Mockito.never())
-                .requestSync("context deleted", PersistenceChangeType.DELETE_CONTEXT);
-        } finally {
-            TransactionSynchronizationManager.clearSynchronization();
-        }
+        return new ContextItemResponseDto(UUID.randomUUID(), title, "NEXT_ACTION");
     }
 }

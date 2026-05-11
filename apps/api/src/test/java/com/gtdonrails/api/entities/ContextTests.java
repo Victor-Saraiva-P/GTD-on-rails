@@ -6,7 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.gtdonrails.api.types.Title;
+import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.Instant;
+import java.util.Set;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -44,13 +47,12 @@ class ContextTests {
     }
 
     @Test
-    void tracksItemsThroughItemRelation() {
+    void tracksNextActionsThroughNextActionRelation() {
         Context context = new Context("street");
         Item item = new Item(new Title("Buy cable"), null);
+        NextAction nextAction = new NextAction(item, BigDecimal.ONE, Duration.ZERO, Set.of(context));
 
-        item.addContext(context);
-
-        assertTrue(context.getItems().contains(item));
+        assertTrue(context.getNextActions().contains(nextAction));
     }
 
     @Test

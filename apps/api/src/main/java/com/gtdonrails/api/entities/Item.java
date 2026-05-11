@@ -1,18 +1,14 @@
 package com.gtdonrails.api.entities;
 
-import java.math.BigDecimal;
-import java.time.Duration;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.UUID;
 
 import com.gtdonrails.api.enums.ItemStatus;
 import com.gtdonrails.api.normalizers.ItemBodyNormalizer;
-import com.gtdonrails.api.persistence.converters.DurationMinutesConverter;
 import com.gtdonrails.api.persistence.converters.ItemBodyConverter;
 import com.gtdonrails.api.persistence.converters.TitleConverter;
 import com.gtdonrails.api.types.ItemBody;
 import com.gtdonrails.api.types.Title;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
@@ -21,9 +17,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
-import jakarta.persistence.ManyToMany;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -33,13 +27,6 @@ import lombok.Getter;
 @Table(name = "items")
 @Getter
 public class Item extends AuditableEntity {
-
-    public static final int ENERGY_SCALE = 1;
-    public static final String MIN_ENERGY_VALUE = "0.0";
-    public static final String MAX_ENERGY_VALUE = "10.0";
-    public static final BigDecimal MIN_ENERGY = new BigDecimal(MIN_ENERGY_VALUE);
-    public static final BigDecimal MAX_ENERGY = new BigDecimal(MAX_ENERGY_VALUE);
-    public static final String MIN_TIME_VALUE = "PT0M";
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -58,37 +45,15 @@ public class Item extends AuditableEntity {
     @Column(nullable = false, length = 50)
     private ItemStatus status;
 
-    @Column(precision = 10, scale = ENERGY_SCALE)
-    private BigDecimal energy;
-
-    @Convert(converter = DurationMinutesConverter.class)
-    @Column(name = "estimated_time_minutes")
-    private Duration estimatedTime;
-
-    @ManyToMany
-    @JoinTable(
-        name = "item_contexts",
-        joinColumns = @JoinColumn(name = "item_id"),
-        inverseJoinColumns = @JoinColumn(name = "context_id")
-    )
-    private Set<Context> contexts = new HashSet<>();
+    @OneToOne(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true)
+    private NextAction nextAction;
 
     public Item() {
     }
 
     public Item(Title title, String body) {
-        this(title, body, null, null);
-    }
-
-    public Item(Title title, String body, BigDecimal energy) {
-        this(title, body, energy, null);
-    }
-
-    public Item(Title title, String body, BigDecimal energy, Duration estimatedTime) {
         setTitle(title);
         setBody(new ItemBody(body, null, null, null));
-        setEnergy(energy);
-        setEstimatedTime(estimatedTime);
     }
 
     /**
@@ -114,100 +79,15 @@ public class Item extends AuditableEntity {
     }
 
     /**
-     * Stores optional energy after normalizing scale and validating range.
+     * Associates this item with its optional GTD next-action metadata.
      *
-     * <p>Example: {@code item.setEnergy(new BigDecimal("4.5"))}.</p>
+     * <p>Example: {@code item.setNextAction(nextAction)}.</p>
      */
-    public void setEnergy(BigDecimal energy) {
-        if (energy == null) {
-            this.energy = null;
-            return;
+    public void setNextAction(NextAction nextAction) {
+        this.nextAction = nextAction;
+        if (nextAction != null && nextAction.getItem() != this) {
+            nextAction.setItem(this);
         }
-
-        BigDecimal normalizedEnergy = energy.stripTrailingZeros();
-        requireAllowedEnergyScale(normalizedEnergy);
-        normalizedEnergy = energy.setScale(ENERGY_SCALE);
-        requireEnergyInRange(normalizedEnergy);
-
-        this.energy = normalizedEnergy;
-    }
-
-    private void requireAllowedEnergyScale(BigDecimal energy) {
-        if (energy.scale() > ENERGY_SCALE) {
-            throw new IllegalArgumentException(
-                "energy value '" + energy + "' is invalid; expected up to " + ENERGY_SCALE + " decimal place");
-        }
-    }
-
-    private void requireEnergyInRange(BigDecimal energy) {
-        if (energy.compareTo(MIN_ENERGY) < 0 || energy.compareTo(MAX_ENERGY) > 0) {
-            throw new IllegalArgumentException(
-                "energy value '" + energy + "' is invalid; expected between " + MIN_ENERGY_VALUE + " and " + MAX_ENERGY_VALUE);
-        }
-    }
-
-    /**
-     * Stores optional time estimates when they use whole-minute precision.
-     *
-     * <p>Example: {@code item.setEstimatedTime(Duration.ofMinutes(90))}.</p>
-     */
-    public void setEstimatedTime(Duration estimatedTime) {
-        if (estimatedTime == null) {
-            this.estimatedTime = null;
-            return;
-        }
-
-        if (estimatedTime.isNegative()) {
-            throw new IllegalArgumentException(
-                "time value '" + estimatedTime + "' is invalid; expected greater than or equal to " + MIN_TIME_VALUE);
-        }
-
-        if (estimatedTime.getSeconds() % 60 != 0 || estimatedTime.getNano() != 0) {
-            throw new IllegalArgumentException(
-                "time value '" + estimatedTime + "' is invalid; expected whole-minute Duration");
-        }
-
-        this.estimatedTime = estimatedTime;
-    }
-
-    /**
-     * Adds a context and keeps both sides of the item-context relation aligned.
-     *
-     * <p>Example: {@code item.addContext(context)}.</p>
-     */
-    public void addContext(Context context) {
-        if (context == null) {
-            throw new IllegalArgumentException("context value 'null' is invalid; expected Context");
-        }
-
-        contexts.add(context);
-        context.getItems().add(this);
-    }
-
-    /**
-     * Removes a context and keeps both sides of the item-context relation aligned.
-     *
-     * <p>Example: {@code item.removeContext(context)}.</p>
-     */
-    public void removeContext(Context context) {
-        if (context == null) {
-            return;
-        }
-
-        contexts.remove(context);
-        context.getItems().remove(this);
-    }
-
-    /**
-     * Replaces all contexts while preserving bidirectional relation consistency.
-     *
-     * <p>Example: {@code item.replaceContexts(Set.of(homeContext))}.</p>
-     */
-    public void replaceContexts(Set<Context> contexts) {
-        Set<Context> currentContexts = new HashSet<>(this.contexts);
-
-        currentContexts.forEach(this::removeContext);
-        contexts.forEach(this::addContext);
     }
 
     @PrePersist
@@ -223,6 +103,6 @@ public class Item extends AuditableEntity {
     }
 
     private ItemStatus inferStatus() {
-        return ItemStatus.STUFF;
+        return nextAction == null ? ItemStatus.STUFF : ItemStatus.NEXT_ACTION;
     }
 }
