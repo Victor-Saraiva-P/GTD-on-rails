@@ -59,21 +59,46 @@ class ItemTests {
     }
 
     @Test
-    void setsStatusToStuffWhenItemIsPersistedWithoutNextAction() {
+    void constructorSetsStatusToStuff() {
         Item item = new Item(new Title("Capture idea"), null);
-
-        item.prePersist();
 
         assertEquals(ItemStatus.STUFF, item.getStatus());
     }
 
     @Test
-    void setsStatusToNextActionWhenItemHasNextAction() {
+    void markAsStuffExplicitlySetsStatusToStuff() {
+        Item item = new Item(new Title("Capture idea"), null);
+
+        item.markAsStuff();
+
+        assertEquals(ItemStatus.STUFF, item.getStatus());
+    }
+
+    @Test
+    void markAsStuffRejectsItemWithNextAction() {
+        Item item = new Item(new Title("Capture idea"), null);
+        new NextAction(item, java.math.BigDecimal.ONE, java.time.Duration.ZERO, java.util.Set.of(new Context("home")));
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class, item::markAsStuff);
+
+        assertEquals("item nextAction value is invalid; expected no next action when marking as STUFF", exception.getMessage());
+    }
+
+    @Test
+    void convertToNextActionSetsStatusManually() {
+        Item item = new Item(new Title("Capture idea"), null);
+        item.convertToNextAction(java.math.BigDecimal.ONE, java.time.Duration.ZERO, java.util.Set.of(new Context("home")));
+
+        assertEquals(ItemStatus.NEXT_ACTION, item.getStatus());
+    }
+
+    @Test
+    void prePersistDoesNotInferStatusFromNextAction() {
         Item item = new Item(new Title("Capture idea"), null);
         new NextAction(item, java.math.BigDecimal.ONE, java.time.Duration.ZERO, java.util.Set.of(new Context("home")));
 
         item.prePersist();
 
-        assertEquals(ItemStatus.NEXT_ACTION, item.getStatus());
+        assertEquals(ItemStatus.STUFF, item.getStatus());
     }
 }

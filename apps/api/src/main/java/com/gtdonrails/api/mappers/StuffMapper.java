@@ -17,6 +17,7 @@ public class StuffMapper {
             item.getId(),
             item.getTitle().value(),
             item.getBody(),
+            item.getStatus().name(),
             item.getCreatedAt()
         );
     }

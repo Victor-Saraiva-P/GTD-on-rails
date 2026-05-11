@@ -213,7 +213,7 @@ class ContextServiceTests {
 
     private NextAction nextAction(String title, Context context) {
         Item item = new Item(new Title(title), null);
-        return new NextAction(item, BigDecimal.ONE, Duration.ZERO, Set.of(context));
+        return item.convertToNextAction(BigDecimal.ONE, Duration.ZERO, Set.of(context));
     }
 
     private ContextItemResponseDto contextItemResponse(String title) {

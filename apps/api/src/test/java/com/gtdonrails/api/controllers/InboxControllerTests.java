@@ -63,6 +63,7 @@ class InboxControllerTests {
             .andExpect(jsonPath("$.id", notNullValue()))
             .andExpect(jsonPath("$.title").value("Capture idea"))
             .andExpect(jsonPath("$.body.text").value(""))
+            .andExpect(jsonPath("$.status").value("STUFF"))
             .andExpect(jsonPath("$.createdAt", notNullValue()));
     }
 
@@ -74,7 +75,8 @@ class InboxControllerTests {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(stuff.getId().toString()))
             .andExpect(jsonPath("$.title").value("Visible stuff"))
-            .andExpect(jsonPath("$.body.text").value("Body"));
+            .andExpect(jsonPath("$.body.text").value("Body"))
+            .andExpect(jsonPath("$.status").value("STUFF"));
     }
 
     @Test
@@ -89,6 +91,7 @@ class InboxControllerTests {
             .andExpect(jsonPath("$", hasSize(1)))
             .andExpect(jsonPath("$[0].id").value(visibleItem.getId().toString()))
             .andExpect(jsonPath("$[0].title").value("Visible item"))
+            .andExpect(jsonPath("$[0].status").value("STUFF"))
             .andExpect(jsonPath("$[0].createdAt", notNullValue()));
     }
 

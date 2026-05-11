@@ -219,7 +219,7 @@ class ContextControllerTests {
     void deletingContextRemovesItFromRelatedItems() throws Exception {
         Context context = contextRepository.save(new Context("home"));
         Item item = new Item(new Title("Capture idea"), null);
-        new NextAction(item, BigDecimal.ONE, Duration.ZERO, Set.of(context));
+        item.convertToNextAction(BigDecimal.ONE, Duration.ZERO, Set.of(context));
         item = itemRepository.saveAndFlush(item);
 
         mockMvc.perform(delete("/contexts/{id}", context.getId()))
@@ -306,7 +306,7 @@ class ContextControllerTests {
 
     private Item saveContextItem(Context context, String title, Instant updatedAt) throws Exception {
         Item item = new Item(new Title(title), null);
-        new NextAction(item, BigDecimal.ONE, Duration.ZERO, Set.of(context));
+        item.convertToNextAction(BigDecimal.ONE, Duration.ZERO, Set.of(context));
         setAuditField(item, "createdAt", updatedAt);
         setAuditField(item, "updatedAt", updatedAt);
         return itemRepository.saveAndFlush(item);

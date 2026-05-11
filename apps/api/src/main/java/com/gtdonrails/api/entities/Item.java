@@ -1,5 +1,8 @@
 package com.gtdonrails.api.entities;
 
+import java.math.BigDecimal;
+import java.time.Duration;
+import java.util.Set;
 import java.util.UUID;
 
 import com.gtdonrails.api.enums.ItemStatus;
@@ -43,7 +46,7 @@ public class Item extends AuditableEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
-    private ItemStatus status;
+    private ItemStatus status = ItemStatus.STUFF;
 
     @OneToOne(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true)
     private NextAction nextAction;
@@ -78,32 +81,52 @@ public class Item extends AuditableEntity {
         this.body = ItemBodyNormalizer.normalizeBodyValue(body);
     }
 
-    /**
-     * Associates this item with its optional GTD next-action metadata.
-     *
-     * <p>Example: {@code item.setNextAction(nextAction)}.</p>
-     */
-    public void setNextAction(NextAction nextAction) {
+    void setNextAction(NextAction nextAction) {
         this.nextAction = nextAction;
         if (nextAction != null && nextAction.getItem() != this) {
             nextAction.setItem(this);
         }
-        status = inferStatus();
+    }
+
+    /**
+     * Explicitly classifies this item as inbox stuff.
+     *
+     * <p>Example: {@code item.markAsStuff()}.</p>
+     */
+    public void markAsStuff() {
+        if (nextAction != null) {
+            throw new IllegalStateException("item nextAction value is invalid; expected no next action when marking as STUFF");
+        }
+
+        status = ItemStatus.STUFF;
+    }
+
+    /**
+     * Converts this inbox stuff item into a GTD next action.
+     *
+     * <p>Example: {@code item.convertToNextAction(energy, time, Set.of(context))}.</p>
+     */
+    public NextAction convertToNextAction(BigDecimal energy, Duration estimatedTime, Set<Context> contexts) {
+        requireStuffBeforeNextActionConversion();
+        NextAction createdNextAction = new NextAction(this, energy, estimatedTime, contexts);
+        status = ItemStatus.NEXT_ACTION;
+        return createdNextAction;
     }
 
     @PrePersist
     void prePersist() {
         initializeAuditTimestamps();
-        status = inferStatus();
     }
 
     @PreUpdate
     void preUpdate() {
-        status = inferStatus();
         touchUpdatedAt();
     }
 
-    private ItemStatus inferStatus() {
-        return nextAction == null ? ItemStatus.STUFF : ItemStatus.NEXT_ACTION;
+    private void requireStuffBeforeNextActionConversion() {
+        if (status != ItemStatus.STUFF || nextAction != null) {
+            throw new IllegalStateException(
+                "item status value '" + status + "' is invalid; expected STUFF without next action");
+        }
     }
 }

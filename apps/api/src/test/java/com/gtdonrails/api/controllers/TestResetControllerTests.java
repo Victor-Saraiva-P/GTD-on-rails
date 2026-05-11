@@ -53,7 +53,7 @@ class TestResetControllerTests {
     void resetsItemsAndContexts() throws Exception {
         Context context = contextRepository.save(new Context("home"));
         Item item = new Item(new Title("Capture idea"), null);
-        new NextAction(item, BigDecimal.ONE, Duration.ZERO, Set.of(context));
+        item.convertToNextAction(BigDecimal.ONE, Duration.ZERO, Set.of(context));
         itemRepository.save(item);
 
         mockMvc.perform(post("/test/reset"))

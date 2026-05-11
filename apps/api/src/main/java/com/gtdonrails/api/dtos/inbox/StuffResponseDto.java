@@ -9,6 +9,7 @@ public record StuffResponseDto(
     UUID id,
     String title,
     ItemBody body,
+    String status,
     Instant createdAt
 ) {
 }
