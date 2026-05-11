@@ -1,0 +1,11 @@
+$kind: http-request
+name: /inbox
+url: "{{backend_url}}/inbox"
+method: POST
+body:
+  type: json
+  content: |-
+    {
+      "title": "Testar body estruturado"
+    }
+order: 2000

@@ -1,0 +1,13 @@
+$kind: http-request
+name: /contexts
+url: "{{backend_url}}/contexts"
+method: POST
+body:
+  type: json
+  content: |-
+    {
+        "name": "faculdade"
+    }
+auth:
+  type: noauth
+order: 1000

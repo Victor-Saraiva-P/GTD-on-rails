@@ -1,0 +1,5 @@
+$kind: http-request
+name: /assets/sync/status
+url: "{{backend_url}}/assets/sync/status"
+method: GET
+order: 1000

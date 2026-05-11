@@ -1,0 +1,13 @@
+$kind: http-request
+name: /contexts/icon
+url: "{{backend_url}}/contexts/31b56d86-3776-4894-849c-f856d45e0b46/icon"
+method: PUT
+body:
+  type: formdata
+  content:
+    - type: file
+      key: file
+      src: postman-cloud:///1f13f3c1-61ec-4920-82c4-d808969c0ffe
+auth:
+  type: noauth
+order: 4000

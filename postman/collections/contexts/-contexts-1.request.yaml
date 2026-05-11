@@ -1,0 +1,5 @@
+$kind: http-request
+name: /contexts
+url: "{{backend_url}}/contexts"
+method: GET
+order: 2000

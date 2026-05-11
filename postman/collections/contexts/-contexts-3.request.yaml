@@ -1,0 +1,13 @@
+$kind: http-request
+name: /contexts
+url: "{{backend_url}}/contexts/dfb55248-4a9a-4f36-80fc-3b61c2068053"
+method: DELETE
+body:
+  type: text
+  content: |-
+    {
+        "name": "faculdade"
+    }
+auth:
+  type: noauth
+order: 5000

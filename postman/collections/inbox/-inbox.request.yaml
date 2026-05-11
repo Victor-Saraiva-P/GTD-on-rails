@@ -1,0 +1,5 @@
+$kind: http-request
+name: /inbox
+url: "{{backend_url}}/inbox"
+method: GET
+order: 1000
