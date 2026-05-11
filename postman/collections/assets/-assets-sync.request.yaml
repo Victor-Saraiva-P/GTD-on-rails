@@ -1,11 +1,5 @@
 $kind: http-request
 name: /assets/sync
-url: "{{backend_url}}/items/10cf8a6e-6cc8-4d8d-9a71-38e41fa07f13/assets"
+url: "{{backend_url}}/assets/sync"
 method: POST
-body:
-  type: formdata
-  content:
-    - type: file
-      key: file
-      src: /home/victor/Downloads/Modelo de plano de trabalho dos PICs atual - Plano 1.pdf
 order: 2000

@@ -1,0 +1,5 @@
+$kind: http-request
+name: /inbox/uuid
+url: "{{backend_url}}/inbox/955d5deb-73b1-4c11-a23e-38e753cd76ba"
+method: GET
+order: 2500

@@ -1,0 +1,5 @@
+$kind: http-request
+name: /sync/status
+url: "{{backend_url}}/sync/status"
+method: GET
+order: 1000
