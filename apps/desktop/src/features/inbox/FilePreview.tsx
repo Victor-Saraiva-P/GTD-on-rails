@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { buildApiUrl } from "../../config/env.ts";
 import { getCachedAssetObjectUrl, getCachedPdfFirstPagePreviewUrl } from "./assetFiles";
 
 type FilePreviewProps = {
@@ -25,7 +24,7 @@ export function FilePreview(props: FilePreviewProps) {
   if (state.status === "loading") return <span className="pane-state">Loading asset...</span>;
   if (state.status === "error") return <span className="pane-state">{state.message}</span>;
   if (isImagePreview(props)) return <img alt={props.displayName || "image"} className="cm-markdown-image" src={state.objectUrl} />;
-  if (isPdfPreview(props)) return <PdfFilePreview displayName={props.displayName} fallbackUrl={props.fallbackUrl} previewUrl={state.objectUrl} />;
+  if (isPdfPreview(props)) return <PdfFilePreview displayName={props.displayName} previewUrl={state.objectUrl} />;
   return <a className="cm-markdown-link" href={state.objectUrl} rel="noreferrer" target="_blank">Open {props.displayName || "asset"}</a>;
 }
 
@@ -45,12 +44,10 @@ async function cachedPreviewUrl(props: FilePreviewProps) {
   return (await getCachedPdfFirstPagePreviewUrl(props.relativePath)) ?? { url: "", revoke: false };
 }
 
-function PdfFilePreview({ displayName, fallbackUrl, previewUrl }: { displayName?: string; fallbackUrl?: string; previewUrl: string }) {
-  const openUrl = fallbackUrl ? buildApiUrl(fallbackUrl) : previewUrl;
+function PdfFilePreview({ displayName, previewUrl }: { displayName?: string; previewUrl: string }) {
   return (
     <figure className="cm-pdf-preview">
       {previewUrl ? <img alt={displayName || "PDF first page"} className="cm-pdf-preview__image" src={previewUrl} /> : null}
-      <figcaption><a className="cm-markdown-link" href={openUrl} rel="noreferrer" target="_blank">Open {displayName || "PDF"}</a></figcaption>
     </figure>
   );
 }

@@ -112,18 +112,12 @@ function isPdfBlockEntity(entity: BlockEntity): boolean {
 function pdfPreviewElement(entity: BlockEntity): HTMLElement {
   const figure = document.createElement("figure");
   const image = document.createElement("img");
-  const link = document.createElement("a");
 
   figure.className = "cm-pdf-preview";
   image.alt = entity.attrs?.displayName || "PDF first page";
   image.className = "cm-pdf-preview__image";
-  link.className = "cm-markdown-link";
-  link.rel = "noreferrer";
-  link.target = "_blank";
-  link.textContent = `Open ${entity.attrs?.displayName || "PDF"}`;
   figure.appendChild(image);
-  figure.appendChild(link);
-  void setPdfPreviewSource(figure, image, link, entity);
+  void setPdfPreviewSource(figure, image, entity);
   return figure;
 }
 
@@ -141,14 +135,13 @@ async function setImagePreviewSource(root: HTMLElement, img: HTMLImageElement, e
   img.src = assetUrl.url;
 }
 
-async function setPdfPreviewSource(root: HTMLElement, image: HTMLImageElement, link: HTMLAnchorElement, entity: BlockEntity): Promise<void> {
+async function setPdfPreviewSource(root: HTMLElement, image: HTMLImageElement, entity: BlockEntity): Promise<void> {
   const relativePath = entityAssetRelativePath(entity);
   const assetUrl = await getCachedAssetObjectUrl(relativePath, entity.attrs?.contentType, entity.attrs?.url);
   const previewUrl = await getCachedPdfFirstPagePreviewUrl(relativePath);
   root.dataset.objectUrl = previewUrl?.url ?? assetUrl.url;
   image.src = previewUrl?.url ?? "";
   image.hidden = !previewUrl;
-  link.href = assetUrl.url;
 }
 
 async function setAssetLinkHref(root: HTMLElement, link: HTMLAnchorElement, entity: BlockEntity): Promise<void> {
