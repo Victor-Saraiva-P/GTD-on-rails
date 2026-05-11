@@ -2,3 +2,4 @@ $kind: collection
 name: contexts
 variables:
   backend_url: ""
+  context_id: ""

@@ -8,4 +8,24 @@ body:
     {
       "title": "Testar body estruturado"
     }
+event:
+  - listen: test
+    script:
+      exec:
+        - const data = pm.response.json();
+        - if (data && data.id) { pm.environment.set("item_id", data.id); }
+scripts:
+  - type: afterResponse
+    code: |-
+      if (pm.response && pm.response.code) {
+          try {
+              const data = pm.response.json();
+              if (data && data.id) {
+                  pm.environment.set("item_id", data.id);
+              }
+          } catch (e) {
+              // response is not JSON
+          }
+      }
+    language: text/javascript
 order: 2000

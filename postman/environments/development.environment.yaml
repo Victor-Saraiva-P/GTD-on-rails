@@ -2,3 +2,7 @@ name: development
 values:
   - key: backend_url
     value: 'http://localhost:8080'
+  - key: item_id
+    value: ''
+  - key: context_id
+    value: ''

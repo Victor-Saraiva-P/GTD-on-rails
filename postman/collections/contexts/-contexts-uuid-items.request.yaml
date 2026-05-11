@@ -1,5 +1,5 @@
 $kind: http-request
-name: /contexts/uuid/items
-url: "{{backend_url}}/contexts/dfb55248-4a9a-4f36-80fc-3b61c2068053/items?limit=10"
+name: /contexts/{{context_id}}/items
+url: "{{backend_url}}/contexts/{{context_id}}/items?limit=10"
 method: GET
 order: 2600

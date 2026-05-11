@@ -1,5 +1,19 @@
 $kind: http-request
-name: /inbox/uuid
-url: "{{backend_url}}/inbox/955d5deb-73b1-4c11-a23e-38e753cd76ba"
+name: /inbox/{{item_id}}
+url: "{{backend_url}}/inbox/{{item_id}}"
 method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      if (pm.response && pm.response.code) {
+        try {
+          const data = pm.response.json();
+          if (data && data.id) {
+            pm.environment.set("item_id", data.id);
+          }
+        } catch (e) {
+          // response is not JSON
+        }
+      }
+    language: text/javascript
 order: 2500

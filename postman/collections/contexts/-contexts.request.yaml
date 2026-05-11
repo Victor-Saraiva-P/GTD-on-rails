@@ -10,4 +10,16 @@ body:
     }
 auth:
   type: noauth
+scripts:
+  - type: afterResponse
+    code: |
+      if (pm.response && pm.response.code) {
+          try {
+              const data = pm.response.json();
+              if (data && data.id) { pm.environment.set("context_id", data.id); }
+          } catch (e) {
+              // response is not JSON
+          }
+      }
+    language: text/javascript
 order: 1000

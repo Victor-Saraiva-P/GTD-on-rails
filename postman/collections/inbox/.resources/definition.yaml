@@ -1,1 +1,5 @@
 $kind: collection
+name: inbox
+variables:
+  backend_url: ""
+  item_id: ""

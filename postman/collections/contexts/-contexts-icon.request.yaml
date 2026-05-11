@@ -1,6 +1,6 @@
 $kind: http-request
-name: /contexts/icon
-url: "{{backend_url}}/contexts/31b56d86-3776-4894-849c-f856d45e0b46/icon"
+name: /contexts/{{context_id}}/icon
+url: "{{backend_url}}/contexts/{{context_id}}/icon"
 method: PUT
 body:
   type: formdata

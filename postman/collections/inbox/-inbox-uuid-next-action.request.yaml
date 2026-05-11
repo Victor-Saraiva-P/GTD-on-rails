@@ -1,6 +1,6 @@
 $kind: http-request
-name: /inbox/uuid/next-action
-url: "{{backend_url}}/inbox/955d5deb-73b1-4c11-a23e-38e753cd76ba/next-action"
+name: /inbox/{{item_id}}/next-action
+url: "{{backend_url}}/inbox/{{item_id}}/next-action"
 method: POST
 body:
   type: json
@@ -12,7 +12,7 @@ body:
         "minutes": 30
       },
       "contextIds": [
-        "9db4a61c-a9a8-48b0-8ebc-4202b0502d39"
+        "{{context_id}}"
       ]
     }
 order: 3000
