@@ -127,6 +127,22 @@ class NextActionControllerTests {
     }
 
     @Test
+    void getsAllNextActionsOrderedByEnergyWithoutContext() throws Exception {
+        Context home = contextRepository.save(new Context("Home"));
+        Context office = contextRepository.save(new Context("Office"));
+        Item item1 = itemRepository.save(new Item(new Title("Task 1"), null));
+        nextActionRepository.save(new NextAction(item1, new BigDecimal("2.0"), Duration.ofMinutes(15), Set.of(home)));
+        Item item2 = itemRepository.save(new Item(new Title("Task 2"), null));
+        nextActionRepository.save(new NextAction(item2, new BigDecimal("8.0"), Duration.ofMinutes(30), Set.of(office)));
+
+        mockMvc.perform(get("/next-actions?orderBy=energy"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(2)))
+            .andExpect(jsonPath("$[0].energy").value(8.0))
+            .andExpect(jsonPath("$[1].energy").value(2.0));
+    }
+
+    @Test
     void getsNextActionsOrderedByTime() throws Exception {
         Context context = contextRepository.save(new Context("Home"));
         
@@ -137,6 +153,22 @@ class NextActionControllerTests {
         nextActionRepository.save(new NextAction(item2, new BigDecimal("8.0"), Duration.ofMinutes(30), Set.of(context)));
 
         mockMvc.perform(get("/next-actions?contextId={contextId}&orderBy=time", context.getId()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(2)))
+            .andExpect(jsonPath("$[0].estimatedTime").value("PT30M"))
+            .andExpect(jsonPath("$[1].estimatedTime").value("PT15M"));
+    }
+
+    @Test
+    void getsAllNextActionsOrderedByTimeWithoutContext() throws Exception {
+        Context home = contextRepository.save(new Context("Home"));
+        Context office = contextRepository.save(new Context("Office"));
+        Item item1 = itemRepository.save(new Item(new Title("Task 1"), null));
+        nextActionRepository.save(new NextAction(item1, new BigDecimal("2.0"), Duration.ofMinutes(15), Set.of(home)));
+        Item item2 = itemRepository.save(new Item(new Title("Task 2"), null));
+        nextActionRepository.save(new NextAction(item2, new BigDecimal("8.0"), Duration.ofMinutes(30), Set.of(office)));
+
+        mockMvc.perform(get("/next-actions?orderBy=time"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$", hasSize(2)))
             .andExpect(jsonPath("$[0].estimatedTime").value("PT30M"))

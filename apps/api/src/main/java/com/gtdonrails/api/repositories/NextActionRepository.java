@@ -19,6 +19,10 @@ public interface NextActionRepository extends JpaRepository<NextAction, UUID> {
 
     List<NextAction> findAllByStatusAndContexts_IdAndItem_DeletedAtIsNullOrderByEstimatedTimeDesc(NextActionStatus status, UUID contextId);
 
+    List<NextAction> findAllByStatusAndItem_DeletedAtIsNullOrderByEnergyDesc(NextActionStatus status);
+
+    List<NextAction> findAllByStatusAndItem_DeletedAtIsNullOrderByEstimatedTimeDesc(NextActionStatus status);
+
     List<NextAction> findAllByItem_DeletedAtIsNotNullOrderByItem_UpdatedAtDesc();
 
     Page<NextAction> findAllByStatusAndItem_DeletedAtIsNullOrderByItem_UpdatedAtDesc(NextActionStatus status, Pageable pageable);

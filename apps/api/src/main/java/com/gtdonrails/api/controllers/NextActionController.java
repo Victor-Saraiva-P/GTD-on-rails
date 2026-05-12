@@ -53,7 +53,7 @@ public class NextActionController {
 
     @GetMapping
     public List<NextActionResponseDto> getNextActions(
-        @RequestParam UUID contextId,
+        @RequestParam(required = false) UUID contextId,
         @RequestParam String orderBy
     ) {
         if ("time".equalsIgnoreCase(orderBy)) {

@@ -141,11 +141,33 @@ class NextActionServiceTests {
     }
 
     @Test
+    void getsAllOrderedByEnergyWhenContextIsMissing() {
+        when(nextActionRepository.findAllByStatusAndItem_DeletedAtIsNullOrderByEnergyDesc(NextActionStatus.NEXT_ACTION))
+            .thenReturn(List.of(nextAction));
+
+        List<NextActionResponseDto> result = nextActionService.getOrderedByEnergy(null);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().energy()).isEqualTo(new BigDecimal("5.0"));
+    }
+
+    @Test
     void getsOrderedByTime() {
         when(nextActionRepository.findAllByStatusAndContexts_IdAndItem_DeletedAtIsNullOrderByEstimatedTimeDesc(NextActionStatus.NEXT_ACTION, contextId))
             .thenReturn(List.of(nextAction));
 
         List<NextActionResponseDto> result = nextActionService.getOrderedByTime(contextId);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().estimatedTime()).isEqualTo(Duration.ofMinutes(30));
+    }
+
+    @Test
+    void getsAllOrderedByTimeWhenContextIsMissing() {
+        when(nextActionRepository.findAllByStatusAndItem_DeletedAtIsNullOrderByEstimatedTimeDesc(NextActionStatus.NEXT_ACTION))
+            .thenReturn(List.of(nextAction));
+
+        List<NextActionResponseDto> result = nextActionService.getOrderedByTime(null);
 
         assertThat(result).hasSize(1);
         assertThat(result.getFirst().estimatedTime()).isEqualTo(Duration.ofMinutes(30));

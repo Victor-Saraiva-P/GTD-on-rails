@@ -82,8 +82,11 @@ public class NextActionService {
 
     @Transactional(readOnly = true)
     public List<NextActionResponseDto> getOrderedByEnergy(UUID contextId) {
-        return nextActionRepository
-            .findAllByStatusAndContexts_IdAndItem_DeletedAtIsNullOrderByEnergyDesc(NextActionStatus.NEXT_ACTION, contextId)
+        List<NextAction> nextActions = contextId == null
+            ? nextActionRepository.findAllByStatusAndItem_DeletedAtIsNullOrderByEnergyDesc(NextActionStatus.NEXT_ACTION)
+            : nextActionRepository.findAllByStatusAndContexts_IdAndItem_DeletedAtIsNullOrderByEnergyDesc(NextActionStatus.NEXT_ACTION, contextId);
+
+        return nextActions
             .stream()
             .map(nextActionMapper::toResponse)
             .toList();
@@ -91,8 +94,11 @@ public class NextActionService {
 
     @Transactional(readOnly = true)
     public List<NextActionResponseDto> getOrderedByTime(UUID contextId) {
-        return nextActionRepository
-            .findAllByStatusAndContexts_IdAndItem_DeletedAtIsNullOrderByEstimatedTimeDesc(NextActionStatus.NEXT_ACTION, contextId)
+        List<NextAction> nextActions = contextId == null
+            ? nextActionRepository.findAllByStatusAndItem_DeletedAtIsNullOrderByEstimatedTimeDesc(NextActionStatus.NEXT_ACTION)
+            : nextActionRepository.findAllByStatusAndContexts_IdAndItem_DeletedAtIsNullOrderByEstimatedTimeDesc(NextActionStatus.NEXT_ACTION, contextId);
+
+        return nextActions
             .stream()
             .map(nextActionMapper::toResponse)
             .toList();
