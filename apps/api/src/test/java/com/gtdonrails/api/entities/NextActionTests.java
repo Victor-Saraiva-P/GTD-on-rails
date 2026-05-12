@@ -13,6 +13,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.util.Set;
 
+import com.gtdonrails.api.enums.NextActionStatus;
 import com.gtdonrails.api.types.Title;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -31,6 +32,7 @@ class NextActionTests {
         assertEquals(item, nextAction.getItem());
         assertEquals(new BigDecimal("4.5"), nextAction.getEnergy());
         assertEquals(Duration.ofMinutes(30), nextAction.getEstimatedTime());
+        assertEquals(NextActionStatus.NEXT_ACTION, nextAction.getStatus());
         assertTrue(nextAction.getContexts().contains(context));
         assertTrue(context.getNextActions().contains(nextAction));
     }

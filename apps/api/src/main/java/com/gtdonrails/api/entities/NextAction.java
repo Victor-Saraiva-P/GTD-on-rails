@@ -7,12 +7,15 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
+import com.gtdonrails.api.enums.NextActionStatus;
 import com.gtdonrails.api.persistence.converters.DurationMinutesConverter;
 import com.gtdonrails.api.types.ScheduleWindow;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
@@ -55,6 +58,10 @@ public class NextAction extends AuditableEntity {
     @Embedded
     private final ScheduleWindow schedule = ScheduleWindow.unscheduled();
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 50)
+    private NextActionStatus status = NextActionStatus.NEXT_ACTION;
+
     @ManyToMany
     @JoinTable(
         name = "next_action_contexts",
@@ -71,6 +78,7 @@ public class NextAction extends AuditableEntity {
         setEnergy(energy);
         setEstimatedTime(estimatedTime);
         replaceContexts(contexts);
+        status = NextActionStatus.NEXT_ACTION;
     }
 
     /**
