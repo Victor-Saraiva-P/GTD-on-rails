@@ -112,12 +112,16 @@ class NextActionControllerTests {
     @Test
     void getsNextActionsOrderedByEnergy() throws Exception {
         Context context = contextRepository.save(new Context("Home"));
+        Context office = contextRepository.save(new Context("Office"));
         
         Item item1 = itemRepository.save(new Item(new Title("Task 1"), null));
         nextActionRepository.save(new NextAction(item1, new BigDecimal("2.0"), Duration.ofMinutes(15), Set.of(context)));
 
         Item item2 = itemRepository.save(new Item(new Title("Task 2"), null));
-        nextActionRepository.save(new NextAction(item2, new BigDecimal("8.0"), Duration.ofMinutes(30), Set.of(context)));
+        nextActionRepository.save(new NextAction(item2, new BigDecimal("8.0"), Duration.ofMinutes(30), Set.of()));
+
+        Item item3 = itemRepository.save(new Item(new Title("Task 3"), null));
+        nextActionRepository.save(new NextAction(item3, new BigDecimal("9.0"), Duration.ofMinutes(45), Set.of(office)));
 
         mockMvc.perform(get("/next-actions?contextId={contextId}&orderBy=energy", context.getId()))
             .andExpect(status().isOk())
@@ -145,12 +149,16 @@ class NextActionControllerTests {
     @Test
     void getsNextActionsOrderedByTime() throws Exception {
         Context context = contextRepository.save(new Context("Home"));
+        Context office = contextRepository.save(new Context("Office"));
         
         Item item1 = itemRepository.save(new Item(new Title("Task 1"), null));
         nextActionRepository.save(new NextAction(item1, new BigDecimal("2.0"), Duration.ofMinutes(15), Set.of(context)));
 
         Item item2 = itemRepository.save(new Item(new Title("Task 2"), null));
-        nextActionRepository.save(new NextAction(item2, new BigDecimal("8.0"), Duration.ofMinutes(30), Set.of(context)));
+        nextActionRepository.save(new NextAction(item2, new BigDecimal("8.0"), Duration.ofMinutes(30), Set.of()));
+
+        Item item3 = itemRepository.save(new Item(new Title("Task 3"), null));
+        nextActionRepository.save(new NextAction(item3, new BigDecimal("9.0"), Duration.ofMinutes(45), Set.of(office)));
 
         mockMvc.perform(get("/next-actions?contextId={contextId}&orderBy=time", context.getId()))
             .andExpect(status().isOk())

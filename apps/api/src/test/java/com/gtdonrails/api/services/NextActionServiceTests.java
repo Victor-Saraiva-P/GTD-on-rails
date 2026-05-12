@@ -36,6 +36,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -91,6 +92,19 @@ class NextActionServiceTests {
     }
 
     @Test
+    void patchesNextActionToAnywhereContext() {
+        PatchNextActionRequestDto request = new PatchNextActionRequestDto(null, null, List.of());
+        when(nextActionRepository.findById(nextActionId)).thenReturn(Optional.of(nextAction));
+        when(nextActionRepository.save(any(NextAction.class))).thenReturn(nextAction);
+
+        NextActionResponseDto response = nextActionService.patchNextAction(nextActionId, request);
+
+        assertThat(response.contexts()).isEmpty();
+        verify(contextRepository, never()).findAllById(any());
+        verify(nextActionRepository).save(nextAction);
+    }
+
+    @Test
     void throwsItemNotFoundWhenPatchingMissingNextAction() {
         PatchNextActionRequestDto request = new PatchNextActionRequestDto(new BigDecimal("7.0"), null, null);
         when(nextActionRepository.findById(nextActionId)).thenReturn(Optional.empty());
@@ -135,7 +149,7 @@ class NextActionServiceTests {
 
     @Test
     void getsOrderedByEnergy() {
-        when(nextActionRepository.findAllByStatusAndContexts_IdAndItem_DeletedAtIsNullOrderByEnergyDesc(NextActionStatus.NEXT_ACTION, contextId))
+        when(nextActionRepository.findRunnableInContextOrderByEnergyDesc(NextActionStatus.NEXT_ACTION, contextId))
             .thenReturn(List.of(nextAction));
 
         List<NextActionResponseDto> result = nextActionService.getOrderedByEnergy(contextId);
@@ -157,7 +171,7 @@ class NextActionServiceTests {
 
     @Test
     void getsOrderedByTime() {
-        when(nextActionRepository.findAllByStatusAndContexts_IdAndItem_DeletedAtIsNullOrderByEstimatedTimeDesc(NextActionStatus.NEXT_ACTION, contextId))
+        when(nextActionRepository.findRunnableInContextOrderByEstimatedTimeDesc(NextActionStatus.NEXT_ACTION, contextId))
             .thenReturn(List.of(nextAction));
 
         List<NextActionResponseDto> result = nextActionService.getOrderedByTime(contextId);

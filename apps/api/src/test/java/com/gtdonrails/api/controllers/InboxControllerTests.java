@@ -165,6 +165,25 @@ class InboxControllerTests {
     }
 
     @Test
+    void convertsStuffToAnywhereNextAction() throws Exception {
+        Item stuff = itemRepository.save(new Item(new Title("Call Ana"), null));
+
+        mockMvc.perform(post("/inbox/{id}/next-action", stuff.getId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "energy": 4.5,
+                      "estimatedTime": { "hours": 1, "minutes": 30 },
+                      "contextIds": []
+                    }
+                    """))
+            .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/inbox/{id}", stuff.getId()))
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
     void rejectsConversionWithoutRequiredNextActionFields() throws Exception {
         Item stuff = itemRepository.save(new Item(new Title("Call Ana"), null));
 

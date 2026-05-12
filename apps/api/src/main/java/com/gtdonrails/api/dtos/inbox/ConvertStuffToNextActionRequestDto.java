@@ -11,7 +11,6 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
-import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
@@ -32,7 +31,7 @@ public record ConvertStuffToNextActionRequestDto(
     @Valid
     ItemTimeRequestDto estimatedTime,
 
-    @NotEmpty(message = "contextIds is required")
+    @NotNull(message = "contextIds is required")
     @Size(
         max = Context.MAX_CONTEXTS_PER_ITEM,
         message = "expected at most " + Context.MAX_CONTEXTS_PER_ITEM + " context IDs")

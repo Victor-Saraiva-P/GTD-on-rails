@@ -84,7 +84,7 @@ public class NextActionService {
     public List<NextActionResponseDto> getOrderedByEnergy(UUID contextId) {
         List<NextAction> nextActions = contextId == null
             ? nextActionRepository.findAllByStatusAndItem_DeletedAtIsNullOrderByEnergyDesc(NextActionStatus.NEXT_ACTION)
-            : nextActionRepository.findAllByStatusAndContexts_IdAndItem_DeletedAtIsNullOrderByEnergyDesc(NextActionStatus.NEXT_ACTION, contextId);
+            : nextActionRepository.findRunnableInContextOrderByEnergyDesc(NextActionStatus.NEXT_ACTION, contextId);
 
         return nextActions
             .stream()
@@ -96,7 +96,7 @@ public class NextActionService {
     public List<NextActionResponseDto> getOrderedByTime(UUID contextId) {
         List<NextAction> nextActions = contextId == null
             ? nextActionRepository.findAllByStatusAndItem_DeletedAtIsNullOrderByEstimatedTimeDesc(NextActionStatus.NEXT_ACTION)
-            : nextActionRepository.findAllByStatusAndContexts_IdAndItem_DeletedAtIsNullOrderByEstimatedTimeDesc(NextActionStatus.NEXT_ACTION, contextId);
+            : nextActionRepository.findRunnableInContextOrderByEstimatedTimeDesc(NextActionStatus.NEXT_ACTION, contextId);
 
         return nextActions
             .stream()
@@ -125,6 +125,10 @@ public class NextActionService {
     }
 
     private Set<Context> findContextsOrThrow(List<UUID> contextIds) {
+        if (contextIds.isEmpty()) {
+            return Set.of();
+        }
+
         Set<Context> contexts = new java.util.HashSet<>(contextRepository.findAllById(contextIds));
         if (contexts.size() != contextIds.size()) {
             throw new IllegalArgumentException("One or more contexts not found");

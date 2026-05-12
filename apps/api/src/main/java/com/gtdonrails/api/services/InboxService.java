@@ -121,6 +121,10 @@ public class InboxService {
 
     private Set<Context> findContextsOrThrow(List<UUID> contextIds) {
         Set<UUID> uniqueContextIds = new HashSet<>(contextIds);
+        if (uniqueContextIds.isEmpty()) {
+            return Set.of();
+        }
+
         List<Context> contexts = contextRepository.findAllByIdInAndDeletedAtIsNull(uniqueContextIds);
 
         if (contexts.size() != uniqueContextIds.size()) {

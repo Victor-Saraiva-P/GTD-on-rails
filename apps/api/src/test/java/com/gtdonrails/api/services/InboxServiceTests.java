@@ -12,6 +12,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import com.gtdonrails.api.dtos.inbox.ConvertStuffToNextActionRequestDto;
@@ -147,6 +148,20 @@ class InboxServiceTests {
     }
 
     @Test
+    void convertStuffToNextActionAllowsAnywhereContext() {
+        UUID stuffId = UUID.randomUUID();
+        Item stuff = new Item(new Title("Call Ana"), null);
+
+        when(itemRepository.findByIdAndStatusAndDeletedAtIsNull(stuffId, ItemStatus.STUFF)).thenReturn(Optional.of(stuff));
+
+        inboxService.convertStuffToNextAction(stuffId, convertRequest(List.of()));
+
+        verify(itemRepository).save(stuff);
+        assertEquals(Set.of(), stuff.getNextAction().getContexts());
+        verify(contextRepository, never()).findAllByIdInAndDeletedAtIsNull(any());
+    }
+
+    @Test
     void convertStuffToNextActionThrowsWhenContextDoesNotExist() {
         UUID stuffId = UUID.randomUUID();
         when(itemRepository.findByIdAndStatusAndDeletedAtIsNull(stuffId, ItemStatus.STUFF))
@@ -155,17 +170,21 @@ class InboxServiceTests {
 
         ContextNotFoundException exception = assertThrows(
             ContextNotFoundException.class,
-            () -> inboxService.convertStuffToNextAction(stuffId, convertRequest(UUID.randomUUID())));
+            () -> inboxService.convertStuffToNextAction(stuffId, convertRequest(List.of(UUID.randomUUID()))));
 
         assertEquals("context not found", exception.getMessage());
         verify(itemRepository, never()).save(any(Item.class));
     }
 
     private ConvertStuffToNextActionRequestDto convertRequest(UUID contextId) {
+        return convertRequest(List.of(contextId));
+    }
+
+    private ConvertStuffToNextActionRequestDto convertRequest(List<UUID> contextIds) {
         return new ConvertStuffToNextActionRequestDto(
             new BigDecimal("4.5"),
             new ItemTimeRequestDto(1L, 30),
-            List.of(contextId));
+            contextIds);
     }
 
     private StuffResponseDto stuffResponse(String title) {

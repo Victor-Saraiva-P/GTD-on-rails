@@ -194,13 +194,13 @@ public class NextAction extends AuditableEntity {
     }
 
     /**
-     * Replaces contexts while requiring at least one next-action context.
+     * Replaces contexts; an empty set means this action can be done anywhere.
      *
      * <p>Example: {@code nextAction.replaceContexts(Set.of(homeContext))}.</p>
      */
     public void replaceContexts(Set<Context> contexts) {
-        if (contexts == null || contexts.isEmpty()) {
-            throw new IllegalArgumentException("contexts value '" + contexts + "' is invalid; expected at least one Context");
+        if (contexts == null) {
+            throw new IllegalArgumentException("contexts value 'null' is invalid; expected Context set");
         }
 
         Set<Context> currentContexts = new HashSet<>(this.contexts);

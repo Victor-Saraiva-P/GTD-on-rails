@@ -199,14 +199,12 @@ class NextActionTests {
     }
 
     @Test
-    void replaceContextsRejectsEmptyContexts() {
+    void replaceContextsAcceptsEmptyContextsAsAnywhere() {
         NextAction nextAction = nextAction();
 
-        IllegalArgumentException exception = assertThrows(
-            IllegalArgumentException.class,
-            () -> nextAction.replaceContexts(Set.of()));
+        nextAction.replaceContexts(Set.of());
 
-        assertEquals("contexts value '[]' is invalid; expected at least one Context", exception.getMessage());
+        assertTrue(nextAction.getContexts().isEmpty());
     }
 
     private NextAction nextAction() {
