@@ -1,14 +1,17 @@
 package com.gtdonrails.api.entities;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
 import com.gtdonrails.api.persistence.converters.DurationMinutesConverter;
+import com.gtdonrails.api.types.ScheduleWindow;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
@@ -48,6 +51,9 @@ public class NextAction extends AuditableEntity {
     @Convert(converter = DurationMinutesConverter.class)
     @Column(name = "estimated_time_minutes", nullable = false)
     private Duration estimatedTime;
+
+    @Embedded
+    private final ScheduleWindow schedule = ScheduleWindow.unscheduled();
 
     @ManyToMany
     @JoinTable(
@@ -119,6 +125,24 @@ public class NextAction extends AuditableEntity {
         }
 
         this.estimatedTime = estimatedTime;
+    }
+
+    /**
+     * Opens this next action's schedule window at the current clock time.
+     *
+     * <p>Example: {@code nextAction.registerScheduleStart(clock)}.</p>
+     */
+    public void registerScheduleStart(Clock clock) {
+        schedule.registerStart(clock);
+    }
+
+    /**
+     * Closes this next action's schedule window at the current clock time.
+     *
+     * <p>Example: {@code nextAction.registerScheduleEnd(clock)}.</p>
+     */
+    public void registerScheduleEnd(Clock clock) {
+        schedule.registerEnd(clock);
     }
 
     /**

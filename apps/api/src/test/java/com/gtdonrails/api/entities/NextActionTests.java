@@ -2,11 +2,15 @@ package com.gtdonrails.api.entities;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.Set;
 
 import com.gtdonrails.api.types.Title;
@@ -107,6 +111,35 @@ class NextActionTests {
     }
 
     @Test
+    void constructorCreatesUnscheduledSchedule() {
+        NextAction nextAction = nextAction();
+
+        assertNotNull(nextAction.getSchedule());
+        assertFalse(nextAction.getSchedule().isAllDay());
+    }
+
+    @Test
+    void registerScheduleStartDelegatesToScheduleWindow() {
+        NextAction nextAction = nextAction();
+
+        nextAction.registerScheduleStart(clockAt("2026-05-10T10:00:00Z"));
+
+        assertEquals("2026-05-10", nextAction.getSchedule().getDateStart().toString());
+        assertEquals("10:00", nextAction.getSchedule().getTimeStart().toString());
+    }
+
+    @Test
+    void registerScheduleEndDelegatesToScheduleWindow() {
+        NextAction nextAction = nextAction();
+        nextAction.registerScheduleStart(clockAt("2026-05-10T10:00:00Z"));
+
+        nextAction.registerScheduleEnd(clockAt("2026-05-10T11:00:00Z"));
+
+        assertEquals("2026-05-10", nextAction.getSchedule().getDateEnd().toString());
+        assertEquals("11:00", nextAction.getSchedule().getTimeEnd().toString());
+    }
+
+    @Test
     void removeContextKeepsBothSidesAligned() {
         NextAction nextAction = nextAction();
         Context context = nextAction.getContexts().iterator().next();
@@ -131,5 +164,9 @@ class NextActionTests {
     private NextAction nextAction() {
         Item item = new Item(new Title("Capture idea"), null);
         return new NextAction(item, new BigDecimal("3.0"), Duration.ofMinutes(15), Set.of(new Context("home")));
+    }
+
+    private static Clock clockAt(String instant) {
+        return Clock.fixed(Instant.parse(instant), ZoneId.of("UTC"));
     }
 }
