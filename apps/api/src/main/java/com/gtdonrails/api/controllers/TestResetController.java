@@ -1,25 +1,31 @@
 package com.gtdonrails.api.controllers;
 
+import java.time.Clock;
+import java.time.Instant;
+
 import com.gtdonrails.api.repositories.ContextRepository;
 import com.gtdonrails.api.repositories.ItemRepository;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@Profile("test")
+@Profile({"test", "dev"})
 @RequestMapping("/test")
 public class TestResetController {
 
     private final ContextRepository contextRepository;
     private final ItemRepository itemRepository;
+    private final Clock clock;
 
-    public TestResetController(ContextRepository contextRepository, ItemRepository itemRepository) {
+    public TestResetController(ContextRepository contextRepository, ItemRepository itemRepository, Clock clock) {
         this.contextRepository = contextRepository;
         this.itemRepository = itemRepository;
+        this.clock = clock;
     }
 
     /**
@@ -34,4 +40,16 @@ public class TestResetController {
         contextRepository.deleteAll();
         return ResponseEntity.noContent().build();
     }
+
+    /**
+     * Returns the current UTC time the backend is using.
+     *
+     * <p>Example: {@code GET /test/clock}.</p>
+     */
+    @GetMapping("/clock")
+    public ResponseEntity<ClockResponse> getClock() {
+        return ResponseEntity.ok(new ClockResponse(Instant.now(clock).toString()));
+    }
+
+    public record ClockResponse(String utcTime) {}
 }

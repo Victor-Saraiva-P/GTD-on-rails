@@ -1,0 +1,5 @@
+$kind: http-request
+name: /next-actions (Energy)
+url: "{{backend_url}}/next-actions?contextId={{context_id}}&orderBy=energy"
+method: GET
+order: 1000

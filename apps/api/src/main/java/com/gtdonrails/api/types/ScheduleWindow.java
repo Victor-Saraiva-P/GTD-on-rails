@@ -87,6 +87,19 @@ public class ScheduleWindow {
         return dateStart != null && timeStart != null;
     }
 
+    /**
+     * Clears all schedule date and time data.
+     *
+     * <p>Example: {@code schedule.clear()}.</p>
+     */
+    public void clear() {
+        dateStart = null;
+        dateEnd = null;
+        timeStart = null;
+        timeEnd = null;
+        allDay = false;
+    }
+
     private void requireEndNotBeforeStart(LocalDate nextDateEnd, LocalTime nextTimeEnd) {
         LocalDateTime start = LocalDateTime.of(dateStart, timeStart);
         LocalDateTime end = LocalDateTime.of(nextDateEnd, nextTimeEnd);

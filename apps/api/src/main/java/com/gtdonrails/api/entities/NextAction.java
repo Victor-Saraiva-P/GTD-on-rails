@@ -156,6 +156,16 @@ public class NextAction extends AuditableEntity {
     }
 
     /**
+     * Reverts this next action to not done/ongoing state, clearing its schedule.
+     *
+     * <p>Example: {@code nextAction.markUndone()}.</p>
+     */
+    public void markUndone() {
+        schedule.clear();
+        status = NextActionStatus.NEXT_ACTION;
+    }
+
+    /**
      * Adds one required execution context and keeps both relation sides aligned.
      *
      * <p>Example: {@code nextAction.addContext(context)}.</p>

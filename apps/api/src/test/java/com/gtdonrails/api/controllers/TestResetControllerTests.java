@@ -67,4 +67,11 @@ class TestResetControllerTests {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$", hasSize(0)));
     }
+
+    @Test
+    void getsClockTime() throws Exception {
+        mockMvc.perform(get("/test/clock"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.utcTime").exists());
+    }
 }

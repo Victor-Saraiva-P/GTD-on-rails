@@ -1,0 +1,18 @@
+$kind: http-request
+name: /next-actions/{{item_id}}
+url: "{{backend_url}}/next-actions/{{item_id}}"
+method: PATCH
+body:
+  type: json
+  content: |-
+    {
+      "energy": 6.5,
+      "estimatedTime": {
+        "hours": 0,
+        "minutes": 45
+      },
+      "contextIds": [
+        "{{context_id}}"
+      ]
+    }
+order: 5000

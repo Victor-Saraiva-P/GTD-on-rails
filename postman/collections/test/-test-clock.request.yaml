@@ -1,0 +1,5 @@
+$kind: http-request
+name: /test/clock
+url: "{{backend_url}}/test/clock"
+method: GET
+order: 2000
