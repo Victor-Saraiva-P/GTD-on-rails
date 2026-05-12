@@ -1,15 +1,20 @@
 import { apiFetch, apiJson } from "../../lib/api/apiClient.ts";
 import type { Stuff, ItemBody } from "./types";
 
-type InboxStuffResponse = {
+type StuffResponse = {
   id: string;
   title: string;
   body: ItemBody | string | null;
+  status: string;
+  createdAt: string;
   energy?: number | null;
   estimatedTime?: { hours: number; minutes: number } | null;
   contexts?: Array<{ id: string; name: string }>;
-  status: string;
-  createdAt: string;
+};
+
+type EstimatedTimePayload = {
+  hours: number;
+  minutes: number;
 };
 
 export type StuffAssetResponse = {
@@ -27,26 +32,24 @@ export type StuffAssetResponse = {
  * @example await fetchInboxStuffs()
  */
 export async function fetchInboxStuffs(): Promise<Stuff[]> {
-  const response = await apiJson<InboxStuffResponse[]>("/inbox");
+  const response = await apiJson<StuffResponse[]>("/inbox");
 
   return response.map(toStuff);
 }
 
 /**
- * Creates a new inbox stuff item with an optional body.
+ * Creates a new inbox stuff item with the provided title.
  *
- * @example await createStuff("Capture idea", { text: "", inlineMarks: [], lineBlocks: [], blockEntities: [] })
+ * @example await createStuff("Capture idea")
  */
-export async function createStuff(title: string, body?: ItemBody): Promise<Stuff> {
-  const actualBody = body ?? { text: "", inlineMarks: [], lineBlocks: [], blockEntities: [] };
-  const response = await apiJson<InboxStuffResponse>("/items", {
+export async function createStuff(title: string): Promise<Stuff> {
+  const response = await apiJson<StuffResponse>("/inbox", {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
-      title,
-      body: actualBody
+      title
     })
   });
 
@@ -97,10 +100,17 @@ export async function uploadStuffAsset(id: string, file: File): Promise<StuffAss
  * @example await updateStuffTitle(stuff, "Updated title")
  */
 export async function updateStuffTitle(item: Stuff, title: string): Promise<Stuff> {
-  return updateStuff(item, {
-    title,
-    body: item.body
+  const response = await apiJson<StuffResponse>(`/items/${item.id}/title`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      title
+    })
   });
+
+  return toStuff(response);
 }
 
 /**
@@ -109,14 +119,21 @@ export async function updateStuffTitle(item: Stuff, title: string): Promise<Stuf
  * @example await updateStuffBody(stuff, { text: "Next action", inlineMarks: [], lineBlocks: [], blockEntities: [] })
  */
 export async function updateStuffBody(item: Stuff, body: ItemBody): Promise<Stuff> {
-  return updateStuff(item, {
-    title: item.title,
-    body
+  const response = await apiJson<StuffResponse>(`/items/${item.id}/body`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      body
+    })
   });
+
+  return toStuff(response);
 }
 
 /**
- * Updates a stuff's processing metadata (energy, estimated time, and contexts).
+ * Converts a stuff item into a next action.
  *
  * @example await processStuff(stuff, 4.5, 90, ["context-id"])
  */
@@ -125,46 +142,28 @@ export async function processStuff(
   energy: number | null,
   estimatedTimeMinutes: number | null,
   contextIds: string[]
-): Promise<Stuff> {
-  const estimatedTime = estimatedTimeMinutes !== null ? {
-    hours: Math.floor(estimatedTimeMinutes / 60),
-    minutes: estimatedTimeMinutes % 60
-  } : null;
-  const payload = { energy, estimatedTime, contextIds };
+): Promise<void> {
+  const estimatedTime = buildEstimatedTimePayload(estimatedTimeMinutes);
+  const payload = { energy: energy ?? 0, estimatedTime, contextIds };
 
-  const response = await apiJson<InboxStuffResponse>(`/items/${item.id}`, {
-    method: "PATCH",
+  await apiFetch(`/inbox/${item.id}/next-action`, {
+    method: "POST",
     headers: {
       "Content-Type": "application/json"
     },
     body: JSON.stringify(payload)
   });
-
-  return toStuff(response);
 }
 
-async function updateStuff(
-  item: Stuff,
-  payload: {
-    title: string;
-    body: ItemBody;
-  }
-): Promise<Stuff> {
-  const response = await apiJson<InboxStuffResponse>(`/items/${item.id}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      title: payload.title,
-      body: payload.body
-    })
-  });
-
-  return toStuff(response);
+function buildEstimatedTimePayload(estimatedTimeMinutes: number | null): EstimatedTimePayload {
+  const totalMinutes = Math.max(0, estimatedTimeMinutes ?? 0);
+  return {
+    hours: Math.floor(totalMinutes / 60),
+    minutes: totalMinutes % 60
+  };
 }
 
-function toStuff(item: InboxStuffResponse): Stuff {
+function toStuff(item: StuffResponse): Stuff {
   let parsedBody: ItemBody;
   if (!item.body) {
     parsedBody = { text: "", inlineMarks: [], lineBlocks: [], blockEntities: [] };

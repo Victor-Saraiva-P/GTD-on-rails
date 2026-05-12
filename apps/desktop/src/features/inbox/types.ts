@@ -62,11 +62,11 @@ export type Stuff = {
   id: string;
   title: string;
   body: ItemBody;
+  status: string;
+  createdAt: string;
   energy?: number | null;
   estimatedTime?: { hours: number; minutes: number } | null;
   contexts?: Array<{ id: string; name: string }>;
-  status: string;
-  createdAt: string;
 };
 
 /**

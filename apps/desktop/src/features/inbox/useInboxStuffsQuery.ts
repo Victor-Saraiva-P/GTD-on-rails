@@ -19,9 +19,9 @@ type InboxStuffsQueryState = {
   isDeleting: boolean;
   isUpdating: boolean;
   errorMessage: string | null;
-  createStuff: (title: string, body?: ItemBody) => Promise<Stuff>;
+  createStuff: (title: string) => Promise<Stuff>;
   deleteStuff: (id: string) => Promise<void>;
-  processStuff: (item: Stuff, energy: number | null, estimatedTimeMinutes: number | null, contextIds: string[]) => Promise<Stuff>;
+  processStuff: (item: Stuff, energy: number | null, estimatedTimeMinutes: number | null, contextIds: string[]) => Promise<void>;
   restoreStuff: (id: string) => Promise<void>;
   updateStuffBody: (item: Stuff, body: ItemBody) => Promise<Stuff>;
   updateStuffTitle: (item: Stuff, title: string) => Promise<Stuff>;
@@ -107,11 +107,11 @@ function completeInboxMutation(state: InboxLoadState, triggerSyncStatusPolling: 
   triggerSyncStatusPolling();
 }
 
-async function createInboxStuff(title: string, body: ItemBody | undefined, state: InboxLoadState, mutations: InboxMutationState, triggerSyncStatusPolling: () => void) {
+async function createInboxStuff(title: string, state: InboxLoadState, mutations: InboxMutationState, triggerSyncStatusPolling: () => void) {
   mutations.setIsCreating(true);
 
   try {
-    const createdStuff = await createStuffRequest(title, body);
+    const createdStuff = await createStuffRequest(title);
     state.setStuffs((currentStuffs) => [createdStuff, ...currentStuffs]);
     completeInboxMutation(state, triggerSyncStatusPolling);
     return createdStuff;
@@ -164,13 +164,26 @@ async function updateInboxStuff(updateRequest: () => Promise<Stuff>, state: Inbo
   }
 }
 
+async function processInboxStuff(updateRequest: () => Promise<void>, state: InboxLoadState, mutations: InboxMutationState, triggerSyncStatusPolling: () => void) {
+  mutations.setIsUpdating(true);
+
+  try {
+    await updateRequest();
+    const nextStuffs = await fetchInboxStuffs();
+    state.setStuffs(nextStuffs);
+    completeInboxMutation(state, triggerSyncStatusPolling);
+  } finally {
+    mutations.setIsUpdating(false);
+  }
+}
+
 function useInboxStuffsMutations(state: InboxLoadState, mutations: InboxMutationState) {
   const { triggerSyncStatusPolling } = useSyncStatus();
 
   return {
-    createStuff: (title: string, body?: ItemBody) => createInboxStuff(title, body, state, mutations, triggerSyncStatusPolling),
+    createStuff: (title: string) => createInboxStuff(title, state, mutations, triggerSyncStatusPolling),
     deleteStuff: (id: string) => deleteInboxStuff(id, state, mutations, triggerSyncStatusPolling),
-    processStuff: (item: Stuff, energy: number | null, estimatedTimeMinutes: number | null, contextIds: string[]) => updateInboxStuff(() => processStuffRequest(item, energy, estimatedTimeMinutes, contextIds), state, mutations, triggerSyncStatusPolling),
+    processStuff: (item: Stuff, energy: number | null, estimatedTimeMinutes: number | null, contextIds: string[]) => processInboxStuff(() => processStuffRequest(item, energy, estimatedTimeMinutes, contextIds), state, mutations, triggerSyncStatusPolling),
     restoreStuff: (id: string) => restoreInboxStuff(id, state, mutations, triggerSyncStatusPolling),
     updateStuffBody: (item: Stuff, body: ItemBody) => updateInboxStuff(() => updateStuffBodyRequest(item, body), state, mutations, triggerSyncStatusPolling),
     updateStuffTitle: (item: Stuff, title: string) => updateInboxStuff(() => updateStuffTitleRequest(item, title), state, mutations, triggerSyncStatusPolling)

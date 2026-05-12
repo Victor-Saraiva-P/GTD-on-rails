@@ -37,15 +37,16 @@ describe("inbox API", () => {
   });
 
   test("createStuff sends correct payload", async () => {
-    const mockResponse = { id: "2", title: "New Task", body: dummyBody, status: "INBOX", createdAt: "2026-05-01T00:00:00Z" };
+    const mockResponse = { id: "2", title: "New Task", body: "", status: "INBOX", createdAt: "2026-05-01T00:00:00Z" };
     
     globalThis.fetch = mock.fn(async (input, init) => {
       assert.equal(init?.method, "POST");
-      assert.equal(init?.body, JSON.stringify({ title: "New Task", body: dummyBody }));
+      assert.ok(input.toString().endsWith("/inbox"));
+      assert.equal(init?.body, JSON.stringify({ title: "New Task" }));
       return new Response(JSON.stringify(mockResponse), { status: 200 });
     });
 
-    const stuff = await createStuff("New Task", dummyBody);
+    const stuff = await createStuff("New Task");
     assert.equal(stuff.id, "2");
   });
 
@@ -74,8 +75,9 @@ describe("inbox API", () => {
     const mockResponse = { ...item, title: "New Title" };
 
     globalThis.fetch = mock.fn(async (input, init) => {
-      assert.equal(init?.method, "PUT");
-      assert.equal(init?.body, JSON.stringify({ title: "New Title", body: dummyBody }));
+      assert.ok(input.toString().endsWith("/items/3/title"));
+      assert.equal(init?.method, "PATCH");
+      assert.equal(init?.body, JSON.stringify({ title: "New Title" }));
       return new Response(JSON.stringify(mockResponse), { status: 200 });
     });
 
@@ -89,8 +91,9 @@ describe("inbox API", () => {
     const mockResponse = { ...item, body: dummyBody };
 
     globalThis.fetch = mock.fn(async (input, init) => {
-      assert.equal(init?.method, "PUT");
-      assert.equal(init?.body, JSON.stringify({ title: "Title", body: dummyBody }));
+      assert.ok(input.toString().endsWith("/items/4/body"));
+      assert.equal(init?.method, "PATCH");
+      assert.equal(init?.body, JSON.stringify({ body: dummyBody }));
       return new Response(JSON.stringify(mockResponse), { status: 200 });
     });
 
@@ -101,19 +104,13 @@ describe("inbox API", () => {
 
   test("processStuff sends next action metadata payload", async () => {
     const item: Stuff = { id: "5", title: "Task", body: dummyBody, status: "INBOX", createdAt: "2026-05-01T00:00:00Z" };
-    const context = { id: "ctx-1", name: "office" };
-    const mockResponse = { ...item, energy: 4.5, estimatedTime: { hours: 1, minutes: 30 }, contexts: [context] };
-
     globalThis.fetch = mock.fn(async (input, init) => {
-      assert.ok(input.toString().endsWith("/items/5"));
-      assert.equal(init?.method, "PATCH");
+      assert.ok(input.toString().endsWith("/inbox/5/next-action"));
+      assert.equal(init?.method, "POST");
       assert.equal(init?.body, JSON.stringify({ energy: 4.5, estimatedTime: { hours: 1, minutes: 30 }, contextIds: ["ctx-1"] }));
-      return new Response(JSON.stringify(mockResponse), { status: 200 });
+      return new Response(null, { status: 204 });
     });
 
-    const updated = await processStuff(item, 4.5, 90, ["ctx-1"]);
-    assert.equal(updated.energy, 4.5);
-    assert.deepEqual(updated.estimatedTime, { hours: 1, minutes: 30 });
-    assert.deepEqual(updated.contexts, [context]);
+    await processStuff(item, 4.5, 90, ["ctx-1"]);
   });
 });

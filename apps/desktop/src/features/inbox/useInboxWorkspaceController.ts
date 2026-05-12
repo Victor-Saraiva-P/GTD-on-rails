@@ -355,8 +355,8 @@ async function processSelectedStuffAction(model: InboxModel, energy: number | nu
     return;
   }
 
-  const updatedStuff = await model.query.processStuff(selectedItem, energy, estimatedTimeMinutes, [contextId]);
-  model.selection.setSelectedId(updatedStuff.id);
+  await model.query.processStuff(selectedItem, energy, estimatedTimeMinutes, [contextId]);
+  model.selection.setSelectedId(model.query.stuffs[0]?.id ?? null);
   clearAllEditing(model);
   model.zone.setActiveZone("inbox-list");
 }
