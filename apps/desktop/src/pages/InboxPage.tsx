@@ -4,10 +4,10 @@ import { ListWorkspace } from "../components/ListWorkspace";
 import { RetryState } from "../components/RetryState";
 import { InboxList } from "../features/inbox/InboxList";
 import { InboxStuffDetails } from "../features/inbox/InboxStuffDetails";
-import { preloadAssetObjectUrl } from "../features/inbox/assetFiles";
+import { prefetchNearbyInboxAssets } from "../features/inbox/inboxAssetPrefetch";
 import { buildFormattingBindings } from "../features/inbox/formattingKeybinds";
 import type { InboxWorkspaceController } from "../features/inbox/useInboxWorkspaceController";
-import type { BlockEntity, ItemBody, Stuff } from "../features/inbox/types";
+import type { ItemBody } from "../features/inbox/types";
 import { LeaderMenu } from "../features/keybinds/LeaderMenu";
 import { useActiveScreen, useKeybindScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
 import type { FocusZoneId, KeybindDefinition, ScreenId } from "../features/keybinds/types";
@@ -27,8 +27,6 @@ const LazyMarkdownLinkComboDialog = lazy(async () => {
   const module = await import("../features/inbox/MarkdownLinkComboDialog");
   return { default: module.MarkdownLinkComboDialog };
 });
-
-const ASSET_PREFETCH_RADIUS = 1;
 
 function inboxBinding(
   id: string,
@@ -52,26 +50,6 @@ function canEditInbox(controller: InboxWorkspaceController): boolean {
 
 function canEditSelectedStuff(controller: InboxWorkspaceController): boolean {
   return canEditInbox(controller) && Boolean(controller.selectedItem);
-}
-
-function isPreviewableEntity(entity: BlockEntity): boolean {
-  return entity.type === "image" || entity.type === "pdf" || entity.attrs?.contentType?.startsWith("image/") === true || entity.attrs?.contentType === "application/pdf";
-}
-
-function prefetchBlockEntityAsset(entity: BlockEntity): void {
-  if (!isPreviewableEntity(entity)) return;
-  const relativePath = entity.attrs?.relativePath ?? entity.attrs?.localPath;
-  void preloadAssetObjectUrl(relativePath, entity.attrs?.contentType, entity.attrs?.url).catch(() => undefined);
-}
-
-function prefetchStuffAssets(item: Stuff): void {
-  item.body.blockEntities.forEach(prefetchBlockEntityAsset);
-}
-
-function prefetchNearbyInboxAssets(stuffs: Stuff[], selectedIndex: number): void {
-  const startIndex = Math.max(0, selectedIndex - ASSET_PREFETCH_RADIUS);
-  const endIndex = Math.min(stuffs.length - 1, selectedIndex + ASSET_PREFETCH_RADIUS);
-  for (let index = startIndex; index <= endIndex; index += 1) prefetchStuffAssets(stuffs[index]);
 }
 
 function runInboxAsyncAction(canRun: boolean, action: () => Promise<void>, message: string) {
@@ -138,6 +116,10 @@ function buildInboxBindings(
   openProcessing: () => void
 ) {
   return [
+    inboxBinding("inbox.switch-forward", "]", "Open deleted stuff", "inbox-list", () => setActiveScreen("deleted-inbox")),
+    inboxBinding("inbox.switch-forward-detail", "]", "Open deleted stuff", "stuff-detail", () => setActiveScreen("deleted-inbox")),
+    inboxBinding("inbox.switch-back", "[", "Open deleted stuff", "inbox-list", () => setActiveScreen("deleted-inbox")),
+    inboxBinding("inbox.switch-back-detail", "[", "Open deleted stuff", "stuff-detail", () => setActiveScreen("deleted-inbox")),
     inboxBinding("inbox.create-stuff", "a", "Add new stuff", "inbox-list", () => createStuffFromKeybind(controller)),
     inboxBinding("inbox.delete-stuff-list", "d", "Delete selected stuff", "inbox-list", () => deleteStuffFromKeybind(controller)),
     inboxBinding("inbox.delete-stuff-detail", "d", "Delete selected stuff", "stuff-detail", () => deleteStuffFromKeybind(controller)),

@@ -19,6 +19,13 @@ export const stuffDetailListTheme: ListTheme = {
   accentColorRgb: "200, 90, 83"
 };
 
+export const deletedInboxListTheme: ListTheme = {
+  id: "deleted-inbox",
+  label: "Deleted Stuff",
+  accentColor: "#b84b45",
+  accentColorRgb: "184, 75, 69"
+};
+
 export const contextsListTheme: ListTheme = {
   id: "contexts",
   label: "Contexts",

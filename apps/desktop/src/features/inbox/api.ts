@@ -38,6 +38,17 @@ export async function fetchInboxStuffs(): Promise<Stuff[]> {
 }
 
 /**
+ * Loads deleted inbox stuff from the API.
+ *
+ * @example await fetchDeletedInboxStuffs()
+ */
+export async function fetchDeletedInboxStuffs(): Promise<Stuff[]> {
+  const response = await apiJson<StuffResponse[]>("/inbox/deleted");
+
+  return response.map(toStuff);
+}
+
+/**
  * Creates a new inbox stuff item with the provided title.
  *
  * @example await createStuff("Capture idea")

@@ -5,6 +5,8 @@ import type { KeybindDefinition } from "./types";
 const zoneLabels = {
   "inbox-list": "Inbox list",
   "stuff-detail": "Stuff detail",
+  "deleted-inbox-list": "Deleted stuff list",
+  "deleted-stuff-detail": "Deleted stuff detail",
   "context-list": "Contexts list",
   "context-detail": "Context detail",
   "context-icon-editor": "Context icon editor"

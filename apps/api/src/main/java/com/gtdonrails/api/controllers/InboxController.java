@@ -38,6 +38,16 @@ public class InboxController {
     }
 
     /**
+     * Handles inbox requests for deleted items still classified as stuff.
+     *
+     * <p>Example: {@code GET /inbox/deleted}.</p>
+     */
+    @GetMapping("/deleted")
+    public List<StuffResponseDto> listDeletedStuff() {
+        return inboxService.listDeletedStuff();
+    }
+
+    /**
      * Handles inbox stuff lookup requests.
      *
      * <p>Example: {@code GET /inbox/018f13b2-a7f3-7c44-8f1a-9f31f65a7fd2}.</p>

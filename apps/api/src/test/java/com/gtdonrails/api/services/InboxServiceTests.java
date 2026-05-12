@@ -87,6 +87,20 @@ class InboxServiceTests {
     }
 
     @Test
+    void listDeletedStuffReturnsMappedStuff() {
+        Item stuff = new Item(new Title("Deleted idea"), null);
+        StuffResponseDto expectedResponse = stuffResponse("Deleted idea");
+
+        when(itemRepository.findAllByStatusAndDeletedAtIsNotNullOrderByUpdatedAtDesc(ItemStatus.STUFF))
+            .thenReturn(List.of(stuff));
+        when(stuffMapper.toResponse(stuff)).thenReturn(expectedResponse);
+
+        List<StuffResponseDto> response = inboxService.listDeletedStuff();
+
+        assertEquals(List.of(expectedResponse), response);
+    }
+
+    @Test
     void getStuffThrowsWhenItemIsNotStuff() {
         UUID stuffId = UUID.randomUUID();
         when(itemRepository.findByIdAndStatusAndDeletedAtIsNull(stuffId, ItemStatus.STUFF)).thenReturn(Optional.empty());

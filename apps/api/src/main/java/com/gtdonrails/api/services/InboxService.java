@@ -63,6 +63,19 @@ public class InboxService {
     }
 
     /**
+     * Lists deleted inbox items that are still in the GTD stuff state.
+     *
+     * <p>Example: {@code inboxService.listDeletedStuff()}.</p>
+     */
+    @Transactional(readOnly = true)
+    public List<StuffResponseDto> listDeletedStuff() {
+        return itemRepository.findAllByStatusAndDeletedAtIsNotNullOrderByUpdatedAtDesc(ItemStatus.STUFF)
+            .stream()
+            .map(stuffMapper::toResponse)
+            .toList();
+    }
+
+    /**
      * Returns one active inbox stuff item.
      *
      * <p>Example: {@code inboxService.getStuff(stuffId)}.</p>

@@ -3,6 +3,7 @@ import test, { describe, afterEach, mock } from "node:test";
 
 import {
   fetchInboxStuffs,
+  fetchDeletedInboxStuffs,
   createStuff,
   deleteStuff,
   processStuff,
@@ -31,6 +32,22 @@ describe("inbox API", () => {
     });
 
     const stuffs = await fetchInboxStuffs();
+    assert.equal(stuffs.length, 1);
+    assert.equal(stuffs[0].id, "1");
+    assert.deepEqual(stuffs[0].body, { text: "", inlineMarks: [], lineBlocks: [], blockEntities: [] });
+  });
+
+  test("fetchDeletedInboxStuffs returns mapped stuff array", async () => {
+    const mockResponse = [
+      { id: "1", title: "Task 1", body: "", status: "INBOX", createdAt: "2026-05-01T00:00:00Z" }
+    ];
+
+    globalThis.fetch = mock.fn(async (input) => {
+      assert.ok(input.toString().endsWith("/inbox/deleted"));
+      return new Response(JSON.stringify(mockResponse), { status: 200 });
+    });
+
+    const stuffs = await fetchDeletedInboxStuffs();
     assert.equal(stuffs.length, 1);
     assert.equal(stuffs[0].id, "1");
     assert.deepEqual(stuffs[0].body, { text: "", inlineMarks: [], lineBlocks: [], blockEntities: [] });
