@@ -112,11 +112,6 @@ function ContextFilterLabel({ controller }: NextActionsPageProps) {
   return controller.context ? <ContextNameWithIcon context={controller.context} /> : <>all contexts</>;
 }
 
-function NextActionMeta({ controller, count }: NextActionsPageProps & { count?: number }) {
-  const countLabel = count === undefined ? null : <>{count} {count === 1 ? "item" : "items"} | </>;
-  return <>{countLabel}context: <ContextFilterLabel controller={controller} /> | order: {orderLabel(controller)}</>;
-}
-
 function NextActionsListBody({ controller }: NextActionsPageProps) {
   if (controller.isLoading) return <p className="pane-state">Loading next actions...</p>;
   if (controller.errorMessage) return <RetryState message={controller.errorMessage} onRetry={controller.reload} />;
@@ -173,8 +168,10 @@ async function exitBodyEditing(controller: NextActionsWorkspaceController, body:
 
 function NextActionsListPane({ controller }: NextActionsPageProps) {
   const count = controller.stuffs.length;
+  const meta = `${count} ${count === 1 ? "item" : "items"}`;
+
   return (
-    <ListPane title="Next Actions" meta={<NextActionMeta controller={controller} count={count} />} panelIndex={1} active={controller.activeZone === "next-actions-list"} bodyClassName="list-pane__body--flush" className="inbox-pane inbox-pane--list">
+    <ListPane title="Next Actions" meta={meta} panelIndex={1} active={controller.activeZone === "next-actions-list"} bodyClassName="list-pane__body--flush" className="inbox-pane inbox-pane--list">
       <NextActionsListBody controller={controller} />
     </ListPane>
   );
@@ -182,7 +179,7 @@ function NextActionsListPane({ controller }: NextActionsPageProps) {
 
 function NextActionDetailPane({ controller }: NextActionsPageProps) {
   return (
-    <ListPane title="Next Action Detail" meta={<NextActionMeta controller={controller} />} panelIndex={2} active={controller.activeZone === "next-action-detail"} bodyClassName="list-pane__body--detail" className="inbox-pane inbox-pane--detail">
+    <ListPane title="Next Action Detail" panelIndex={2} active={controller.activeZone === "next-action-detail"} bodyClassName="list-pane__body--detail" className="inbox-pane inbox-pane--detail">
       <NextActionDetailBody controller={controller} />
     </ListPane>
   );
