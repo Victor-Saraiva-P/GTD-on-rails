@@ -3,6 +3,7 @@ package com.gtdonrails.api.entities;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -121,24 +122,69 @@ class NextActionTests {
     }
 
     @Test
-    void registerScheduleStartDelegatesToScheduleWindow() {
+    void markOnGoingUpdatesStatusAndStart() {
         NextAction nextAction = nextAction();
 
-        nextAction.registerScheduleStart(clockAt("2026-05-10T10:00:00Z"));
+        nextAction.markOnGoing(clockAt("2026-05-10T08:00:00Z"));
 
+        assertEquals(NextActionStatus.ONGOING, nextAction.getStatus());
         assertEquals("2026-05-10", nextAction.getSchedule().getDateStart().toString());
-        assertEquals("10:00", nextAction.getSchedule().getTimeStart().toString());
+        assertEquals("08:00", nextAction.getSchedule().getTimeStart().toString());
+        assertFalse(nextAction.getSchedule().isAllDay());
+        assertNull(nextAction.getSchedule().getDateEnd());
+        assertNull(nextAction.getSchedule().getTimeEnd());
     }
 
     @Test
-    void registerScheduleEndDelegatesToScheduleWindow() {
+    void markOnGoingClearsEndWhenPreviouslyDone() {
         NextAction nextAction = nextAction();
-        nextAction.registerScheduleStart(clockAt("2026-05-10T10:00:00Z"));
+        nextAction.markOnGoing(clockAt("2026-05-10T08:00:00Z"));
+        nextAction.markDone(clockAt("2026-05-10T09:00:00Z"));
 
-        nextAction.registerScheduleEnd(clockAt("2026-05-10T11:00:00Z"));
+        nextAction.markOnGoing(clockAt("2026-05-11T10:30:00Z"));
 
+        assertEquals(NextActionStatus.ONGOING, nextAction.getStatus());
+        assertEquals("2026-05-11", nextAction.getSchedule().getDateStart().toString());
+        assertEquals("10:30", nextAction.getSchedule().getTimeStart().toString());
+        assertNull(nextAction.getSchedule().getDateEnd());
+        assertNull(nextAction.getSchedule().getTimeEnd());
+    }
+
+    @Test
+    void markOnGoingReplacesStartWhenAlreadyOnGoing() {
+        NextAction nextAction = nextAction();
+        nextAction.markOnGoing(clockAt("2026-05-10T08:00:00Z"));
+
+        nextAction.markOnGoing(clockAt("2026-05-10T12:15:00Z"));
+
+        assertEquals(NextActionStatus.ONGOING, nextAction.getStatus());
+        assertEquals("12:15", nextAction.getSchedule().getTimeStart().toString());
+        assertNull(nextAction.getSchedule().getDateEnd());
+        assertNull(nextAction.getSchedule().getTimeEnd());
+    }
+
+    @Test
+    void markDoneUpdatesStatusAndEnd() {
+        NextAction nextAction = nextAction();
+        nextAction.markOnGoing(clockAt("2026-05-10T08:00:00Z"));
+
+        nextAction.markDone(clockAt("2026-05-10T09:45:00Z"));
+
+        assertEquals(NextActionStatus.DONE, nextAction.getStatus());
         assertEquals("2026-05-10", nextAction.getSchedule().getDateEnd().toString());
-        assertEquals("11:00", nextAction.getSchedule().getTimeEnd().toString());
+        assertEquals("09:45", nextAction.getSchedule().getTimeEnd().toString());
+    }
+
+    @Test
+    void markDoneReplacesEndWhenAlreadyDone() {
+        NextAction nextAction = nextAction();
+        nextAction.markOnGoing(clockAt("2026-05-10T08:00:00Z"));
+        nextAction.markDone(clockAt("2026-05-10T09:45:00Z"));
+
+        nextAction.markDone(clockAt("2026-05-10T10:15:00Z"));
+
+        assertEquals(NextActionStatus.DONE, nextAction.getStatus());
+        assertEquals("10:15", nextAction.getSchedule().getTimeEnd().toString());
     }
 
     @Test

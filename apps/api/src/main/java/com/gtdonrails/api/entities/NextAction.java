@@ -136,21 +136,23 @@ public class NextAction extends AuditableEntity {
     }
 
     /**
-     * Opens this next action's schedule window at the current clock time.
+     * Marks this next action as ongoing, resetting the schedule start.
      *
-     * <p>Example: {@code nextAction.registerScheduleStart(clock)}.</p>
+     * <p>Example: {@code nextAction.markOnGoing(clock)}.</p>
      */
-    public void registerScheduleStart(Clock clock) {
+    public void markOnGoing(Clock clock) {
         schedule.registerStart(clock);
+        status = NextActionStatus.ONGOING;
     }
 
     /**
-     * Closes this next action's schedule window at the current clock time.
+     * Marks this next action as done, registering the schedule end.
      *
-     * <p>Example: {@code nextAction.registerScheduleEnd(clock)}.</p>
+     * <p>Example: {@code nextAction.markDone(clock)}.</p>
      */
-    public void registerScheduleEnd(Clock clock) {
+    public void markDone(Clock clock) {
         schedule.registerEnd(clock);
+        status = NextActionStatus.DONE;
     }
 
     /**
