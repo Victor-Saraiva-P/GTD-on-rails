@@ -1,11 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { ListPane } from "../components/ListPane";
 import { ListWorkspace } from "../components/ListWorkspace";
 import { RetryState } from "../components/RetryState";
 import { InboxStuffDetails } from "../features/inbox/InboxStuffDetails";
 import { buildFormattingBindings } from "../features/inbox/formattingKeybinds";
-import { MarkdownAssetComboDialog } from "../features/inbox/MarkdownAssetComboDialog";
-import { MarkdownLinkComboDialog } from "../features/inbox/MarkdownLinkComboDialog";
 import type { InboxWorkspaceController } from "../features/inbox/useInboxWorkspaceController";
 import type { ItemBody } from "../features/inbox/types";
 import { LeaderMenu } from "../features/keybinds/LeaderMenu";
@@ -16,6 +14,16 @@ import { stuffDetailListTheme } from "../features/lists/listThemes";
 type StuffDetailPageProps = {
   controller: InboxWorkspaceController;
 };
+
+const LazyMarkdownAssetComboDialog = lazy(async () => {
+  const module = await import("../features/inbox/MarkdownAssetComboDialog");
+  return { default: module.MarkdownAssetComboDialog };
+});
+
+const LazyMarkdownLinkComboDialog = lazy(async () => {
+  const module = await import("../features/inbox/MarkdownLinkComboDialog");
+  return { default: module.MarkdownLinkComboDialog };
+});
 
 function stuffDetailBinding(id: string, key: string, description: string, runKeybind: () => void, leader = false): KeybindDefinition {
   return { description, id, key, leader, runKeybind, screen: "stuff-detail", zone: "stuff-detail" };
@@ -151,8 +159,10 @@ export function StuffDetailPage({ controller }: StuffDetailPageProps) {
         <StuffDetailPane controller={controller} setActiveScreen={setActiveScreen} />
       </section>
       <LeaderMenu />
-      {isLinkComboOpen ? <MarkdownLinkComboDialog onClose={() => setIsLinkComboOpen(false)} /> : null}
-      {isAssetComboOpen && controller.selectedItem ? <MarkdownAssetComboDialog itemId={controller.selectedItem.id} onClose={() => setIsAssetComboOpen(false)} /> : null}
+      <Suspense fallback={null}>
+        {isLinkComboOpen ? <LazyMarkdownLinkComboDialog onClose={() => setIsLinkComboOpen(false)} /> : null}
+        {isAssetComboOpen && controller.selectedItem ? <LazyMarkdownAssetComboDialog itemId={controller.selectedItem.id} onClose={() => setIsAssetComboOpen(false)} /> : null}
+      </Suspense>
     </ListWorkspace>
   );
 }

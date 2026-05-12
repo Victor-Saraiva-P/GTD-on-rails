@@ -5,10 +5,27 @@ import { Decoration, drawSelection, EditorView, highlightActiveLine, keymap, lin
 import { getCM, Vim, vim, type CodeMirrorV } from "@replit/codemirror-vim";
 import { useEffect, useRef, useState, type MutableRefObject, type RefObject } from "react";
 import { getCachedAssetObjectUrl, getCachedPdfFirstPagePreviewUrl } from "./assetFiles";
+import { INSERT_BLOCK_ENTITY_EVENT, type InsertBlockEntityEventDetail } from "./assetEditorEvents";
+import {
+  FORMAT_BOLD_EVENT,
+  FORMAT_ITALIC_EVENT,
+  FORMAT_CLEAR_INLINE_EVENT,
+  FORMAT_CODE_EVENT,
+  FORMAT_BULLET_EVENT,
+  FORMAT_CHECKLIST_CHECKED_EVENT,
+  FORMAT_CHECKLIST_EVENT,
+  FORMAT_CHECKLIST_UNCHECKED_EVENT,
+  FORMAT_DIVIDER_EVENT,
+  FORMAT_HEADING_EVENT,
+  FORMAT_LETTERED_LIST_EVENT,
+  FORMAT_NUMBERED_LIST_EVENT,
+  FORMAT_NORMAL_TEXT_EVENT,
+  FORMAT_QUOTE_EVENT,
+  OPEN_CURSOR_TARGET_EVENT
+} from "./bodyEditorEvents";
 import { normalizeBodyForClient, mapBodyRangesThroughChanges, toggleInlineMark, setLineBlock, toggleChecklist, insertBlockEntity, clearLineBlock, applyInlineMark, reconcileBlockEntityTokenRanges } from "./itemBodyUtils";
 import { type ItemBody, type BlockEntity } from "./types";
 import { INSERT_MARKDOWN_LINK_EVENT, type InsertMarkdownLinkEventDetail } from "./markdownLinks";
-import { INSERT_BLOCK_ENTITY_EVENT, type InsertBlockEntityEventDetail } from "./MarkdownAssetComboDialog";
 import { findOpenableEditorTarget } from "./openEditorTarget";
 import { openAssetWithDefaultApp, openExternalUrl } from "./openExternalResource";
 
@@ -23,22 +40,6 @@ export type ItemBodyMarkdownEditorProps = {
   onExitNormalMode?: (body: ItemBody) => Promise<void>;
   onVimModeChange?: (mode: "NORMAL" | "INSERT" | "VISUAL") => void;
 };
-
-export const FORMAT_BULLET_EVENT = "gtd:format-bullet";
-export const FORMAT_HEADING_EVENT = "gtd:format-heading";
-export const FORMAT_NUMBERED_LIST_EVENT = "gtd:format-numbered-list";
-export const FORMAT_NORMAL_TEXT_EVENT = "gtd:format-normal-text";
-export const FORMAT_LETTERED_LIST_EVENT = "gtd:format-lettered-list";
-export const FORMAT_CHECKLIST_EVENT = "gtd:format-checklist";
-export const FORMAT_CHECKLIST_CHECKED_EVENT = "gtd:format-checklist-checked";
-export const FORMAT_CHECKLIST_UNCHECKED_EVENT = "gtd:format-checklist-unchecked";
-export const FORMAT_DIVIDER_EVENT = "gtd:format-divider";
-export const FORMAT_QUOTE_EVENT = "gtd:format-quote";
-export const FORMAT_BOLD_EVENT = "gtd:format-bold";
-export const FORMAT_ITALIC_EVENT = "gtd:format-italic";
-export const FORMAT_CODE_EVENT = "gtd:format-code";
-export const FORMAT_CLEAR_INLINE_EVENT = "gtd:format-clear-inline";
-export const OPEN_CURSOR_TARGET_EVENT = "gtd:open-cursor-target";
 
 type AutosaveTracker = {
   hasUnsavedChanges: boolean;

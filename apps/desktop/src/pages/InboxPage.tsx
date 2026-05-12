@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { ListPane } from "../components/ListPane";
 import { ListWorkspace } from "../components/ListWorkspace";
 import { RetryState } from "../components/RetryState";
@@ -6,8 +6,6 @@ import { InboxList } from "../features/inbox/InboxList";
 import { InboxStuffDetails } from "../features/inbox/InboxStuffDetails";
 import { preloadAssetObjectUrl } from "../features/inbox/assetFiles";
 import { buildFormattingBindings } from "../features/inbox/formattingKeybinds";
-import { MarkdownAssetComboDialog } from "../features/inbox/MarkdownAssetComboDialog";
-import { MarkdownLinkComboDialog } from "../features/inbox/MarkdownLinkComboDialog";
 import type { InboxWorkspaceController } from "../features/inbox/useInboxWorkspaceController";
 import type { BlockEntity, ItemBody, Stuff } from "../features/inbox/types";
 import { LeaderMenu } from "../features/keybinds/LeaderMenu";
@@ -19,6 +17,16 @@ import { ProcessingDialog } from "../features/processing/ProcessingDialog";
 type InboxPageProps = {
   controller: InboxWorkspaceController;
 };
+
+const LazyMarkdownAssetComboDialog = lazy(async () => {
+  const module = await import("../features/inbox/MarkdownAssetComboDialog");
+  return { default: module.MarkdownAssetComboDialog };
+});
+
+const LazyMarkdownLinkComboDialog = lazy(async () => {
+  const module = await import("../features/inbox/MarkdownLinkComboDialog");
+  return { default: module.MarkdownLinkComboDialog };
+});
 
 const ASSET_PREFETCH_RADIUS = 1;
 
@@ -308,8 +316,10 @@ export function InboxPage({ controller }: InboxPageProps) {
     <ListWorkspace theme={inboxListTheme} currentLabel={inboxListTheme.label} modeLabel={controller.vimMode ?? undefined}>
       <InboxPanes controller={controller} />
       <LeaderMenu />
-      {isLinkComboOpen ? <MarkdownLinkComboDialog onClose={() => setIsLinkComboOpen(false)} /> : null}
-      {isAssetComboOpen && controller.selectedItem ? <MarkdownAssetComboDialog itemId={controller.selectedItem.id} onClose={() => setIsAssetComboOpen(false)} /> : null}
+      <Suspense fallback={null}>
+        {isLinkComboOpen ? <LazyMarkdownLinkComboDialog onClose={() => setIsLinkComboOpen(false)} /> : null}
+        {isAssetComboOpen && controller.selectedItem ? <LazyMarkdownAssetComboDialog itemId={controller.selectedItem.id} onClose={() => setIsAssetComboOpen(false)} /> : null}
+      </Suspense>
       {isProcessingOpen && controller.selectedItem ? <ProcessingDialog item={controller.selectedItem} onClose={() => setIsProcessingOpen(false)} onProcess={processSelectedItem} /> : null}
     </ListWorkspace>
   );

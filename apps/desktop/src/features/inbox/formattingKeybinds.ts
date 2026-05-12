@@ -14,7 +14,7 @@ import {
   FORMAT_NORMAL_TEXT_EVENT,
   FORMAT_QUOTE_EVENT,
   OPEN_CURSOR_TARGET_EVENT
-} from "./ItemBodyMarkdownEditor";
+} from "./bodyEditorEvents";
 import type { KeybindDefinition, ScreenId } from "../keybinds/types";
 
 function dispatchFormat(eventName: string, detail?: unknown) {

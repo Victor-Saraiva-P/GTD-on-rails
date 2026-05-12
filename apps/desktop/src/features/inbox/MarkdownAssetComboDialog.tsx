@@ -3,6 +3,7 @@ import { getCurrentWebview, type DragDropEvent } from "@tauri-apps/api/webview";
 import { useEffect, useRef, useState, type ChangeEvent, type DragEvent as ReactDragEvent, type MutableRefObject, type RefObject } from "react";
 import { readMarkdownAssetClipboardFile } from "./markdownAssetClipboard";
 import { uploadStuffAsset } from "./api";
+import { INSERT_BLOCK_ENTITY_EVENT, type InsertBlockEntityEventDetail } from "./assetEditorEvents";
 
 const ACCEPTED_ASSET_EXTENSIONS = new Set(["pdf", "doc", "docx", "xls", "xlsx", "png", "jpg", "jpeg", "gif", "webp", "svg"]);
 const ACCEPTED_ASSET_MIME_PREFIXES = ["image/"];
@@ -13,17 +14,6 @@ const ACCEPTED_ASSET_MIME_TYPES = new Set([
   "application/vnd.ms-excel",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 ]);
-
-export const INSERT_BLOCK_ENTITY_EVENT = "gtd:insert-block-entity";
-
-export type InsertBlockEntityEventDetail = {
-  assetId: string;
-  displayName: string;
-  contentType: string;
-  relativePath?: string;
-  url?: string;
-  image: boolean;
-};
 
 type MarkdownAssetComboDialogProps = {
   itemId: string;

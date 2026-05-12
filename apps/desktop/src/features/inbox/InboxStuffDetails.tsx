@@ -1,7 +1,12 @@
-import { ItemBodyMarkdownEditor } from "./ItemBodyMarkdownEditor";
+import { lazy, Suspense, type ReactNode } from "react";
 import { FilePreview } from "./FilePreview";
 import { formatStuffCreatedAt, getStuffBodyPreviewLines, type Stuff, type ItemBody } from "./types";
 import { buildApiUrl } from "../../config/env";
+
+const LazyItemBodyMarkdownEditor = lazy(async () => {
+  const module = await import("./ItemBodyMarkdownEditor");
+  return { default: module.ItemBodyMarkdownEditor };
+});
 
 type InboxStuffDetailsProps = {
   item: Stuff;
@@ -46,14 +51,16 @@ function EditingInboxStuffDetails(props: EditingInboxStuffDetailsProps) {
   return (
     <div className="inbox-detail">
       <InboxDetailHeader item={props.item} />
-      <ItemBodyMarkdownEditor
-        itemId={props.item.id}
-        initialBody={props.item.body}
-        onAutosave={props.onAutosaveEditing}
-        onSave={props.onCommitEditing}
-        onExitNormalMode={props.onExitEditingFromNormalMode}
-        onVimModeChange={props.onVimModeChange}
-      />
+      <Suspense fallback={<p className="pane-state">Loading editor...</p>}>
+        <LazyItemBodyMarkdownEditor
+          itemId={props.item.id}
+          initialBody={props.item.body}
+          onAutosave={props.onAutosaveEditing}
+          onSave={props.onCommitEditing}
+          onExitNormalMode={props.onExitEditingFromNormalMode}
+          onVimModeChange={props.onVimModeChange}
+        />
+      </Suspense>
     </div>
   );
 }
@@ -94,7 +101,7 @@ function renderInlineBody(text: string, inlineMarks: ItemBody["inlineMarks"], bl
 
      const segmentMarks = applicableMarks.filter(m => m.from <= currentPos && m.to >= nextBoundary);
      
-     let el: React.ReactNode = text.substring(currentPos, nextBoundary);
+      let el: ReactNode = text.substring(currentPos, nextBoundary);
      for (const mark of segmentMarks) {
         if (mark.type === "bold") el = <span className="cm-bold-text">{el}</span>;
         else if (mark.type === "italic") el = <span className="cm-italic-text">{el}</span>;
@@ -109,7 +116,7 @@ function renderInlineBody(text: string, inlineMarks: ItemBody["inlineMarks"], bl
 }
 
 function renderAssetTokens(value: string, blockEntities: ItemBody["blockEntities"]) {
-  const nodes: React.ReactNode[] = [];
+  const nodes: ReactNode[] = [];
   let currentIndex = 0;
   for (const match of value.matchAll(ASSET_TOKEN_PATTERN)) {
     nodes.push(value.substring(currentIndex, match.index));
