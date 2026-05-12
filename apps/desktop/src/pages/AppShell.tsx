@@ -3,15 +3,45 @@ import { clearAssetObjectUrlCache } from "../features/inbox/assetFiles";
 import { useDeletedInboxWorkspaceController } from "../features/inbox/useDeletedInboxWorkspaceController";
 import { useInboxWorkspaceController, type InboxWorkspaceController } from "../features/inbox/useInboxWorkspaceController";
 import { useActiveScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
-import type { KeybindDefinition } from "../features/keybinds/types";
+import type { KeybindDefinition, ScreenId } from "../features/keybinds/types";
+import {
+  fetchDeletedNextActions,
+  fetchDoneNextActions,
+  markNextActionUndone,
+  recoverDeletedNextAction
+} from "../features/next-actions/api";
+import {
+  type ArchivedNextActionsConfig,
+  useArchivedNextActionsWorkspaceController
+} from "../features/next-actions/useArchivedNextActionsWorkspaceController";
 import { useNextActionsWorkspaceController } from "../features/next-actions/useNextActionsWorkspaceController";
+import { doneNextActionsListTheme, deletedNextActionsListTheme } from "../features/lists/listThemes";
+import { ArchivedNextActionsPage } from "./ArchivedNextActionsPage";
 import { ContextsPage } from "./ContextsPage";
 import { DeletedInboxPage } from "./DeletedInboxPage";
 import { InboxPage } from "./InboxPage";
 import { NextActionsPage } from "./NextActionsPage";
 import { StuffDetailPage } from "./StuffDetailPage";
 
-function buildNavigationBindings(setActiveScreen: (screen: "contexts" | "deleted-inbox" | "inbox" | "next-actions" | "stuff-detail") => void, inboxController: InboxWorkspaceController) {
+const doneNextActionsConfig = {
+  detailZone: "done-next-action-detail",
+  errorLabel: "completed next actions",
+  listZone: "done-next-actions-list",
+  loadItems: fetchDoneNextActions,
+  recoverItem: markNextActionUndone
+} satisfies ArchivedNextActionsConfig;
+
+const deletedNextActionsConfig = {
+  detailZone: "deleted-next-action-detail",
+  errorLabel: "deleted next actions",
+  listZone: "deleted-next-actions-list",
+  loadItems: fetchDeletedNextActions,
+  recoverItem: recoverDeletedNextAction
+} satisfies ArchivedNextActionsConfig;
+
+type AppControllers = ReturnType<typeof useAppControllers>;
+
+function buildNavigationBindings(setActiveScreen: (screen: ScreenId) => void, inboxController: InboxWorkspaceController) {
   return [
     {
       id: "navigation.open-contexts",
@@ -43,6 +73,74 @@ function buildNavigationBindings(setActiveScreen: (screen: "contexts" | "deleted
   ] satisfies KeybindDefinition[];
 }
 
+function useAppControllers() {
+  return {
+    deletedInbox: useDeletedInboxWorkspaceController(),
+    deletedNextActions: useArchivedNextActionsWorkspaceController(deletedNextActionsConfig),
+    doneNextActions: useArchivedNextActionsWorkspaceController(doneNextActionsConfig),
+    inbox: useInboxWorkspaceController(),
+    nextActions: useNextActionsWorkspaceController()
+  };
+}
+
+function useReloadActiveScreen(activeScreen: ScreenId, controllers: AppControllers) {
+  useEffect(() => {
+    if (activeScreen === "contexts") clearAssetObjectUrlCache();
+    if (activeScreen === "inbox") controllers.inbox.reload();
+    if (activeScreen === "deleted-inbox") controllers.deletedInbox.reload();
+    if (activeScreen === "next-actions") controllers.nextActions.reload();
+    if (activeScreen === "done-next-actions") controllers.doneNextActions.reload();
+    if (activeScreen === "deleted-next-actions") controllers.deletedNextActions.reload();
+  }, [activeScreen]);
+}
+
+function renderDoneNextActionsPage(controllers: AppControllers) {
+  return (
+    <ArchivedNextActionsPage
+      controller={controllers.doneNextActions}
+      detailTitle="Next Action Detail"
+      emptyMessage="No completed next actions yet."
+      label="Completed Next Actions"
+      listTitle="Completed Next Actions"
+      screen="done-next-actions"
+      listZone="done-next-actions-list"
+      detailZone="done-next-action-detail"
+      previousScreen="next-actions"
+      nextScreen="deleted-next-actions"
+      theme={doneNextActionsListTheme}
+    />
+  );
+}
+
+function renderDeletedNextActionsPage(controllers: AppControllers) {
+  return (
+    <ArchivedNextActionsPage
+      controller={controllers.deletedNextActions}
+      detailTitle="Next Action Detail"
+      emptyMessage="No deleted next actions yet."
+      label="Deleted Next Actions"
+      listTitle="Deleted Next Actions"
+      screen="deleted-next-actions"
+      listZone="deleted-next-actions-list"
+      detailZone="deleted-next-action-detail"
+      previousScreen="done-next-actions"
+      nextScreen="next-actions"
+      theme={deletedNextActionsListTheme}
+    />
+  );
+}
+
+function renderActiveScreen(activeScreen: ScreenId, controllers: AppControllers) {
+  if (activeScreen === "contexts") return <ContextsPage />;
+  if (activeScreen === "stuff-detail") return <StuffDetailPage controller={controllers.inbox} />;
+  if (activeScreen === "deleted-inbox") return <DeletedInboxPage controller={controllers.deletedInbox} />;
+  if (activeScreen === "next-actions") return <NextActionsPage controller={controllers.nextActions} />;
+  if (activeScreen === "done-next-actions") return renderDoneNextActionsPage(controllers);
+  if (activeScreen === "deleted-next-actions") return renderDeletedNextActionsPage(controllers);
+
+  return <InboxPage controller={controllers.inbox} />;
+}
+
 /**
  * Selects the active desktop page and wires shared navigation keybindings.
  *
@@ -50,43 +148,10 @@ function buildNavigationBindings(setActiveScreen: (screen: "contexts" | "deleted
  */
 export function AppShell() {
   const { activeScreen, setActiveScreen } = useActiveScreen();
-  const inboxController = useInboxWorkspaceController();
-  const deletedInboxController = useDeletedInboxWorkspaceController();
-  const nextActionsController = useNextActionsWorkspaceController();
-  const navigationBindings = useMemo(() => buildNavigationBindings(setActiveScreen, inboxController), [setActiveScreen, inboxController]);
+  const controllers = useAppControllers();
+  const navigationBindings = useMemo(() => buildNavigationBindings(setActiveScreen, controllers.inbox), [setActiveScreen, controllers.inbox]);
 
-  useEffect(() => {
-    if (activeScreen === "contexts") {
-      clearAssetObjectUrlCache();
-    }
-    if (activeScreen === "inbox") {
-      inboxController.reload();
-    }
-    if (activeScreen === "deleted-inbox") {
-      deletedInboxController.reload();
-    }
-    if (activeScreen === "next-actions") {
-      nextActionsController.reload();
-    }
-  }, [activeScreen]);
-
+  useReloadActiveScreen(activeScreen, controllers);
   useRegisterKeybinds(navigationBindings);
-
-  if (activeScreen === "contexts") {
-    return <ContextsPage />;
-  }
-
-  if (activeScreen === "stuff-detail") {
-    return <StuffDetailPage controller={inboxController} />;
-  }
-
-  if (activeScreen === "deleted-inbox") {
-    return <DeletedInboxPage controller={deletedInboxController} />;
-  }
-
-  if (activeScreen === "next-actions") {
-    return <NextActionsPage controller={nextActionsController} />;
-  }
-
-  return <InboxPage controller={inboxController} />;
+  return renderActiveScreen(activeScreen, controllers);
 }

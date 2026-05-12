@@ -1,4 +1,11 @@
-export type ScreenId = "inbox" | "contexts" | "deleted-inbox" | "next-actions" | "stuff-detail";
+export type ScreenId =
+  | "inbox"
+  | "contexts"
+  | "deleted-inbox"
+  | "next-actions"
+  | "done-next-actions"
+  | "deleted-next-actions"
+  | "stuff-detail";
 
 export type FocusZoneId =
   | "inbox-list"
@@ -7,6 +14,10 @@ export type FocusZoneId =
   | "deleted-stuff-detail"
   | "next-actions-list"
   | "next-action-detail"
+  | "done-next-actions-list"
+  | "done-next-action-detail"
+  | "deleted-next-actions-list"
+  | "deleted-next-action-detail"
   | "context-list"
   | "context-detail"
   | "context-icon-editor";

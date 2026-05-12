@@ -1,4 +1,4 @@
-import { apiJson } from "../../lib/api/apiClient.ts";
+import { apiFetch, apiJson } from "../../lib/api/apiClient.ts";
 import { deleteStuff, restoreStuff, updateStuffBody, updateStuffTitle } from "../inbox/api.ts";
 import type { ItemBody } from "../inbox/types";
 import type { NextAction, NextActionOrder, NextActionPatch, NextActionResponse } from "./types";
@@ -7,6 +7,10 @@ import { normalizeNextActionBody, parseEstimatedTime } from "./types.ts";
 type NextActionsFetchParams = {
   contextId: string | null;
   orderBy: NextActionOrder;
+};
+
+type NextActionsPageResponse = {
+  content: NextActionResponse[];
 };
 
 /**
@@ -19,6 +23,38 @@ export async function fetchNextActions(params: NextActionsFetchParams): Promise<
   if (params.contextId) searchParams.set("contextId", params.contextId);
   const response = await apiJson<NextActionResponse[]>(`/next-actions?${searchParams.toString()}`);
   return response.map(toNextAction);
+}
+
+/**
+ * Loads completed next actions from the API.
+ *
+ * @example await fetchDoneNextActions()
+ */
+export async function fetchDoneNextActions(): Promise<NextAction[]> {
+  const response = await apiJson<NextActionsPageResponse>("/next-actions/done?page=0&size=100");
+  return response.content.map(toNextAction);
+}
+
+/**
+ * Loads deleted next actions from the API.
+ *
+ * @example await fetchDeletedNextActions()
+ */
+export async function fetchDeletedNextActions(): Promise<NextAction[]> {
+  const response = await apiJson<NextActionResponse[]>("/next-actions/deleted");
+  return response.map(toNextAction);
+}
+
+/**
+ * Moves a completed next action back to the active next action state.
+ *
+ * @example await markNextActionUndone(nextAction.id)
+ */
+export async function markNextActionUndone(id: string): Promise<NextAction> {
+  const response = await apiJson<NextActionResponse>(`/next-actions/${id}/undone`, {
+    method: "POST"
+  });
+  return toNextAction(response);
 }
 
 /**
@@ -36,6 +72,17 @@ export async function patchNextActionAttributes(id: string, patch: NextActionPat
 }
 
 export { deleteStuff as deleteNextAction, restoreStuff as restoreNextAction };
+
+/**
+ * Restores a soft-deleted next action item by identifier.
+ *
+ * @example await recoverDeletedNextAction(nextAction.id)
+ */
+export async function recoverDeletedNextAction(id: string): Promise<void> {
+  await apiFetch(`/items/${id}/restore`, {
+    method: "POST"
+  });
+}
 
 export function updateNextActionBody(item: NextAction, body: ItemBody): Promise<NextAction> {
   return updateStuffBody(item, body) as Promise<NextAction>;

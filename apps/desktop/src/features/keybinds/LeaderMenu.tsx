@@ -9,6 +9,10 @@ const zoneLabels = {
   "deleted-stuff-detail": "Deleted stuff detail",
   "next-actions-list": "Next actions list",
   "next-action-detail": "Next action detail",
+  "done-next-actions-list": "Completed next actions list",
+  "done-next-action-detail": "Completed next action detail",
+  "deleted-next-actions-list": "Deleted next actions list",
+  "deleted-next-action-detail": "Deleted next action detail",
   "context-list": "Contexts list",
   "context-detail": "Context detail",
   "context-icon-editor": "Context icon editor"

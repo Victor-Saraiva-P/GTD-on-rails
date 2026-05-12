@@ -9,8 +9,8 @@ import { InboxStuffDetails } from "../features/inbox/InboxStuffDetails";
 import { prefetchNearbyInboxAssets } from "../features/inbox/inboxAssetPrefetch";
 import type { ItemBody } from "../features/inbox/types";
 import { LeaderMenu } from "../features/keybinds/LeaderMenu";
-import { useKeybindScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
-import type { FocusZoneId, KeybindDefinition } from "../features/keybinds/types";
+import { useActiveScreen, useKeybindScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
+import type { FocusZoneId, KeybindDefinition, ScreenId } from "../features/keybinds/types";
 import { nextActionsListTheme } from "../features/lists/listThemes";
 import { ContextFilterDialog } from "../features/next-actions/ContextFilterDialog";
 import { NextActionAttributesDialog } from "../features/next-actions/NextActionAttributesDialog";
@@ -54,8 +54,25 @@ function moveSelection(controller: NextActionsWorkspaceController, direction: "n
   }
 }
 
-function buildNextActionBindings(controller: NextActionsWorkspaceController, openContext: () => void, openAttrs: () => void, openLink: () => void, openAsset: () => void) {
+function switchNextActionsView(controller: NextActionsWorkspaceController, setActiveScreen: (screen: ScreenId) => void, screen: ScreenId) {
+  if (!controller.editingId && !controller.editingBodyId) {
+    setActiveScreen(screen);
+  }
+}
+
+function buildNextActionBindings(
+  controller: NextActionsWorkspaceController,
+  setActiveScreen: (screen: ScreenId) => void,
+  openContext: () => void,
+  openAttrs: () => void,
+  openLink: () => void,
+  openAsset: () => void
+) {
   return [
+    nextActionBinding("next-actions.switch-forward", "]", "Open completed next actions", "next-actions-list", () => switchNextActionsView(controller, setActiveScreen, "done-next-actions")),
+    nextActionBinding("next-actions.switch-forward-detail", "]", "Open completed next actions", "next-action-detail", () => switchNextActionsView(controller, setActiveScreen, "done-next-actions")),
+    nextActionBinding("next-actions.switch-back", "[", "Open deleted next actions", "next-actions-list", () => switchNextActionsView(controller, setActiveScreen, "deleted-next-actions")),
+    nextActionBinding("next-actions.switch-back-detail", "[", "Open deleted next actions", "next-action-detail", () => switchNextActionsView(controller, setActiveScreen, "deleted-next-actions")),
     nextActionBinding("next-actions.delete-list", "d", "Delete selected next action", "next-actions-list", () => runAsync(canEditSelected(controller), controller.deleteSelected, "Failed to delete next action")),
     nextActionBinding("next-actions.delete-detail", "d", "Delete selected next action", "next-action-detail", () => runAsync(canEditSelected(controller), controller.deleteSelected, "Failed to delete next action")),
     nextActionBinding("next-actions.context-list", "c", "Filter by context", "next-actions-list", openContext),
@@ -81,7 +98,8 @@ function buildNextActionBindings(controller: NextActionsWorkspaceController, ope
 }
 
 function useNextActionBindings(controller: NextActionsWorkspaceController, openContext: () => void, openAttrs: () => void, openLink: () => void, openAsset: () => void) {
-  const bindings = useMemo(() => buildNextActionBindings(controller, openContext, openAttrs, openLink, openAsset), [controller, openContext, openAttrs, openLink, openAsset]);
+  const { setActiveScreen } = useActiveScreen();
+  const bindings = useMemo(() => buildNextActionBindings(controller, setActiveScreen, openContext, openAttrs, openLink, openAsset), [controller, setActiveScreen, openContext, openAttrs, openLink, openAsset]);
   useRegisterKeybinds(bindings);
 }
 

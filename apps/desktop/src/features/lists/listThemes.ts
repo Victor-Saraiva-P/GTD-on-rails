@@ -33,6 +33,20 @@ export const nextActionsListTheme: ListTheme = {
   accentColorRgb: "79, 151, 104"
 };
 
+export const doneNextActionsListTheme: ListTheme = {
+  id: "done-next-actions",
+  label: "Completed Next Actions",
+  accentColor: nextActionsListTheme.accentColor,
+  accentColorRgb: nextActionsListTheme.accentColorRgb
+};
+
+export const deletedNextActionsListTheme: ListTheme = {
+  id: "deleted-next-actions",
+  label: "Deleted Next Actions",
+  accentColor: nextActionsListTheme.accentColor,
+  accentColorRgb: nextActionsListTheme.accentColorRgb
+};
+
 export const contextsListTheme: ListTheme = {
   id: "contexts",
   label: "Contexts",
