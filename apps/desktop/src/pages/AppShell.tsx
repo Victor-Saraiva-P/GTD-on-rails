@@ -4,12 +4,14 @@ import { useDeletedInboxWorkspaceController } from "../features/inbox/useDeleted
 import { useInboxWorkspaceController, type InboxWorkspaceController } from "../features/inbox/useInboxWorkspaceController";
 import { useActiveScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
 import type { KeybindDefinition } from "../features/keybinds/types";
+import { useNextActionsWorkspaceController } from "../features/next-actions/useNextActionsWorkspaceController";
 import { ContextsPage } from "./ContextsPage";
 import { DeletedInboxPage } from "./DeletedInboxPage";
 import { InboxPage } from "./InboxPage";
+import { NextActionsPage } from "./NextActionsPage";
 import { StuffDetailPage } from "./StuffDetailPage";
 
-function buildNavigationBindings(setActiveScreen: (screen: "contexts" | "deleted-inbox" | "inbox" | "stuff-detail") => void, inboxController: InboxWorkspaceController) {
+function buildNavigationBindings(setActiveScreen: (screen: "contexts" | "deleted-inbox" | "inbox" | "next-actions" | "stuff-detail") => void, inboxController: InboxWorkspaceController) {
   return [
     {
       id: "navigation.open-contexts",
@@ -29,6 +31,14 @@ function buildNavigationBindings(setActiveScreen: (screen: "contexts" | "deleted
         inboxController.resetWorkspace();
         setActiveScreen("inbox");
       }
+    },
+    {
+      id: "navigation.open-next-actions",
+      key: "n",
+      description: "Open next actions",
+      leader: true,
+      sequence: ["n"],
+      runKeybind: () => setActiveScreen("next-actions")
     }
   ] satisfies KeybindDefinition[];
 }
@@ -42,6 +52,7 @@ export function AppShell() {
   const { activeScreen, setActiveScreen } = useActiveScreen();
   const inboxController = useInboxWorkspaceController();
   const deletedInboxController = useDeletedInboxWorkspaceController();
+  const nextActionsController = useNextActionsWorkspaceController();
   const navigationBindings = useMemo(() => buildNavigationBindings(setActiveScreen, inboxController), [setActiveScreen, inboxController]);
 
   useEffect(() => {
@@ -53,6 +64,9 @@ export function AppShell() {
     }
     if (activeScreen === "deleted-inbox") {
       deletedInboxController.reload();
+    }
+    if (activeScreen === "next-actions") {
+      nextActionsController.reload();
     }
   }, [activeScreen]);
 
@@ -68,6 +82,10 @@ export function AppShell() {
 
   if (activeScreen === "deleted-inbox") {
     return <DeletedInboxPage controller={deletedInboxController} />;
+  }
+
+  if (activeScreen === "next-actions") {
+    return <NextActionsPage controller={nextActionsController} />;
   }
 
   return <InboxPage controller={inboxController} />;

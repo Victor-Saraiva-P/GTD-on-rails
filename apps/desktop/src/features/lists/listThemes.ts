@@ -26,6 +26,13 @@ export const deletedInboxListTheme: ListTheme = {
   accentColorRgb: "184, 75, 69"
 };
 
+export const nextActionsListTheme: ListTheme = {
+  id: "next-actions",
+  label: "Next Actions",
+  accentColor: "#4F9768",
+  accentColorRgb: "79, 151, 104"
+};
+
 export const contextsListTheme: ListTheme = {
   id: "contexts",
   label: "Contexts",

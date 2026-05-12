@@ -1,9 +1,9 @@
-import type { PropsWithChildren } from "react";
+import type { PropsWithChildren, ReactNode } from "react";
 
 type ListPaneProps = PropsWithChildren<{
   title: string;
   panelIndex?: number;
-  meta?: string;
+  meta?: ReactNode;
   active?: boolean;
   bodyClassName?: string;
   className?: string;

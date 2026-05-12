@@ -1,0 +1,114 @@
+.context-filter,
+.next-action-attrs {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.56);
+}
+
+.context-filter__panel,
+.next-action-attrs__panel {
+  width: min(520px, calc(100vw - 32px));
+  max-height: min(620px, calc(100vh - 32px));
+  overflow: auto;
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 2px solid rgba(var(--list-accent-rgb), 0.72);
+  border-radius: 12px;
+  background: var(--terminal-surface);
+  color: #d7d2ce;
+  font-family: var(--font-mono);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.36);
+}
+
+.context-filter__title,
+.next-action-attrs__title {
+  margin: 0;
+  color: var(--list-accent);
+  font-size: 0.92rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.context-filter__list,
+.next-action-attrs__contexts {
+  display: grid;
+  gap: 6px;
+}
+
+.context-filter__option,
+.context-filter__retry,
+.next-action-attrs__context {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 32px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #d7d2ce;
+  font: inherit;
+  text-align: left;
+}
+
+.context-filter__option:hover,
+.context-filter__option:focus-visible,
+.context-filter__retry:hover,
+.context-filter__retry:focus-visible {
+  background: rgba(255, 255, 255, 0.06);
+  outline: none;
+}
+
+.context-filter__option--active {
+  background: rgba(var(--list-accent-rgb), 0.14);
+  color: #f0e8e4;
+}
+
+.context-filter__hint {
+  margin: 0;
+  color: #8a817c;
+  font-size: 0.76rem;
+}
+
+.next-action-attrs__panel label {
+  display: grid;
+  gap: 6px;
+  color: #9b9b9b;
+  font-size: 0.8rem;
+}
+
+.next-action-attrs__panel input[type="text"],
+.next-action-attrs__panel input:not([type]) {
+  width: 100%;
+}
+
+.next-action-attrs__panel input:not([type="checkbox"]) {
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.18);
+  color: #f0e8e4;
+  font: inherit;
+}
+
+.next-action-attrs__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.next-action-attrs__actions button {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid rgba(var(--list-accent-rgb), 0.5);
+  border-radius: 6px;
+  background: rgba(var(--list-accent-rgb), 0.12);
+  color: #f0e8e4;
+  font: inherit;
+}

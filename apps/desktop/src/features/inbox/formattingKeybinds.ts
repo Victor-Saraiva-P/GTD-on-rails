@@ -27,7 +27,7 @@ function dispatchFormat(eventName: string, detail?: unknown) {
  *
  * @example buildFormattingBindings("inbox")
  */
-export function buildFormattingBindings(screen: ScreenId, openLinkComboCb?: () => void, openAssetComboCb?: () => void): KeybindDefinition[] {
+export function buildFormattingBindings(screen: ScreenId, openLinkComboCb?: () => void, openAssetComboCb?: () => void, zone: KeybindDefinition["zone"] = "stuff-detail"): KeybindDefinition[] {
   const b = (id: string, key: string, description: string, run: () => void, sequence: string[]): KeybindDefinition => ({
     description,
     id: `${screen}.${id}`,
@@ -36,7 +36,7 @@ export function buildFormattingBindings(screen: ScreenId, openLinkComboCb?: () =
     runKeybind: run,
     screen,
     sequence,
-    zone: "stuff-detail"
+    zone
   });
 
   return [

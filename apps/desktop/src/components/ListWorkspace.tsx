@@ -1,11 +1,11 @@
-import type { CSSProperties, PropsWithChildren } from "react";
+import type { CSSProperties, PropsWithChildren, ReactNode } from "react";
 import { appMetadata } from "../config/appMetadata";
 import type { ListTheme } from "../features/lists/listThemes";
 import { SyncStatusIndicators } from "../features/sync-status/SyncStatusIndicators";
 
 type ListWorkspaceProps = PropsWithChildren<{
   theme: ListTheme;
-  currentLabel: string;
+  currentLabel: ReactNode;
   modeLabel?: string | null;
 }>;
 

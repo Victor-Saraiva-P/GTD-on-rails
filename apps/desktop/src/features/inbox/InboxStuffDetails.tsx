@@ -1,7 +1,10 @@
-import { lazy, Suspense, type ReactNode } from "react";
+import { lazy, Suspense, type CSSProperties, type ReactNode } from "react";
+import energyIcon from "../../assets/next-actions/energy icon.png";
+import estimatedTimeIcon from "../../assets/next-actions/estimated time icon.png";
 import { FilePreview } from "./FilePreview";
 import { formatStuffCreatedAt, getStuffBodyPreviewLines, type Stuff, type ItemBody } from "./types";
 import { buildApiUrl } from "../../config/env";
+import { ContextNameWithIcon } from "../contexts/ContextNameWithIcon";
 
 const LazyItemBodyMarkdownEditor = lazy(async () => {
   const module = await import("./ItemBodyMarkdownEditor");
@@ -16,10 +19,16 @@ type InboxStuffDetailsProps = {
   onExitEditingFromNormalMode: (body: ItemBody) => Promise<void>;
   onCancelEditing: () => void;
   onVimModeChange?: (mode: "NORMAL" | "INSERT" | "VISUAL") => void;
+  showCreatedMeta?: boolean;
+  metaVariant?: "default" | "next-action";
 };
 
-function InboxDetailHeader({ item }: Pick<InboxStuffDetailsProps, "item">) {
-  let metaParts = [`created: ${formatStuffCreatedAt(item.createdAt).toLowerCase()}`];
+function initialMetaParts(item: Stuff, showCreatedMeta: boolean): ReactNode[] {
+  return showCreatedMeta && item.createdAt ? [`created: ${formatStuffCreatedAt(item.createdAt).toLowerCase()}`] : [];
+}
+
+function InboxDetailHeader({ item, showCreatedMeta = true }: Pick<InboxStuffDetailsProps, "item" | "showCreatedMeta">) {
+  let metaParts = initialMetaParts(item, showCreatedMeta);
   
   if (item.energy !== undefined && item.energy !== null) {
     metaParts.push(`energy: ${item.energy}`);
@@ -27,20 +36,74 @@ function InboxDetailHeader({ item }: Pick<InboxStuffDetailsProps, "item">) {
   
   if (item.estimatedTime) {
     const hoursPart = item.estimatedTime.hours > 0 ? `${item.estimatedTime.hours}h ` : "";
-    metaParts.push(`time: ${hoursPart}${item.estimatedTime.minutes}min`);
+    metaParts.push(`estimated time: ${hoursPart}${item.estimatedTime.minutes}min`);
   }
-  
+   
   if (item.contexts && item.contexts.length > 0) {
-    metaParts.push(`contexts: ${item.contexts.map(c => c.name).join(", ")}`);
+    metaParts.push(<ContextMetaList contexts={item.contexts} />);
   }
 
   return (
     <>
       <h1 className="inbox-detail__title">{item.title}</h1>
-      <p className="inbox-detail__meta">{metaParts.join(" | ")}</p>
+      <p className="inbox-detail__meta"><MetaParts parts={metaParts} /></p>
       <div className="inbox-detail__divider" />
     </>
   );
+}
+
+function ContextMetaList({ contexts }: { contexts: NonNullable<Stuff["contexts"]> }) {
+  return <span className="inbox-detail__context-list">contexts: {contexts.map((context) => <ContextNameWithIcon context={context} key={context.id} />)}</span>;
+}
+
+function MetaParts({ parts }: { parts: ReactNode[] }) {
+  return parts.map((part, index) => (
+    <span className="inbox-detail__meta-part" key={index}>{index > 0 ? <span className="inbox-detail__meta-separator">|</span> : null}{part}</span>
+  ));
+}
+
+function estimatedMinutesLabel(item: Stuff): string | null {
+  if (!item.estimatedTime) return null;
+  return `${item.estimatedTime.hours}h ${item.estimatedTime.minutes}min`;
+}
+
+function formatEnergyValue(energy: number): string {
+  return energy.toFixed(1);
+}
+
+function NextActionContextMeta({ item }: { item: Stuff }) {
+  if (!item.contexts || item.contexts.length === 0) return null;
+  return <>{item.contexts.map((context) => <span className="next-action-meta__item" key={context.id}><ContextNameWithIcon context={context} /></span>)}</>;
+}
+
+function NextActionMetaIcon({ src }: { src: string }) {
+  const style: CSSProperties = {
+    WebkitMask: `url("${src}") center / contain no-repeat`,
+    mask: `url("${src}") center / contain no-repeat`
+  };
+
+  return <span className="next-action-meta__icon" style={style} aria-hidden="true" />;
+}
+
+function NextActionDetailHeader({ item }: Pick<InboxStuffDetailsProps, "item">) {
+  const estimatedMinutes = estimatedMinutesLabel(item);
+
+  return (
+    <>
+      <h1 className="inbox-detail__title">{item.title}</h1>
+      <div className="next-action-meta" aria-label="Next action properties">
+        <NextActionContextMeta item={item} />
+        {item.energy !== undefined && item.energy !== null ? <span className="next-action-meta__item"><NextActionMetaIcon src={energyIcon} />{formatEnergyValue(item.energy)}</span> : null}
+        {estimatedMinutes ? <span className="next-action-meta__item"><NextActionMetaIcon src={estimatedTimeIcon} />{estimatedMinutes}</span> : null}
+      </div>
+      <div className="inbox-detail__divider" />
+    </>
+  );
+}
+
+function DetailHeader({ item, metaVariant, showCreatedMeta }: Pick<InboxStuffDetailsProps, "item" | "metaVariant" | "showCreatedMeta">) {
+  if (metaVariant === "next-action") return <NextActionDetailHeader item={item} />;
+  return <InboxDetailHeader item={item} showCreatedMeta={showCreatedMeta} />;
 }
 
 type EditingInboxStuffDetailsProps = Omit<InboxStuffDetailsProps, "editing" | "onCancelEditing">;
@@ -50,7 +113,7 @@ const ASSET_TOKEN_PATTERN = /(\[\[asset:([0-9a-fA-F-]{36})\]\]|\[asset:([0-9a-fA
 function EditingInboxStuffDetails(props: EditingInboxStuffDetailsProps) {
   return (
     <div className="inbox-detail">
-      <InboxDetailHeader item={props.item} />
+      <DetailHeader item={props.item} metaVariant={props.metaVariant} showCreatedMeta={props.showCreatedMeta} />
       <Suspense fallback={<p className="pane-state">Loading editor...</p>}>
         <LazyItemBodyMarkdownEditor
           itemId={props.item.id}
@@ -156,13 +219,13 @@ function entityAssetRelativePath(entity: ItemBody["blockEntities"][number]): str
   return entity.attrs?.relativePath ?? entity.attrs?.localPath ?? "";
 }
 
-function ReadOnlyInboxStuffDetails({ item }: Pick<InboxStuffDetailsProps, "item">) {
+function ReadOnlyInboxStuffDetails({ item, metaVariant, showCreatedMeta }: Pick<InboxStuffDetailsProps, "item" | "metaVariant" | "showCreatedMeta">) {
   const body = item.body;
 
   if (!body || !body.text) {
     return (
       <div className="inbox-detail">
-        <InboxDetailHeader item={item} />
+        <DetailHeader item={item} metaVariant={metaVariant} showCreatedMeta={showCreatedMeta} />
         <p className="pane-state">No details yet for this stuff.</p>
       </div>
     );
@@ -173,7 +236,7 @@ function ReadOnlyInboxStuffDetails({ item }: Pick<InboxStuffDetailsProps, "item"
 
   return (
     <div className="inbox-detail">
-      <InboxDetailHeader item={item} />
+      <DetailHeader item={item} metaVariant={metaVariant} showCreatedMeta={showCreatedMeta} />
       <div className="inbox-detail__body inbox-detail__body-preview" aria-label="Selected item details">
         {lines.map((lineText, index) => {
            // To get exact character offset for each line, we could accumulate lengths.
@@ -315,5 +378,5 @@ export function InboxStuffDetails(props: InboxStuffDetailsProps) {
     return <EditingInboxStuffDetails {...props} />;
   }
 
-  return <ReadOnlyInboxStuffDetails item={props.item} />;
+  return <ReadOnlyInboxStuffDetails item={props.item} metaVariant={props.metaVariant} showCreatedMeta={props.showCreatedMeta} />;
 }

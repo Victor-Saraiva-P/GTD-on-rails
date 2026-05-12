@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   contextsListTheme,
   inboxListTheme,
+  nextActionsListTheme,
   stuffDetailListTheme
 } from "../src/features/lists/listThemes.ts";
 
@@ -23,4 +24,10 @@ test("contextsListTheme defines correct default styling", () => {
   assert.equal(contextsListTheme.id, "contexts");
   assert.equal(contextsListTheme.label, "Contexts");
   assert.ok(contextsListTheme.accentColor.startsWith("#"));
+});
+
+test("nextActionsListTheme defines green next actions styling", () => {
+  assert.equal(nextActionsListTheme.id, "next-actions");
+  assert.equal(nextActionsListTheme.label, "Next Actions");
+  assert.equal(nextActionsListTheme.accentColor, "#4F9768");
 });

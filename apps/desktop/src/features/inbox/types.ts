@@ -63,10 +63,10 @@ export type Stuff = {
   title: string;
   body: ItemBody;
   status: string;
-  createdAt: string;
+  createdAt?: string;
   energy?: number | null;
   estimatedTime?: { hours: number; minutes: number } | null;
-  contexts?: Array<{ id: string; name: string }>;
+  contexts?: Array<{ id: string; name: string; iconUrl?: string; iconRevision?: number }>;
 };
 
 /**

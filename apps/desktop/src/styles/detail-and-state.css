@@ -45,11 +45,79 @@
 
 .inbox-detail__meta {
   margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0;
   color: #8a817c;
   font-family: var(--font-mono);
   font-size: 0.72rem;
   letter-spacing: 0.08em;
 }
+
+.inbox-detail__meta-part,
+.inbox-detail__context-list {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.inbox-detail__meta-separator {
+  margin: 0 9px;
+  color: #5f5854;
+}
+
+.context-name-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.context-name-icon__glyph {
+  color: #97353d;
+  font-family: var(--font-mono);
+  font-size: 0.78em;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.context-name-icon__image {
+  width: 1em;
+  height: 1em;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+
+.next-action-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 18px;
+  color: #8a817c;
+  font-family: var(--font-mono);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.next-action-meta__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.next-action-meta__icon {
+  width: 1em;
+  height: 1em;
+  flex: 0 0 auto;
+  background: currentColor;
+}
+
+.next-action-meta .context-name-icon__glyph {
+  color: #97353d;
+}
+
 
 .inbox-detail__title {
   margin: 0;

@@ -12,12 +12,13 @@ type InboxListStuffProps = {
   onCommitEditing: () => void;
   onCommitEditingAndContinue: () => void;
   onCancelEditing: () => void;
+  glyph?: string;
 };
 
-function InboxStuffGlyph() {
+function InboxStuffGlyph({ glyph = "S" }: Pick<InboxListStuffProps, "glyph">) {
   return (
     <span className="tree-entry__glyph tree-entry__glyph--stuff" aria-hidden="true">
-      S
+      {glyph}
     </span>
   );
 }
@@ -47,7 +48,7 @@ function EditingInboxListStuff(props: Omit<InboxListStuffProps, "editing" | "onS
     <li className="tree-list__item">
       <div className="tree-entry tree-entry--active">
         <span className="tree-entry__marker">{props.selected ? "●" : "○"}</span>
-        <InboxStuffGlyph />
+        <InboxStuffGlyph glyph={props.glyph} />
         <InboxStuffTitleInput
           value={props.editingTitle}
           onChange={props.onEditingTitleChange}
@@ -99,7 +100,7 @@ function ReadOnlyInboxListStuff(props: InboxListStuffProps) {
         onDoubleClick={() => handleSelectDoubleClick(props)}
       >
         <span className="tree-entry__marker">{selected ? "●" : "○"}</span>
-        <InboxStuffGlyph />
+        <InboxStuffGlyph glyph={props.glyph} />
         <span className="tree-entry__label">{item.title}</span>
       </button>
     </li>

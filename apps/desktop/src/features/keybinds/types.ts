@@ -1,10 +1,12 @@
-export type ScreenId = "inbox" | "contexts" | "deleted-inbox" | "stuff-detail";
+export type ScreenId = "inbox" | "contexts" | "deleted-inbox" | "next-actions" | "stuff-detail";
 
 export type FocusZoneId =
   | "inbox-list"
   | "stuff-detail"
   | "deleted-inbox-list"
   | "deleted-stuff-detail"
+  | "next-actions-list"
+  | "next-action-detail"
   | "context-list"
   | "context-detail"
   | "context-icon-editor";

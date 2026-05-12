@@ -3,10 +3,17 @@ package com.gtdonrails.api.mappers;
 import com.gtdonrails.api.dtos.context.ContextResponseDto;
 import com.gtdonrails.api.dtos.nextaction.NextActionResponseDto;
 import com.gtdonrails.api.entities.NextAction;
+import com.gtdonrails.api.services.AssetStorageService;
 import org.springframework.stereotype.Component;
 
 @Component
 public class NextActionMapper {
+
+    private final AssetStorageService assetStorageService;
+
+    public NextActionMapper(AssetStorageService assetStorageService) {
+        this.assetStorageService = assetStorageService;
+    }
 
     /**
      * Maps a NextAction entity into the Next Action API response.
@@ -26,7 +33,7 @@ public class NextActionMapper {
                 .map(context -> new ContextResponseDto(
                     context.getId(),
                     context.getName(),
-                    context.getIconAssetPath()
+                    assetStorageService.publicUrl(context.getIconAssetPath())
                 ))
                 .toList()
         );
