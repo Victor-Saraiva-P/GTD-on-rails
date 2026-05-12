@@ -215,7 +215,7 @@ export function NextActionsPage({ controller }: NextActionsPageProps) {
   useNextActionBindings(controller, openContext, openAttrs, openLink, openAsset);
 
   return (
-    <ListWorkspace theme={nextActionsListTheme} currentLabel={<>Next Actions | context: <ContextFilterLabel controller={controller} /> | order: {orderLabel(controller)}</>} modeLabel={controller.vimMode ?? undefined}>
+    <ListWorkspace theme={nextActionsListTheme} currentClassName="list-workspace__current--next-actions" currentLabel={<NextActionsFooterLabel controller={controller} />} modeLabel={controller.vimMode ?? undefined}>
       <NextActionPanes controller={controller} />
       <LeaderMenu />
       <Suspense fallback={null}>
@@ -225,6 +225,16 @@ export function NextActionsPage({ controller }: NextActionsPageProps) {
       {isContextOpen ? <ContextFilterDialog contexts={contextsQuery.contexts} currentContextId={controller.context?.id ?? null} isLoading={contextsQuery.isLoading} errorMessage={contextsQuery.errorMessage} onRetry={contextsQuery.reload} onSelect={(context) => { controller.setContext(context); setIsContextOpen(false); }} onClose={() => setIsContextOpen(false)} /> : null}
       {isAttrsOpen && controller.selectedItem ? <NextActionAttributesDialog contexts={contextsQuery.contexts} item={controller.selectedItem} isBusy={controller.isUpdating} onSave={(patch) => saveAttributes(controller, patch, () => setIsAttrsOpen(false))} onClose={() => setIsAttrsOpen(false)} /> : null}
     </ListWorkspace>
+  );
+}
+
+function NextActionsFooterLabel({ controller }: NextActionsPageProps) {
+  return (
+    <span className="next-actions-footer-label">
+      <span>Next Actions</span>
+      <span>Order: {orderLabel(controller)}</span>
+      <span className="next-actions-footer-label__context">Context: <ContextFilterLabel controller={controller} /></span>
+    </span>
   );
 }
 

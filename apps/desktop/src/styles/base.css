@@ -139,9 +139,9 @@ body {
 }
 
 .sync-status__item--active {
-  color: var(--list-accent);
-  border-color: rgba(var(--list-accent-rgb), 0.48);
-  background: rgba(var(--list-accent-rgb), 0.12);
+  color: #c85a53;
+  border-color: rgba(200, 90, 83, 0.48);
+  background: rgba(200, 90, 83, 0.12);
 }
 
 .sync-status__item--pending {

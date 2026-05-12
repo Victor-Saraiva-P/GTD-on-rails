@@ -112,3 +112,33 @@
   color: #f0e8e4;
   font: inherit;
 }
+
+.list-workspace__current--next-actions {
+  padding: 0;
+  background: transparent;
+  color: #1b1312;
+}
+
+.list-workspace__current--next-actions > span {
+  display: contents;
+}
+
+.next-actions-footer-label {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 4px;
+  min-height: 100%;
+}
+
+.next-actions-footer-label > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 100%;
+  padding: 0 12px;
+  background: rgba(var(--list-accent-rgb), 0.94);
+}
+
+.next-actions-footer-label__context {
+  background: #97353d !important;
+}
