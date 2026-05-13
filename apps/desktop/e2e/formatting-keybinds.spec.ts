@@ -23,6 +23,7 @@ async function focusDetail(page: Page) {
   await page.keyboard.press("l");
   const detailPane = page.locator(".inbox-pane--detail");
   await expect(detailPane).toHaveClass(/list-pane--active/);
+  await expect(page.locator(".cm-content")).toBeVisible();
 }
 
 async function openFullDetail(page: Page) {
@@ -44,23 +45,36 @@ async function enterEditMode(page: Page) {
   }).toPass({ timeout: 5000 });
 }
 
+async function typeInEditor(page: Page, text: string) {
+  const editor = page.locator(".cm-content");
+  await expect(editor).toHaveAttribute("contenteditable", "true");
+  if (await editor.getAttribute("data-vim-mode") === "normal") {
+    await page.keyboard.press("i");
+  }
+  await page.keyboard.type(text);
+  await page.keyboard.press("Escape");
+  await expect(editor).toHaveAttribute("data-vim-mode", "normal");
+}
+
+async function expectEditorText(page: Page, text: string) {
+  await expect(page.locator(".cm-content")).toContainText(text);
+}
+
 test("space m b applies bullet point formatting in full detail screen", async ({ page }) => {
   const title = uniqueTitle();
   await createStuff(page, title);
   await openFullDetail(page);
 
-  // Enter insert mode and type some text
   await enterEditMode(page);
-  await page.keyboard.press("i");
-  await page.keyboard.type("Hello world");
-  await page.keyboard.press("Escape");
+  await typeInEditor(page, "Hello world");
 
   // Apply bullet point: space m b
   await page.keyboard.press(" ");
   await page.keyboard.press("m");
   await page.keyboard.press("b");
 
-  await expect(page.locator(".cm-content")).toContainText("- Hello world");
+  await expect(page.locator(".cm-bullet-mark")).toBeVisible();
+  await expectEditorText(page, "Hello world");
 });
 
 test("space t b applies bold formatting in full detail screen", async ({ page }) => {
@@ -69,9 +83,7 @@ test("space t b applies bold formatting in full detail screen", async ({ page })
   await openFullDetail(page);
 
   await enterEditMode(page);
-  await page.keyboard.press("i");
-  await page.keyboard.type("Bold text");
-  await page.keyboard.press("Escape");
+  await typeInEditor(page, "Bold text");
 
   await page.keyboard.press("0");
 
@@ -82,7 +94,8 @@ test("space t b applies bold formatting in full detail screen", async ({ page })
   await page.keyboard.press("t");
   await page.keyboard.press("b");
 
-  await expect(page.locator(".cm-content")).toContainText("**Bold** text");
+  await expect(page.locator(".cm-bold-text")).toContainText("Bold");
+  await expectEditorText(page, "Bold text");
 });
 
 test("space m b applies bullet point formatting", async ({ page }) => {
@@ -90,17 +103,15 @@ test("space m b applies bullet point formatting", async ({ page }) => {
   await createStuff(page, title);
   await focusDetail(page);
 
-  // Enter insert mode and type some text
-  await page.keyboard.press("i");
-  await page.keyboard.type("Hello world");
-  await page.keyboard.press("Escape");
+  await typeInEditor(page, "Hello world");
 
   // Apply bullet point: space m b
   await page.keyboard.press(" ");
   await page.keyboard.press("m");
   await page.keyboard.press("b");
 
-  await expect(page.locator(".cm-content")).toContainText("- Hello world");
+  await expect(page.locator(".cm-bullet-mark")).toBeVisible();
+  await expectEditorText(page, "Hello world");
 });
 
 test("space m 1 applies H1 formatting", async ({ page }) => {
@@ -108,16 +119,14 @@ test("space m 1 applies H1 formatting", async ({ page }) => {
   await createStuff(page, title);
   await focusDetail(page);
 
-  await page.keyboard.press("i");
-  await page.keyboard.type("Heading");
-  await page.keyboard.press("Escape");
+  await typeInEditor(page, "Heading");
 
   // Apply H1: space m 1
   await page.keyboard.press(" ");
   await page.keyboard.press("m");
   await page.keyboard.press("1");
 
-  await expect(page.locator(".cm-content")).toContainText("# Heading");
+  await expect(page.locator(".cm-md-heading-1")).toContainText("Heading");
 });
 
 test("space t b applies bold formatting to selection", async ({ page }) => {
@@ -125,9 +134,7 @@ test("space t b applies bold formatting to selection", async ({ page }) => {
   await createStuff(page, title);
   await focusDetail(page);
 
-  await page.keyboard.press("i");
-  await page.keyboard.type("Bold text");
-  await page.keyboard.press("Escape");
+  await typeInEditor(page, "Bold text");
 
   // Go back to start of line
   await page.keyboard.press("0");
@@ -142,7 +149,8 @@ test("space t b applies bold formatting to selection", async ({ page }) => {
   await page.keyboard.press("t");
   await page.keyboard.press("b");
 
-  await expect(page.locator(".cm-content")).toContainText("**Bold** text");
+  await expect(page.locator(".cm-bold-text")).toContainText("Bold");
+  await expectEditorText(page, "Bold text");
 });
 
 test("space t t clears inline formatting", async ({ page }) => {
@@ -150,9 +158,7 @@ test("space t t clears inline formatting", async ({ page }) => {
   await createStuff(page, title);
   await focusDetail(page);
 
-  await page.keyboard.press("i");
-  await page.keyboard.type("**Bold text**");
-  await page.keyboard.press("Escape");
+  await typeInEditor(page, "Bold text");
 
   // Go back to start of line
   await page.keyboard.press("0");
@@ -161,13 +167,22 @@ test("space t t clears inline formatting", async ({ page }) => {
   await page.keyboard.press("v");
   await page.keyboard.press("$");
 
+  await page.keyboard.press(" ");
+  await page.keyboard.press("t");
+  await page.keyboard.press("b");
+  await expect(page.locator(".cm-bold-text")).toContainText("Bold text");
+
+  await page.keyboard.press("0");
+  await page.keyboard.press("v");
+  await page.keyboard.press("$");
+
   // Clear formatting: space t t
   await page.keyboard.press(" ");
   await page.keyboard.press("t");
   await page.keyboard.press("t");
 
-  await expect(page.locator(".cm-content")).toContainText("Bold text");
-  await expect(page.locator(".cm-content")).not.toContainText("**");
+  await expectEditorText(page, "Bold text");
+  await expect(page.locator(".cm-bold-text")).not.toBeVisible();
 });
 
 test("space t l inserts markdown link from clipboard with p", async ({ page, context }) => {
@@ -178,9 +193,7 @@ test("space t l inserts markdown link from clipboard with p", async ({ page, con
   await focusDetail(page);
   await page.evaluate((text) => navigator.clipboard.writeText(text), url);
 
-  await page.keyboard.press("i");
-  await page.keyboard.type("linkzinho ");
-  await page.keyboard.press("Escape");
+  await typeInEditor(page, "linkzinho ");
 
   await page.keyboard.press(" ");
   await page.keyboard.press("t");
@@ -190,7 +203,7 @@ test("space t l inserts markdown link from clipboard with p", async ({ page, con
   await expect(input).toBeVisible();
   await page.keyboard.press("p");
 
-  await expect(page.locator(".cm-content")).toContainText(`[${url}](${url})`);
+  await expect(page.locator(".cm-markdown-link", { hasText: url })).toBeVisible();
 });
 
 test("inserts markdown asset preview from editor event", async ({ page }) => {
@@ -198,9 +211,7 @@ test("inserts markdown asset preview from editor event", async ({ page }) => {
   await createStuff(page, title);
   await focusDetail(page);
 
-  await page.keyboard.press("i");
-  await page.keyboard.type("assetzinho ");
-  await page.keyboard.press("Escape");
+  await typeInEditor(page, "assetzinho ");
   await dispatchInsertedAsset(page);
 
   await expect(page.locator(".cm-markdown-image")).toBeVisible();
@@ -212,9 +223,7 @@ test("undoing dd restores markdown asset preview", async ({ page }) => {
   await createStuff(page, title);
   await focusDetail(page);
 
-  await page.keyboard.press("i");
-  await page.keyboard.type("asset line ");
-  await page.keyboard.press("Escape");
+  await typeInEditor(page, "asset line ");
   await expect(page.locator(".cm-content")).toHaveAttribute("data-vim-mode", "normal");
   await dispatchInsertedAsset(page);
   await expect(page.locator(".cm-markdown-image")).toBeVisible();
@@ -260,9 +269,7 @@ test("space m c c applies checked checklist", async ({ page }) => {
   await createStuff(page, title);
   await focusDetail(page);
 
-  await page.keyboard.press("i");
-  await page.keyboard.type("Task");
-  await page.keyboard.press("Escape");
+  await typeInEditor(page, "Task");
 
   // Apply checked checklist: space m c c
   await page.keyboard.press(" ");
@@ -270,7 +277,8 @@ test("space m c c applies checked checklist", async ({ page }) => {
   await page.keyboard.press("c");
   await page.keyboard.press("c");
 
-  await expect(page.locator(".cm-content")).toContainText("- [x] Task");
+  await expect(page.locator(".cm-checklist-box--checked")).toBeVisible();
+  await expectEditorText(page, "Task");
 });
 
 async function dispatchInsertedAsset(page: Page) {

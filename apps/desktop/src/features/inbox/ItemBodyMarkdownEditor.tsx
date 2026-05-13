@@ -23,7 +23,7 @@ import {
   FORMAT_QUOTE_EVENT,
   OPEN_CURSOR_TARGET_EVENT
 } from "./bodyEditorEvents";
-import { normalizeBodyForClient, mapBodyRangesThroughChanges, toggleInlineMark, setLineBlock, toggleChecklist, insertBlockEntity, clearLineBlock, applyInlineMark, reconcileBlockEntityTokenRanges } from "./itemBodyUtils";
+import { normalizeBodyForClient, mapBodyRangesThroughChanges, toggleInlineMark, setLineBlock, toggleChecklist, insertBlockEntity, clearLineBlock, applyInlineMark, removeInlineMarks, reconcileBlockEntityTokenRanges } from "./itemBodyUtils";
 import { type ItemBody, type BlockEntity } from "./types";
 import { INSERT_MARKDOWN_LINK_EVENT, type InsertMarkdownLinkEventDetail } from "./markdownLinks";
 import { findOpenableEditorTarget } from "./openEditorTarget";
@@ -68,6 +68,10 @@ const itemBodyStateField = StateField.define<ItemBody>({
     return reconcileBlockEntityTokenRanges(nextValue);
   }
 });
+
+function updateChangesItemBody(update: ViewUpdate): boolean {
+  return update.transactions.some((tr) => tr.effects.some((effect) => effect.is(itemBodyStateEffect)));
+}
 
 class BlockEntityWidget extends WidgetType {
   constructor(private entity: BlockEntity) {
@@ -205,7 +209,7 @@ const itemBodyDecorationsPlugin = ViewPlugin.fromClass(class {
     this.decorations = this.build(view);
   }
   update(update: ViewUpdate) {
-    if (update.docChanged || update.viewportChanged) {
+    if (update.docChanged || update.viewportChanged || updateChangesItemBody(update)) {
       this.decorations = this.build(update.view);
     }
   }
@@ -580,6 +584,9 @@ function useCodeMirrorEditorView(
       [FORMAT_CODE_EVENT]: () => {
         if (editorViewRef.current) dispatchInlineFormatToEditor(editorViewRef.current, (b, from, to) => toggleInlineMark(b, "inlineCode", from, to));
       },
+      [FORMAT_CLEAR_INLINE_EVENT]: () => {
+        if (editorViewRef.current) dispatchInlineFormatToEditor(editorViewRef.current, removeInlineMarks);
+      },
       [FORMAT_HEADING_EVENT]: ((e: CustomEvent<{level: 1|2|3}>) => {
         if (editorViewRef.current) dispatchFormatToEditor(editorViewRef.current, (b, from, to) => setLineBlock(b, `heading${e.detail?.level}` as any, from, to));
       }) as EventListener,
@@ -588,11 +595,15 @@ function useCodeMirrorEditorView(
       },
       [INSERT_MARKDOWN_LINK_EVENT]: ((e: CustomEvent<InsertMarkdownLinkEventDetail>) => {
         if (editorViewRef.current) {
+           const text = e.detail.text?.trim() || e.detail.url.trim();
+           if (!text || !e.detail.url.trim()) return;
            const view = editorViewRef.current;
            const range = view.state.selection.main;
+           const body = applyInlineMark(view.state.field(itemBodyStateField), "link", range.from, range.from + text.length, {href: e.detail.url});
            view.dispatch({
-             changes: {from: range.from, to: range.to, insert: e.detail.text},
-             effects: itemBodyStateEffect.of(applyInlineMark(view.state.field(itemBodyStateField), "link", range.from, range.from + (e.detail.text || "").length, {href: e.detail.url}))
+             changes: {from: range.from, to: range.to, insert: text},
+             selection: EditorSelection.cursor(range.from + text.length),
+             effects: itemBodyStateEffect.of(body)
            });
         }
       }) as EventListener,

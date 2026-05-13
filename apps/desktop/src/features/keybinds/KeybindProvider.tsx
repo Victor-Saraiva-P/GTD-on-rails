@@ -53,11 +53,11 @@ function isModifierKey(key: string): boolean {
   return key === "Shift" || key === "Control" || key === "Alt" || key === "Meta";
 }
 
-function isVimNormalModeTarget(target: EventTarget | null): boolean {
+function isVimKeybindTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) {
     return false;
   }
-  return target.closest('[data-vim-mode="normal"]') !== null;
+  return target.closest('[data-vim-mode="normal"], [data-vim-mode="visual"]') !== null;
 }
 
 function isTypingTarget(target: EventTarget | null): boolean {
@@ -65,7 +65,7 @@ function isTypingTarget(target: EventTarget | null): boolean {
     return false;
   }
 
-  if (isVimNormalModeTarget(target)) {
+  if (isVimKeybindTarget(target)) {
     return false;
   }
 
@@ -202,10 +202,9 @@ function handleGlobalKeyDown(event: KeyboardEvent, config: KeydownConfig) {
     return;
   }
 
-  if (isVimNormalModeTarget(event.target)) {
-    // Redo (Ctrl-R) is a Vim command, but we might want to handle it globally for the list
+  if (isVimKeybindTarget(event.target)) {
+    // Redo (Ctrl-R) is a Vim command, but we might want to handle it globally for the list.
     // If the target is a Vim editor, we let it handle Ctrl-R unless we are in the list.
-    // However, if the user is in the list, isVimNormalModeTarget is false.
     return;
   }
 

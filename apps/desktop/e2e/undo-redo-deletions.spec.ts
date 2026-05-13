@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 function uniqueTitle(): string {
   return `Undo redo test ${Date.now()}`;
@@ -9,7 +9,7 @@ test.beforeEach(async ({ page }) => {
   await page.locator("main").click();
 });
 
-async function createStuff(page: any, title: string) {
+async function createStuff(page: Page, title: string) {
   await page.keyboard.press("a");
   const input = page.locator("input.tree-entry__input");
   await expect(input).toBeVisible();
@@ -19,12 +19,18 @@ async function createStuff(page: any, title: string) {
   await expect(page.getByRole("button", { name: title })).toBeVisible();
 }
 
+async function exitBodyEditor(page: Page) {
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".cm-content")).toHaveAttribute("data-vim-mode", "normal");
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".cm-content")).not.toBeVisible();
+}
+
 test("undoing a deletion restores the item", async ({ page }) => {
   const title = uniqueTitle();
   await createStuff(page, title);
   
-  // Ensure we are not in edit mode
-  await page.keyboard.press("Escape");
+  await exitBodyEditor(page);
   
   // Select and delete
   await page.getByRole("button", { name: title }).click();
@@ -41,8 +47,7 @@ test("redoing an undo deletes the item again", async ({ page }) => {
   const title = uniqueTitle();
   await createStuff(page, title);
   
-  // Ensure we are not in edit mode
-  await page.keyboard.press("Escape");
+  await exitBodyEditor(page);
 
   // Delete
   await page.getByRole("button", { name: title }).click();
