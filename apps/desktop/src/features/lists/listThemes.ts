@@ -22,8 +22,8 @@ export const stuffDetailListTheme: ListTheme = {
 export const deletedInboxListTheme: ListTheme = {
   id: "deleted-inbox",
   label: "Deleted Stuff",
-  accentColor: "#b84b45",
-  accentColorRgb: "184, 75, 69"
+  accentColor: "#9B9B9B",
+  accentColorRgb: "155, 155, 155"
 };
 
 export const nextActionsListTheme: ListTheme = {
@@ -57,15 +57,15 @@ export const nextActionDetailListTheme: ListTheme = {
 export const doneNextActionsListTheme: ListTheme = {
   id: "done-next-actions",
   label: "Completed Next Actions",
-  accentColor: nextActionsListTheme.accentColor,
-  accentColorRgb: nextActionsListTheme.accentColorRgb
+  accentColor: "#7F8D3F",
+  accentColorRgb: "127, 141, 63"
 };
 
 export const deletedNextActionsListTheme: ListTheme = {
   id: "deleted-next-actions",
   label: "Deleted Next Actions",
-  accentColor: nextActionsListTheme.accentColor,
-  accentColorRgb: nextActionsListTheme.accentColorRgb
+  accentColor: "#9B9B9B",
+  accentColorRgb: "155, 155, 155"
 };
 
 export const contextsListTheme: ListTheme = {

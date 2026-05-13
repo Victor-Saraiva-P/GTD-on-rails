@@ -65,6 +65,7 @@
 ## UI Consistency
 
 - The preview mode and the stuff detail views must be visually identical and render all elements (e.g. PDF previews, images) identically to the edit mode. This applies to all elements.
+- Pages that visualize deleted items must use `#9B9B9B` as the predominant color. Pages that visualize completed items must use `#7F8D3F` as the predominant color.
 
 ## Processing
 
