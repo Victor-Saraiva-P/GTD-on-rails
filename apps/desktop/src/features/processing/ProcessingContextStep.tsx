@@ -6,6 +6,7 @@ import type { ContextItem } from "../contexts/types";
 type ProcessingContextStepProps = {
   onContextsSelected: (contextIds: string[]) => void;
   onCancel: () => void;
+  initialSelectedIds?: string[];
 };
 
 function nextFocusedIndex(currentIndex: number, offset: number, contexts: ContextItem[]): number {
@@ -39,15 +40,15 @@ function syncSelectedIds(setSelectedIds: (updater: (currentIds: string[]) => str
  *
  * @example <ProcessingContextStep onContextsSelected={saveIds} onCancel={close} />
  */
-export function ProcessingContextStep({ onContextsSelected, onCancel }: ProcessingContextStepProps) {
+export function ProcessingContextStep({ onContextsSelected, onCancel, initialSelectedIds = [] }: ProcessingContextStepProps) {
   const { contexts, isLoading } = useContextsQuery();
   const [focusedIndex, setFocusedIndex] = useState(0);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>(initialSelectedIds);
   const containerRef = useRef<HTMLDivElement>(null);
   const contextsRef = useRef<ContextItem[]>([]);
   const focusedIndexRef = useRef(0);
   const handleKeyDownRef = useRef<(event: KeyboardEvent) => void>(() => undefined);
-  const selectedIdsRef = useRef<string[]>([]);
+  const selectedIdsRef = useRef<string[]>(initialSelectedIds);
 
   useEffect(() => {
     const focusId = window.setTimeout(() => containerRef.current?.focus(), 0);

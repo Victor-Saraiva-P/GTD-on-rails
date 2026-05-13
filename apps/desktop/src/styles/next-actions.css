@@ -1,5 +1,4 @@
-.context-filter,
-.next-action-attrs {
+.context-filter {
   position: fixed;
   inset: 0;
   z-index: 50;
@@ -8,8 +7,7 @@
   background: rgba(0, 0, 0, 0.56);
 }
 
-.context-filter__panel,
-.next-action-attrs__panel {
+.context-filter__panel {
   width: min(520px, calc(100vw - 32px));
   max-height: min(620px, calc(100vh - 32px));
   overflow: auto;
@@ -24,8 +22,7 @@
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.36);
 }
 
-.context-filter__title,
-.next-action-attrs__title {
+.context-filter__title {
   margin: 0;
   color: var(--list-accent);
   font-size: 0.92rem;
@@ -33,15 +30,13 @@
   text-transform: uppercase;
 }
 
-.context-filter__list,
-.next-action-attrs__contexts {
+.context-filter__list {
   display: grid;
   gap: 6px;
 }
 
 .context-filter__option,
-.context-filter__retry,
-.next-action-attrs__context {
+.context-filter__retry {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -73,44 +68,6 @@
   margin: 0;
   color: #8a817c;
   font-size: 0.76rem;
-}
-
-.next-action-attrs__panel label {
-  display: grid;
-  gap: 6px;
-  color: #9b9b9b;
-  font-size: 0.8rem;
-}
-
-.next-action-attrs__panel input[type="text"],
-.next-action-attrs__panel input:not([type]) {
-  width: 100%;
-}
-
-.next-action-attrs__panel input:not([type="checkbox"]) {
-  min-height: 34px;
-  padding: 0 10px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 6px;
-  background: rgba(0, 0, 0, 0.18);
-  color: #f0e8e4;
-  font: inherit;
-}
-
-.next-action-attrs__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.next-action-attrs__actions button {
-  min-height: 32px;
-  padding: 0 12px;
-  border: 1px solid rgba(var(--list-accent-rgb), 0.5);
-  border-radius: 6px;
-  background: rgba(var(--list-accent-rgb), 0.12);
-  color: #f0e8e4;
-  font: inherit;
 }
 
 .list-workspace__current--next-actions {

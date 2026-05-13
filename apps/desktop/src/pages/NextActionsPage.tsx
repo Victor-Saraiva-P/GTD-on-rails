@@ -13,7 +13,7 @@ import { useActiveScreen, useKeybindScreen, useRegisterKeybinds } from "../featu
 import type { FocusZoneId, KeybindDefinition, ScreenId } from "../features/keybinds/types";
 import { nextActionsListTheme } from "../features/lists/listThemes";
 import { ContextFilterDialog } from "../features/next-actions/ContextFilterDialog";
-import { NextActionAttributesDialog } from "../features/next-actions/NextActionAttributesDialog";
+import { NextActionEditDialog } from "../features/next-actions/NextActionEditDialog";
 import { NextActionsList } from "../features/next-actions/NextActionsList";
 import type { NextActionPatch } from "../features/next-actions/types";
 import type { NextActionsWorkspaceController } from "../features/next-actions/useNextActionsWorkspaceController";
@@ -66,7 +66,8 @@ function buildNextActionBindings(
   openContext: () => void,
   openAttrs: () => void,
   openLink: () => void,
-  openAsset: () => void
+  openAsset: () => void,
+  isAttrsOpen: boolean
 ) {
   return [
     nextActionBinding("next-actions.switch-forward", "]", "Open completed next actions", "next-actions-list", () => switchNextActionsView(controller, setActiveScreen, "done-next-actions")),
@@ -85,11 +86,11 @@ function buildNextActionBindings(
     nextActionBinding("next-actions.undo-detail", "u", "Undo last deletion", "next-action-detail", () => void controller.undo()),
     { ...nextActionBinding("next-actions.redo-list", "r", "Redo last action", "next-actions-list", () => void controller.redo()), ctrl: true },
     { ...nextActionBinding("next-actions.redo-detail", "r", "Redo last action", "next-action-detail", () => void controller.redo()), ctrl: true },
-    nextActionBinding("next-actions.edit-title", "Enter", "Edit selected title", "next-actions-list", () => canEditSelected(controller) && controller.startTitleEdit()),
+    nextActionBinding("next-actions.edit-title", "Enter", "Edit selected title", "next-actions-list", () => !isAttrsOpen && canEditSelected(controller) && controller.startTitleEdit()),
     nextActionBinding("next-actions.move-down", "j", "Move down", "next-actions-list", () => moveSelection(controller, "next")),
     nextActionBinding("next-actions.move-up", "k", "Move up", "next-actions-list", () => moveSelection(controller, "previous")),
     nextActionBinding("next-actions.edit-body-list", "l", "Edit selected body", "next-actions-list", () => canEditSelected(controller) && controller.startBodyEdit()),
-    nextActionBinding("next-actions.edit-body-detail", "Enter", "Edit selected body", "next-action-detail", () => canEditSelected(controller) && controller.startBodyEdit()),
+    nextActionBinding("next-actions.edit-body-detail", "Enter", "Edit selected body", "next-action-detail", () => !isAttrsOpen && canEditSelected(controller) && controller.startBodyEdit()),
     nextActionBinding("next-actions.focus-list", "h", "Focus next actions list", "next-action-detail", () => !controller.editingBodyId && controller.setActiveZone("next-actions-list")),
     nextActionBinding("next-actions.which-key-list", "k", "Show available keybinds", "next-actions-list", () => undefined, true),
     nextActionBinding("next-actions.which-key-detail", "k", "Show available keybinds", "next-action-detail", () => undefined, true),
@@ -97,9 +98,9 @@ function buildNextActionBindings(
   ];
 }
 
-function useNextActionBindings(controller: NextActionsWorkspaceController, openContext: () => void, openAttrs: () => void, openLink: () => void, openAsset: () => void) {
+function useNextActionBindings(controller: NextActionsWorkspaceController, openContext: () => void, openAttrs: () => void, openLink: () => void, openAsset: () => void, isAttrsOpen: boolean) {
   const { setActiveScreen } = useActiveScreen();
-  const bindings = useMemo(() => buildNextActionBindings(controller, setActiveScreen, openContext, openAttrs, openLink, openAsset), [controller, setActiveScreen, openContext, openAttrs, openLink, openAsset]);
+  const bindings = useMemo(() => buildNextActionBindings(controller, setActiveScreen, openContext, openAttrs, openLink, openAsset, isAttrsOpen), [controller, setActiveScreen, openContext, openAttrs, openLink, openAsset, isAttrsOpen]);
   useRegisterKeybinds(bindings);
 }
 
@@ -223,14 +224,14 @@ export function NextActionsPage({ controller }: NextActionsPageProps) {
   const [isAttrsOpen, setIsAttrsOpen] = useState(false);
   const [isLinkOpen, setIsLinkOpen] = useState(false);
   const [isAssetOpen, setIsAssetOpen] = useState(false);
-  const openContext = useCallback(() => setIsContextOpen(true), []);
+  const openContext = useCallback(() => !isAttrsOpen && setIsContextOpen(true), [isAttrsOpen]);
   const openAttrs = useCallback(() => setIsAttrsOpen(true), []);
   const openLink = useCallback(() => setIsLinkOpen(true), []);
   const openAsset = useCallback(() => setIsAssetOpen(true), []);
   useKeybindScreen("next-actions");
   useNextActionZone(controller);
   useNextActionAssetPreload(controller);
-  useNextActionBindings(controller, openContext, openAttrs, openLink, openAsset);
+  useNextActionBindings(controller, openContext, openAttrs, openLink, openAsset, isAttrsOpen);
 
   return (
     <ListWorkspace theme={nextActionsListTheme} currentClassName="list-workspace__current--next-actions" currentLabel={<NextActionsFooterLabel controller={controller} />} modeLabel={controller.vimMode ?? undefined}>
@@ -241,7 +242,7 @@ export function NextActionsPage({ controller }: NextActionsPageProps) {
         {isAssetOpen && controller.selectedItem ? <LazyMarkdownAssetComboDialog itemId={controller.selectedItem.id} onClose={() => setIsAssetOpen(false)} /> : null}
       </Suspense>
       {isContextOpen ? <ContextFilterDialog contexts={contextsQuery.contexts} currentContextId={controller.context?.id ?? null} isLoading={contextsQuery.isLoading} errorMessage={contextsQuery.errorMessage} onRetry={contextsQuery.reload} onSelect={(context) => { controller.setContext(context); setIsContextOpen(false); }} onClose={() => setIsContextOpen(false)} /> : null}
-      {isAttrsOpen && controller.selectedItem ? <NextActionAttributesDialog contexts={contextsQuery.contexts} item={controller.selectedItem} isBusy={controller.isUpdating} onSave={(patch) => saveAttributes(controller, patch, () => setIsAttrsOpen(false))} onClose={() => setIsAttrsOpen(false)} /> : null}
+      {isAttrsOpen && controller.selectedItem ? <NextActionEditDialog item={controller.selectedItem} onSave={(patch) => saveAttributes(controller, patch, () => setIsAttrsOpen(false))} onClose={() => setIsAttrsOpen(false)} /> : null}
     </ListWorkspace>
   );
 }
