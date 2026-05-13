@@ -68,8 +68,12 @@ export function formatScheduleDateTime(date?: string | null, time?: string | nul
   
   if (isNaN(dateObj.getTime())) return null;
 
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: "medium",
-    timeStyle: time ? "short" : undefined
+  const formatted = new Intl.DateTimeFormat("en-US", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    ...(time ? { hour: "2-digit", minute: "2-digit", hour12: false } : {})
   }).format(dateObj);
+
+  return formatted.replace(",", "");
 }

@@ -1,8 +1,7 @@
 import { lazy, Suspense, type CSSProperties, type ReactNode } from "react";
 import energyIcon from "../../assets/next-actions/energy icon.png";
 import estimatedTimeIcon from "../../assets/next-actions/estimated time icon.png";
-import startIcon from "../../assets/next-actions/start-icon.png";
-import endIcon from "../../assets/next-actions/end-icon.png";
+import scheduleIcon from "../../assets/next-actions/schdule-icon.png";
 import { FilePreview } from "./FilePreview";
 import { formatStuffCreatedAt, getStuffBodyPreviewLines, type Stuff, type ItemBody } from "./types";
 import { formatScheduleDateTime, type NextAction } from "../next-actions/types";
@@ -104,8 +103,10 @@ function NextActionDetailHeader({ item }: Pick<InboxStuffDetailsProps, "item">) 
       </div>
       {(startedAt || endedAt) && (
         <div className="next-action-meta" aria-label="Next action schedule">
-          {startedAt ? <span className="next-action-meta__item"><NextActionMetaIcon src={startIcon} />{startedAt}</span> : null}
-          {endedAt ? <span className="next-action-meta__item"><NextActionMetaIcon src={endIcon} />{endedAt}</span> : null}
+          <span className="next-action-meta__item">
+            <NextActionMetaIcon src={scheduleIcon} />
+            {startedAt}{endedAt ? ` → ${endedAt}` : ""}
+          </span>
         </div>
       )}
       <div className="inbox-detail__divider" />
