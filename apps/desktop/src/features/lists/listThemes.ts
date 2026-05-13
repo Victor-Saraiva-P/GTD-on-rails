@@ -40,6 +40,13 @@ export const onGoingNextActionsListTheme: ListTheme = {
   accentColorRgb: "155, 90, 183"
 };
 
+export const nextActionDetailListTheme: ListTheme = {
+  id: "next-action-detail-page",
+  label: "Next Action Detail",
+  accentColor: nextActionsListTheme.accentColor,
+  accentColorRgb: nextActionsListTheme.accentColorRgb
+};
+
 export const doneNextActionsListTheme: ListTheme = {
   id: "done-next-actions",
   label: "Completed Next Actions",

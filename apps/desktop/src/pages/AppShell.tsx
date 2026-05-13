@@ -20,6 +20,7 @@ import { ArchivedNextActionsPage } from "./ArchivedNextActionsPage";
 import { ContextsPage } from "./ContextsPage";
 import { DeletedInboxPage } from "./DeletedInboxPage";
 import { InboxPage } from "./InboxPage";
+import { NextActionDetailPage } from "./NextActionDetailPage";
 import { NextActionsPage } from "./NextActionsPage";
 import { OnGoingNextActionsPage } from "./OnGoingNextActionsPage";
 import { StuffDetailPage } from "./StuffDetailPage";
@@ -148,6 +149,7 @@ function renderActiveScreen(activeScreen: ScreenId, controllers: AppControllers)
   if (activeScreen === "deleted-inbox") return <DeletedInboxPage controller={controllers.deletedInbox} />;
   if (activeScreen === "next-actions") return <NextActionsPage controller={controllers.nextActions} />;
   if (activeScreen === "ongoing-next-actions") return <OnGoingNextActionsPage controller={controllers.ongoingNextActions} />;
+  if (activeScreen === "next-action-detail-page") return <NextActionDetailPage controller={controllers.nextActions} />;
   if (activeScreen === "done-next-actions") return renderDoneNextActionsPage(controllers);
   if (activeScreen === "deleted-next-actions") return renderDeletedNextActionsPage(controllers);
 

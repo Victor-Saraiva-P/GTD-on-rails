@@ -32,8 +32,8 @@ const LazyMarkdownLinkComboDialog = lazy(async () => {
   return { default: module.MarkdownLinkComboDialog };
 });
 
-function nextActionBinding(id: string, key: string, description: string, zone: FocusZoneId, runKeybind: () => void, leader = false): KeybindDefinition {
-  return { description, id, key, leader, runKeybind, screen: "next-actions", zone };
+function nextActionBinding(id: string, key: string, description: string, zone: FocusZoneId, runKeybind: () => void, leader = false, sequence?: string[]): KeybindDefinition {
+  return { description, id, key, leader, runKeybind, screen: "next-actions", zone, sequence };
 }
 
 function canRunAction(controller: NextActionsWorkspaceController): boolean {
@@ -57,6 +57,12 @@ function moveSelection(controller: NextActionsWorkspaceController, direction: "n
 function switchNextActionsView(controller: NextActionsWorkspaceController, setActiveScreen: (screen: ScreenId) => void, screen: ScreenId) {
   if (!controller.editingId && !controller.editingBodyId) {
     setActiveScreen(screen);
+  }
+}
+
+function openDetailScreen(controller: NextActionsWorkspaceController, setActiveScreen: (screen: ScreenId) => void) {
+  if (controller.selectedItem) {
+    setActiveScreen("next-action-detail-page");
   }
 }
 
@@ -95,6 +101,8 @@ function buildNextActionBindings(
     nextActionBinding("next-actions.move-up", "k", "Move up", "next-actions-list", () => moveSelection(controller, "previous")),
     nextActionBinding("next-actions.edit-body-list", "l", "Edit selected body", "next-actions-list", () => canEditSelected(controller) && controller.startBodyEdit()),
     nextActionBinding("next-actions.edit-body-detail", "Enter", "Edit selected body", "next-action-detail", () => !isAttrsOpen && canEditSelected(controller) && controller.startBodyEdit()),
+    nextActionBinding("next-actions.open-detail-screen-from-list", "Enter", "Open full detail", "next-actions-list", () => !isAttrsOpen && openDetailScreen(controller, setActiveScreen), true, ["Enter"]),
+    nextActionBinding("next-actions.open-detail-screen-from-detail", "Enter", "Open full detail", "next-action-detail", () => !isAttrsOpen && openDetailScreen(controller, setActiveScreen), true, ["Enter"]),
     nextActionBinding("next-actions.focus-list", "h", "Focus next actions list", "next-action-detail", () => !controller.editingBodyId && controller.setActiveZone("next-actions-list")),
     nextActionBinding("next-actions.which-key-list", "k", "Show available keybinds", "next-actions-list", () => undefined, true),
     nextActionBinding("next-actions.which-key-detail", "k", "Show available keybinds", "next-action-detail", () => undefined, true),
