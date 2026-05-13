@@ -21,7 +21,9 @@ import { ContextsPage } from "./ContextsPage";
 import { DeletedInboxPage } from "./DeletedInboxPage";
 import { InboxPage } from "./InboxPage";
 import { NextActionsPage } from "./NextActionsPage";
+import { OnGoingNextActionsPage } from "./OnGoingNextActionsPage";
 import { StuffDetailPage } from "./StuffDetailPage";
+import { useOnGoingNextActionsWorkspaceController } from "../features/next-actions/useOnGoingNextActionsWorkspaceController";
 
 const doneNextActionsConfig = {
   detailZone: "done-next-action-detail",
@@ -69,6 +71,14 @@ function buildNavigationBindings(setActiveScreen: (screen: ScreenId) => void, in
       leader: true,
       sequence: ["n"],
       runKeybind: () => setActiveScreen("next-actions")
+    },
+    {
+      id: "navigation.open-ongoing-next-actions",
+      key: "o",
+      description: "Open ongoing next actions",
+      leader: true,
+      sequence: ["o"],
+      runKeybind: () => setActiveScreen("ongoing-next-actions")
     }
   ] satisfies KeybindDefinition[];
 }
@@ -79,7 +89,8 @@ function useAppControllers() {
     deletedNextActions: useArchivedNextActionsWorkspaceController(deletedNextActionsConfig),
     doneNextActions: useArchivedNextActionsWorkspaceController(doneNextActionsConfig),
     inbox: useInboxWorkspaceController(),
-    nextActions: useNextActionsWorkspaceController()
+    nextActions: useNextActionsWorkspaceController(),
+    ongoingNextActions: useOnGoingNextActionsWorkspaceController()
   };
 }
 
@@ -89,6 +100,7 @@ function useReloadActiveScreen(activeScreen: ScreenId, controllers: AppControlle
     if (activeScreen === "inbox") controllers.inbox.reload();
     if (activeScreen === "deleted-inbox") controllers.deletedInbox.reload();
     if (activeScreen === "next-actions") controllers.nextActions.reload();
+    if (activeScreen === "ongoing-next-actions") controllers.ongoingNextActions.reload();
     if (activeScreen === "done-next-actions") controllers.doneNextActions.reload();
     if (activeScreen === "deleted-next-actions") controllers.deletedNextActions.reload();
   }, [activeScreen]);
@@ -135,6 +147,7 @@ function renderActiveScreen(activeScreen: ScreenId, controllers: AppControllers)
   if (activeScreen === "stuff-detail") return <StuffDetailPage controller={controllers.inbox} />;
   if (activeScreen === "deleted-inbox") return <DeletedInboxPage controller={controllers.deletedInbox} />;
   if (activeScreen === "next-actions") return <NextActionsPage controller={controllers.nextActions} />;
+  if (activeScreen === "ongoing-next-actions") return <OnGoingNextActionsPage controller={controllers.ongoingNextActions} />;
   if (activeScreen === "done-next-actions") return renderDoneNextActionsPage(controllers);
   if (activeScreen === "deleted-next-actions") return renderDeletedNextActionsPage(controllers);
 

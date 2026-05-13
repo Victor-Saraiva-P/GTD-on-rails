@@ -3,6 +3,7 @@ export type ScreenId =
   | "contexts"
   | "deleted-inbox"
   | "next-actions"
+  | "ongoing-next-actions"
   | "done-next-actions"
   | "deleted-next-actions"
   | "stuff-detail";

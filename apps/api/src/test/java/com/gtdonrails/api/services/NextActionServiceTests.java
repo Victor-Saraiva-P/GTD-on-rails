@@ -192,6 +192,18 @@ class NextActionServiceTests {
     }
 
     @Test
+    void getsOnGoingNextActions() {
+        nextAction.markOnGoing(clock);
+        when(nextActionRepository.findAllByStatusAndItem_DeletedAtIsNullOrderByItem_UpdatedAtAsc(NextActionStatus.ONGOING))
+            .thenReturn(List.of(nextAction));
+
+        List<NextActionResponseDto> result = nextActionService.getOnGoingNextActions();
+
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().status()).isEqualTo(NextActionStatus.ONGOING.name());
+    }
+
+    @Test
     void getsDeletedNextActions() {
         item.softDelete();
         when(nextActionRepository.findAllByItem_DeletedAtIsNotNullOrderByItem_UpdatedAtDesc())

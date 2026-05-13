@@ -184,6 +184,20 @@ class NextActionControllerTests {
     }
 
     @Test
+    void getsOnGoingNextActions() throws Exception {
+        Context context = contextRepository.save(new Context("Home"));
+        Item item = itemRepository.save(new Item(new Title("Buy milk"), null));
+        NextAction nextAction = new NextAction(item, new BigDecimal("2.0"), Duration.ofMinutes(15), Set.of(context));
+        nextAction.markOnGoing(java.time.Clock.systemUTC());
+        nextActionRepository.save(nextAction);
+
+        mockMvc.perform(get("/next-actions/ongoing"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(1)))
+            .andExpect(jsonPath("$[0].status").value(NextActionStatus.ONGOING.name()));
+    }
+
+    @Test
     void getsDeletedNextActions() throws Exception {
         Context context = contextRepository.save(new Context("Home"));
         Item item = new Item(new Title("Buy milk"), null);

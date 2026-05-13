@@ -2,8 +2,17 @@ import type { ItemBody, Stuff } from "../inbox/types";
 
 export type NextActionOrder = "energy" | "time";
 
+export type ScheduleWindow = {
+  dateStart?: string | null;
+  dateEnd?: string | null;
+  timeStart?: string | null;
+  timeEnd?: string | null;
+  allDay?: boolean;
+};
+
+
 export type NextAction = Stuff & {
-  schedule?: unknown;
+  schedule?: ScheduleWindow;
 };
 
 export type NextActionPatch = {
@@ -19,7 +28,7 @@ export type NextActionResponse = {
   energy?: number | string | null;
   estimatedTime?: { hours: number; minutes: number } | string | null;
   status: string;
-  schedule?: unknown;
+  schedule?: ScheduleWindow;
   contexts?: Array<{ id: string; name: string; iconUrl?: string }>;
 };
 
@@ -45,4 +54,22 @@ export function normalizeNextActionBody(body: NextActionResponse["body"]): ItemB
   if (!body) return { text: "", inlineMarks: [], lineBlocks: [], blockEntities: [] };
   if (typeof body === "string") return { text: body, inlineMarks: [], lineBlocks: [], blockEntities: [] };
   return body;
+}
+
+/**
+ * Formats a schedule date and time into a localized string.
+ */
+export function formatScheduleDateTime(date?: string | null, time?: string | null): string | null {
+  if (!date) return null;
+  
+  // Format as ISO string to ensure correct parsing: YYYY-MM-DDTHH:mm:ss
+  const dateTimeString = time ? `${date}T${time}` : date;
+  const dateObj = new Date(dateTimeString);
+  
+  if (isNaN(dateObj.getTime())) return null;
+
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: time ? "short" : undefined
+  }).format(dateObj);
 }

@@ -65,6 +65,11 @@ public class NextActionController {
         }
     }
 
+    @GetMapping("/ongoing")
+    public List<NextActionResponseDto> getOnGoingNextActions() {
+        return nextActionService.getOnGoingNextActions();
+    }
+
     @GetMapping("/deleted")
     public List<NextActionResponseDto> getDeletedNextActions() {
         return nextActionService.getDeletedNextActions();

@@ -33,6 +33,13 @@ export const nextActionsListTheme: ListTheme = {
   accentColorRgb: "79, 151, 104"
 };
 
+export const onGoingNextActionsListTheme: ListTheme = {
+  id: "ongoing-next-actions",
+  label: "On Going Actions",
+  accentColor: "#9B5AB7",
+  accentColorRgb: "155, 90, 183"
+};
+
 export const doneNextActionsListTheme: ListTheme = {
   id: "done-next-actions",
   label: "Completed Next Actions",

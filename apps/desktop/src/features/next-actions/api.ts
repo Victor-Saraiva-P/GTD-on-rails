@@ -26,6 +26,28 @@ export async function fetchNextActions(params: NextActionsFetchParams): Promise<
 }
 
 /**
+ * Loads on going next actions.
+ *
+ * @example await fetchOnGoingNextActions()
+ */
+export async function fetchOnGoingNextActions(): Promise<NextAction[]> {
+  const response = await apiJson<NextActionResponse[]>("/next-actions/ongoing");
+  return response.map(toNextAction);
+}
+
+/**
+ * Moves a next action to the done state.
+ *
+ * @example await markNextActionDone(nextAction.id)
+ */
+export async function markNextActionDone(id: string): Promise<NextAction> {
+  const response = await apiJson<NextActionResponse>(`/next-actions/${id}/done`, {
+    method: "POST"
+  });
+  return toNextAction(response);
+}
+
+/**
  * Loads completed next actions from the API.
  *
  * @example await fetchDoneNextActions()
@@ -43,6 +65,18 @@ export async function fetchDoneNextActions(): Promise<NextAction[]> {
 export async function fetchDeletedNextActions(): Promise<NextAction[]> {
   const response = await apiJson<NextActionResponse[]>("/next-actions/deleted");
   return response.map(toNextAction);
+}
+
+/**
+ * Moves a next action to the on going state.
+ *
+ * @example await markNextActionOnGoing(nextAction.id)
+ */
+export async function markNextActionOnGoing(id: string): Promise<NextAction> {
+  const response = await apiJson<NextActionResponse>(`/next-actions/${id}/ongoing`, {
+    method: "POST"
+  });
+  return toNextAction(response);
 }
 
 /**

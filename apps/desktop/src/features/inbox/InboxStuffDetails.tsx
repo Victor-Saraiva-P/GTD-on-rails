@@ -1,8 +1,11 @@
 import { lazy, Suspense, type CSSProperties, type ReactNode } from "react";
 import energyIcon from "../../assets/next-actions/energy icon.png";
 import estimatedTimeIcon from "../../assets/next-actions/estimated time icon.png";
+import startIcon from "../../assets/next-actions/start-icon.png";
+import endIcon from "../../assets/next-actions/end-icon.png";
 import { FilePreview } from "./FilePreview";
 import { formatStuffCreatedAt, getStuffBodyPreviewLines, type Stuff, type ItemBody } from "./types";
+import { formatScheduleDateTime, type NextAction } from "../next-actions/types";
 import { buildApiUrl } from "../../config/env";
 import { ContextNameWithIcon } from "../contexts/ContextNameWithIcon";
 
@@ -87,6 +90,9 @@ function NextActionMetaIcon({ src }: { src: string }) {
 
 function NextActionDetailHeader({ item }: Pick<InboxStuffDetailsProps, "item">) {
   const estimatedMinutes = estimatedMinutesLabel(item);
+  const nextAction = item as NextAction;
+  const startedAt = formatScheduleDateTime(nextAction.schedule?.dateStart, nextAction.schedule?.timeStart);
+  const endedAt = formatScheduleDateTime(nextAction.schedule?.dateEnd, nextAction.schedule?.timeEnd);
 
   return (
     <>
@@ -96,6 +102,12 @@ function NextActionDetailHeader({ item }: Pick<InboxStuffDetailsProps, "item">) 
         {item.energy !== undefined && item.energy !== null ? <span className="next-action-meta__item"><NextActionMetaIcon src={energyIcon} />{formatEnergyValue(item.energy)}</span> : null}
         {estimatedMinutes ? <span className="next-action-meta__item"><NextActionMetaIcon src={estimatedTimeIcon} />{estimatedMinutes}</span> : null}
       </div>
+      {(startedAt || endedAt) && (
+        <div className="next-action-meta" aria-label="Next action schedule">
+          {startedAt ? <span className="next-action-meta__item"><NextActionMetaIcon src={startIcon} />{startedAt}</span> : null}
+          {endedAt ? <span className="next-action-meta__item"><NextActionMetaIcon src={endIcon} />{endedAt}</span> : null}
+        </div>
+      )}
       <div className="inbox-detail__divider" />
     </>
   );

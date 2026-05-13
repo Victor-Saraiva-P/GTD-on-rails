@@ -81,6 +81,15 @@ public class NextActionService {
     }
 
     @Transactional(readOnly = true)
+    public List<NextActionResponseDto> getOnGoingNextActions() {
+        return nextActionRepository
+            .findAllByStatusAndItem_DeletedAtIsNullOrderByItem_UpdatedAtAsc(NextActionStatus.ONGOING)
+            .stream()
+            .map(nextActionMapper::toResponse)
+            .toList();
+    }
+
+    @Transactional(readOnly = true)
     public List<NextActionResponseDto> getOrderedByEnergy(UUID contextId) {
         List<NextAction> nextActions = contextId == null
             ? nextActionRepository.findAllByStatusAndItem_DeletedAtIsNullOrderByEnergyDesc(NextActionStatus.NEXT_ACTION)

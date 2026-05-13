@@ -6,30 +6,37 @@ import type { ContextItem } from "../contexts/types";
 import type { NextAction, NextActionOrder, NextActionPatch } from "./types";
 import { useNextActionsQuery } from "./useNextActionsQuery";
 
-type SelectionCursor = {
+export type SelectionCursor = {
   items: NextAction[];
   selectedIndex: number;
   setSelectedId: (id: string | null) => void;
 };
-type EditState = ReturnType<typeof useNextActionEditState>;
-type Model = ReturnType<typeof useNextActionsModel>;
-type Actions = ReturnType<typeof useNextActionsActions>;
+export type EditState = ReturnType<typeof useNextActionEditState>;
+export type Model = {
+  edit: EditState;
+  filter: ReturnType<typeof useNextActionsFilterState>;
+  history: ReturnType<typeof useUndoRedoHistory<NextAction>>;
+  query: any;
+  selection: ReturnType<typeof useNextActionSelection>;
+  zone: ReturnType<typeof useActiveZone>;
+};
+export type Actions = ReturnType<typeof useNextActionsActions>;
 
-function selectedItem(items: NextAction[], selectedId: string | null): NextAction | null {
+export function selectedItem(items: NextAction[], selectedId: string | null): NextAction | null {
   return items.find((item) => item.id === selectedId) ?? items[0] ?? null;
 }
 
-function selectedIndex(items: NextAction[], item: NextAction | null): number {
+export function selectedIndex(items: NextAction[], item: NextAction | null): number {
   return item ? items.findIndex((candidate) => candidate.id === item.id) : -1;
 }
 
-function moveSelection(selection: SelectionCursor, offset: number) {
+export function moveSelection(selection: SelectionCursor, offset: number) {
   if (selection.items.length === 0) return;
   const nextIndex = Math.min(Math.max(selection.selectedIndex + offset, 0), selection.items.length - 1);
   selection.setSelectedId(selection.items[nextIndex].id);
 }
 
-function useNextActionSelection(items: NextAction[]) {
+export function useNextActionSelection(items: NextAction[]) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = selectedItem(items, selectedId);
   const index = selectedIndex(items, selected);
@@ -37,7 +44,7 @@ function useNextActionSelection(items: NextAction[]) {
   return { ...selection, selectedId, selectedItem: selected, selectNext: () => moveSelection(selection, 1), selectPrevious: () => moveSelection(selection, -1) };
 }
 
-function useNextActionEditState() {
+export function useNextActionEditState() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
   const [editingBodyId, setEditingBodyId] = useState<string | null>(null);
@@ -45,13 +52,13 @@ function useNextActionEditState() {
   return { editingBodyId, editingId, editingTitle, setEditingBodyId, setEditingId, setEditingTitle, setVimMode, vimMode };
 }
 
-function useNextActionsFilterState() {
+export function useNextActionsFilterState() {
   const [context, setContext] = useState<ContextItem | null>(null);
   const [orderBy, setOrderBy] = useState<NextActionOrder>("energy");
   return { context, orderBy, setContext, setOrderBy };
 }
 
-function useNextActionsModel() {
+export function useNextActionsModel() {
   const filter = useNextActionsFilterState();
   const query = useNextActionsQuery(filter.context?.id ?? null, filter.orderBy);
   const selection = useNextActionSelection(query.items);
@@ -61,26 +68,26 @@ function useNextActionsModel() {
   return { edit, filter, history, query, selection, zone };
 }
 
-function clearTitleEdit(edit: EditState) {
+export function clearTitleEdit(edit: EditState) {
   edit.setEditingId(null);
   edit.setEditingTitle("");
 }
 
-function clearBodyEdit(edit: EditState) {
+export function clearBodyEdit(edit: EditState) {
   edit.setEditingBodyId(null);
   edit.setVimMode(null);
 }
 
-function clearEditing(edit: EditState) {
+export function clearEditing(edit: EditState) {
   clearTitleEdit(edit);
   clearBodyEdit(edit);
 }
 
-function hasVisibleItem(model: Model, id: string): boolean {
+export function hasVisibleItem(model: Model, id: string): boolean {
   return model.selection.items.some((item) => item.id === id);
 }
 
-function pruneNextActionsState(model: Model) {
+export function pruneNextActionsState(model: Model) {
   if (model.selection.items.length === 0) {
     model.selection.setSelectedId(null);
     clearEditing(model.edit);
@@ -93,18 +100,18 @@ function pruneNextActionsState(model: Model) {
   if (model.edit.editingBodyId && !hasVisibleItem(model, model.edit.editingBodyId)) clearBodyEdit(model.edit);
 }
 
-function useNextActionsPruning(model: Model) {
+export function useNextActionsPruning(model: Model) {
   useEffect(() => pruneNextActionsState(model), [model.edit.editingBodyId, model.edit.editingId, model.selection.items, model.selection.selectedId]);
 }
 
-function startTitleEdit(model: Model) {
+export function startTitleEdit(model: Model) {
   const item = model.selection.selectedItem;
   if (!item) return;
   model.edit.setEditingId(item.id);
   model.edit.setEditingTitle(item.title);
 }
 
-async function commitTitleEdit(model: Model) {
+export async function commitTitleEdit(model: Model) {
   const item = model.selection.selectedItem;
   if (!item || model.edit.editingId !== item.id) return;
   const title = model.edit.editingTitle.trim();
@@ -114,7 +121,7 @@ async function commitTitleEdit(model: Model) {
   clearTitleEdit(model.edit);
 }
 
-async function commitBodyEdit(model: Model, body: ItemBody) {
+export async function commitBodyEdit(model: Model, body: ItemBody) {
   const item = model.selection.selectedItem;
   if (!item || model.edit.editingBodyId !== item.id) return;
   const sameBody = item.body.text === body.text && JSON.stringify(item.body) === JSON.stringify(body);
@@ -122,14 +129,14 @@ async function commitBodyEdit(model: Model, body: ItemBody) {
   clearBodyEdit(model.edit);
 }
 
-async function autosaveBodyEdit(model: Model, body: ItemBody) {
+export async function autosaveBodyEdit(model: Model, body: ItemBody) {
   const item = model.selection.selectedItem;
   if (!item || model.edit.editingBodyId !== item.id) return;
   if (item.body.text === body.text && JSON.stringify(item.body) === JSON.stringify(body)) return;
   model.selection.setSelectedId((await model.query.updateBody(item, body)).id);
 }
 
-async function deleteSelected(model: Model) {
+export async function deleteSelected(model: Model) {
   const item = model.selection.selectedItem;
   if (!item) return;
   await model.query.deleteItem(item.id);
@@ -138,21 +145,37 @@ async function deleteSelected(model: Model) {
   model.zone.setActiveZone("next-actions-list");
 }
 
-async function undoAction(model: Model) {
+export async function markAsDone(model: Model) {
+  const item = model.selection.selectedItem;
+  if (!item) return;
+  await model.query.markAsDone(item.id);
+  clearEditing(model.edit);
+  model.zone.setActiveZone("next-actions-list");
+}
+
+export async function markAsOnGoing(model: Model) {
+  const item = model.selection.selectedItem;
+  if (!item) return;
+  await model.query.markAsOnGoing(item.id);
+  clearEditing(model.edit);
+  model.zone.setActiveZone("next-actions-list");
+}
+
+export async function undoAction(model: Model) {
   const action = model.history.popUndo();
   if (!action) return;
   if (action.type === "DELETE") { await model.query.restoreItem(action.payload.id); model.selection.setSelectedId(action.payload.id); }
   else await model.query.deleteItem(action.payload.id);
 }
 
-async function redoAction(model: Model) {
+export async function redoAction(model: Model) {
   const action = model.history.popRedo();
   if (!action) return;
   if (action.type === "RESTORE") await model.query.deleteItem(action.payload.id);
   else { await model.query.restoreItem(action.payload.id); model.selection.setSelectedId(action.payload.id); }
 }
 
-function useNextActionsActions(model: Model) {
+export function useNextActionsActions(model: Model) {
   return {
     autosaveBody: (body: ItemBody) => autosaveBodyEdit(model, body),
     cancelBodyEdit: () => clearBodyEdit(model.edit),
@@ -160,6 +183,8 @@ function useNextActionsActions(model: Model) {
     commitBody: (body: ItemBody) => commitBodyEdit(model, body),
     commitTitle: () => commitTitleEdit(model),
     deleteSelected: () => deleteSelected(model),
+    markAsDone: () => markAsDone(model),
+    markAsOnGoing: () => markAsOnGoing(model),
     patchSelected: (patch: NextActionPatch) => patchSelected(model, patch),
     redo: () => redoAction(model),
     selectNext: model.selection.selectNext,
@@ -172,19 +197,19 @@ function useNextActionsActions(model: Model) {
   };
 }
 
-function startBodyEdit(model: Model) {
+export function startBodyEdit(model: Model) {
   if (!model.selection.selectedItem) return;
   model.zone.setActiveZone("next-action-detail");
   model.edit.setEditingBodyId(model.selection.selectedItem.id);
 }
 
-async function patchSelected(model: Model, patch: NextActionPatch) {
+export async function patchSelected(model: Model, patch: NextActionPatch) {
   const item = model.selection.selectedItem;
   if (!item) return;
   model.selection.setSelectedId((await model.query.patchItem(item.id, patch)).id);
 }
 
-function buildController(model: Model, actions: Actions) {
+export function buildController(model: Model, actions: Actions) {
   return {
     ...actions,
     activeZone: model.zone.activeZone,

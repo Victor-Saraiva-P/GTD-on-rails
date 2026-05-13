@@ -6,6 +6,8 @@ import type { NextAction, NextActionOrder, NextActionPatch } from "./types";
 import {
   deleteNextAction,
   fetchNextActions,
+  markNextActionDone,
+  markNextActionOnGoing,
   patchNextActionAttributes,
   restoreNextAction,
   updateNextActionBody,
@@ -16,13 +18,13 @@ type NextActionsQuery = ReturnType<typeof useNextActionsQuery>;
 type LoadState = ReturnType<typeof useNextActionsLoadState>;
 type MutationState = ReturnType<typeof useNextActionsMutationState>;
 
-function toErrorMessage(error: unknown): string {
+export function toErrorMessage(error: unknown): string {
   if (error instanceof ApiRequestError) return `Failed to load next actions (${error.status})`;
   if (error instanceof Error) return error.message;
   return "Failed to load next actions";
 }
 
-function useNextActionsLoadState() {
+export function useNextActionsLoadState() {
   const [items, setItems] = useState<NextAction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -30,13 +32,17 @@ function useNextActionsLoadState() {
   return { errorMessage, isLoading, items, reloadToken, setErrorMessage, setIsLoading, setItems, setReloadToken };
 }
 
-function useNextActionsMutationState() {
+export type NextActionsLoadState = ReturnType<typeof useNextActionsLoadState>;
+
+export function useNextActionsMutationState() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   return { isDeleting, isUpdating, setIsDeleting, setIsUpdating };
 }
 
-async function loadNextActions(state: LoadState, contextId: string | null, orderBy: NextActionOrder, cancelled: () => boolean) {
+export type NextActionsMutationState = ReturnType<typeof useNextActionsMutationState>;
+
+async function loadNextActions(state: NextActionsLoadState, contextId: string | null, orderBy: NextActionOrder, cancelled: () => boolean) {
   state.setIsLoading(true);
   state.setErrorMessage(null);
   try {
@@ -49,7 +55,7 @@ async function loadNextActions(state: LoadState, contextId: string | null, order
   }
 }
 
-function useNextActionsLoader(state: LoadState, contextId: string | null, orderBy: NextActionOrder) {
+export function useNextActionsLoader(state: NextActionsLoadState, contextId: string | null, orderBy: NextActionOrder) {
   useEffect(() => {
     let cancelled = false;
     void loadNextActions(state, contextId, orderBy, () => cancelled);
@@ -61,15 +67,17 @@ function replaceItem(items: NextAction[], updated: NextAction): NextAction[] {
   return items.map((item) => (item.id === updated.id ? updated : item));
 }
 
-function completeMutation(state: LoadState, poll: () => void) {
+function completeMutation(state: NextActionsLoadState, poll: () => void) {
   state.setErrorMessage(null);
   poll();
 }
 
-function useNextActionsMutations(state: LoadState, mutations: MutationState, reload: () => void) {
+export function useNextActionsMutations(state: NextActionsLoadState, mutations: NextActionsMutationState, reload: () => void) {
   const { triggerSyncStatusPolling } = useSyncStatus();
   return {
     deleteItem: (id: string) => deleteItem(id, state, mutations, triggerSyncStatusPolling),
+    markAsDone: (id: string) => markAsDone(id, state, mutations, triggerSyncStatusPolling),
+    markAsOnGoing: (id: string) => markAsOnGoing(id, state, mutations, triggerSyncStatusPolling),
     patchItem: (id: string, patch: NextActionPatch) => patchItem(id, patch, state, mutations, triggerSyncStatusPolling),
     restoreItem: (id: string) => restoreItem(id, mutations, reload, triggerSyncStatusPolling),
     updateBody: (item: NextAction, body: ItemBody) => updateBody(item, body, state, mutations, triggerSyncStatusPolling),
@@ -77,31 +85,53 @@ function useNextActionsMutations(state: LoadState, mutations: MutationState, rel
   };
 }
 
-async function deleteItem(id: string, state: LoadState, mutations: MutationState, poll: () => void) {
+async function markAsDone(id: string, state: NextActionsLoadState, mutations: NextActionsMutationState, poll: () => void) {
+  mutations.setIsUpdating(true);
+  try {
+    await markNextActionDone(id);
+    state.setItems((items) => items.filter((item) => item.id !== id));
+    completeMutation(state, poll);
+  } finally {
+    mutations.setIsUpdating(false);
+  }
+}
+
+async function markAsOnGoing(id: string, state: NextActionsLoadState, mutations: NextActionsMutationState, poll: () => void) {
+  mutations.setIsUpdating(true);
+  try {
+    await markNextActionOnGoing(id);
+    state.setItems((items) => items.filter((item) => item.id !== id));
+    completeMutation(state, poll);
+  } finally {
+    mutations.setIsUpdating(false);
+  }
+}
+
+async function deleteItem(id: string, state: NextActionsLoadState, mutations: NextActionsMutationState, poll: () => void) {
   mutations.setIsDeleting(true);
   try { await deleteNextAction(id); state.setItems((items) => items.filter((item) => item.id !== id)); completeMutation(state, poll); }
   finally { mutations.setIsDeleting(false); }
 }
 
-async function restoreItem(id: string, mutations: MutationState, reload: () => void, poll: () => void) {
+async function restoreItem(id: string, mutations: NextActionsMutationState, reload: () => void, poll: () => void) {
   mutations.setIsUpdating(true);
   try { await restoreNextAction(id); reload(); poll(); }
   finally { mutations.setIsUpdating(false); }
 }
 
-async function patchItem(id: string, patch: NextActionPatch, state: LoadState, mutations: MutationState, poll: () => void) {
+async function patchItem(id: string, patch: NextActionPatch, state: NextActionsLoadState, mutations: NextActionsMutationState, poll: () => void) {
   mutations.setIsUpdating(true);
   try { const updated = await patchNextActionAttributes(id, patch); state.setItems((items) => replaceItem(items, updated)); completeMutation(state, poll); return updated; }
   finally { mutations.setIsUpdating(false); }
 }
 
-async function updateBody(item: NextAction, body: ItemBody, state: LoadState, mutations: MutationState, poll: () => void) {
+async function updateBody(item: NextAction, body: ItemBody, state: NextActionsLoadState, mutations: NextActionsMutationState, poll: () => void) {
   mutations.setIsUpdating(true);
   try { const updated = await updateNextActionBody(item, body); state.setItems((items) => replaceItem(items, updated)); completeMutation(state, poll); return updated; }
   finally { mutations.setIsUpdating(false); }
 }
 
-async function updateTitle(item: NextAction, title: string, state: LoadState, mutations: MutationState, poll: () => void) {
+async function updateTitle(item: NextAction, title: string, state: NextActionsLoadState, mutations: NextActionsMutationState, poll: () => void) {
   mutations.setIsUpdating(true);
   try { const updated = await updateNextActionTitle(item, title); state.setItems((items) => replaceItem(items, updated)); completeMutation(state, poll); return updated; }
   finally { mutations.setIsUpdating(false); }
