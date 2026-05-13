@@ -63,7 +63,7 @@ export function formatScheduleDateTime(date?: string | null, time?: string | nul
   if (!date) return null;
   
   // Format as ISO string to ensure correct parsing: YYYY-MM-DDTHH:mm:ss
-  const dateTimeString = time ? `${date}T${time}` : date;
+  const dateTimeString = time ? `${date}T${time}Z` : date;
   const dateObj = new Date(dateTimeString);
   
   if (isNaN(dateObj.getTime())) return null;
