@@ -1,118 +1,131 @@
-import { useEffect, useRef, useState, useMemo, useCallback } from "react";
-import type { KeyboardEvent } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { MutableRefObject } from "react";
 import { useContextsQuery } from "../contexts/useContextsQuery";
 import type { ContextItem } from "../contexts/types";
 
 type ProcessingContextStepProps = {
-  onContextSelected: (context: ContextItem) => void;
+  onContextsSelected: (contextIds: string[]) => void;
   onCancel: () => void;
 };
 
-export function ProcessingContextStep({ onContextSelected, onCancel }: ProcessingContextStepProps) {
+function nextFocusedIndex(currentIndex: number, offset: number, contexts: ContextItem[]): number {
+  if (contexts.length === 0) return 0;
+  return Math.min(Math.max(currentIndex + offset, 0), contexts.length - 1);
+}
+
+function toggleContextId(selectedIds: string[], contextId: string): string[] {
+  return selectedIds.includes(contextId)
+    ? selectedIds.filter((selectedId) => selectedId !== contextId)
+    : [...selectedIds, contextId];
+}
+
+function contextItemClassName(isFocused: boolean, isSelected: boolean): string {
+  const classNames = ["processing-dialog__list-item"];
+  if (isFocused) classNames.push("processing-dialog__list-item--focused");
+  if (isSelected) classNames.push("processing-dialog__list-item--checked");
+  return classNames.join(" ");
+}
+
+function syncSelectedIds(setSelectedIds: (updater: (currentIds: string[]) => string[]) => void, selectedIdsRef: MutableRefObject<string[]>, contextId: string) {
+  setSelectedIds((currentIds) => {
+    const nextIds = toggleContextId(currentIds, contextId);
+    selectedIdsRef.current = nextIds;
+    return nextIds;
+  });
+}
+
+/**
+ * Selects zero or more contexts for a next action during inbox processing.
+ *
+ * @example <ProcessingContextStep onContextsSelected={saveIds} onCancel={close} />
+ */
+export function ProcessingContextStep({ onContextsSelected, onCancel }: ProcessingContextStepProps) {
   const { contexts, isLoading } = useContextsQuery();
-  const [filter, setFilter] = useState("");
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const listRef = useRef<HTMLDivElement>(null);
+  const [focusedIndex, setFocusedIndex] = useState(0);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const contextsRef = useRef<ContextItem[]>([]);
+  const focusedIndexRef = useRef(0);
+  const handleKeyDownRef = useRef<(event: KeyboardEvent) => void>(() => undefined);
+  const selectedIdsRef = useRef<string[]>([]);
 
-  const filteredContexts = useMemo(() => {
-    if (!filter.trim()) return contexts;
-    const lowerFilter = filter.toLowerCase();
-    
-    return contexts
-      .filter(c => c.name.toLowerCase().includes(lowerFilter))
-      .sort((a, b) => {
-        const aName = a.name.toLowerCase();
-        const bName = b.name.toLowerCase();
-        
-        const aExact = aName === lowerFilter;
-        const bExact = bName === lowerFilter;
-        if (aExact && !bExact) return -1;
-        if (!aExact && bExact) return 1;
-        
-        const aStarts = aName.startsWith(lowerFilter);
-        const bStarts = bName.startsWith(lowerFilter);
-        if (aStarts && !bStarts) return -1;
-        if (!aStarts && bStarts) return 1;
-        
-        return aName.localeCompare(bName);
-      });
-  }, [contexts, filter]);
-
-  // Reset selected index when filter changes
   useEffect(() => {
-    setSelectedIndex(0);
-  }, [filter]);
-
-  // Focus input on mount
-  useEffect(() => {
-    inputRef.current?.focus();
+    const focusId = window.setTimeout(() => containerRef.current?.focus(), 0);
+    return () => window.clearTimeout(focusId);
   }, []);
 
-  const handleSelect = useCallback(() => {
-    if (filteredContexts[selectedIndex]) {
-      onContextSelected(filteredContexts[selectedIndex]);
-    }
-  }, [filteredContexts, selectedIndex, onContextSelected]);
+  useEffect(() => {
+    setFocusedIndex((currentIndex) => {
+      const nextIndex = nextFocusedIndex(currentIndex, 0, contexts);
+      focusedIndexRef.current = nextIndex;
+      return nextIndex;
+    });
+    contextsRef.current = contexts;
+  }, [contexts]);
 
-  const moveDown = useCallback(() => {
-    setSelectedIndex(prev => Math.min(prev + 1, Math.max(0, filteredContexts.length - 1)));
-  }, [filteredContexts.length]);
-
-  const moveUp = useCallback(() => {
-    setSelectedIndex(prev => Math.max(prev - 1, 0));
-  }, []);
-
-  const focusOtherTarget = () => {
-    if (document.activeElement === inputRef.current) listRef.current?.focus();
-    else inputRef.current?.focus();
+  const toggleFocusedContext = () => {
+    const focusedContext = contextsRef.current[focusedIndexRef.current];
+    if (!focusedContext) return;
+    syncSelectedIds(setSelectedIds, selectedIdsRef, focusedContext.id);
   };
 
-  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    const isListFocused = document.activeElement === listRef.current;
-    const isHandled = ["Escape", "Tab", "Enter"].includes(event.key) || (isListFocused && ["j", "k"].includes(event.key));
-    if (!isHandled) return;
+  useEffect(() => {
+    const listener = (event: KeyboardEvent) => handleKeyDownRef.current(event);
+    window.addEventListener("keydown", listener, true);
+    return () => window.removeEventListener("keydown", listener, true);
+  }, []);
 
+  handleKeyDownRef.current = (event: KeyboardEvent) => {
+    const handledKeys = ["Escape", "Tab", "Enter", "j", "k"];
+    if (!handledKeys.includes(event.key)) return;
+
+    event.preventDefault();
+    event.stopPropagation();
     if (event.key === "Escape") onCancel();
-    if (event.key === "Tab") focusOtherTarget();
-    if (event.key === "Enter") handleSelect();
-    if (isListFocused && event.key === "j") moveDown();
-    if (isListFocused && event.key === "k") moveUp();
-      event.preventDefault();
-      event.stopPropagation();
+    if (event.key === "j") moveFocusedContext(1);
+    if (event.key === "k") moveFocusedContext(-1);
+    if (event.key === "Tab") toggleFocusedContext();
+    if (event.key === "Enter") onContextsSelected(selectedIdsRef.current);
+  };
+
+  const moveFocusedContext = (offset: number) => {
+    const nextIndex = nextFocusedIndex(focusedIndexRef.current, offset, contextsRef.current);
+    focusedIndexRef.current = nextIndex;
+    setFocusedIndex(nextIndex);
   };
 
   return (
-    <div className="processing-dialog__step processing-dialog__step--context" onKeyDown={handleKeyDown}>
-      <input 
-        ref={inputRef}
-        type="text" 
-        className="processing-dialog__input"
-        placeholder="Filter contexts..."
-        value={filter}
-        onChange={(e) => setFilter(e.target.value)}
-      />
-      <div 
-        ref={listRef} 
-        className="processing-dialog__list" 
-        tabIndex={-1}
-      >
+    <div ref={containerRef} className="processing-dialog__step processing-dialog__step--context" tabIndex={-1}>
+      <div className="processing-dialog__label">Contexts</div>
+      <div className="processing-dialog__list" role="listbox" aria-label="Contexts" aria-multiselectable="true">
         {isLoading ? (
           <div className="processing-dialog__list-item processing-dialog__list-item--muted">Loading...</div>
-        ) : filteredContexts.length === 0 ? (
-          <div className="processing-dialog__list-item processing-dialog__list-item--muted">No contexts found</div>
+        ) : contexts.length === 0 ? (
+          <div className="processing-dialog__list-item processing-dialog__list-item--muted">No contexts. Press Enter for anywhere.</div>
         ) : (
-          filteredContexts.map((ctx, idx) => (
-            <div 
-              key={ctx.id} 
-              className={`processing-dialog__list-item ${idx === selectedIndex ? 'processing-dialog__list-item--selected' : ''}`}
-              onClick={() => onContextSelected(ctx)}
-            >
-              {ctx.name}
-            </div>
-          ))
+          contexts.map((context, index) => {
+            const isSelected = selectedIds.includes(context.id);
+            return (
+              <button
+                key={context.id}
+                type="button"
+                tabIndex={-1}
+                className={contextItemClassName(index === focusedIndex, isSelected)}
+                aria-selected={isSelected}
+                onClick={() => syncSelectedIds(setSelectedIds, selectedIdsRef, context.id)}
+                onMouseEnter={() => {
+                  focusedIndexRef.current = index;
+                  setFocusedIndex(index);
+                }}
+              >
+                <span className="processing-dialog__check" aria-hidden="true">{isSelected ? "[x]" : "[ ]"}</span>
+                <span>{context.name}</span>
+              </button>
+            );
+          })
         )}
       </div>
+      <div className="processing-dialog__hint">j/k move | tab toggles | enter confirms</div>
     </div>
   );
 }

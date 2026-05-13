@@ -348,14 +348,14 @@ async function autosaveEditingSelectedStuffBodyAction(model: InboxModel, body: I
   clearPendingBodyEdit(model);
 }
 
-async function processSelectedStuffAction(model: InboxModel, energy: number | null, estimatedTimeMinutes: number | null, contextId: string) {
+async function processSelectedStuffAction(model: InboxModel, energy: number | null, estimatedTimeMinutes: number | null, contextIds: string[]) {
   const selectedItem = model.selection.selectedItem;
 
   if (!selectedItem) {
     return;
   }
 
-  await model.query.processStuff(selectedItem, energy, estimatedTimeMinutes, [contextId]);
+  await model.query.processStuff(selectedItem, energy, estimatedTimeMinutes, contextIds);
   model.selection.setSelectedId(model.query.stuffs[0]?.id ?? null);
   clearAllEditing(model);
   model.zone.setActiveZone("inbox-list");
@@ -370,7 +370,7 @@ function useInboxWorkspaceActions(model: InboxModel) {
     commitEditingSelectedStuffBody: (body: ItemBody) => commitEditingSelectedStuffBodyAction(model, body),
     createNewStuff: () => Promise.resolve(createNewStuffAction(model)),
     deleteSelectedStuff: () => deleteSelectedStuffAction(model),
-    processSelectedStuff: (energy: number | null, estimatedTimeMinutes: number | null, contextId: string) => processSelectedStuffAction(model, energy, estimatedTimeMinutes, contextId),
+    processSelectedStuff: (energy: number | null, estimatedTimeMinutes: number | null, contextIds: string[]) => processSelectedStuffAction(model, energy, estimatedTimeMinutes, contextIds),
     undo: () => undoAction(model),
     redo: () => redoAction(model),
     selectNextStuff: model.selection.selectNextStuff,

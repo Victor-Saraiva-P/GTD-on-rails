@@ -1,6 +1,5 @@
 import { useRef, useState } from "react";
 import type { Stuff } from "../inbox/types";
-import type { ContextItem } from "../contexts/types";
 import { ProcessingInitialStep } from "./ProcessingInitialStep";
 import { ProcessingContextStep } from "./ProcessingContextStep";
 import { ProcessingEnergyStep } from "./ProcessingEnergyStep";
@@ -9,7 +8,7 @@ import { ProcessingTimeStep } from "./ProcessingTimeStep";
 type ProcessingDialogProps = {
   item: Stuff;
   onClose: () => void;
-  onProcess: (energy: number | null, estimatedTimeMinutes: number | null, contextId: string) => void;
+  onProcess: (energy: number | null, estimatedTimeMinutes: number | null, contextIds: string[]) => void;
 };
 
 type ProcessingStep = 'initial' | 'select-context' | 'set-energy' | 'set-time';
@@ -21,18 +20,18 @@ type ProcessingStep = 'initial' | 'select-context' | 'set-energy' | 'set-time';
  */
 export function ProcessingDialog({ item, onClose, onProcess }: ProcessingDialogProps) {
   const [step, setStep] = useState<ProcessingStep>('initial');
-  const [selectedContext, setSelectedContext] = useState<ContextItem | null>(null);
+  const [selectedContextIds, setSelectedContextIds] = useState<string[]>([]);
   const [selectedEnergy, setSelectedEnergy] = useState<number | null>(null);
-  const selectedContextRef = useRef<ContextItem | null>(null);
+  const selectedContextIdsRef = useRef<string[]>([]);
   const selectedEnergyRef = useRef<number | null>(null);
 
   const handleNextAction = () => {
     setStep('select-context');
   };
 
-  const handleContextSelected = (context: ContextItem) => {
-    selectedContextRef.current = context;
-    setSelectedContext(context);
+  const handleContextsSelected = (contextIds: string[]) => {
+    selectedContextIdsRef.current = contextIds;
+    setSelectedContextIds(contextIds);
     setStep('set-energy');
   };
 
@@ -43,14 +42,10 @@ export function ProcessingDialog({ item, onClose, onProcess }: ProcessingDialogP
   };
 
   const handleTimeSelected = (minutes: number | null) => {
-    const context = selectedContextRef.current ?? selectedContext;
+    const contextIds = selectedContextIdsRef.current.length > 0 ? selectedContextIdsRef.current : selectedContextIds;
     const energy = selectedEnergyRef.current ?? selectedEnergy;
 
-    if (context) {
-      onProcess(energy, minutes, context.id);
-    } else {
-      onClose();
-    }
+    onProcess(energy, minutes, contextIds);
   };
 
   return (
@@ -61,7 +56,7 @@ export function ProcessingDialog({ item, onClose, onProcess }: ProcessingDialogP
           <ProcessingInitialStep onNextAction={handleNextAction} onCancel={onClose} />
         )}
         {step === 'select-context' && (
-          <ProcessingContextStep onContextSelected={handleContextSelected} onCancel={onClose} />
+          <ProcessingContextStep onContextsSelected={handleContextsSelected} onCancel={onClose} />
         )}
         {step === 'set-energy' && (
           <ProcessingEnergyStep onEnergySelected={handleEnergySelected} onCancel={onClose} />

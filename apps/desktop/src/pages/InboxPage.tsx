@@ -285,8 +285,8 @@ export function InboxPage({ controller }: InboxPageProps) {
   const openLinkCombo = useCallback(() => setIsLinkComboOpen(true), []);
   const openAssetCombo = useCallback(() => setIsAssetComboOpen(true), []);
   const openProcessing = useCallback(() => setIsProcessingOpen(true), []);
-  const processSelectedItem = (energy: number | null, time: number | null, contextId: string) => {
-    void controller.processSelectedStuff(energy, time, contextId);
+  const processSelectedItem = (energy: number | null, time: number | null, contextIds: string[]) => {
+    void controller.processSelectedStuff(energy, time, contextIds);
     setIsProcessingOpen(false);
   };
   useKeybindScreen("inbox");
