@@ -57,6 +57,12 @@ function openDetailScreen(controller: OnGoingNextActionsWorkspaceController, set
   }
 }
 
+async function markAsDoneAndReturnWhenEmpty(controller: OnGoingNextActionsWorkspaceController, setActiveScreen: (screen: ScreenId) => void): Promise<void> {
+  const shouldReturnToNextActions = controller.stuffs.length <= 1;
+  await controller.markAsDone();
+  if (shouldReturnToNextActions) setActiveScreen("next-actions");
+}
+
 function buildOnGoingActionBindings(
   controller: OnGoingNextActionsWorkspaceController,
   setActiveScreen: (screen: ScreenId) => void,
@@ -68,8 +74,8 @@ function buildOnGoingActionBindings(
   return [
     onGoingActionBinding("ongoing-next-actions.delete-list", "d", "Delete selected on going action", "next-actions-list", () => runAsync(canEditSelected(controller), controller.deleteSelected, "Failed to delete next action")),
     onGoingActionBinding("ongoing-next-actions.delete-detail", "d", "Delete selected on going action", "next-action-detail", () => runAsync(canEditSelected(controller), controller.deleteSelected, "Failed to delete next action")),
-    onGoingActionBinding("ongoing-next-actions.done-list", "x", "Mark as done", "next-actions-list", () => runAsync(canEditSelected(controller), controller.markAsDone, "Failed to mark as done")),
-    onGoingActionBinding("ongoing-next-actions.done-detail", "x", "Mark as done", "next-action-detail", () => runAsync(canEditSelected(controller), controller.markAsDone, "Failed to mark as done")),
+    onGoingActionBinding("ongoing-next-actions.done-list", "x", "Mark as done", "next-actions-list", () => runAsync(canEditSelected(controller), () => markAsDoneAndReturnWhenEmpty(controller, setActiveScreen), "Failed to mark as done")),
+    onGoingActionBinding("ongoing-next-actions.done-detail", "x", "Mark as done", "next-action-detail", () => runAsync(canEditSelected(controller), () => markAsDoneAndReturnWhenEmpty(controller, setActiveScreen), "Failed to mark as done")),
     onGoingActionBinding("ongoing-next-actions.attrs-list", "e", "Edit attributes", "next-actions-list", () => canEditSelected(controller) && openAttrs()),
     onGoingActionBinding("ongoing-next-actions.attrs-detail", "e", "Edit attributes", "next-action-detail", () => canEditSelected(controller) && openAttrs()),
     onGoingActionBinding("ongoing-next-actions.order-list", "o", "Cycle ordering", "next-actions-list", controller.toggleOrder),
