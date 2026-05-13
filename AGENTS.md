@@ -70,3 +70,5 @@
 ## Processing
 
 - During processing, it is possible to cancel at any time by pressing `esc`. Therefore, backend requests and data persistence must only be performed at the very end of the flow.
+- Wizard flows must treat `esc` contextually: the first step cancels the flow, while later steps go back one step.
+- Wizard flows must preserve previous choices when moving backward and forward. Clear later state only when a change is incompatible with the existing path, such as choosing a different GTD element type.

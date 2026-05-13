@@ -27,6 +27,16 @@ function estimatedTimePatch(minutes: number | null): NextActionPatch {
   return { estimatedTime: { hours: Math.floor(minutes / 60), minutes: minutes % 60 } };
 }
 
+function initialEnergyDigits(item: NextAction): string {
+  return item.energy == null ? "" : Math.round(item.energy * 10).toString();
+}
+
+function initialTimeDigits(item: NextAction): string {
+  if (!item.estimatedTime) return "";
+  const minutes = item.estimatedTime.minutes.toString().padStart(2, "0");
+  return `${item.estimatedTime.hours}${minutes}`;
+}
+
 function NextActionEditInitialStep(props: { onSelect: (step: NextActionEditStep) => void; onCancel: () => void }) {
   const containerRef = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => containerRef.current?.focus(), []);
@@ -55,16 +65,16 @@ function EditCommand({ shortcut, label }: { shortcut: string; label: string }) {
   return <button className="processing-dialog__command" type="button"><kbd>{shortcut}</kbd><span>{label}</span></button>;
 }
 
-function renderContextStep(item: NextAction, savePatch: (patch: NextActionPatch) => void, onClose: () => void) {
-  return <ProcessingContextStep initialSelectedIds={initialContextIds(item)} onContextsSelected={(contextIds) => savePatch({ contextIds })} onCancel={onClose} />;
+function renderContextStep(contextIds: string[], setContextIds: (contextIds: string[]) => void, savePatch: (patch: NextActionPatch) => void, onBack: () => void) {
+  return <ProcessingContextStep initialSelectedIds={contextIds} onSelectedIdsChange={setContextIds} onContextsSelected={(nextIds) => savePatch({ contextIds: nextIds })} onBack={onBack} />;
 }
 
-function renderEnergyStep(savePatch: (patch: NextActionPatch) => void, onClose: () => void) {
-  return <ProcessingEnergyStep onEnergySelected={(energy) => savePatch({ energy })} onCancel={onClose} />;
+function renderEnergyStep(digits: string, setDigits: (digits: string) => void, savePatch: (patch: NextActionPatch) => void, onBack: () => void) {
+  return <ProcessingEnergyStep digits={digits} onDigitsChange={setDigits} onEnergySelected={(energy) => savePatch({ energy })} onBack={onBack} />;
 }
 
-function renderTimeStep(savePatch: (patch: NextActionPatch) => void, onClose: () => void) {
-  return <ProcessingTimeStep onTimeSelected={(minutes) => savePatch(estimatedTimePatch(minutes))} onCancel={onClose} />;
+function renderTimeStep(digits: string, setDigits: (digits: string) => void, savePatch: (patch: NextActionPatch) => void, onBack: () => void) {
+  return <ProcessingTimeStep digits={digits} onDigitsChange={setDigits} onTimeSelected={(minutes) => savePatch(estimatedTimePatch(minutes))} onBack={onBack} />;
 }
 
 function keyToStep(key: string): NextActionEditStep | null {
@@ -93,6 +103,10 @@ function selectKey(event: CommandKeyEvent, onSelect: () => void) {
  */
 export function NextActionEditDialog({ item, onSave, onClose }: NextActionEditDialogProps) {
   const [step, setStep] = useState<NextActionEditStep>("initial");
+  const [contextIds, setContextIds] = useState(() => initialContextIds(item));
+  const [energyDigits, setEnergyDigits] = useState(() => initialEnergyDigits(item));
+  const [timeDigits, setTimeDigits] = useState(() => initialTimeDigits(item));
+  const backToInitial = () => setStep("initial");
   const savePatch = (patch: NextActionPatch) => void onSave(patch);
 
   return (
@@ -100,9 +114,9 @@ export function NextActionEditDialog({ item, onSave, onClose }: NextActionEditDi
       <div className="processing-dialog__title">Edit Next Action</div>
       <div className="processing-dialog__content">
         {step === "initial" ? <NextActionEditInitialStep onSelect={setStep} onCancel={onClose} /> : null}
-        {step === "context" ? renderContextStep(item, savePatch, onClose) : null}
-        {step === "energy" ? renderEnergyStep(savePatch, onClose) : null}
-        {step === "time" ? renderTimeStep(savePatch, onClose) : null}
+        {step === "context" ? renderContextStep(contextIds, setContextIds, savePatch, backToInitial) : null}
+        {step === "energy" ? renderEnergyStep(energyDigits, setEnergyDigits, savePatch, backToInitial) : null}
+        {step === "time" ? renderTimeStep(timeDigits, setTimeDigits, savePatch, backToInitial) : null}
       </div>
     </section>
   );

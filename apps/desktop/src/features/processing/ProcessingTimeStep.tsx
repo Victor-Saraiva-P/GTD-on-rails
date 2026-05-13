@@ -1,15 +1,15 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import type { KeyboardEvent } from "react";
 
 type ProcessingTimeStepProps = {
+  digits: string;
+  onDigitsChange: (digits: string) => void;
   onTimeSelected: (minutes: number | null) => void;
-  onCancel: () => void;
+  onBack: () => void;
 };
 
-export function ProcessingTimeStep({ onTimeSelected, onCancel }: ProcessingTimeStepProps) {
-  const [digits, setDigits] = useState<string>("");
+export function ProcessingTimeStep({ digits, onDigitsChange, onTimeSelected, onBack }: ProcessingTimeStepProps) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const digitsRef = useRef("");
 
   // Auto-format digits to a time string like "0min", "1min", "1h 30min", "12h 45min"
   let displayValue = "";
@@ -30,19 +30,18 @@ export function ProcessingTimeStep({ onTimeSelected, onCancel }: ProcessingTimeS
   }, []);
 
   const setNextDigits = (nextDigits: string) => {
-    digitsRef.current = nextDigits;
-    setDigits(nextDigits);
+    onDigitsChange(nextDigits);
   };
 
   const handleDigit = (digit: string) => {
-    const numStr = parseInt(digitsRef.current + digit, 10).toString();
+    const numStr = parseInt(digits + digit, 10).toString();
     const minutes = parseInt(numStr.padStart(4, "0").slice(-2), 10);
     if (numStr.length <= 4 && minutes < 60) setNextDigits(numStr);
   };
 
   const commitTime = () => {
-    if (!digitsRef.current) return onTimeSelected(null);
-    const padded = digitsRef.current.padStart(4, "0");
+    if (!digits) return onTimeSelected(null);
+    const padded = digits.padStart(4, "0");
     const hours = parseInt(padded.slice(0, 2), 10);
     const mins = parseInt(padded.slice(-2), 10);
     return onTimeSelected(hours * 60 + mins);
@@ -51,9 +50,9 @@ export function ProcessingTimeStep({ onTimeSelected, onCancel }: ProcessingTimeS
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     event.preventDefault();
     event.stopPropagation();
-    if (event.key === "Escape") onCancel();
+    if (event.key === "Escape") onBack();
     if (event.key === "Enter") commitTime();
-    if (event.key === "Backspace") setNextDigits(digitsRef.current.slice(0, -1));
+    if (event.key === "Backspace") setNextDigits(digits.slice(0, -1));
     if (/^\d$/.test(event.key)) handleDigit(event.key);
   };
 

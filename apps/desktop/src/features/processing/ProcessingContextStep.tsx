@@ -5,7 +5,8 @@ import type { ContextItem } from "../contexts/types";
 
 type ProcessingContextStepProps = {
   onContextsSelected: (contextIds: string[]) => void;
-  onCancel: () => void;
+  onSelectedIdsChange?: (contextIds: string[]) => void;
+  onBack: () => void;
   initialSelectedIds?: string[];
 };
 
@@ -27,10 +28,11 @@ function contextItemClassName(isFocused: boolean, isSelected: boolean): string {
   return classNames.join(" ");
 }
 
-function syncSelectedIds(setSelectedIds: (updater: (currentIds: string[]) => string[]) => void, selectedIdsRef: MutableRefObject<string[]>, contextId: string) {
+function syncSelectedIds(setSelectedIds: (updater: (currentIds: string[]) => string[]) => void, selectedIdsRef: MutableRefObject<string[]>, contextId: string, onChange?: (contextIds: string[]) => void) {
   setSelectedIds((currentIds) => {
     const nextIds = toggleContextId(currentIds, contextId);
     selectedIdsRef.current = nextIds;
+    onChange?.(nextIds);
     return nextIds;
   });
 }
@@ -38,9 +40,9 @@ function syncSelectedIds(setSelectedIds: (updater: (currentIds: string[]) => str
 /**
  * Selects zero or more contexts for a next action during inbox processing.
  *
- * @example <ProcessingContextStep onContextsSelected={saveIds} onCancel={close} />
+ * @example <ProcessingContextStep onContextsSelected={saveIds} onBack={back} />
  */
-export function ProcessingContextStep({ onContextsSelected, onCancel, initialSelectedIds = [] }: ProcessingContextStepProps) {
+export function ProcessingContextStep({ onContextsSelected, onSelectedIdsChange, onBack, initialSelectedIds = [] }: ProcessingContextStepProps) {
   const { contexts, isLoading } = useContextsQuery();
   const [focusedIndex, setFocusedIndex] = useState(0);
   const [selectedIds, setSelectedIds] = useState<string[]>(initialSelectedIds);
@@ -67,7 +69,7 @@ export function ProcessingContextStep({ onContextsSelected, onCancel, initialSel
   const toggleFocusedContext = () => {
     const focusedContext = contextsRef.current[focusedIndexRef.current];
     if (!focusedContext) return;
-    syncSelectedIds(setSelectedIds, selectedIdsRef, focusedContext.id);
+    syncSelectedIds(setSelectedIds, selectedIdsRef, focusedContext.id, onSelectedIdsChange);
   };
 
   useEffect(() => {
@@ -82,7 +84,7 @@ export function ProcessingContextStep({ onContextsSelected, onCancel, initialSel
 
     event.preventDefault();
     event.stopPropagation();
-    if (event.key === "Escape") onCancel();
+    if (event.key === "Escape") onBack();
     if (event.key === "j") moveFocusedContext(1);
     if (event.key === "k") moveFocusedContext(-1);
     if (event.key === "Tab") toggleFocusedContext();
@@ -113,7 +115,7 @@ export function ProcessingContextStep({ onContextsSelected, onCancel, initialSel
                 tabIndex={-1}
                 className={contextItemClassName(index === focusedIndex, isSelected)}
                 aria-selected={isSelected}
-                onClick={() => syncSelectedIds(setSelectedIds, selectedIdsRef, context.id)}
+                onClick={() => syncSelectedIds(setSelectedIds, selectedIdsRef, context.id, onSelectedIdsChange)}
                 onMouseEnter={() => {
                   focusedIndexRef.current = index;
                   setFocusedIndex(index);
