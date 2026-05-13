@@ -7,7 +7,8 @@ export type ScreenId =
   | "done-next-actions"
   | "deleted-next-actions"
   | "stuff-detail"
-  | "next-action-detail-page";
+  | "next-action-detail-page"
+  | "ongoing-next-action-detail-page";
 
 export type FocusZoneId =
   | "inbox-list"

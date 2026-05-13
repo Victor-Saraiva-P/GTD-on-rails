@@ -7,8 +7,8 @@ import { InboxStuffDetails } from "../features/inbox/InboxStuffDetails";
 import { prefetchNearbyInboxAssets } from "../features/inbox/inboxAssetPrefetch";
 import type { ItemBody } from "../features/inbox/types";
 import { LeaderMenu } from "../features/keybinds/LeaderMenu";
-import { useKeybindScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
-import type { FocusZoneId, KeybindDefinition } from "../features/keybinds/types";
+import { useActiveScreen, useKeybindScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
+import type { FocusZoneId, KeybindDefinition, ScreenId } from "../features/keybinds/types";
 import { onGoingNextActionsListTheme } from "../features/lists/listThemes";
 import { NextActionEditDialog } from "../features/next-actions/NextActionEditDialog";
 import { NextActionsList } from "../features/next-actions/NextActionsList";
@@ -29,8 +29,8 @@ const LazyMarkdownLinkComboDialog = lazy(async () => {
   return { default: module.MarkdownLinkComboDialog };
 });
 
-function onGoingActionBinding(id: string, key: string, description: string, zone: FocusZoneId, runKeybind: () => void, leader = false): KeybindDefinition {
-  return { description, id, key, leader, runKeybind, screen: "ongoing-next-actions", zone };
+function onGoingActionBinding(id: string, key: string, description: string, zone: FocusZoneId, runKeybind: () => void, leader = false, sequence?: string[]): KeybindDefinition {
+  return { description, id, key, leader, runKeybind, screen: "ongoing-next-actions", zone, sequence };
 }
 
 function canRunAction(controller: OnGoingNextActionsWorkspaceController): boolean {
@@ -51,8 +51,15 @@ function moveSelection(controller: OnGoingNextActionsWorkspaceController, direct
   }
 }
 
+function openDetailScreen(controller: OnGoingNextActionsWorkspaceController, setActiveScreen: (screen: ScreenId) => void) {
+  if (controller.selectedItem) {
+    setActiveScreen("ongoing-next-action-detail-page");
+  }
+}
+
 function buildOnGoingActionBindings(
   controller: OnGoingNextActionsWorkspaceController,
+  setActiveScreen: (screen: ScreenId) => void,
   openAttrs: () => void,
   openLink: () => void,
   openAsset: () => void,
@@ -76,6 +83,8 @@ function buildOnGoingActionBindings(
     onGoingActionBinding("ongoing-next-actions.move-up", "k", "Move up", "next-actions-list", () => moveSelection(controller, "previous")),
     onGoingActionBinding("ongoing-next-actions.edit-body-list", "l", "Edit selected body", "next-actions-list", () => canEditSelected(controller) && controller.startBodyEdit()),
     onGoingActionBinding("ongoing-next-actions.edit-body-detail", "Enter", "Edit selected body", "next-action-detail", () => !isAttrsOpen && canEditSelected(controller) && controller.startBodyEdit()),
+    onGoingActionBinding("ongoing-next-actions.open-detail-screen-from-list", "Enter", "Open full detail", "next-actions-list", () => !isAttrsOpen && openDetailScreen(controller, setActiveScreen), true, ["Enter"]),
+    onGoingActionBinding("ongoing-next-actions.open-detail-screen-from-detail", "Enter", "Open full detail", "next-action-detail", () => !isAttrsOpen && openDetailScreen(controller, setActiveScreen), true, ["Enter"]),
     onGoingActionBinding("ongoing-next-actions.focus-list", "h", "Focus on going actions list", "next-action-detail", () => !controller.editingBodyId && controller.setActiveZone("next-actions-list")),
     onGoingActionBinding("ongoing-next-actions.which-key-list", "k", "Show available keybinds", "next-actions-list", () => undefined, true),
     onGoingActionBinding("ongoing-next-actions.which-key-detail", "k", "Show available keybinds", "next-action-detail", () => undefined, true),
@@ -84,7 +93,8 @@ function buildOnGoingActionBindings(
 }
 
 function useOnGoingActionBindings(controller: OnGoingNextActionsWorkspaceController, openAttrs: () => void, openLink: () => void, openAsset: () => void, isAttrsOpen: boolean) {
-  const bindings = useMemo(() => buildOnGoingActionBindings(controller, openAttrs, openLink, openAsset, isAttrsOpen), [controller, openAttrs, openLink, openAsset, isAttrsOpen]);
+  const { setActiveScreen } = useActiveScreen();
+  const bindings = useMemo(() => buildOnGoingActionBindings(controller, setActiveScreen, openAttrs, openLink, openAsset, isAttrsOpen), [controller, setActiveScreen, openAttrs, openLink, openAsset, isAttrsOpen]);
   useRegisterKeybinds(bindings);
 }
 
