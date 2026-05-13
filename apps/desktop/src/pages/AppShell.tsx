@@ -103,6 +103,7 @@ function useReloadActiveScreen(activeScreen: ScreenId, controllers: AppControlle
     if (activeScreen === "deleted-inbox") controllers.deletedInbox.reload();
     if (activeScreen === "next-actions") controllers.nextActions.reload();
     if (activeScreen === "ongoing-next-actions") controllers.ongoingNextActions.reload();
+    if (activeScreen === "ongoing-next-action-detail-page") controllers.ongoingNextActions.reload();
     if (activeScreen === "done-next-actions") controllers.doneNextActions.reload();
     if (activeScreen === "deleted-next-actions") controllers.deletedNextActions.reload();
   }, [activeScreen]);
@@ -148,7 +149,7 @@ function renderActiveScreen(activeScreen: ScreenId, controllers: AppControllers)
   if (activeScreen === "contexts") return <ContextsPage />;
   if (activeScreen === "stuff-detail") return <StuffDetailPage controller={controllers.inbox} />;
   if (activeScreen === "deleted-inbox") return <DeletedInboxPage controller={controllers.deletedInbox} />;
-  if (activeScreen === "next-actions") return <NextActionsPage controller={controllers.nextActions} />;
+  if (activeScreen === "next-actions") return <NextActionsPage controller={controllers.nextActions} selectOnGoingAction={controllers.ongoingNextActions.setSelectedId} />;
   if (activeScreen === "ongoing-next-actions") return <OnGoingNextActionsPage controller={controllers.ongoingNextActions} />;
   if (activeScreen === "next-action-detail-page") return <NextActionDetailPage controller={controllers.nextActions} />;
   if (activeScreen === "ongoing-next-action-detail-page") return <OnGoingNextActionDetailPage controller={controllers.ongoingNextActions} />;

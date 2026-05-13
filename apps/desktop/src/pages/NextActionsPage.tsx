@@ -20,6 +20,11 @@ import type { NextActionsWorkspaceController } from "../features/next-actions/us
 
 type NextActionsPageProps = {
   controller: NextActionsWorkspaceController;
+  selectOnGoingAction: (id: string | null) => void;
+};
+
+type NextActionControllerProps = {
+  controller: NextActionsWorkspaceController;
 };
 
 const LazyMarkdownAssetComboDialog = lazy(async () => {
@@ -66,9 +71,22 @@ function openDetailScreen(controller: NextActionsWorkspaceController, setActiveS
   }
 }
 
+async function markAsOnGoingAndOpenDetail(
+  controller: NextActionsWorkspaceController,
+  selectOnGoingAction: (id: string | null) => void,
+  setActiveScreen: (screen: ScreenId) => void
+): Promise<void> {
+  const selectedId = controller.selectedItem?.id;
+  if (!selectedId) return;
+  await controller.markAsOnGoing();
+  selectOnGoingAction(selectedId);
+  setActiveScreen("ongoing-next-action-detail-page");
+}
+
 function buildNextActionBindings(
   controller: NextActionsWorkspaceController,
   setActiveScreen: (screen: ScreenId) => void,
+  selectOnGoingAction: (id: string | null) => void,
   openContext: () => void,
   openAttrs: () => void,
   openLink: () => void,
@@ -88,8 +106,8 @@ function buildNextActionBindings(
     nextActionBinding("next-actions.context-detail", "c", "Filter by context", "next-action-detail", openContext),
     nextActionBinding("next-actions.attrs-list", "e", "Edit next action attributes", "next-actions-list", () => canEditSelected(controller) && openAttrs()),
     nextActionBinding("next-actions.attrs-detail", "e", "Edit next action attributes", "next-action-detail", () => canEditSelected(controller) && openAttrs()),
-    nextActionBinding("next-actions.ongoing-list", "o", "Mark as on going", "next-actions-list", () => runAsync(canEditSelected(controller), controller.markAsOnGoing, "Failed to mark as on going")),
-    nextActionBinding("next-actions.ongoing-detail", "o", "Mark as on going", "next-action-detail", () => runAsync(canEditSelected(controller), controller.markAsOnGoing, "Failed to mark as on going")),
+    nextActionBinding("next-actions.ongoing-list", "o", "Mark as on going", "next-actions-list", () => runAsync(canEditSelected(controller), () => markAsOnGoingAndOpenDetail(controller, selectOnGoingAction, setActiveScreen), "Failed to mark as on going")),
+    nextActionBinding("next-actions.ongoing-detail", "o", "Mark as on going", "next-action-detail", () => runAsync(canEditSelected(controller), () => markAsOnGoingAndOpenDetail(controller, selectOnGoingAction, setActiveScreen), "Failed to mark as on going")),
     nextActionBinding("next-actions.order-list", "O", "Cycle ordering", "next-actions-list", controller.toggleOrder),
     nextActionBinding("next-actions.order-detail", "O", "Cycle ordering", "next-action-detail", controller.toggleOrder),
     nextActionBinding("next-actions.undo-list", "u", "Undo last deletion", "next-actions-list", () => void controller.undo()),
@@ -110,9 +128,9 @@ function buildNextActionBindings(
   ];
 }
 
-function useNextActionBindings(controller: NextActionsWorkspaceController, openContext: () => void, openAttrs: () => void, openLink: () => void, openAsset: () => void, isAttrsOpen: boolean) {
+function useNextActionBindings(controller: NextActionsWorkspaceController, selectOnGoingAction: (id: string | null) => void, openContext: () => void, openAttrs: () => void, openLink: () => void, openAsset: () => void, isAttrsOpen: boolean) {
   const { setActiveScreen } = useActiveScreen();
-  const bindings = useMemo(() => buildNextActionBindings(controller, setActiveScreen, openContext, openAttrs, openLink, openAsset, isAttrsOpen), [controller, setActiveScreen, openContext, openAttrs, openLink, openAsset, isAttrsOpen]);
+  const bindings = useMemo(() => buildNextActionBindings(controller, setActiveScreen, selectOnGoingAction, openContext, openAttrs, openLink, openAsset, isAttrsOpen), [controller, setActiveScreen, selectOnGoingAction, openContext, openAttrs, openLink, openAsset, isAttrsOpen]);
   useRegisterKeybinds(bindings);
 }
 
@@ -139,18 +157,18 @@ function orderLabel(controller: NextActionsWorkspaceController): string {
   return controller.orderBy === "time" ? "estimated time" : "energy";
 }
 
-function ContextFilterLabel({ controller }: NextActionsPageProps) {
+function ContextFilterLabel({ controller }: NextActionControllerProps) {
   return controller.context ? <ContextNameWithIcon context={controller.context} /> : <>all contexts</>;
 }
 
-function NextActionsListBody({ controller }: NextActionsPageProps) {
+function NextActionsListBody({ controller }: NextActionControllerProps) {
   if (controller.isLoading) return <p className="pane-state">Loading next actions...</p>;
   if (controller.errorMessage) return <RetryState message={controller.errorMessage} onRetry={controller.reload} />;
   if (controller.stuffs.length === 0) return <p className="pane-state">No next actions for this filter.</p>;
   return <NextActionsListReady controller={controller} />;
 }
 
-function NextActionsListReady({ controller }: NextActionsPageProps) {
+function NextActionsListReady({ controller }: NextActionControllerProps) {
   return (
     <NextActionsList
       items={controller.stuffs}
@@ -167,14 +185,14 @@ function NextActionsListReady({ controller }: NextActionsPageProps) {
   );
 }
 
-function NextActionDetailBody({ controller }: NextActionsPageProps) {
+function NextActionDetailBody({ controller }: NextActionControllerProps) {
   if (controller.isLoading) return <p className="pane-state">Loading next action details...</p>;
   if (controller.errorMessage) return <p className="pane-state">Next action details are unavailable while loading fails.</p>;
   if (!controller.selectedItem) return <p className="pane-state">Select a next action to inspect its details.</p>;
   return <NextActionDetailReady controller={controller} />;
 }
 
-function NextActionDetailReady({ controller }: NextActionsPageProps) {
+function NextActionDetailReady({ controller }: NextActionControllerProps) {
   const item = controller.selectedItem;
   if (!item) return null;
   return (
@@ -197,7 +215,7 @@ async function exitBodyEditing(controller: NextActionsWorkspaceController, body:
   controller.setActiveZone("next-actions-list");
 }
 
-function NextActionsListPane({ controller }: NextActionsPageProps) {
+function NextActionsListPane({ controller }: NextActionControllerProps) {
   const count = controller.stuffs.length;
   const meta = `${count} ${count === 1 ? "item" : "items"}`;
 
@@ -208,7 +226,7 @@ function NextActionsListPane({ controller }: NextActionsPageProps) {
   );
 }
 
-function NextActionDetailPane({ controller }: NextActionsPageProps) {
+function NextActionDetailPane({ controller }: NextActionControllerProps) {
   return (
     <ListPane title="Next Action Detail" panelIndex={2} active={controller.activeZone === "next-action-detail"} bodyClassName="list-pane__body--detail" className="inbox-pane inbox-pane--detail">
       <NextActionDetailBody controller={controller} />
@@ -216,7 +234,7 @@ function NextActionDetailPane({ controller }: NextActionsPageProps) {
   );
 }
 
-function NextActionPanes({ controller }: NextActionsPageProps) {
+function NextActionPanes({ controller }: NextActionControllerProps) {
   return (
     <section className="inbox-terminal-layout" aria-label="Next actions">
       <NextActionsListPane controller={controller} />
@@ -230,7 +248,7 @@ function NextActionPanes({ controller }: NextActionsPageProps) {
  *
  * @example <NextActionsPage controller={controller} />
  */
-export function NextActionsPage({ controller }: NextActionsPageProps) {
+export function NextActionsPage({ controller, selectOnGoingAction }: NextActionsPageProps) {
   const contextsQuery = useContextsQuery();
   const [isContextOpen, setIsContextOpen] = useState(false);
   const [isAttrsOpen, setIsAttrsOpen] = useState(false);
@@ -243,7 +261,7 @@ export function NextActionsPage({ controller }: NextActionsPageProps) {
   useKeybindScreen("next-actions");
   useNextActionZone(controller);
   useNextActionAssetPreload(controller);
-  useNextActionBindings(controller, openContext, openAttrs, openLink, openAsset, isAttrsOpen);
+  useNextActionBindings(controller, selectOnGoingAction, openContext, openAttrs, openLink, openAsset, isAttrsOpen);
 
   return (
     <ListWorkspace theme={nextActionsListTheme} currentClassName="list-workspace__current--next-actions" currentLabel={<NextActionsFooterLabel controller={controller} />} modeLabel={controller.vimMode ?? undefined}>
@@ -259,7 +277,7 @@ export function NextActionsPage({ controller }: NextActionsPageProps) {
   );
 }
 
-function NextActionsFooterLabel({ controller }: NextActionsPageProps) {
+function NextActionsFooterLabel({ controller }: NextActionControllerProps) {
   return (
     <span className="next-actions-footer-label">
       <span>Next Actions</span>
