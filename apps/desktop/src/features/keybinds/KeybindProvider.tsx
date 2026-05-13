@@ -77,6 +77,10 @@ function isTypingTarget(target: EventTarget | null): boolean {
   );
 }
 
+function hasActiveModalKeybindScope(): boolean {
+  return document.querySelector('[aria-modal="true"]') !== null;
+}
+
 function bindingMatchesZone(
   binding: KeybindDefinition,
   activeScreen: ScreenId,
@@ -185,6 +189,11 @@ function handleLeaderMatch(
 }
 
 function handleGlobalKeyDown(event: KeyboardEvent, config: KeydownConfig) {
+  if (hasActiveModalKeybindScope()) {
+    if (config.isLeaderMenuOpen) config.closeLeaderMenu();
+    return;
+  }
+
   if (isTypingTarget(event.target) || event.metaKey || event.altKey) {
     return;
   }
