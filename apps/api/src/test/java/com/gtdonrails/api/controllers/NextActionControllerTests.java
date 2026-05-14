@@ -97,14 +97,27 @@ class NextActionControllerTests {
     }
 
     @Test
-    void marksNextActionAsUndone() throws Exception {
+    void restoresDoneNextActionToInitialState() throws Exception {
         Context context = contextRepository.save(new Context("Home"));
         Item item = itemRepository.save(new Item(new Title("Buy milk"), null));
         NextAction nextAction = new NextAction(item, new BigDecimal("2.0"), Duration.ofMinutes(15), Set.of(context));
         nextAction.markDone(java.time.Clock.systemUTC());
         nextAction = nextActionRepository.save(nextAction);
 
-        mockMvc.perform(post("/next-actions/{id}/undone", nextAction.getItemId()))
+        mockMvc.perform(post("/next-actions/{id}/restore", nextAction.getItemId()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value(NextActionStatus.NEXT_ACTION.name()));
+    }
+
+    @Test
+    void restoresOnGoingNextActionToInitialState() throws Exception {
+        Context context = contextRepository.save(new Context("Home"));
+        Item item = itemRepository.save(new Item(new Title("Buy milk"), null));
+        NextAction nextAction = new NextAction(item, new BigDecimal("2.0"), Duration.ofMinutes(15), Set.of(context));
+        nextAction.markOnGoing(java.time.Clock.systemUTC());
+        nextAction = nextActionRepository.save(nextAction);
+
+        mockMvc.perform(post("/next-actions/{id}/restore", nextAction.getItemId()))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value(NextActionStatus.NEXT_ACTION.name()));
     }

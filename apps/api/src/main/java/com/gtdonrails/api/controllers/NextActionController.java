@@ -46,9 +46,9 @@ public class NextActionController {
         return nextActionService.markDone(id);
     }
 
-    @PostMapping("/{id}/undone")
-    public NextActionResponseDto markUndone(@PathVariable UUID id) {
-        return nextActionService.markUndone(id);
+    @PostMapping("/{id}/restore")
+    public NextActionResponseDto restoreNextAction(@PathVariable UUID id) {
+        return nextActionService.restoreNextAction(id);
     }
 
     @GetMapping

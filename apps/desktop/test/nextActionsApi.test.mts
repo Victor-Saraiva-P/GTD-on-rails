@@ -5,9 +5,9 @@ import {
   fetchDeletedNextActions,
   fetchDoneNextActions,
   fetchNextActions,
-  markNextActionUndone,
   patchNextActionAttributes,
-  recoverDeletedNextAction
+  recoverDeletedNextAction,
+  restoreNextActionStatus
 } from "../src/features/next-actions/api.ts";
 
 describe("next actions API", () => {
@@ -77,15 +77,15 @@ describe("next actions API", () => {
     assert.equal(items[0].id, "na-1");
   });
 
-  test("markNextActionUndone posts to undone endpoint", async () => {
+  test("restoreNextActionStatus posts to restore endpoint", async () => {
     const response = { id: "na-1", title: "Call", body: "", status: "NEXT_ACTION" };
     globalThis.fetch = mock.fn(async (input, init) => {
-      assert.ok(input.toString().endsWith("/next-actions/na-1/undone"));
+      assert.ok(input.toString().endsWith("/next-actions/na-1/restore"));
       assert.equal(init?.method, "POST");
       return new Response(JSON.stringify(response), { status: 200 });
     });
 
-    const item = await markNextActionUndone("na-1");
+    const item = await restoreNextActionStatus("na-1");
 
     assert.equal(item.status, "NEXT_ACTION");
   });

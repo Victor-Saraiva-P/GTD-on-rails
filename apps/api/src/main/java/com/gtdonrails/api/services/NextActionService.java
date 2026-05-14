@@ -74,9 +74,9 @@ public class NextActionService {
     }
 
     @Transactional
-    public NextActionResponseDto markUndone(UUID id) {
+    public NextActionResponseDto restoreNextAction(UUID id) {
         NextAction nextAction = findNextAction(id);
-        nextAction.markUndone();
+        nextAction.restore();
         return nextActionMapper.toResponse(nextActionRepository.save(nextAction));
     }
 

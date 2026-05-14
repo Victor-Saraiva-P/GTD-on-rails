@@ -80,12 +80,12 @@ export async function markNextActionOnGoing(id: string): Promise<NextAction> {
 }
 
 /**
- * Moves a completed next action back to the active next action state.
+ * Restores a done or ongoing next action back to the active next action state.
  *
- * @example await markNextActionUndone(nextAction.id)
+ * @example await restoreNextActionStatus(nextAction.id)
  */
-export async function markNextActionUndone(id: string): Promise<NextAction> {
-  const response = await apiJson<NextActionResponse>(`/next-actions/${id}/undone`, {
+export async function restoreNextActionStatus(id: string): Promise<NextAction> {
+  const response = await apiJson<NextActionResponse>(`/next-actions/${id}/restore`, {
     method: "POST"
   });
   return toNextAction(response);

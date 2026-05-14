@@ -9,6 +9,7 @@ import {
   markNextActionDone,
   markNextActionOnGoing,
   patchNextActionAttributes,
+  restoreNextActionStatus,
   restoreNextAction,
   updateNextActionBody,
   updateNextActionTitle
@@ -79,6 +80,7 @@ export function useNextActionsMutations(state: NextActionsLoadState, mutations: 
     markAsDone: (id: string) => markAsDone(id, state, mutations, triggerSyncStatusPolling),
     markAsOnGoing: (id: string) => markAsOnGoing(id, state, mutations, triggerSyncStatusPolling),
     patchItem: (id: string, patch: NextActionPatch) => patchItem(id, patch, state, mutations, triggerSyncStatusPolling),
+    restoreStatus: (id: string) => restoreStatus(id, state, mutations, triggerSyncStatusPolling),
     restoreItem: (id: string) => restoreItem(id, mutations, reload, triggerSyncStatusPolling),
     updateBody: (item: NextAction, body: ItemBody) => updateBody(item, body, state, mutations, triggerSyncStatusPolling),
     updateTitle: (item: NextAction, title: string) => updateTitle(item, title, state, mutations, triggerSyncStatusPolling)
@@ -100,6 +102,17 @@ async function markAsOnGoing(id: string, state: NextActionsLoadState, mutations:
   mutations.setIsUpdating(true);
   try {
     await markNextActionOnGoing(id);
+    state.setItems((items) => items.filter((item) => item.id !== id));
+    completeMutation(state, poll);
+  } finally {
+    mutations.setIsUpdating(false);
+  }
+}
+
+async function restoreStatus(id: string, state: NextActionsLoadState, mutations: NextActionsMutationState, poll: () => void) {
+  mutations.setIsUpdating(true);
+  try {
+    await restoreNextActionStatus(id);
     state.setItems((items) => items.filter((item) => item.id !== id));
     completeMutation(state, poll);
   } finally {

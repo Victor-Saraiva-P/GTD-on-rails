@@ -7,8 +7,8 @@ import type { KeybindDefinition, ScreenId } from "../features/keybinds/types";
 import {
   fetchDeletedNextActions,
   fetchDoneNextActions,
-  markNextActionUndone,
-  recoverDeletedNextAction
+  recoverDeletedNextAction,
+  restoreNextActionStatus
 } from "../features/next-actions/api";
 import {
   type ArchivedNextActionsConfig,
@@ -32,7 +32,7 @@ const doneNextActionsConfig = {
   errorLabel: "completed next actions",
   listZone: "done-next-actions-list",
   loadItems: fetchDoneNextActions,
-  recoverItem: markNextActionUndone
+  recoverItem: restoreNextActionStatus
 } satisfies ArchivedNextActionsConfig;
 
 const deletedNextActionsConfig = {
@@ -150,9 +150,9 @@ function renderActiveScreen(activeScreen: ScreenId, controllers: AppControllers)
   if (activeScreen === "stuff-detail") return <StuffDetailPage controller={controllers.inbox} />;
   if (activeScreen === "deleted-inbox") return <DeletedInboxPage controller={controllers.deletedInbox} />;
   if (activeScreen === "next-actions") return <NextActionsPage controller={controllers.nextActions} selectOnGoingAction={controllers.ongoingNextActions.setSelectedId} />;
-  if (activeScreen === "ongoing-next-actions") return <OnGoingNextActionsPage controller={controllers.ongoingNextActions} />;
+  if (activeScreen === "ongoing-next-actions") return <OnGoingNextActionsPage controller={controllers.ongoingNextActions} selectNextAction={controllers.nextActions.setSelectedId} />;
   if (activeScreen === "next-action-detail-page") return <NextActionDetailPage controller={controllers.nextActions} />;
-  if (activeScreen === "ongoing-next-action-detail-page") return <OnGoingNextActionDetailPage controller={controllers.ongoingNextActions} />;
+  if (activeScreen === "ongoing-next-action-detail-page") return <OnGoingNextActionDetailPage controller={controllers.ongoingNextActions} selectNextAction={controllers.nextActions.setSelectedId} />;
   if (activeScreen === "done-next-actions") return renderDoneNextActionsPage(controllers);
   if (activeScreen === "deleted-next-actions") return renderDeletedNextActionsPage(controllers);
 

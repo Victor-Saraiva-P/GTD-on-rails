@@ -136,12 +136,24 @@ class NextActionServiceTests {
     }
 
     @Test
-    void marksUndoneSuccessfully() {
+    void restoresDoneNextActionSuccessfully() {
         nextAction.markDone(clock);
         when(nextActionRepository.findById(nextActionId)).thenReturn(Optional.of(nextAction));
         when(nextActionRepository.save(any(NextAction.class))).thenReturn(nextAction);
 
-        NextActionResponseDto response = nextActionService.markUndone(nextActionId);
+        NextActionResponseDto response = nextActionService.restoreNextAction(nextActionId);
+
+        assertThat(response.status()).isEqualTo(NextActionStatus.NEXT_ACTION.name());
+        verify(nextActionRepository).save(nextAction);
+    }
+
+    @Test
+    void restoresOnGoingNextActionSuccessfully() {
+        nextAction.markOnGoing(clock);
+        when(nextActionRepository.findById(nextActionId)).thenReturn(Optional.of(nextAction));
+        when(nextActionRepository.save(any(NextAction.class))).thenReturn(nextAction);
+
+        NextActionResponseDto response = nextActionService.restoreNextAction(nextActionId);
 
         assertThat(response.status()).isEqualTo(NextActionStatus.NEXT_ACTION.name());
         verify(nextActionRepository).save(nextAction);

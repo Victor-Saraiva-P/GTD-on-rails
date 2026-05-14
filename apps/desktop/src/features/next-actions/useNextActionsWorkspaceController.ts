@@ -161,6 +161,14 @@ export async function markAsOnGoing(model: Model) {
   model.zone.setActiveZone("next-actions-list");
 }
 
+export async function restoreSelectedStatus(model: Model) {
+  const item = model.selection.selectedItem;
+  if (!item) return;
+  await model.query.restoreStatus(item.id);
+  clearEditing(model.edit);
+  model.zone.setActiveZone("next-actions-list");
+}
+
 export async function undoAction(model: Model) {
   const action = model.history.popUndo();
   if (!action) return;
@@ -187,6 +195,7 @@ export function useNextActionsActions(model: Model) {
     markAsOnGoing: () => markAsOnGoing(model),
     patchSelected: (patch: NextActionPatch) => patchSelected(model, patch),
     redo: () => redoAction(model),
+    restoreSelected: () => restoreSelectedStatus(model),
     selectNext: model.selection.selectNext,
     selectPrevious: model.selection.selectPrevious,
     setContext: model.filter.setContext,
