@@ -41,9 +41,19 @@ function canRecover(controller: ArchivedNextActionsWorkspaceController): boolean
   return !controller.isLoading && !controller.isUpdating && Boolean(controller.selectedItem);
 }
 
+function canDelete(props: ArchivedNextActionsPageProps): boolean {
+  return props.controller.canDelete && Boolean(props.controller.selectedItem) && !props.controller.isLoading && !props.controller.isUpdating;
+}
+
 function recoverSelected(controller: ArchivedNextActionsWorkspaceController) {
   if (canRecover(controller)) {
     void controller.recoverSelected().catch((error: unknown) => console.error("Failed to recover next action", error));
+  }
+}
+
+function deleteSelected(props: ArchivedNextActionsPageProps) {
+  if (canDelete(props)) {
+    void props.controller.deleteSelected().catch((error: unknown) => console.error("Failed to delete next action", error));
   }
 }
 
@@ -57,7 +67,7 @@ function switchScreen(props: ArchivedNextActionsPageProps, screen: ScreenId, set
 }
 
 function buildListBindings(props: ArchivedNextActionsPageProps, setActiveScreen: (screen: ScreenId) => void) {
-  return [
+  const bindings = [
     archivedBinding(props, `${props.screen}.recover-list`, "r", "Recover selected next action", props.listZone, () => recoverSelected(props.controller)),
     archivedBinding(props, `${props.screen}.move-down`, "j", "Move down", props.listZone, () => moveSelection(props.controller, "next")),
     archivedBinding(props, `${props.screen}.move-up`, "k", "Move up", props.listZone, () => moveSelection(props.controller, "previous")),
@@ -66,16 +76,20 @@ function buildListBindings(props: ArchivedNextActionsPageProps, setActiveScreen:
     archivedBinding(props, `${props.screen}.switch-back`, "[", `Open ${props.previousScreen}`, props.listZone, () => switchScreen(props, props.previousScreen, setActiveScreen)),
     archivedBinding(props, `${props.screen}.which-key-list`, "k", "Show available keybinds", props.listZone, () => undefined, true)
   ];
+
+  return props.controller.canDelete ? [archivedBinding(props, `${props.screen}.delete-list`, "d", "Delete selected next action", props.listZone, () => deleteSelected(props)), ...bindings] : bindings;
 }
 
 function buildDetailBindings(props: ArchivedNextActionsPageProps, setActiveScreen: (screen: ScreenId) => void) {
-  return [
+  const bindings = [
     archivedBinding(props, `${props.screen}.recover-detail`, "r", "Recover selected next action", props.detailZone, () => recoverSelected(props.controller)),
     archivedBinding(props, `${props.screen}.focus-list`, "h", "Focus next actions list", props.detailZone, () => props.controller.setActiveZone(props.listZone)),
     archivedBinding(props, `${props.screen}.switch-forward-detail`, "]", `Open ${props.nextScreen}`, props.detailZone, () => switchScreen(props, props.nextScreen, setActiveScreen)),
     archivedBinding(props, `${props.screen}.switch-back-detail`, "[", `Open ${props.previousScreen}`, props.detailZone, () => switchScreen(props, props.previousScreen, setActiveScreen)),
     archivedBinding(props, `${props.screen}.which-key-detail`, "k", "Show available keybinds", props.detailZone, () => undefined, true)
   ];
+
+  return props.controller.canDelete ? [archivedBinding(props, `${props.screen}.delete-detail`, "d", "Delete selected next action", props.detailZone, () => deleteSelected(props)), ...bindings] : bindings;
 }
 
 function useArchivedBindings(props: ArchivedNextActionsPageProps) {

@@ -5,6 +5,7 @@ import { useInboxWorkspaceController, type InboxWorkspaceController } from "../f
 import { useActiveScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
 import type { KeybindDefinition, ScreenId } from "../features/keybinds/types";
 import {
+  deleteNextAction,
   fetchDeletedNextActions,
   fetchDoneNextActions,
   recoverDeletedNextAction,
@@ -31,6 +32,7 @@ const doneNextActionsConfig = {
   detailZone: "done-next-action-detail",
   errorLabel: "completed next actions",
   listZone: "done-next-actions-list",
+  deleteItem: deleteNextAction,
   loadItems: fetchDoneNextActions,
   recoverItem: restoreNextActionStatus
 } satisfies ArchivedNextActionsConfig;

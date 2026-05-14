@@ -9,6 +9,7 @@ type ArchivedNextActionsConfig = {
   detailZone: FocusZoneId;
   loadItems: () => Promise<NextAction[]>;
   recoverItem: (id: string) => Promise<NextAction | void>;
+  deleteItem?: (id: string) => Promise<void>;
   errorLabel: string;
 };
 
@@ -77,6 +78,13 @@ async function recoverSelected(model: ArchivedModel) {
   model.zone.setActiveZone(model.config.listZone);
 }
 
+async function deleteSelected(model: ArchivedModel) {
+  const item = model.selection.selectedItem;
+  if (!item || !model.config.deleteItem) return;
+  await model.query.deleteItem(item.id);
+  model.zone.setActiveZone(model.config.listZone);
+}
+
 function resetWorkspace(model: ArchivedModel) {
   model.selection.setSelectedId(model.query.items[0]?.id ?? null);
   model.zone.setActiveZone(model.config.listZone);
@@ -84,6 +92,7 @@ function resetWorkspace(model: ArchivedModel) {
 
 function useArchivedNextActionsActions(model: ArchivedModel) {
   return {
+    deleteSelected: () => deleteSelected(model),
     recoverSelected: () => recoverSelected(model),
     resetWorkspace: () => resetWorkspace(model),
     selectNext: model.selection.selectNext,
@@ -95,6 +104,7 @@ function buildArchivedController(model: ArchivedModel, actions: ArchivedActions)
   return {
     ...actions,
     activeZone: model.zone.activeZone,
+    canDelete: Boolean(model.config.deleteItem),
     errorMessage: model.query.errorMessage,
     isLoading: model.query.isLoading,
     isUpdating: model.query.isUpdating,

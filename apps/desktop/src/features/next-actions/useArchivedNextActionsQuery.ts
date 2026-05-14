@@ -10,6 +10,7 @@ type ArchivedNextActionsMutationState = ReturnType<typeof useArchivedNextActions
 type ArchivedNextActionsQueryConfig = {
   loadItems: () => Promise<NextAction[]>;
   recoverItem: (id: string) => Promise<NextAction | void>;
+  deleteItem?: (id: string) => Promise<void>;
   errorLabel: string;
 };
 
@@ -78,6 +79,19 @@ async function recoverItem(
   }
 }
 
+async function deleteItem(id: string, config: ArchivedNextActionsQueryConfig, state: ArchivedNextActionsLoadState, mutations: ArchivedNextActionsMutationState, poll: () => void) {
+  if (!config.deleteItem) return;
+  mutations.setIsUpdating(true);
+  try {
+    await config.deleteItem(id);
+    state.setItems((items) => items.filter((item) => item.id !== id));
+    state.setErrorMessageText(null);
+    poll();
+  } finally {
+    mutations.setIsUpdating(false);
+  }
+}
+
 function useArchivedNextActionsMutations(
   config: ArchivedNextActionsQueryConfig,
   state: ArchivedNextActionsLoadState,
@@ -85,6 +99,7 @@ function useArchivedNextActionsMutations(
 ) {
   const { triggerSyncStatusPolling } = useSyncStatus();
   return {
+    deleteItem: (id: string) => deleteItem(id, config, state, mutations, triggerSyncStatusPolling),
     recoverItem: (id: string) => recoverItem(id, config, state, mutations, triggerSyncStatusPolling)
   };
 }
