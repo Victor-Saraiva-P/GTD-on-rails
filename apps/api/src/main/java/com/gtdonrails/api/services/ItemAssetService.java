@@ -15,6 +15,7 @@ import com.gtdonrails.api.types.BlockEntity;
 import com.gtdonrails.api.types.ItemBody;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 @Service
@@ -48,8 +49,9 @@ public class ItemAssetService {
     @Transactional
     public ItemAssetResponseDto storeItemAsset(UUID id, MultipartFile file) {
         Item item = findItem(id);
-        String relativePath = assetStorageService.storeItemAsset(id, file);
-        ItemAsset itemAsset = saveItemAsset(item, file, relativePath);
+        ItemAsset itemAsset = newItemAsset(item, file);
+        assetStorageService.storeItemAsset(itemAsset.relativePath(), file);
+        itemAssetRepository.save(itemAsset);
         requestAssetSyncAfterCommit("item asset uploaded");
         return itemAssetResponse(itemAsset);
     }
@@ -63,8 +65,9 @@ public class ItemAssetService {
     public ItemAssetResponseDto storeLocalItemAsset(UUID id, CopyLocalItemAssetRequestDto request) {
         Item item = findItem(id);
         Path sourcePath = Path.of(request.sourcePath()).toAbsolutePath().normalize();
-        String relativePath = assetStorageService.copyLocalItemAsset(id, sourcePath);
-        ItemAsset itemAsset = saveLocalItemAsset(item, sourcePath, relativePath);
+        ItemAsset itemAsset = newLocalItemAsset(item, sourcePath);
+        assetStorageService.copyLocalItemAsset(itemAsset.relativePath(), sourcePath);
+        itemAssetRepository.save(itemAsset);
         requestAssetSyncAfterCommit("local item asset copied");
         return itemAssetResponse(itemAsset);
     }
@@ -100,37 +103,37 @@ public class ItemAssetService {
         }
     }
 
-    private ItemAsset saveItemAsset(Item item, MultipartFile file, String relativePath) {
-        ItemAsset asset = new ItemAsset(
+    private ItemAsset newItemAsset(Item item, MultipartFile file) {
+        String fileName = assetStorageService.itemAssetFileName(file);
+        return new ItemAsset(
             item,
-            assetStorageService.fileName(relativePath),
-            file.getOriginalFilename() == null ? assetStorageService.fileName(relativePath) : file.getOriginalFilename(),
-            assetStorageService.mediaType(relativePath).toString(),
-            file.getSize(),
-            relativePath,
-            assetStorageService.publicUrl(relativePath),
-            assetStorageService.isImage(relativePath));
-        return itemAssetRepository.save(asset);
+            fileName,
+            file.getOriginalFilename() == null ? fileName : file.getOriginalFilename(),
+            contentType(file.getContentType(), fileName),
+            file.getSize());
     }
 
-    private ItemAsset saveLocalItemAsset(Item item, Path sourcePath, String relativePath) {
-        ItemAsset asset = new ItemAsset(
+    private ItemAsset newLocalItemAsset(Item item, Path sourcePath) {
+        String fileName = assetStorageService.itemAssetFileName(sourcePath.getFileName().toString());
+        return new ItemAsset(
             item,
-            assetStorageService.fileName(relativePath),
+            fileName,
             sourcePath.getFileName().toString(),
-            assetStorageService.mediaType(relativePath).toString(),
-            sourcePath.toFile().length(),
-            relativePath,
-            assetStorageService.publicUrl(relativePath),
-            assetStorageService.isImage(relativePath));
-        return itemAssetRepository.save(asset);
+            assetStorageService.mediaType(fileName).toString(),
+            sourcePath.toFile().length());
+    }
+
+    private String contentType(String requestContentType, String fileName) {
+        if (StringUtils.hasText(requestContentType)) return requestContentType;
+        return assetStorageService.mediaType(fileName).toString();
     }
 
     private ItemAssetResponseDto itemAssetResponse(ItemAsset asset) {
+        String relativePath = asset.relativePath();
         return new ItemAssetResponseDto(
             asset.getId(),
-            asset.getRelativePath(),
-            asset.getUrl(),
+            relativePath,
+            assetStorageService.publicUrl(relativePath),
             asset.getFileName(),
             asset.getContentType(),
             asset.isImage());

@@ -68,29 +68,25 @@ public class AssetStorageService {
     /**
      * Stores an item attachment under the configured asset directory.
      *
-     * <p>Example: {@code assetStorageService.storeItemAsset(itemId, file)}.</p>
+     * <p>Example: {@code assetStorageService.storeItemAsset("items/id/asset/file.pdf", file)}.</p>
      */
-    public String storeItemAsset(UUID itemId, MultipartFile file) {
+    public void storeItemAsset(String relativePath, MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("item asset file value '" + file + "' is invalid; expected non-empty MultipartFile");
         }
 
         validateItemAssetFile(file);
-        String relativePath = itemAssetRelativePath(itemId, file);
         writeAssetFile(file, resolveRelativePath(relativePath));
-        return relativePath;
     }
 
     /**
      * Copies a local item attachment under the configured asset directory.
      *
-     * <p>Example: {@code assetStorageService.copyLocalItemAsset(itemId, Path.of("/tmp/file.pdf"))}.</p>
+     * <p>Example: {@code assetStorageService.copyLocalItemAsset("items/id/asset/file.pdf", sourcePath)}.</p>
      */
-    public String copyLocalItemAsset(UUID itemId, Path sourcePath) {
+    public void copyLocalItemAsset(String relativePath, Path sourcePath) {
         validateLocalItemAssetFile(sourcePath);
-        String relativePath = itemAssetRelativePath(itemId, sourcePath.getFileName().toString());
         writeLocalAssetFile(sourcePath, resolveRelativePath(relativePath));
-        return relativePath;
     }
 
     private void writeAssetFile(MultipartFile file, Path destination) {
@@ -170,6 +166,24 @@ public class AssetStorageService {
     }
 
     /**
+     * Sanitizes an uploaded item asset filename for storage.
+     *
+     * <p>Example: {@code assetStorageService.itemAssetFileName(file)} returns {@code report.pdf}.</p>
+     */
+    public String itemAssetFileName(MultipartFile file) {
+        return safeAssetFileName(file);
+    }
+
+    /**
+     * Sanitizes a local item asset filename for storage.
+     *
+     * <p>Example: {@code assetStorageService.itemAssetFileName("bad name.pdf")} returns {@code bad-name.pdf}.</p>
+     */
+    public String itemAssetFileName(String fileName) {
+        return safeAssetFileName(fileName);
+    }
+
+    /**
      * Detects whether an asset-relative path points to a supported image type.
      *
      * <p>Example: {@code assetStorageService.isImage("items/id/a/image.png")}.</p>
@@ -222,14 +236,6 @@ public class AssetStorageService {
             case "webp" -> normalizedContentType.equals("image/webp");
             default -> false;
         };
-    }
-
-    private String itemAssetRelativePath(UUID itemId, MultipartFile file) {
-        return itemAssetRelativePath(itemId, safeAssetFileName(file));
-    }
-
-    private String itemAssetRelativePath(UUID itemId, String fileName) {
-        return "items/" + itemId + "/" + UUID.randomUUID() + "/" + safeAssetFileName(fileName);
     }
 
     private String safeAssetFileName(MultipartFile file) {

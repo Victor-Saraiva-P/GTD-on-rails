@@ -5,8 +5,6 @@ import java.util.UUID;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -21,9 +19,8 @@ import lombok.Getter;
 public class ItemAsset extends AuditableEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(nullable = false, updatable = false)
-    private UUID id;
+    private UUID id = UUID.randomUUID();
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "item_id", nullable = false)
@@ -41,27 +38,45 @@ public class ItemAsset extends AuditableEntity {
     @Column(nullable = false)
     private long size;
 
-    @Column(name = "relative_path", nullable = false, unique = true)
-    private String relativePath;
-
-    @Column(nullable = false)
-    private String url;
-
-    @Column(nullable = false)
-    private boolean image;
-
     public ItemAsset() {
     }
 
-    public ItemAsset(Item item, String fileName, String originalFileName, String contentType, long size, String relativePath, String url, boolean image) {
+    public ItemAsset(Item item, String fileName, String originalFileName, String contentType, long size) {
         this.item = item;
         this.fileName = fileName;
         this.originalFileName = originalFileName;
         this.contentType = contentType;
         this.size = size;
-        this.relativePath = relativePath;
-        this.url = url;
-        this.image = image;
+    }
+
+    /**
+     * Builds the persisted file path from stable asset metadata.
+     *
+     * <p>Example: {@code asset.relativePath()} returns {@code items/item-id/asset-id/file.pdf}.</p>
+     */
+    public String relativePath() {
+        return "items/" + item.getId() + "/" + id + "/" + fileName;
+    }
+
+    /**
+     * Builds the public HTTP URL from the configured asset base path.
+     *
+     * <p>Example: {@code asset.publicUrl("/assets")} returns {@code /assets/items/...}.</p>
+     */
+    public String publicUrl(String publicBasePath) {
+        String basePath = publicBasePath.endsWith("/")
+            ? publicBasePath.substring(0, publicBasePath.length() - 1)
+            : publicBasePath;
+        return basePath + "/" + relativePath();
+    }
+
+    /**
+     * Detects whether the stored content type represents an image asset.
+     *
+     * <p>Example: {@code asset.isImage()} returns {@code true} for {@code image/png}.</p>
+     */
+    public boolean isImage() {
+        return contentType.startsWith("image/");
     }
 
     @PrePersist

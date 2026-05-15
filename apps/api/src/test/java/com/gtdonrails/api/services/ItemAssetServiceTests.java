@@ -62,16 +62,16 @@ class ItemAssetServiceTests {
         Path sourcePath = Path.of("/home/victor/Downloads/report.pdf");
 
         when(itemRepository.findByIdAndDeletedAtIsNull(itemId)).thenReturn(Optional.of(new Item(new Title("Capture idea"), null)));
-        when(assetStorageService.copyLocalItemAsset(eq(itemId), any(Path.class))).thenReturn("items/id/asset/report.pdf");
-        when(assetStorageService.fileName("items/id/asset/report.pdf")).thenReturn("report.pdf");
-        when(assetStorageService.mediaType("items/id/asset/report.pdf")).thenReturn(org.springframework.http.MediaType.APPLICATION_PDF);
-        when(assetStorageService.publicUrl("items/id/asset/report.pdf")).thenReturn("/assets/items/id/asset/report.pdf");
-        when(itemAssetRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(assetStorageService.itemAssetFileName(sourcePath.getFileName().toString())).thenReturn("report.pdf");
+        when(assetStorageService.mediaType("report.pdf")).thenReturn(org.springframework.http.MediaType.APPLICATION_PDF);
+        when(assetStorageService.publicUrl(any(String.class))).thenReturn("/assets/items/id/asset/report.pdf");
 
         ItemAssetResponseDto response = itemAssetService.storeLocalItemAsset(itemId, new CopyLocalItemAssetRequestDto(sourcePath.toString()));
 
         assertEquals("report.pdf", response.fileName());
         assertEquals("application/pdf", response.contentType());
+        verify(assetStorageService).copyLocalItemAsset(any(String.class), eq(sourcePath));
+        verify(itemAssetRepository).save(any());
         verify(assetSyncService).requestSync("local item asset copied");
     }
 

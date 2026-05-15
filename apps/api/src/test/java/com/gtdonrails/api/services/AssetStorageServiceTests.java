@@ -102,25 +102,29 @@ class AssetStorageServiceTests {
     @Test
     void storesItemAssetInExpectedPath() throws IOException {
         UUID itemId = UUID.randomUUID();
+        UUID assetId = UUID.randomUUID();
         MockMultipartFile file = new MockMultipartFile("file", "report.pdf", "application/pdf", new byte[] {1, 2, 3});
         AssetStorageService assetStorageService = newAssetStorageService();
+        String relativePath = "items/" + itemId + "/" + assetId + "/report.pdf";
 
-        String relativePath = assetStorageService.storeItemAsset(itemId, file);
+        assetStorageService.storeItemAsset(relativePath, file);
 
-        assertTrue(relativePath.matches("items/" + itemId + "/[0-9a-f-]+/report\\.pdf"));
         assertTrue(Files.exists(tempDir.resolve("assets").resolve(relativePath)));
     }
 
     @Test
     void copiesLocalItemAssetInExpectedPath() throws IOException {
         UUID itemId = UUID.randomUUID();
+        UUID assetId = UUID.randomUUID();
         Path sourcePath = tempDir.resolve("Engage mint vitória.pdf");
         Files.write(sourcePath, new byte[] {1, 2, 3});
         AssetStorageService assetStorageService = newAssetStorageService();
+        String fileName = assetStorageService.itemAssetFileName(sourcePath.getFileName().toString());
+        String relativePath = "items/" + itemId + "/" + assetId + "/" + fileName;
 
-        String relativePath = assetStorageService.copyLocalItemAsset(itemId, sourcePath);
+        assetStorageService.copyLocalItemAsset(relativePath, sourcePath);
 
-        assertTrue(relativePath.matches("items/" + itemId + "/[0-9a-f-]+/Engage-mint-vit-ria\\.pdf"));
+        assertEquals("Engage-mint-vit-ria.pdf", fileName);
         assertTrue(Files.exists(tempDir.resolve("assets").resolve(relativePath)));
     }
 
@@ -133,7 +137,7 @@ class AssetStorageServiceTests {
 
         IllegalArgumentException exception = assertThrows(
             IllegalArgumentException.class,
-            () -> assetStorageService.copyLocalItemAsset(itemId, sourcePath));
+            () -> assetStorageService.copyLocalItemAsset("items/" + itemId + "/asset/script.sh", sourcePath));
 
         assertEquals("item asset file extension 'sh' is invalid; expected pdf, doc, docx, xls, xlsx, png, jpg, jpeg, gif, webp, or svg", exception.getMessage());
     }
@@ -146,7 +150,7 @@ class AssetStorageServiceTests {
 
         IllegalArgumentException exception = assertThrows(
             IllegalArgumentException.class,
-            () -> assetStorageService.storeItemAsset(itemId, file));
+            () -> assetStorageService.storeItemAsset("items/" + itemId + "/asset/file.pdf", file));
 
         assertEquals("item asset file value '" + file + "' is invalid; expected non-empty MultipartFile", exception.getMessage());
     }
@@ -159,20 +163,19 @@ class AssetStorageServiceTests {
 
         IllegalArgumentException exception = assertThrows(
             IllegalArgumentException.class,
-            () -> assetStorageService.storeItemAsset(itemId, file));
+            () -> assetStorageService.storeItemAsset("items/" + itemId + "/asset/script.sh", file));
 
         assertEquals("item asset file extension 'sh' is invalid; expected pdf, doc, docx, xls, xlsx, png, jpg, jpeg, gif, webp, or svg", exception.getMessage());
     }
 
     @Test
     void sanitizesItemAssetFileName() {
-        UUID itemId = UUID.randomUUID();
         MockMultipartFile file = new MockMultipartFile("file", "bad name.pdf", "application/pdf", new byte[] {1});
         AssetStorageService assetStorageService = newAssetStorageService();
 
-        String relativePath = assetStorageService.storeItemAsset(itemId, file);
+        String fileName = assetStorageService.itemAssetFileName(file);
 
-        assertTrue(relativePath.endsWith("/bad-name.pdf"));
+        assertEquals("bad-name.pdf", fileName);
     }
 
     @Test
