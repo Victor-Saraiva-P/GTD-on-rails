@@ -2,16 +2,13 @@ package com.gtdonrails.api.controllers;
 
 import java.util.UUID;
 
-import com.gtdonrails.api.dtos.assets.AssetSyncStatusDto;
 import com.gtdonrails.api.dtos.item.CopyLocalItemAssetRequestDto;
 import com.gtdonrails.api.dtos.item.ItemAssetResponseDto;
 import com.gtdonrails.api.normalizers.AssetPathNormalizer;
 import com.gtdonrails.api.services.AssetStorageService;
-import com.gtdonrails.api.services.AssetSyncService;
 import com.gtdonrails.api.services.ItemService;
 import jakarta.validation.Valid;
 import org.springframework.core.io.Resource;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -25,44 +22,17 @@ import org.springframework.web.multipart.MultipartFile;
 public class AssetsController {
 
     private final AssetStorageService assetStorageService;
-    private final AssetSyncService assetSyncService;
     private final AssetPathNormalizer assetPathNormalizer;
     private final ItemService itemService;
 
     public AssetsController(
         AssetStorageService assetStorageService,
-        AssetSyncService assetSyncService,
         AssetPathNormalizer assetPathNormalizer,
         ItemService itemService
     ) {
         this.assetStorageService = assetStorageService;
-        this.assetSyncService = assetSyncService;
         this.assetPathNormalizer = assetPathNormalizer;
         this.itemService = itemService;
-    }
-
-    /**
-     * Handles asset sync status requests.
-     *
-     * <p>Example: {@code GET /assets/sync/status}.</p>
-     */
-    @GetMapping("/assets/sync/status")
-    public AssetSyncStatusDto getSyncStatus() {
-        return assetSyncService.status();
-    }
-
-    /**
-     * Handles manual asset sync requests and reports the queued status.
-     *
-     * <p>Example: {@code POST /assets/sync}.</p>
-     */
-    @PostMapping("/assets/sync")
-    public ResponseEntity<AssetSyncStatusDto> requestSync() {
-        assetSyncService.requestManualSync();
-
-        return ResponseEntity
-            .status(HttpStatus.ACCEPTED)
-            .body(assetSyncService.status());
     }
 
     /**
