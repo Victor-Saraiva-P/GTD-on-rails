@@ -19,13 +19,24 @@ type ClipboardImagePayload = {
   fileName: string;
 };
 
+export type LocalAssetPayload = {
+  sourcePath: string;
+  mimeType: string;
+  fileName: string;
+};
+
+export type MarkdownAssetClipboardSource =
+  | { type: "file"; file: File }
+  | { type: "localFile"; sourcePath: string; fileName: string; mimeType: string };
+
 /**
  * Reads an uploadable asset from clipboard APIs.
  *
  * @example await readMarkdownAssetClipboardFile()
  */
-export async function readMarkdownAssetClipboardFile(): Promise<File | null> {
+export async function readMarkdownAssetClipboardFile(): Promise<MarkdownAssetClipboardSource | null> {
   return (
+    (await readTauriClipboardLocalFileAsset()) ??
     (await readTauriClipboardFileAsset()) ??
     (await readBrowserClipboardAsset()) ??
     (await readTauriClipboardImageAsset())
@@ -57,19 +68,28 @@ function fileFromClipboardPayload(payload: ClipboardImagePayload): File {
   return new File([bytes], fileName, { type: payload.mimeType });
 }
 
-async function readTauriClipboardImageAsset(): Promise<File | null> {
+async function readTauriClipboardImageAsset(): Promise<MarkdownAssetClipboardSource | null> {
   try {
     const clipboardImage = await invoke<ClipboardImagePayload | null>("read_clipboard_image");
-    return clipboardImage ? fileFromClipboardPayload(clipboardImage) : null;
+    return clipboardImage ? { type: "file", file: fileFromClipboardPayload(clipboardImage) } : null;
   } catch {
     return null;
   }
 }
 
-async function readTauriClipboardFileAsset(): Promise<File | null> {
+async function readTauriClipboardLocalFileAsset(): Promise<MarkdownAssetClipboardSource | null> {
+  try {
+    const clipboardFile = await invoke<LocalAssetPayload | null>("read_clipboard_local_file_asset");
+    return clipboardFile ? { type: "localFile", ...clipboardFile } : null;
+  } catch {
+    return null;
+  }
+}
+
+async function readTauriClipboardFileAsset(): Promise<MarkdownAssetClipboardSource | null> {
   try {
     const clipboardFile = await invoke<ClipboardImagePayload | null>("read_clipboard_file_asset");
-    return clipboardFile ? fileFromClipboardPayload(clipboardFile) : null;
+    return clipboardFile ? { type: "file", file: fileFromClipboardPayload(clipboardFile) } : null;
   } catch {
     return null;
   }
@@ -89,13 +109,14 @@ async function fileFromClipboardItem(clipboardItem: ClipboardItem): Promise<File
   return new File([blob], `clipboard-asset.${assetExtension(assetType)}`, { type: assetType });
 }
 
-async function readBrowserClipboardAsset(): Promise<File | null> {
+async function readBrowserClipboardAsset(): Promise<MarkdownAssetClipboardSource | null> {
   if (!canReadBrowserClipboard()) {
     return null;
   }
 
   try {
-    return findBrowserClipboardAsset(await navigator.clipboard.read());
+    const file = await findBrowserClipboardAsset(await navigator.clipboard.read());
+    return file ? { type: "file", file } : null;
   } catch {
     return null;
   }

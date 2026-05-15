@@ -9,6 +9,7 @@ import {
   processStuff,
   restoreStuff,
   uploadStuffAsset,
+  copyLocalStuffAsset,
   updateStuffTitle,
   updateStuffBody
 } from "../src/features/inbox/api.ts";
@@ -99,6 +100,19 @@ describe("inbox API", () => {
 
     const asset = await uploadStuffAsset("1", new File([new Uint8Array([1])], "report.pdf", { type: "application/pdf" }));
     assert.equal(asset.url, "/assets/items/1/report.pdf");
+  });
+
+  test("copyLocalStuffAsset sends source path", async () => {
+    const mockResponse = { id: "asset-1", relativePath: "items/1/report.pdf", url: "/assets/items/1/report.pdf", fileName: "report.pdf", contentType: "application/pdf", image: false };
+    globalThis.fetch = mock.fn(async (input, init) => {
+      assert.ok(input.toString().endsWith("/items/1/assets/local-file"));
+      assert.equal(init?.method, "POST");
+      assert.equal(init?.body, JSON.stringify({ sourcePath: "/home/victor/Downloads/report.pdf" }));
+      return new Response(JSON.stringify(mockResponse), { status: 200 });
+    });
+
+    const asset = await copyLocalStuffAsset("1", "/home/victor/Downloads/report.pdf");
+    assert.equal(asset.relativePath, "items/1/report.pdf");
   });
 
   test("updateStuffTitle only changes title", async () => {

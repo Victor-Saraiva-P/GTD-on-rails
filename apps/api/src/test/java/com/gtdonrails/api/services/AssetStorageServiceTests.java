@@ -112,6 +112,33 @@ class AssetStorageServiceTests {
     }
 
     @Test
+    void copiesLocalItemAssetInExpectedPath() throws IOException {
+        UUID itemId = UUID.randomUUID();
+        Path sourcePath = tempDir.resolve("Engage mint vitória.pdf");
+        Files.write(sourcePath, new byte[] {1, 2, 3});
+        AssetStorageService assetStorageService = newAssetStorageService();
+
+        String relativePath = assetStorageService.copyLocalItemAsset(itemId, sourcePath);
+
+        assertTrue(relativePath.matches("items/" + itemId + "/[0-9a-f-]+/Engage-mint-vit-ria\\.pdf"));
+        assertTrue(Files.exists(tempDir.resolve("assets").resolve(relativePath)));
+    }
+
+    @Test
+    void rejectsInvalidLocalItemAssetType() throws IOException {
+        UUID itemId = UUID.randomUUID();
+        Path sourcePath = tempDir.resolve("script.sh");
+        Files.write(sourcePath, new byte[] {1});
+        AssetStorageService assetStorageService = newAssetStorageService();
+
+        IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> assetStorageService.copyLocalItemAsset(itemId, sourcePath));
+
+        assertEquals("item asset file extension 'sh' is invalid; expected pdf, doc, docx, xls, xlsx, png, jpg, jpeg, gif, webp, or svg", exception.getMessage());
+    }
+
+    @Test
     void rejectsEmptyItemAsset() {
         UUID itemId = UUID.randomUUID();
         MockMultipartFile file = new MockMultipartFile("file", "file.pdf", "application/pdf", new byte[0]);

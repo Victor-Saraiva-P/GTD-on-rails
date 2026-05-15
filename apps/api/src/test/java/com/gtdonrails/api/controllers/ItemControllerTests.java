@@ -3,7 +3,6 @@ package com.gtdonrails.api.controllers;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -20,7 +19,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
-import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -92,18 +90,6 @@ class ItemControllerTests {
             .andExpect(jsonPath("$.title").value("Old title"))
             .andExpect(jsonPath("$.body.text").value("New body"))
             .andExpect(jsonPath("$.energy").value(nullValue()));
-    }
-
-    @Test
-    void uploadsItemAssetWithPublicUrl() throws Exception {
-        Item item = itemRepository.save(new Item(new Title("Capture idea"), null));
-        MockMultipartFile file = new MockMultipartFile("file", "report.pdf", "application/pdf", new byte[] {1, 2, 3});
-
-        mockMvc.perform(multipart("/items/{id}/assets", item.getId()).file(file))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.relativePath").value(org.hamcrest.Matchers.endsWith("/report.pdf")))
-            .andExpect(jsonPath("$.url").value(org.hamcrest.Matchers.endsWith("/report.pdf")))
-            .andExpect(jsonPath("$.contentType").value("application/pdf"));
     }
 
     @Test

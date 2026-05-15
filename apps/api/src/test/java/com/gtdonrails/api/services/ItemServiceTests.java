@@ -3,14 +3,18 @@ package com.gtdonrails.api.services;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.gtdonrails.api.dtos.item.CopyLocalItemAssetRequestDto;
+import com.gtdonrails.api.dtos.item.ItemAssetResponseDto;
 import com.gtdonrails.api.dtos.item.ItemResponseDto;
 import com.gtdonrails.api.dtos.item.PatchItemBodyRequestDto;
 import com.gtdonrails.api.dtos.item.UpdateItemTitleRequestDto;
@@ -125,6 +129,26 @@ class ItemServiceTests {
         assertEquals(
             "body.blockEntities.assetId value '" + assetId + "' is invalid; expected asset owned by item '" + itemId + "'",
             exception.getMessage());
+    }
+
+    @Test
+    void storeLocalItemAssetCopiesFileAndRequestsAssetSync() {
+        UUID itemId = UUID.randomUUID();
+        Item item = new Item(new Title("Capture idea"), null);
+        Path sourcePath = Path.of("/home/victor/Downloads/report.pdf");
+
+        when(itemRepository.findByIdAndDeletedAtIsNull(itemId)).thenReturn(Optional.of(item));
+        when(assetStorageService.copyLocalItemAsset(eq(itemId), any(Path.class))).thenReturn("items/id/asset/report.pdf");
+        when(assetStorageService.fileName("items/id/asset/report.pdf")).thenReturn("report.pdf");
+        when(assetStorageService.mediaType("items/id/asset/report.pdf")).thenReturn(org.springframework.http.MediaType.APPLICATION_PDF);
+        when(assetStorageService.publicUrl("items/id/asset/report.pdf")).thenReturn("/assets/items/id/asset/report.pdf");
+        when(itemAssetRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ItemAssetResponseDto response = itemService.storeLocalItemAsset(itemId, new CopyLocalItemAssetRequestDto(sourcePath.toString()));
+
+        assertEquals("report.pdf", response.fileName());
+        assertEquals("application/pdf", response.contentType());
+        verify(assetSyncService).requestSync("local item asset copied");
     }
 
     private void stubSavedItemResponse(ItemResponseDto response) {

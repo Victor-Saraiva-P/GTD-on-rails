@@ -19,6 +19,14 @@ struct PdfFirstPagePreviewPayload {
     mime_type: String,
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct LocalAssetPayload {
+    source_path: String,
+    mime_type: String,
+    file_name: String,
+}
+
 #[tauri::command]
 fn read_clipboard_image() -> Result<Option<ClipboardImagePayload>, String> {
     #[cfg(target_os = "linux")]
@@ -46,10 +54,36 @@ fn read_clipboard_file_asset() -> Result<Option<ClipboardImagePayload>, String> 
 }
 
 #[tauri::command]
+fn read_clipboard_local_file_asset() -> Result<Option<LocalAssetPayload>, String> {
+    #[cfg(target_os = "linux")]
+    {
+        return read_linux_clipboard_local_file_asset();
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    {
+        Ok(None)
+    }
+}
+
+#[tauri::command]
 fn read_asset_file_path(file_path: String) -> Result<Option<ClipboardImagePayload>, String> {
     #[cfg(target_os = "linux")]
     {
         return file_asset_payload_from_path(&PathBuf::from(file_path)).map(Some);
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    {
+        Ok(None)
+    }
+}
+
+#[tauri::command]
+fn read_local_asset_path(file_path: String) -> Result<Option<LocalAssetPayload>, String> {
+    #[cfg(target_os = "linux")]
+    {
+        return local_asset_payload_from_path(&PathBuf::from(file_path)).map(Some);
     }
 
     #[cfg(not(target_os = "linux"))]
@@ -265,6 +299,16 @@ fn read_linux_clipboard_file_asset() -> Result<Option<ClipboardImagePayload>, St
 }
 
 #[cfg(target_os = "linux")]
+fn read_linux_clipboard_local_file_asset() -> Result<Option<LocalAssetPayload>, String> {
+    if let Some(payload) = wl_clipboard_local_file_asset()? {
+        return Ok(Some(payload));
+    }
+
+    let clipboard = linux_clipboard()?;
+    gtk_clipboard_local_file_asset(&clipboard)
+}
+
+#[cfg(target_os = "linux")]
 fn gtk_clipboard_file_asset(
     clipboard: &gtk::Clipboard,
 ) -> Result<Option<ClipboardImagePayload>, String> {
@@ -273,6 +317,16 @@ fn gtk_clipboard_file_asset(
     }
 
     Ok(None)
+}
+
+#[cfg(target_os = "linux")]
+fn gtk_clipboard_local_file_asset(
+    clipboard: &gtk::Clipboard,
+) -> Result<Option<LocalAssetPayload>, String> {
+    gtk_clipboard_uri_list(clipboard)
+        .map(|uri_list| clipboard_local_file_payload_from_uri_list(&uri_list))
+        .transpose()
+        .map(Option::flatten)
 }
 
 #[cfg(target_os = "linux")]
@@ -341,6 +395,14 @@ fn wl_clipboard_file_asset() -> Result<Option<ClipboardImagePayload>, String> {
 }
 
 #[cfg(target_os = "linux")]
+fn wl_clipboard_local_file_asset() -> Result<Option<LocalAssetPayload>, String> {
+    wl_clipboard_uri_list()
+        .map(|uri_list| clipboard_local_file_payload_from_uri_list(&uri_list))
+        .transpose()
+        .map(Option::flatten)
+}
+
+#[cfg(target_os = "linux")]
 fn wl_clipboard_target_uri_list(target: &str) -> Option<String> {
     let target = target.trim();
     if !clipboard_uri_target(target) {
@@ -373,6 +435,41 @@ fn clipboard_file_payload_from_uri_list(
     first_supported_file_uri(uri_list)
         .map(|uri| file_asset_payload_from_uri(&uri))
         .transpose()
+}
+
+#[cfg(target_os = "linux")]
+fn clipboard_local_file_payload_from_uri_list(
+    uri_list: &str,
+) -> Result<Option<LocalAssetPayload>, String> {
+    first_supported_file_path(uri_list)
+        .map(|path| local_asset_payload_from_path(&path))
+        .transpose()
+}
+
+#[cfg(target_os = "linux")]
+fn first_supported_file_path(uri_list: &str) -> Option<PathBuf> {
+    uri_list
+        .lines()
+        .map(str::trim)
+        .find_map(supported_file_path_line)
+}
+
+#[cfg(target_os = "linux")]
+fn supported_file_path_line(line: &str) -> Option<PathBuf> {
+    if matches!(line, "" | "copy" | "cut") || line.starts_with('#') {
+        return None;
+    }
+    let path = path_from_file_line(line).ok()?;
+    mime_from_path(&path).ok()?;
+    Some(path)
+}
+
+#[cfg(target_os = "linux")]
+fn path_from_file_line(line: &str) -> Result<PathBuf, String> {
+    if line.starts_with("file://") {
+        return path_from_file_uri(line);
+    }
+    Ok(PathBuf::from(line))
 }
 
 #[cfg(target_os = "linux")]
@@ -416,6 +513,27 @@ fn file_asset_payload_from_path(path: &Path) -> Result<ClipboardImagePayload, St
         mime_type: mime_from_path(path)?,
         file_name: file_name_from_path(path)?,
     })
+}
+
+#[cfg(target_os = "linux")]
+fn local_asset_payload_from_path(path: &Path) -> Result<LocalAssetPayload, String> {
+    validate_readable_local_asset_path(path)?;
+    Ok(LocalAssetPayload {
+        source_path: path.to_string_lossy().to_string(),
+        mime_type: mime_from_path(path)?,
+        file_name: file_name_from_path(path)?,
+    })
+}
+
+#[cfg(target_os = "linux")]
+fn validate_readable_local_asset_path(path: &Path) -> Result<(), String> {
+    if path.is_file() {
+        return Ok(());
+    }
+    Err(format!(
+        "asset file path value '{}' is invalid; expected readable local asset file",
+        path.display()
+    ))
 }
 
 #[cfg(target_os = "linux")]
@@ -503,13 +621,30 @@ mod tests {
         assert_eq!(payload.bytes_base64, "JVBERi0xLjc=");
     }
 
+    #[test]
+    fn clipboard_local_file_payload_from_uri_list_reads_plain_path() {
+        let file_path = temporary_pdf_path();
+        std::fs::write(&file_path, b"%PDF-1.7").unwrap();
+
+        let payload = clipboard_local_file_payload_from_uri_list(&file_path.to_string_lossy())
+            .unwrap()
+            .unwrap();
+        std::fs::remove_file(&file_path).unwrap();
+
+        assert_eq!(payload.source_path, file_path.to_string_lossy());
+        assert_eq!(payload.mime_type, "application/pdf");
+    }
+
     fn temporary_pdf_path() -> PathBuf {
-        let millis = SystemTime::now()
+        let nanos = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
-            .as_millis();
+            .as_nanos();
 
-        std::env::temp_dir().join(format!("gtd-clipboard-asset-{millis}.pdf"))
+        std::env::temp_dir().join(format!(
+            "gtd-clipboard-asset-{}-{nanos}.pdf",
+            std::process::id()
+        ))
     }
 }
 
@@ -528,7 +663,9 @@ pub fn run() {
             read_clipboard_image,
             read_clipboard_text,
             read_clipboard_file_asset,
+            read_clipboard_local_file_asset,
             read_asset_file_path,
+            read_local_asset_path,
             open_external_url,
             open_temp_asset,
             render_pdf_first_page_preview

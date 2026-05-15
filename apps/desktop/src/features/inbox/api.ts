@@ -104,6 +104,21 @@ export async function uploadStuffAsset(id: string, file: File): Promise<StuffAss
   });
 }
 
+/**
+ * Copies a local desktop file into one stuff item's asset storage.
+ *
+ * @example await copyLocalStuffAsset(stuff.id, "/home/victor/Downloads/report.pdf")
+ */
+export async function copyLocalStuffAsset(id: string, sourcePath: string): Promise<StuffAssetResponse> {
+  return apiJson<StuffAssetResponse>(`/items/${id}/assets/local-file`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ sourcePath })
+  });
+}
+
 
 /**
  * Updates a stuff title using its current record for optimistic shape context.

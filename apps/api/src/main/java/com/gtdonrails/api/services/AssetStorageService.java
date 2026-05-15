@@ -81,6 +81,18 @@ public class AssetStorageService {
         return relativePath;
     }
 
+    /**
+     * Copies a local item attachment under the configured asset directory.
+     *
+     * <p>Example: {@code assetStorageService.copyLocalItemAsset(itemId, Path.of("/tmp/file.pdf"))}.</p>
+     */
+    public String copyLocalItemAsset(UUID itemId, Path sourcePath) {
+        validateLocalItemAssetFile(sourcePath);
+        String relativePath = itemAssetRelativePath(itemId, sourcePath.getFileName().toString());
+        writeLocalAssetFile(sourcePath, resolveRelativePath(relativePath));
+        return relativePath;
+    }
+
     private void writeAssetFile(MultipartFile file, Path destination) {
         try {
             Files.createDirectories(destination.getParent());
@@ -89,6 +101,15 @@ public class AssetStorageService {
             }
         } catch (IOException exception) {
             throw new IllegalStateException("Failed to store context icon", exception);
+        }
+    }
+
+    private void writeLocalAssetFile(Path sourcePath, Path destination) {
+        try {
+            Files.createDirectories(destination.getParent());
+            Files.copy(sourcePath, destination, StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException exception) {
+            throw new IllegalStateException("Failed to copy local item asset", exception);
         }
     }
 
@@ -204,17 +225,51 @@ public class AssetStorageService {
     }
 
     private String itemAssetRelativePath(UUID itemId, MultipartFile file) {
-        return "items/" + itemId + "/" + UUID.randomUUID() + "/" + safeAssetFileName(file);
+        return itemAssetRelativePath(itemId, safeAssetFileName(file));
+    }
+
+    private String itemAssetRelativePath(UUID itemId, String fileName) {
+        return "items/" + itemId + "/" + UUID.randomUUID() + "/" + safeAssetFileName(fileName);
     }
 
     private String safeAssetFileName(MultipartFile file) {
         String originalFileName = StringUtils.cleanPath(file.getOriginalFilename() == null ? "asset" : file.getOriginalFilename());
+        return safeAssetFileName(originalFileName);
+    }
+
+    private String safeAssetFileName(String originalFileName) {
         String safeFileName = UNSAFE_FILENAME_CHARACTERS.matcher(originalFileName).replaceAll("-");
         return StringUtils.hasText(safeFileName) ? safeFileName : "asset." + extensionOf(originalFileName);
     }
 
     private void validateItemAssetFile(MultipartFile file) {
         String extension = extensionOf(file.getOriginalFilename());
+        if (!ALLOWED_ITEM_ASSET_EXTENSIONS.contains(extension)) {
+            throw new IllegalArgumentException(
+                "item asset file extension '" + extension + "' is invalid; expected pdf, doc, docx, xls, xlsx, png, jpg, jpeg, gif, webp, or svg");
+        }
+    }
+
+    private void validateLocalItemAssetFile(Path sourcePath) {
+        if (sourcePath == null || !Files.isRegularFile(sourcePath, LinkOption.NOFOLLOW_LINKS)) {
+            throw new IllegalArgumentException("item asset source path value '" + sourcePath + "' is invalid; expected existing regular file");
+        }
+        validateLocalItemAssetSize(sourcePath);
+        validateItemAssetExtension(sourcePath.getFileName().toString());
+    }
+
+    private void validateLocalItemAssetSize(Path sourcePath) {
+        try {
+            if (Files.size(sourcePath) <= 0) {
+                throw new IllegalArgumentException("item asset source path value '" + sourcePath + "' is invalid; expected non-empty file");
+            }
+        } catch (IOException exception) {
+            throw new IllegalArgumentException("item asset source path value '" + sourcePath + "' is invalid; expected readable file size", exception);
+        }
+    }
+
+    private void validateItemAssetExtension(String fileName) {
+        String extension = extensionOf(fileName);
         if (!ALLOWED_ITEM_ASSET_EXTENSIONS.contains(extension)) {
             throw new IllegalArgumentException(
                 "item asset file extension '" + extension + "' is invalid; expected pdf, doc, docx, xls, xlsx, png, jpg, jpeg, gif, webp, or svg");

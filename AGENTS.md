@@ -33,6 +33,20 @@
 - Inject dependencies through constructor/parameter, not global/import.
 - Wrap third-party libs behind a thin interface owned by this project.
 
+## Runtime Environment
+
+- The Tauri desktop app is used only on two Arch Linux computers running Hyprland. Prefer Linux/Arch/Hyprland-specific native integrations when they simplify the implementation, and do not add cross-platform fallbacks unless explicitly requested.
+
+## Asset System
+
+- Item assets are persisted as files plus database metadata. The file lives under `gtd.assets.local-directory`, while metadata lives in `item_assets` and item body references live in `items.body.blockEntities`.
+- The markdown body stores an asset token like `⟦asset:<uuid>⟧`; the matching `blockEntities` entry stores `assetId`, `relativePath`, `url`, `contentType`, and display metadata.
+- `Space m a` opens the asset dialog. Clipboard or dropped local files on Arch/Hyprland should use Tauri native commands to return a local source path, then call `POST /items/{id}/assets/local-file` so the backend copies the file, creates `item_assets`, and schedules asset sync.
+- Clipboard images that do not exist as OS files should continue through multipart upload to `POST /items/{id}/assets`.
+- The frontend chooses the endpoint from the asset source type: `localFile` sources returned by Tauri clipboard/drop commands call `POST /items/{id}/assets/local-file`; byte-backed `file` sources such as clipboard-only images, browser clipboard blobs, or HTML file input call multipart `POST /items/{id}/assets`.
+- Do not copy assets directly from the frontend into the final asset directory. The backend must own final storage, database metadata, public URL generation, validation, and sync scheduling.
+- Asset previews should prefer local Documents storage through the Tauri fs plugin and fall back to `/assets/<relativePath>` HTTP URLs when local files are unavailable.
+
 ## Structure
 
 - Follow the Java/Spring boot and Typescript/React conventions.

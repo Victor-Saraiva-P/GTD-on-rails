@@ -1,8 +1,8 @@
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebview, type DragDropEvent } from "@tauri-apps/api/webview";
 import { useEffect, useRef, useState, type ChangeEvent, type DragEvent as ReactDragEvent, type MutableRefObject, type RefObject } from "react";
-import { readMarkdownAssetClipboardFile } from "./markdownAssetClipboard";
-import { uploadStuffAsset } from "./api";
+import { readMarkdownAssetClipboardFile, type LocalAssetPayload, type MarkdownAssetClipboardSource } from "./markdownAssetClipboard";
+import { copyLocalStuffAsset, uploadStuffAsset } from "./api";
 import { INSERT_BLOCK_ENTITY_EVENT, type InsertBlockEntityEventDetail } from "./assetEditorEvents";
 
 const ACCEPTED_ASSET_EXTENSIONS = new Set(["pdf", "doc", "docx", "xls", "xlsx", "png", "jpg", "jpeg", "gif", "webp", "svg"]);
@@ -20,13 +20,8 @@ type MarkdownAssetComboDialogProps = {
   onClose: () => void;
 };
 
-type AssetFilePayload = {
-  bytesBase64: string;
-  mimeType: string;
-  fileName: string;
-};
-
-type AssetFileHandler = (file: File | null) => Promise<void>;
+type AssetUploadSource = MarkdownAssetClipboardSource | null;
+type AssetFileHandler = (source: AssetUploadSource) => Promise<void>;
 
 export function dispatchInsertBlockEntity(assetId: string, displayName: string, contentType: string, url: string | undefined, image: boolean, relativePath?: string) {
   const detail: InsertBlockEntityEventDetail = { assetId, displayName, contentType, relativePath, url, image };
@@ -45,7 +40,7 @@ export function MarkdownAssetComboDialog({ itemId, onClose }: MarkdownAssetCombo
   const isUploadingRef = useRef(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isDragActive, setIsDragActive] = useState(false);
-  const handleFile = (file: File | null) => uploadMarkdownAssetFile(itemId, file, isUploadingRef, onClose, setStatusMessage);
+  const handleFile = (source: AssetUploadSource) => uploadMarkdownAssetFile(itemId, source, isUploadingRef, onClose, setStatusMessage);
 
   useAssetDialogKeys(onClose, handleFile);
   useTauriAssetDrop(handleFile, setIsDragActive, setStatusMessage, itemId);
@@ -106,7 +101,7 @@ type AssetDialogProps = {
 };
 
 function handleFileInputChange(event: ChangeEvent<HTMLInputElement>, handleFile: AssetFileHandler) {
-  void handleFile(event.target.files?.item(0) ?? null);
+  void handleFile(fileAssetSource(event.target.files?.item(0) ?? null));
   event.target.value = "";
 }
 
@@ -124,22 +119,21 @@ function dropAssetFile(event: ReactDragEvent<HTMLElement>, setIsDragActive: (act
   event.preventDefault();
   setIsDragActive(false);
   if (event.dataTransfer.files.length > 0) {
-    void handleFile(extractFile(event.dataTransfer));
+    void handleFile(fileAssetSource(extractFile(event.dataTransfer)));
   }
+}
+
+function fileAssetSource(file: File | null): AssetUploadSource {
+  return file ? { type: "file", file } : null;
 }
 
 function extractFile(source: DataTransfer | null): File | null {
   return Array.from(source?.items ?? []).find((item) => item.kind === "file")?.getAsFile() ?? source?.files?.item(0) ?? null;
 }
 
-function fileFromAssetPayload(payload: AssetFilePayload): File {
-  const bytes = Uint8Array.from(atob(payload.bytesBase64), (char) => char.charCodeAt(0));
-  return new File([bytes], payload.fileName, { type: payload.mimeType });
-}
-
-async function readDroppedAssetPath(filePath: string): Promise<File | null> {
-  const payload = await invoke<AssetFilePayload | null>("read_asset_file_path", { filePath });
-  return payload ? fileFromAssetPayload(payload) : null;
+async function readDroppedAssetPath(filePath: string): Promise<AssetUploadSource> {
+  const payload = await invoke<LocalAssetPayload | null>("read_local_asset_path", { filePath });
+  return payload ? { type: "localFile", ...payload } : null;
 }
 
 function useTauriAssetDrop(
@@ -236,11 +230,19 @@ function removeWindowDropPrevention() {
   window.removeEventListener("drop", preventWindowDrop);
 }
 
-async function uploadMarkdownAssetFile(itemId: string, file: File | null, isUploadingRef: MutableRefObject<boolean>, onClose: () => void, setStatusMessage: (message: string | null) => void) {
+async function uploadMarkdownAssetFile(itemId: string, source: AssetUploadSource, isUploadingRef: MutableRefObject<boolean>, onClose: () => void, setStatusMessage: (message: string | null) => void) {
   if (isUploadingRef.current) return;
-  if (!file || !isSupportedAssetFile(file)) return setStatusMessage("Choose a supported PDF, Word, Excel, or image file.");
+  if (!source || !isSupportedAssetSource(source)) return setStatusMessage("Choose a supported PDF, Word, Excel, or image file.");
   isUploadingRef.current = true;
-  await uploadMarkdownAsset(itemId, file, onClose, setStatusMessage, () => { isUploadingRef.current = false; });
+  await uploadMarkdownAsset(itemId, source, onClose, setStatusMessage, () => { isUploadingRef.current = false; });
+}
+
+function isSupportedAssetSource(source: MarkdownAssetClipboardSource): boolean {
+  return source.type === "localFile" ? isSupportedLocalAsset(source) : isSupportedAssetFile(source.file);
+}
+
+function isSupportedLocalAsset(source: LocalAssetPayload): boolean {
+  return isSupportedAssetMime(source.mimeType) || ACCEPTED_ASSET_EXTENSIONS.has(fileExtension(source.fileName));
 }
 
 function isSupportedAssetFile(file: File): boolean {
@@ -255,13 +257,18 @@ function fileExtension(fileName: string): string {
   return fileName.split(".").pop()?.toLowerCase() ?? "";
 }
 
-async function uploadMarkdownAsset(itemId: string, file: File, onClose: () => void, setStatusMessage: (message: string | null) => void, onFailure: () => void) {
+async function uploadMarkdownAsset(itemId: string, source: MarkdownAssetClipboardSource, onClose: () => void, setStatusMessage: (message: string | null) => void, onFailure: () => void) {
   try {
-    const asset = await uploadStuffAsset(itemId, file);
+    const asset = await uploadMarkdownAssetSource(itemId, source);
     dispatchInsertBlockEntity(asset.id, asset.fileName, asset.contentType, asset.url, asset.image, asset.relativePath);
     onClose();
   } catch (error) {
     onFailure();
     setStatusMessage(error instanceof Error ? error.message : "Failed to upload asset.");
   }
+}
+
+function uploadMarkdownAssetSource(itemId: string, source: MarkdownAssetClipboardSource) {
+  if (source.type === "localFile") return copyLocalStuffAsset(itemId, source.sourcePath);
+  return uploadStuffAsset(itemId, source.file);
 }

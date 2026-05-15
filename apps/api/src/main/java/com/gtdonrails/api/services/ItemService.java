@@ -1,7 +1,9 @@
 package com.gtdonrails.api.services;
 
+import java.nio.file.Path;
 import java.util.UUID;
 
+import com.gtdonrails.api.dtos.item.CopyLocalItemAssetRequestDto;
 import com.gtdonrails.api.dtos.item.ItemAssetResponseDto;
 import com.gtdonrails.api.dtos.item.ItemResponseDto;
 import com.gtdonrails.api.dtos.item.PatchItemBodyRequestDto;
@@ -130,6 +132,21 @@ public class ItemService {
         return itemAssetResponse(itemAsset);
     }
 
+    /**
+     * Copies a local asset for an active item and returns its markdown-ready URL.
+     *
+     * <p>Example: {@code itemService.storeLocalItemAsset(itemId, request)}.</p>
+     */
+    @Transactional
+    public ItemAssetResponseDto storeLocalItemAsset(UUID id, CopyLocalItemAssetRequestDto request) {
+        Item item = findItem(id);
+        Path sourcePath = Path.of(request.sourcePath()).toAbsolutePath().normalize();
+        String relativePath = assetStorageService.copyLocalItemAsset(id, sourcePath);
+        ItemAsset itemAsset = saveLocalItemAsset(item, sourcePath, relativePath);
+        requestAssetSyncAfterCommit("local item asset copied");
+        return itemAssetResponse(itemAsset);
+    }
+
     private Item findItem(UUID id) {
         return itemRepository.findByIdAndDeletedAtIsNull(id)
             .orElseThrow(() -> new ItemNotFoundException("item not found"));
@@ -173,6 +190,19 @@ public class ItemService {
             file.getOriginalFilename() == null ? assetStorageService.fileName(relativePath) : file.getOriginalFilename(),
             assetStorageService.mediaType(relativePath).toString(),
             file.getSize(),
+            relativePath,
+            assetStorageService.publicUrl(relativePath),
+            assetStorageService.isImage(relativePath));
+        return itemAssetRepository.save(asset);
+    }
+
+    private ItemAsset saveLocalItemAsset(Item item, Path sourcePath, String relativePath) {
+        ItemAsset asset = new ItemAsset(
+            item,
+            assetStorageService.fileName(relativePath),
+            sourcePath.getFileName().toString(),
+            assetStorageService.mediaType(relativePath).toString(),
+            sourcePath.toFile().length(),
             relativePath,
             assetStorageService.publicUrl(relativePath),
             assetStorageService.isImage(relativePath));
