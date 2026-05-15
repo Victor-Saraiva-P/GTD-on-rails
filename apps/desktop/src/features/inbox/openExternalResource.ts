@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { bytesToBase64, readDocumentAssetBytes } from "./assetFiles";
 import { buildApiUrl } from "../../config/env";
+import { apiFetch } from "../../lib/api/apiClient";
 import type { BlockEntity } from "./types.ts";
 
 type BrowserWindow = Window & typeof globalThis & {
@@ -43,7 +44,7 @@ async function assetBytesBase64(entity: BlockEntity, url: string): Promise<strin
 }
 
 async function fetchAssetBytes(url: string): Promise<Uint8Array> {
-  return new Uint8Array(await (await fetch(url)).arrayBuffer());
+  return new Uint8Array(await (await apiFetch(url)).arrayBuffer());
 }
 
 function isTauriRuntime(): boolean {

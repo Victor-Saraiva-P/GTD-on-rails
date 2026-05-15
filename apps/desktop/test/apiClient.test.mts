@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test, { describe, beforeEach, afterEach, mock } from "node:test";
+import test, { describe, mock } from "node:test";
 
 import { ApiRequestError, apiFetch, apiJson } from "../src/lib/api/apiClient.ts";
 
@@ -17,32 +17,26 @@ test("ApiRequestError respects custom message", () => {
 });
 
 describe("apiFetch", () => {
-  const originalFetch = globalThis.fetch;
-
-  afterEach(() => {
-    globalThis.fetch = originalFetch;
-  });
-
   test("apiFetch succeeds when response is ok", async () => {
-    globalThis.fetch = mock.fn(async () => {
+    const fetchTransport = mock.fn(async () => {
       return new Response("ok", { status: 200 });
     });
 
-    const response = await apiFetch("/inbox");
+    const response = await apiFetch("/inbox", {}, fetchTransport);
     assert.equal(response.status, 200);
     assert.equal(await response.text(), "ok");
   });
 
   test("apiFetch throws ApiRequestError on failure", async () => {
-    globalThis.fetch = mock.fn(async () => {
+    const fetchTransport = mock.fn(async () => {
       return new Response("Not Found", { status: 404 });
     });
 
     await assert.rejects(
       async () => {
-        await apiFetch("/missing");
+        await apiFetch("/missing", {}, fetchTransport);
       },
-      (err: any) => {
+      (err: unknown) => {
         assert.ok(err instanceof ApiRequestError);
         assert.equal(err.status, 404);
         assert.equal(err.responseBody, "Not Found");
@@ -53,19 +47,15 @@ describe("apiFetch", () => {
 });
 
 describe("apiJson", () => {
-  const originalFetch = globalThis.fetch;
-
-  afterEach(() => {
-    globalThis.fetch = originalFetch;
-  });
-
   test("apiJson parses JSON on success", async () => {
-    globalThis.fetch = mock.fn(async () => {
-      return new Response('{"id":"123"}', { status: 200, headers: { "Content-Type": "application/json" } });
+    const fetchTransport = mock.fn(async () => {
+      return new Response('{"id":"123"}', {
+        status: 200,
+        headers: { "Content-Type": "application/json" }
+      });
     });
 
-    const data = await apiJson("/inbox");
+    const data = await apiJson("/inbox", {}, fetchTransport);
     assert.deepEqual(data, { id: "123" });
   });
 });
-
