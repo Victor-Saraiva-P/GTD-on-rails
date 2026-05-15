@@ -87,8 +87,12 @@ export function clearAssetObjectUrlCache(): void {
 }
 
 async function createAssetObjectUrl(relativePath: string | undefined, contentType: string | undefined, fallbackUrl?: string): Promise<AssetObjectUrl> {
-  if (!relativePath || !isTauriRuntime()) return fallbackAssetObjectUrl(fallbackUrl);
-  const bytes = await readDocumentAssetBytes(relativePath);
+  if (!relativePath || !isTauriRuntime()) return fallbackAssetObjectUrl(relativePath, fallbackUrl);
+  const bytes = await readDocumentAssetBytes(relativePath).catch((error: unknown) => {
+    if (fallbackUrl || relativePath) return null;
+    throw error;
+  });
+  if (!bytes) return fallbackAssetObjectUrl(relativePath, fallbackUrl);
   return { url: URL.createObjectURL(new Blob([bytesArrayBuffer(bytes)], { type: contentType })), revoke: true };
 }
 
@@ -98,8 +102,12 @@ export function bytesToBase64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
-function fallbackAssetObjectUrl(fallbackUrl?: string): AssetObjectUrl {
-  return { url: buildApiUrl(fallbackUrl || ""), revoke: false };
+function fallbackAssetObjectUrl(relativePath: string | undefined, fallbackUrl?: string): AssetObjectUrl {
+  return { url: buildApiUrl(fallbackUrl || assetPublicPath(relativePath)), revoke: false };
+}
+
+function assetPublicPath(relativePath: string | undefined): string {
+  return relativePath ? `/assets/${relativePath.replace(/^\/+/, "")}` : "";
 }
 
 function assetObjectUrlCacheKey(relativePath: string | undefined, contentType: string | undefined, fallbackUrl?: string): string {

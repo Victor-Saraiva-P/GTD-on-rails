@@ -8,6 +8,7 @@ import {
   deleteStuff,
   processStuff,
   restoreStuff,
+  uploadStuffAsset,
   updateStuffTitle,
   updateStuffBody
 } from "../src/features/inbox/api.ts";
@@ -85,6 +86,19 @@ describe("inbox API", () => {
     });
 
     await restoreStuff("456");
+  });
+
+  test("uploadStuffAsset returns public asset url", async () => {
+    const mockResponse = { id: "asset-1", relativePath: "items/1/report.pdf", url: "/assets/items/1/report.pdf", fileName: "report.pdf", contentType: "application/pdf", image: false };
+    globalThis.fetch = mock.fn(async (input, init) => {
+      assert.ok(input.toString().endsWith("/items/1/assets"));
+      assert.equal(init?.method, "POST");
+      assert.ok(init?.body instanceof FormData);
+      return new Response(JSON.stringify(mockResponse), { status: 200 });
+    });
+
+    const asset = await uploadStuffAsset("1", new File([new Uint8Array([1])], "report.pdf", { type: "application/pdf" }));
+    assert.equal(asset.url, "/assets/items/1/report.pdf");
   });
 
   test("updateStuffTitle only changes title", async () => {

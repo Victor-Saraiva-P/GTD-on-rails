@@ -143,10 +143,25 @@ async function setImagePreviewSource(root: HTMLElement, img: HTMLImageElement, e
 async function setPdfPreviewSource(root: HTMLElement, image: HTMLImageElement, entity: BlockEntity): Promise<void> {
   const relativePath = entityAssetRelativePath(entity);
   const assetUrl = await getCachedAssetObjectUrl(relativePath, entity.attrs?.contentType, entity.attrs?.url);
-  const previewUrl = await getCachedPdfFirstPagePreviewUrl(relativePath);
+  const previewUrl = await getCachedPdfFirstPagePreviewUrl(relativePath).catch(() => null);
   root.dataset.objectUrl = previewUrl?.url ?? assetUrl.url;
-  image.src = previewUrl?.url ?? "";
-  image.hidden = !previewUrl;
+  if (previewUrl) {
+    image.src = previewUrl.url;
+    return;
+  }
+
+  image.remove();
+  root.appendChild(assetFallbackLink(entity, assetUrl.url));
+}
+
+function assetFallbackLink(entity: BlockEntity, assetUrl: string): HTMLAnchorElement {
+  const link = document.createElement("a");
+  link.textContent = `Open ${entity.attrs?.displayName || "PDF"}`;
+  link.className = "cm-markdown-link";
+  link.href = assetUrl;
+  link.target = "_blank";
+  link.rel = "noreferrer";
+  return link;
 }
 
 async function setAssetLinkHref(root: HTMLElement, link: HTMLAnchorElement, entity: BlockEntity): Promise<void> {

@@ -24,6 +24,14 @@ test("preloadAssetObjectUrl warms the preview cache", async () => {
   assert.equal((await previewPromise).url, buildApiUrl("/assets/items/id/image.png"));
 });
 
+test("getCachedAssetObjectUrl falls back to public asset path", async () => {
+  clearAssetObjectUrlCache();
+
+  const assetUrl = await getCachedAssetObjectUrl("items/id/file.pdf", "application/pdf");
+
+  assert.equal(assetUrl.url, buildApiUrl("/assets/items/id/file.pdf"));
+});
+
 test("clearAssetObjectUrlCache drops cached preview promises", () => {
   clearAssetObjectUrlCache();
 

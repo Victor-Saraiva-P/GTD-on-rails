@@ -64,6 +64,7 @@
 
 ## UI Consistency
 
+- All user-facing application text must be written in English, including errors, empty states, loading states, and offline/sync status screens.
 - The preview mode and the stuff detail views must be visually identical and render all elements (e.g. PDF previews, images) identically to the edit mode. This applies to all elements.
 - Pages that visualize deleted items must use `#9B9B9B` as the predominant color. Pages that visualize completed items must use `#7F8D3F` as the predominant color.
 - Modal keybind scopes must isolate keyboard handling: while a modal dialog is active, page-level keybinds outside that modal must not run.

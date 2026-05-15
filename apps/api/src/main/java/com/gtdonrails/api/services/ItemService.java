@@ -183,6 +183,7 @@ public class ItemService {
         return new ItemAssetResponseDto(
             asset.getId(),
             asset.getRelativePath(),
+            asset.getUrl(),
             asset.getFileName(),
             asset.getContentType(),
             asset.isImage());

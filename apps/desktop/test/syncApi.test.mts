@@ -27,7 +27,9 @@ describe("sync-status API", () => {
         lastStartedAt: "2026-05-01T00:00:00Z",
         lastFinishedAt: "2026-05-01T00:00:05Z",
         lastSuccessfulSyncAt: "2026-05-01T00:00:05Z",
-        lastError: null
+        lastError: null,
+        hasLocalChanges: false,
+        hasUnpushedCommits: false
       }
     };
     

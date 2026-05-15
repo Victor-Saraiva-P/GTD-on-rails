@@ -7,6 +7,8 @@ public record PersistenceSyncStatus(
     Instant lastStartedAt,
     Instant lastFinishedAt,
     Instant lastSuccessfulSyncAt,
-    String lastError
+    String lastError,
+    boolean hasLocalChanges,
+    boolean hasUnpushedCommits
 ) {
 }

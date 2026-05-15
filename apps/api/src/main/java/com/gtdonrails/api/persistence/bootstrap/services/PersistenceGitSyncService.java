@@ -36,6 +36,8 @@ public class PersistenceGitSyncService {
     private volatile Instant lastFinishedAt;
     private volatile Instant lastSuccessfulSyncAt;
     private volatile String lastError;
+    private volatile boolean hasLocalChanges;
+    private volatile boolean hasUnpushedCommits;
 
     public PersistenceGitSyncService(
         PersistenceBootstrapProperties persistenceBootstrapProperties,
@@ -156,13 +158,22 @@ public class PersistenceGitSyncService {
      * <p>Example: {@code persistenceGitSyncService.status()}.</p>
      */
     public PersistenceSyncStatus status() {
-        return new PersistenceSyncStatus(state, lastStartedAt, lastFinishedAt, lastSuccessfulSyncAt, lastError);
+        return new PersistenceSyncStatus(
+            state,
+            lastStartedAt,
+            lastFinishedAt,
+            lastSuccessfulSyncAt,
+            lastError,
+            hasLocalChanges,
+            hasUnpushedCommits
+        );
     }
 
     void syncNow(String reason, PersistenceChangeType changeType) {
         runTask(reason, () -> {
             Path repository = requiredRepositoryDirectory();
-            if (gitCommandService.statusPorcelain(repository).isBlank()) {
+            hasLocalChanges = !gitCommandService.statusPorcelain(repository).isBlank();
+            if (!hasLocalChanges) {
                 logger.atDebug()
                     .addKeyValue("event", "persistence_git_sync_skipped")
                     .addKeyValue("reason", reason)
@@ -178,8 +189,11 @@ public class PersistenceGitSyncService {
                 persistenceSyncProperties.getCommitAuthorName(),
                 persistenceSyncProperties.getCommitAuthorEmail()
             );
+            hasLocalChanges = false;
+            hasUnpushedCommits = true;
             gitCommandService.pullFastForwardOnly(repository);
             gitCommandService.push(repository);
+            hasUnpushedCommits = false;
         });
     }
 

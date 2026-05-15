@@ -24,6 +24,8 @@ export type PersistenceSyncStatus = {
   lastFinishedAt: string | null;
   lastSuccessfulSyncAt: string | null;
   lastError: string | null;
+  hasLocalChanges: boolean;
+  hasUnpushedCommits: boolean;
 };
 
 export type SyncStatus = {

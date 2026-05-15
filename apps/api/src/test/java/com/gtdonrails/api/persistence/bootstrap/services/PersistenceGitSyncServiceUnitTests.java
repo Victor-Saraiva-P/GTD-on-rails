@@ -1,7 +1,9 @@
 package com.gtdonrails.api.persistence.bootstrap.services;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -33,6 +35,7 @@ class PersistenceGitSyncServiceUnitTests {
 
         assertEquals(List.of("statusPorcelain"), gitCommandService.commands);
         assertEquals(PersistenceSyncState.IDLE, service.status().state());
+        assertFalse(service.status().hasLocalChanges());
         assertNotNull(service.status().lastSuccessfulSyncAt());
     }
 
@@ -52,6 +55,8 @@ class PersistenceGitSyncServiceUnitTests {
         assertEquals("GTD on Rails", gitCommandService.authorName);
         assertEquals("gtdonrails@local", gitCommandService.authorEmail);
         assertEquals(PersistenceSyncState.IDLE, service.status().state());
+        assertFalse(service.status().hasLocalChanges());
+        assertFalse(service.status().hasUnpushedCommits());
     }
 
     @Test
@@ -66,6 +71,8 @@ class PersistenceGitSyncServiceUnitTests {
 
         assertEquals(PersistenceSyncState.FAILED, service.status().state());
         assertEquals("pull failed", service.status().lastError());
+        assertFalse(service.status().hasLocalChanges());
+        assertTrue(service.status().hasUnpushedCommits());
     }
 
     @Test
@@ -80,6 +87,7 @@ class PersistenceGitSyncServiceUnitTests {
 
         assertEquals(PersistenceSyncState.FAILED, service.status().state());
         assertEquals("push failed", service.status().lastError());
+        assertTrue(service.status().hasUnpushedCommits());
     }
 
     @Test

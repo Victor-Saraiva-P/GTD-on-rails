@@ -25,7 +25,9 @@ function syncStatus(assetState: SyncStatus["assets"]["state"], persistenceState:
       lastStartedAt: null,
       lastFinishedAt: null,
       lastSuccessfulSyncAt: null,
-      lastError: null
+      lastError: null,
+      hasLocalChanges: false,
+      hasUnpushedCommits: false
     }
   };
 }
