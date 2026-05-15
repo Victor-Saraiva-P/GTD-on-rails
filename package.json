@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
-    "test": "turbo run test",
+    "test": "pnpm run unitTest && pnpm run integrationTest && pnpm run e2e",
     "frontend:coverage": "pnpm --filter @gtd-on-rails/desktop run coverage",
     "e2e": "turbo run e2e",
     "lint": "turbo run lint",
