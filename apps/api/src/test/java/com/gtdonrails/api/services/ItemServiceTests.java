@@ -1,31 +1,24 @@
 package com.gtdonrails.api.services;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import com.gtdonrails.api.dtos.item.CopyLocalItemAssetRequestDto;
-import com.gtdonrails.api.dtos.item.ItemAssetResponseDto;
 import com.gtdonrails.api.dtos.item.ItemResponseDto;
 import com.gtdonrails.api.dtos.item.PatchItemBodyRequestDto;
 import com.gtdonrails.api.dtos.item.UpdateItemTitleRequestDto;
 import com.gtdonrails.api.entities.Item;
-import com.gtdonrails.api.exceptions.shared.BusinessException;
 import com.gtdonrails.api.mappers.ItemMapper;
 import com.gtdonrails.api.normalizers.ItemBodyNormalizer;
 import com.gtdonrails.api.normalizers.ItemTextNormalizer;
 import com.gtdonrails.api.persistence.bootstrap.model.PersistenceChangeType;
 import com.gtdonrails.api.persistence.bootstrap.services.PersistenceGitSyncService;
-import com.gtdonrails.api.repositories.ItemAssetRepository;
 import com.gtdonrails.api.repositories.ItemRepository;
 import com.gtdonrails.api.types.BlockEntity;
 import com.gtdonrails.api.types.ItemBody;
@@ -47,16 +40,10 @@ class ItemServiceTests {
     private ItemRepository itemRepository;
 
     @Mock
-    private ItemAssetRepository itemAssetRepository;
-
-    @Mock
     private ItemMapper itemMapper;
 
     @Mock
-    private AssetStorageService assetStorageService;
-
-    @Mock
-    private AssetSyncService assetSyncService;
+    private ItemAssetService itemAssetService;
 
     @Mock
     private PersistenceGitSyncService persistenceGitSyncService;
@@ -70,12 +57,10 @@ class ItemServiceTests {
     void setUp() {
         itemService = new ItemService(
             itemRepository,
-            itemAssetRepository,
             itemMapper,
             new ItemTextNormalizer(),
             new ItemBodyNormalizer(),
-            assetStorageService,
-            assetSyncService,
+            itemAssetService,
             persistenceGitSyncService,
             new AfterCommitExecutor());
     }
@@ -111,44 +96,21 @@ class ItemServiceTests {
         assertEquals("Old title", savedItem.getTitle().value());
         assertEquals("New body", savedItem.getBody().text());
         assertEquals(expectedResponse, response);
+        verify(itemAssetService).validateBodyAssetOwnership(itemId, bodyValue("New body"));
     }
 
     @Test
-    void patchItemBodyRejectsAssetOwnedByOtherItem() {
+    void patchItemBodyValidatesAssetOwnership() {
         UUID itemId = UUID.randomUUID();
-        UUID assetId = UUID.randomUUID();
+        ItemBody body = bodyWithBlockEntity(UUID.randomUUID().toString());
 
         when(itemRepository.findByIdAndDeletedAtIsNull(itemId))
             .thenReturn(Optional.of(new Item(new Title("Title"), null)));
-        when(itemAssetRepository.existsByIdAndItemId(assetId, itemId)).thenReturn(false);
+        stubSavedItemResponse(itemResponse("Title", "file"));
 
-        BusinessException exception = assertThrows(
-            BusinessException.class,
-            () -> itemService.patchItemBody(itemId, new PatchItemBodyRequestDto(bodyWithBlockEntity(assetId.toString()))));
+        itemService.patchItemBody(itemId, new PatchItemBodyRequestDto(body));
 
-        assertEquals(
-            "body.blockEntities.assetId value '" + assetId + "' is invalid; expected asset owned by item '" + itemId + "'",
-            exception.getMessage());
-    }
-
-    @Test
-    void storeLocalItemAssetCopiesFileAndRequestsAssetSync() {
-        UUID itemId = UUID.randomUUID();
-        Item item = new Item(new Title("Capture idea"), null);
-        Path sourcePath = Path.of("/home/victor/Downloads/report.pdf");
-
-        when(itemRepository.findByIdAndDeletedAtIsNull(itemId)).thenReturn(Optional.of(item));
-        when(assetStorageService.copyLocalItemAsset(eq(itemId), any(Path.class))).thenReturn("items/id/asset/report.pdf");
-        when(assetStorageService.fileName("items/id/asset/report.pdf")).thenReturn("report.pdf");
-        when(assetStorageService.mediaType("items/id/asset/report.pdf")).thenReturn(org.springframework.http.MediaType.APPLICATION_PDF);
-        when(assetStorageService.publicUrl("items/id/asset/report.pdf")).thenReturn("/assets/items/id/asset/report.pdf");
-        when(itemAssetRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
-
-        ItemAssetResponseDto response = itemService.storeLocalItemAsset(itemId, new CopyLocalItemAssetRequestDto(sourcePath.toString()));
-
-        assertEquals("report.pdf", response.fileName());
-        assertEquals("application/pdf", response.contentType());
-        verify(assetSyncService).requestSync("local item asset copied");
+        verify(itemAssetService).validateBodyAssetOwnership(itemId, body);
     }
 
     private void stubSavedItemResponse(ItemResponseDto response) {

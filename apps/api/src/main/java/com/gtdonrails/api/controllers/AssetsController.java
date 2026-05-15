@@ -6,7 +6,7 @@ import com.gtdonrails.api.dtos.item.CopyLocalItemAssetRequestDto;
 import com.gtdonrails.api.dtos.item.ItemAssetResponseDto;
 import com.gtdonrails.api.normalizers.AssetPathNormalizer;
 import com.gtdonrails.api.services.AssetStorageService;
-import com.gtdonrails.api.services.ItemService;
+import com.gtdonrails.api.services.ItemAssetService;
 import jakarta.validation.Valid;
 import org.springframework.core.io.Resource;
 import org.springframework.http.ResponseEntity;
@@ -23,16 +23,16 @@ public class AssetsController {
 
     private final AssetStorageService assetStorageService;
     private final AssetPathNormalizer assetPathNormalizer;
-    private final ItemService itemService;
+    private final ItemAssetService itemAssetService;
 
     public AssetsController(
         AssetStorageService assetStorageService,
         AssetPathNormalizer assetPathNormalizer,
-        ItemService itemService
+        ItemAssetService itemAssetService
     ) {
         this.assetStorageService = assetStorageService;
         this.assetPathNormalizer = assetPathNormalizer;
-        this.itemService = itemService;
+        this.itemAssetService = itemAssetService;
     }
 
     /**
@@ -42,7 +42,7 @@ public class AssetsController {
      */
     @PostMapping("/items/{id}/assets")
     public ItemAssetResponseDto uploadItemAsset(@PathVariable UUID id, @RequestPart("file") MultipartFile file) {
-        return itemService.storeItemAsset(id, file);
+        return itemAssetService.storeItemAsset(id, file);
     }
 
     /**
@@ -52,7 +52,7 @@ public class AssetsController {
      */
     @PostMapping("/items/{id}/assets/local-file")
     public ItemAssetResponseDto copyLocalItemAsset(@PathVariable UUID id, @Valid @RequestBody CopyLocalItemAssetRequestDto request) {
-        return itemService.storeLocalItemAsset(id, request);
+        return itemAssetService.storeLocalItemAsset(id, request);
     }
 
     /**
