@@ -1,5 +1,7 @@
 import { useEffect, useState, type PropsWithChildren } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { check } from "@tauri-apps/plugin-updater";
+import { relaunch } from "@tauri-apps/plugin-process";
 import { setRuntimeApiBaseUrl } from "../config/env.ts";
 import { apiJson } from "../lib/api/apiClient.ts";
 import { isTauriRuntime } from "../lib/tauriRuntime.ts";
@@ -43,11 +45,27 @@ function useBackendHealth() {
   const [isBooted, setIsBooted] = useState(false);
   const [dots, setDots] = useState("");
   const [bootError, setBootError] = useState<string | null>(null);
+  const [updateStatus, setUpdateStatus] = useState<string | null>(null);
 
   useEffect(() => {
     let timeout: number;
 
     const checkHealth = async () => {
+      if (isTauriRuntime()) {
+        try {
+          const update = await check();
+          if (update) {
+            setUpdateStatus(`Downloading update ${update.version}...`);
+            await update.downloadAndInstall();
+            setUpdateStatus("Restarting...");
+            await relaunch();
+            return; // Stop boot process, wait for restart
+          }
+        } catch (e) {
+          console.error("Failed to check for updates:", e);
+        }
+      }
+
       try {
         await waitForBackendBaseUrl();
       } catch (error) {
@@ -79,7 +97,7 @@ function useBackendHealth() {
     return () => window.clearInterval(dotInterval);
   }, [isBooted]);
 
-  return { isBooted, dots, bootError };
+  return { isBooted, dots, bootError, updateStatus };
 }
 
 /**
@@ -87,7 +105,7 @@ function useBackendHealth() {
  * Renders a retro terminal loading screen while waiting.
  */
 export function BootLoader({ children }: PropsWithChildren) {
-  const { isBooted, dots, bootError } = useBackendHealth();
+  const { isBooted, dots, bootError, updateStatus } = useBackendHealth();
   const [shouldRenderLoader, setShouldRenderLoader] = useState(true);
 
   // Allow time for fade-out animation
@@ -104,17 +122,28 @@ export function BootLoader({ children }: PropsWithChildren) {
         <div className={`boot-loader ${isBooted ? "boot-loader--fade-out" : ""}`}>
           <div className="boot-loader__terminal">
             <p className="boot-loader__brand">GTD ON RAILS v0.1.0</p>
-            <p className="boot-loader__line">
-              <span className="boot-loader__bracket">[</span>
-              <span className="boot-loader__status">WAIT</span>
-              <span className="boot-loader__bracket">]</span> {bootError ?? `Waking up daemon${dots}`}
-            </p>
-            <p className="boot-loader__line">
-              <span className="boot-loader__bracket">[</span>
-              <span className="boot-loader__status">INFO</span>
-              <span className="boot-loader__bracket">]</span> Establishing connection
-              <span className="boot-loader__cursor">_</span>
-            </p>
+            {updateStatus ? (
+              <p className="boot-loader__line">
+                <span className="boot-loader__bracket">[</span>
+                <span className="boot-loader__status">UPDATE</span>
+                <span className="boot-loader__bracket">]</span> {updateStatus}
+                <span className="boot-loader__cursor">_</span>
+              </p>
+            ) : (
+              <>
+                <p className="boot-loader__line">
+                  <span className="boot-loader__bracket">[</span>
+                  <span className="boot-loader__status">WAIT</span>
+                  <span className="boot-loader__bracket">]</span> {bootError ?? `Waking up daemon${dots}`}
+                </p>
+                <p className="boot-loader__line">
+                  <span className="boot-loader__bracket">[</span>
+                  <span className="boot-loader__status">INFO</span>
+                  <span className="boot-loader__bracket">]</span> Establishing connection
+                  <span className="boot-loader__cursor">_</span>
+                </p>
+              </>
+            )}
           </div>
         </div>
       )}
