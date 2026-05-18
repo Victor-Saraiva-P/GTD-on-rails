@@ -41,14 +41,8 @@ jobs:
       - name: Install Playwright browser
         run: pnpm --filter @gtd-on-rails/desktop e2e:install:ci
 
-      - name: Run E2E tests
-        run: pnpm e2e
-
-      - name: Run unit tests
-        run: pnpm unitTest
-
-      - name: Run integration tests
-        run: pnpm integrationTest
+      - name: Run tests
+        run: pnpm test
 
       - name: Run checks
         run: pnpm check
