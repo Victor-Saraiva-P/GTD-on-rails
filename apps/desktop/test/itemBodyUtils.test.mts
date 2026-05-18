@@ -33,6 +33,16 @@ test("bodyForPersistence removes asset entities without visible tokens", () => {
   assert.deepEqual(reconciled.blockEntities, []);
 });
 
+test("bodyForPersistence preserves supported asset token formats", () => {
+  const assetId = "1295e283-5347-4244-a1ef-403e3919add4";
+  const tokens = [`[[asset:${assetId}]]`, `[asset:${assetId}]`, `⟦asset:${assetId}⟧`];
+
+  for (const token of tokens) {
+    const reconciled = bodyForPersistence(staleAssetBody(token, assetId));
+    assert.equal(reconciled.blockEntities.length, 1);
+  }
+});
+
 function staleAssetBody(text: string, assetId: string): ItemBody {
   return {
     text,

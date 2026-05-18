@@ -121,7 +121,7 @@ function DetailHeader({ item, metaVariant, showCreatedMeta }: Pick<InboxStuffDet
 
 type EditingInboxStuffDetailsProps = Omit<InboxStuffDetailsProps, "editing" | "onCancelEditing">;
 
-const ASSET_TOKEN_PATTERN = /(\[\[asset:([0-9a-fA-F-]{36})\]\]|\[asset:([0-9a-fA-F-]{36})\]|⟦asset:([0-9a-fA-F-]{36})⟧)/g;
+const ASSET_TOKEN_PATTERN = /(\[\[asset:([0-9a-fA-F-]{36})]]|\[asset:([0-9a-fA-F-]{36})]|⟦asset:([0-9a-fA-F-]{36})⟧)/g;
 
 function EditingInboxStuffDetails(props: EditingInboxStuffDetailsProps) {
   return (

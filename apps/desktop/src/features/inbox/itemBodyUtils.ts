@@ -1,7 +1,7 @@
 import { ChangeSet } from "@codemirror/state";
 import { type ItemBody, type InlineMark, type LineBlock, type BlockEntity } from "./types.ts";
 
-const ASSET_TOKEN_PATTERN = /(\[\[asset:([0-9a-fA-F-]{36})\]\]|\[asset:([0-9a-fA-F-]{36})\]|⟦asset:([0-9a-fA-F-]{36})⟧)/g;
+const ASSET_TOKEN_PATTERN = /(\[\[asset:([0-9a-fA-F-]{36})]]|\[asset:([0-9a-fA-F-]{36})]|⟦asset:([0-9a-fA-F-]{36})⟧)/g;
 
 export function normalizeBodyForClient(body: ItemBody | string | null | undefined): ItemBody {
   if (!body) {
