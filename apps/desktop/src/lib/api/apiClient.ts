@@ -1,9 +1,7 @@
 import { buildApiUrl } from "../../config/env.ts";
+import { isTauriRuntime } from "../tauriRuntime.ts";
 
 type ApiFetchTransport = (input: string, init?: RequestInit) => Promise<Response>;
-type BrowserWindow = Window & typeof globalThis & {
-  __TAURI_INTERNALS__?: unknown;
-};
 
 export class ApiRequestError extends Error {
   readonly status: number;
@@ -52,13 +50,6 @@ async function tauriHttpFetch(input: string, init?: RequestInit): Promise<Respon
   const { fetch: tauriFetch } = await import("@tauri-apps/plugin-http");
 
   return tauriFetch(input, init);
-}
-
-function isTauriRuntime(): boolean {
-  return (
-    typeof window !== "undefined" &&
-    (window as BrowserWindow).__TAURI_INTERNALS__ !== undefined
-  );
 }
 
 /**

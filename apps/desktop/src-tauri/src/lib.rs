@@ -3,6 +3,9 @@ use std::process::{Command, Stdio};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::Serialize;
+use tauri::Manager;
+
+mod sidecar;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -141,6 +144,13 @@ fn render_pdf_first_page_preview(
         .map_err(|error| pdf_preview_write_error(&input_path, error))?;
     let output_path = render_pdf_first_page_png(&input_path)?;
     pdf_first_page_preview_payload(&input_path, &output_path)
+}
+
+#[tauri::command]
+fn sidecar_backend_status(
+    state: tauri::State<sidecar::SidecarBackendState>,
+) -> sidecar::SidecarBackendStatus {
+    state.status()
 }
 
 fn render_pdf_first_page_png(input_path: &Path) -> Result<PathBuf, String> {
@@ -660,6 +670,11 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_http::init())
+        .plugin(tauri_plugin_shell::init())
+        .setup(|app| {
+            app.manage(sidecar::SidecarBackendState::new(sidecar::sidecar_enabled()));
+            sidecar::start_sidecar(app)
+        })
         .invoke_handler(tauri::generate_handler![
             read_clipboard_image,
             read_clipboard_text,
@@ -669,7 +684,8 @@ pub fn run() {
             read_local_asset_path,
             open_external_url,
             open_temp_asset,
-            render_pdf_first_page_preview
+            render_pdf_first_page_preview,
+            sidecar_backend_status
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "./gradlew bootRun --args='--spring.profiles.active=dev'",
     "build": "./gradlew build",
+    "bootJar": "./gradlew bootJar",
     "test": "./gradlew test",
     "unitTest": "./gradlew unitTest",
     "integrationTest": "./gradlew integrationTest",

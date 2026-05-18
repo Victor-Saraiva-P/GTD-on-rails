@@ -15,6 +15,9 @@ Monorepo base do projeto, mantido minimalista nesta fase.
 - `pnpm install`
 - `pnpm dev`
 - `pnpm build`
+- `pnpm build:prod`
+- `pnpm build:staging`
+- `pnpm staging`
 - `pnpm e2e`
 - `pnpm lint`
 - `pnpm check`
@@ -23,7 +26,14 @@ Na raiz:
 
 - `pnpm dev`: sobe `desktop` e `api`
 - `pnpm build`: compila o frontend do desktop e o backend
+- `pnpm build:prod`: cria a build Tauri release com backend sidecar usando `prod,sidecar`
+- `pnpm build:staging`: cria a build Tauri release com backend sidecar usando `staging,sidecar`
+- `pnpm staging`: cria a build staging e executa o binário release
 - `pnpm check`: valida TypeScript no desktop e roda testes da API
+
+As builds Tauri geram o binário em `apps/desktop/src-tauri/target/release/desktop`.
+
+Use `pnpm build:prod` para o runtime real (`gtd-on-rails`, branch `main`, remoto `gdrive:gtd-on-rails`) e `pnpm build:staging` para testar o mesmo fluxo de sidecar com dados de desenvolvimento (`dev-gtd-on-rails`, branch `dev`, remoto `gdrive:dev-gtd-on-rails`).
 
 ## Sincronização
 

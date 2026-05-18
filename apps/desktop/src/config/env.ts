@@ -26,6 +26,7 @@ const viteEnv = (import.meta as any).env || {};
 export const apiBaseUrl = normalizeApiBaseUrl(
   viteEnv.VITE_API_BASE_URL ?? defaultApiBaseUrl
 );
+let runtimeApiBaseUrl: string | null = null;
 
 export const dataRootDirectoryName = normalizeDataRootDirectoryName(
   viteEnv.VITE_DATA_ROOT_DIRECTORY_NAME ?? defaultDataRootDirectoryName
@@ -42,8 +43,10 @@ export const undoRedoMaxStackSize = normalizeNumber(
  * @example buildApiUrl("/inbox")
  */
 export function buildApiUrl(pathname: string): string {
+  const currentApiBaseUrl = runtimeApiBaseUrl ?? apiBaseUrl;
+
   if (!pathname) {
-    return apiBaseUrl;
+    return currentApiBaseUrl;
   }
 
   if (/^https?:\/\//.test(pathname)) {
@@ -52,7 +55,16 @@ export function buildApiUrl(pathname: string): string {
 
   const normalizedPathname = pathname.startsWith("/") ? pathname : `/${pathname}`;
 
-  return `${apiBaseUrl}${normalizedPathname}`;
+  return `${currentApiBaseUrl}${normalizedPathname}`;
+}
+
+/**
+ * Overrides the API base URL after Tauri discovers the sidecar port.
+ *
+ * @example setRuntimeApiBaseUrl("http://127.0.0.1:43127")
+ */
+export function setRuntimeApiBaseUrl(baseUrl: string | null): void {
+  runtimeApiBaseUrl = baseUrl ? normalizeApiBaseUrl(baseUrl) : null;
 }
 
 /**

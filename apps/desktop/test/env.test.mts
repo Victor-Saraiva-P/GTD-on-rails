@@ -1,7 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { apiBaseUrl, dataRootDirectoryName, buildApiUrl, buildApiUrlWithVersion, buildDocumentAssetPath } from "../src/config/env.ts";
+import {
+  apiBaseUrl,
+  dataRootDirectoryName,
+  buildApiUrl,
+  buildApiUrlWithVersion,
+  buildDocumentAssetPath,
+  setRuntimeApiBaseUrl
+} from "../src/config/env.ts";
 
 test("apiBaseUrl is a non-empty string", () => {
   assert.ok(apiBaseUrl.length > 0);
@@ -20,6 +27,12 @@ test("buildApiUrl handles relative paths", () => {
 
 test("buildApiUrl handles empty paths", () => {
   assert.equal(buildApiUrl(""), apiBaseUrl);
+});
+
+test("buildApiUrl uses runtime API base URL override", () => {
+  setRuntimeApiBaseUrl("http://127.0.0.1:43127/");
+  assert.equal(buildApiUrl("/inbox"), "http://127.0.0.1:43127/inbox");
+  setRuntimeApiBaseUrl(null);
 });
 
 test("buildApiUrlWithVersion adds version query param", () => {
