@@ -144,7 +144,7 @@ function useTauriAssetDrop(
 ) {
   useEffect(() => {
     let unlisten: (() => void) | null = null;
-    void getCurrentWebview().onDragDropEvent((event) => handleTauriAssetDrop(event.payload, handleFile, setIsDragActive, setStatusMessage)).then((nextUnlisten) => {
+    getCurrentWebview().onDragDropEvent((event) => handleTauriAssetDrop(event.payload, handleFile, setIsDragActive, setStatusMessage)).then((nextUnlisten) => {
       unlisten = nextUnlisten;
     });
 
