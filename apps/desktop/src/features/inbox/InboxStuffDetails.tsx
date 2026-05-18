@@ -141,6 +141,43 @@ function EditingInboxStuffDetails(props: EditingInboxStuffDetailsProps) {
   );
 }
 
+function findNextBoundary(marks: ItemBody["inlineMarks"], entities: ItemBody["blockEntities"], currentPos: number, from: number, to: number) {
+  return Math.min(
+    to, 
+    ...marks.flatMap(m => [Math.max(from, m.from), Math.min(to, m.to)]).filter(x => x > currentPos),
+    ...entities.flatMap(e => [Math.max(from, e.from), Math.min(to, e.to)]).filter(x => x > currentPos)
+  );
+}
+
+function renderSegmentEntities(entities: ItemBody["blockEntities"], currentPos: number, nextBoundary: number, from: number, nodes: ReactNode[]) {
+  const segmentEntities = entities.filter(e => e.from <= currentPos && e.to >= nextBoundary);
+  if (segmentEntities.length === 0) return false;
+
+  const entity = segmentEntities[0];
+  if (currentPos === Math.max(from, entity.from)) {
+    nodes.push(
+      <span key={`entity-${entity.id}-${currentPos}`} className="cm-block-entity">
+        {renderBlockEntity(entity, `entity-content-${entity.id}-${currentPos}`)}
+      </span>
+    );
+  }
+  return true;
+}
+
+function renderSegmentMarks(text: string, marks: ItemBody["inlineMarks"], currentPos: number, nextBoundary: number, nodes: ReactNode[]) {
+  const segmentMarks = marks.filter(m => m.from <= currentPos && m.to >= nextBoundary);
+  let el: ReactNode = text.substring(currentPos, nextBoundary);
+  
+  for (const mark of segmentMarks) {
+    if (mark.type === "bold") el = <span className="cm-bold-text">{el}</span>;
+    else if (mark.type === "italic") el = <span className="cm-italic-text">{el}</span>;
+    else if (mark.type === "inlineCode") el = <span className="cm-code-text">{el}</span>;
+    else if (mark.type === "link") el = <a href={mark.attrs?.href} className="cm-markdown-link" target="_blank" rel="noreferrer">{el}</a>;
+  }
+  
+  nodes.push(<span key={currentPos}>{el}</span>);
+}
+
 function renderInlineBody(text: string, inlineMarks: ItemBody["inlineMarks"], blockEntities: ItemBody["blockEntities"], from: number, to: number) {
   if (from >= to) return null;
   const applicableMarks = inlineMarks.filter(m => Math.max(m.from, from) < Math.min(m.to, to));
@@ -151,41 +188,17 @@ function renderInlineBody(text: string, inlineMarks: ItemBody["inlineMarks"], bl
     return renderAssetTokens(segmentText, blockEntities);
   }
 
-  const nodes = [];
+  const nodes: ReactNode[] = [];
   let currentPos = from;
   while (currentPos < to) {
-     const nextBoundary = Math.min(to, 
-       ...applicableMarks.flatMap(m => [Math.max(from, m.from), Math.min(to, m.to)]).filter(x => x > currentPos),
-       ...applicableEntities.flatMap(e => [Math.max(from, e.from), Math.min(to, e.to)]).filter(x => x > currentPos)
-     );
+     const nextBoundary = findNextBoundary(applicableMarks, applicableEntities, currentPos, from, to);
      
      if (nextBoundary === Infinity || nextBoundary <= currentPos) break;
      
-     const segmentEntities = applicableEntities.filter(e => e.from <= currentPos && e.to >= nextBoundary);
-     if (segmentEntities.length > 0) {
-       const entity = segmentEntities[0];
-       if (currentPos === Math.max(from, entity.from)) {
-         nodes.push(
-           <span key={`entity-${entity.id}-${currentPos}`} className="cm-block-entity">
-             {renderBlockEntity(entity, `entity-content-${entity.id}-${currentPos}`)}
-           </span>
-         );
-       }
-       currentPos = nextBoundary;
-       continue;
-     }
-
-     const segmentMarks = applicableMarks.filter(m => m.from <= currentPos && m.to >= nextBoundary);
-     
-      let el: ReactNode = text.substring(currentPos, nextBoundary);
-     for (const mark of segmentMarks) {
-        if (mark.type === "bold") el = <span className="cm-bold-text">{el}</span>;
-        else if (mark.type === "italic") el = <span className="cm-italic-text">{el}</span>;
-        else if (mark.type === "inlineCode") el = <span className="cm-code-text">{el}</span>;
-        else if (mark.type === "link") el = <a href={mark.attrs?.href} className="cm-markdown-link" target="_blank" rel="noreferrer">{el}</a>;
+     if (!renderSegmentEntities(applicableEntities, currentPos, nextBoundary, from, nodes)) {
+       renderSegmentMarks(text, applicableMarks, currentPos, nextBoundary, nodes);
      }
      
-     nodes.push(<span key={currentPos}>{el}</span>);
      currentPos = nextBoundary;
   }
   return nodes;
