@@ -102,7 +102,7 @@ class BlockEntityWidget extends WidgetType {
   }
 
   destroy(dom: HTMLElement): void {
-    dom.removeAttribute("data-object-url");
+    delete dom.dataset.objectUrl;
   }
 }
 
