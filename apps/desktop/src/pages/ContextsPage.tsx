@@ -286,7 +286,7 @@ function useContextsActions(model: ContextsModel) {
     cancelEditingSelectedContext: () => cancelEditingSelectedContextAction(model),
     closeSelectedContextIconEditor: () => closeSelectedContextIconEditor(model),
     commitEditingSelectedContext: () => commitEditingSelectedContextAction(model),
-    createNewContext: () => Promise.resolve(createNewContextAction(model)),
+    createNewContext: async () => { createNewContextAction(model); },
     deleteSelectedContext: () => deleteSelectedContextAction(model),
     undo: () => undoAction(model),
     redo: () => redoAction(model),
