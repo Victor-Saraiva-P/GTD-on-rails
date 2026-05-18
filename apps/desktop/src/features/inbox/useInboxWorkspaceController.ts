@@ -368,7 +368,7 @@ function useInboxWorkspaceActions(model: InboxModel) {
     cancelEditingSelectedStuffBody: () => clearBodyEdit(model),
     commitEditingSelectedStuff: () => commitEditingSelectedStuffAction(model),
     commitEditingSelectedStuffBody: (body: ItemBody) => commitEditingSelectedStuffBodyAction(model, body),
-    createNewStuff: () => Promise.resolve(createNewStuffAction(model)),
+    createNewStuff: async () => { createNewStuffAction(model); },
     deleteSelectedStuff: () => deleteSelectedStuffAction(model),
     processSelectedStuff: (energy: number | null, estimatedTimeMinutes: number | null, contextIds: string[]) => processSelectedStuffAction(model, energy, estimatedTimeMinutes, contextIds),
     undo: () => undoAction(model),
