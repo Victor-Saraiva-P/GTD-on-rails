@@ -1,21 +1,11 @@
 import { expect, test } from "@playwright/test";
-
-function uniqueTitle(): string {
-  return `Vim normal keys ${Date.now()}`;
-}
+import { createInboxStuffFromKeyboard, openApp, uniqueLabel } from "./support/app";
 
 test("direct global keybinds do not override vim normal mode keys", async ({ page }) => {
-  const title = uniqueTitle();
+  const title = uniqueLabel("Vim normal keys");
+  await openApp(page);
 
-  await page.goto("/");
-  await page.locator("main").click();
-
-  // Create a stuff
-  await page.keyboard.press("a");
-  const input = page.locator("input.tree-entry__input");
-  await expect(input).toBeVisible();
-  await input.fill(title);
-  await input.press("Enter");
+  await createInboxStuffFromKeyboard(page, title);
   await expect(page.getByRole("button", { name: title })).toBeVisible();
 
   // Open edit body

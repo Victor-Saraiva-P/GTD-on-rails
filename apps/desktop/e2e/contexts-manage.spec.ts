@@ -1,18 +1,13 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+import { apiBaseUrl, focusApp, resetTestData, uniqueLabel } from "./support/app";
 
 type ContextItem = {
   id: string;
   name: string;
 };
 
-const apiBaseUrl = "http://127.0.0.1:18080";
-
 function uniqueContextName(): string {
-  return `E2E context ${Date.now()}`;
-}
-
-async function focusApp(page: Page): Promise<void> {
-  await page.locator("main").click();
+  return uniqueLabel("E2E context");
 }
 
 async function createContextFromKeyboard(page: Page, name: string): Promise<void> {
@@ -31,11 +26,6 @@ async function fetchContextByName(
   expect(response.ok()).toBeTruthy();
   const contexts = (await response.json()) as ContextItem[];
   return contexts.find((ctx) => ctx.name === name) ?? null;
-}
-
-async function resetTestData(request: APIRequestContext): Promise<void> {
-  const response = await request.post(`${apiBaseUrl}/test/reset`);
-  expect(response.ok()).toBeTruthy();
 }
 
 test.beforeEach(async ({ request }) => {

@@ -1,53 +1,19 @@
-import { expect, test, type APIRequestContext } from "@playwright/test";
-
-const apiBaseUrl = "http://127.0.0.1:18080";
-
-type CreatedResource = {
-  id: string;
-};
-
-function uniqueLabel(prefix: string): string {
-  return `${prefix} ${Date.now()}`;
-}
-
-async function createContext(request: APIRequestContext, name: string): Promise<CreatedResource> {
-  const response = await request.post(`${apiBaseUrl}/contexts`, { data: { name } });
-  expect(response.ok()).toBeTruthy();
-  return response.json() as Promise<CreatedResource>;
-}
-
-async function createStuff(request: APIRequestContext, title: string): Promise<CreatedResource> {
-  const response = await request.post(`${apiBaseUrl}/inbox`, { data: { title } });
-  expect(response.ok()).toBeTruthy();
-  return response.json() as Promise<CreatedResource>;
-}
-
-async function convertStuffToNextAction(request: APIRequestContext, stuffId: string): Promise<void> {
-  const response = await request.post(`${apiBaseUrl}/inbox/${stuffId}/next-action`, {
-    data: { contextIds: [], energy: 1.0, estimatedTime: { hours: 0, minutes: 5 } }
-  });
-  expect(response.ok()).toBeTruthy();
-}
-
-async function resetTestData(request: APIRequestContext): Promise<void> {
-  const response = await request.post(`${apiBaseUrl}/test/reset`);
-  expect(response.ok()).toBeTruthy();
-}
+import { expect, test } from "@playwright/test";
+import { convertStuffToNextActionApi, createContextApi, createStuffApi, openApp, resetTestData, uniqueLabel } from "./support/app";
 
 test.beforeEach(async ({ page, request }) => {
   await resetTestData(request);
-  await page.goto("/");
-  await page.locator("main").click();
+  await openApp(page);
 });
 
 test("edits selected next action contexts with keyboard flow", async ({ page, request }) => {
   const title = uniqueLabel("Next action edit");
   const firstContext = uniqueLabel("A edit context");
   const secondContext = uniqueLabel("B edit context");
-  const stuff = await createStuff(request, title);
-  await createContext(request, firstContext);
-  await createContext(request, secondContext);
-  await convertStuffToNextAction(request, stuff.id);
+  const stuff = await createStuffApi(request, title);
+  await createContextApi(request, firstContext);
+  await createContextApi(request, secondContext);
+  await convertStuffToNextActionApi(request, stuff.id);
 
   await page.reload();
   await page.locator("main").click();

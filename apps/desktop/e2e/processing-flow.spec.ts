@@ -1,29 +1,13 @@
-import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
-
-const apiBaseUrl = "http://127.0.0.1:18080";
-
-function uniqueTitle(): string {
-  return `Processing flow ${Date.now()}`;
-}
-
-async function createContext(request: APIRequestContext, name: string): Promise<void> {
-  const response = await request.post(`${apiBaseUrl}/contexts`, { data: { name } });
-  expect(response.ok()).toBeTruthy();
-}
-
-async function resetTestData(request: APIRequestContext): Promise<void> {
-  const response = await request.post(`${apiBaseUrl}/test/reset`);
-  expect(response.ok()).toBeTruthy();
-}
+import { expect, test, type Page } from "@playwright/test";
+import { createContextApi, createInboxStuffFromKeyboard, openApp, resetTestData, uniqueLabel } from "./support/app";
 
 test.beforeEach(async ({ page, request }) => {
   await resetTestData(request);
-  await page.goto("/");
-  await page.locator("main").click();
+  await openApp(page);
 });
 
 test("p opens processing command page for focused inbox stuff", async ({ page }) => {
-  const title = uniqueTitle();
+  const title = uniqueLabel("Processing flow");
   await createStuff(page, title);
 
   await page.keyboard.press("p");
@@ -39,11 +23,11 @@ test("p opens processing command page for focused inbox stuff", async ({ page })
 });
 
 test("selects multiple next action contexts with keyboard", async ({ page, request }) => {
-  const title = uniqueTitle();
+  const title = uniqueLabel("Processing flow");
   const firstContext = `A processing ${Date.now()}`;
   const secondContext = `B processing ${Date.now()}`;
-  await createContext(request, firstContext);
-  await createContext(request, secondContext);
+  await createContextApi(request, firstContext);
+  await createContextApi(request, secondContext);
   await createStuff(page, title);
 
   await page.keyboard.press("p");
@@ -62,10 +46,7 @@ test("selects multiple next action contexts with keyboard", async ({ page, reque
 
 async function createStuff(page: Page, title: string): Promise<void> {
   await page.keyboard.press("h");
-  await page.keyboard.press("a");
-  const input = page.locator("input.tree-entry__input");
-  await expect(input).toBeVisible();
-  await input.fill(title);
+  await createInboxStuffFromKeyboard(page, title);
   await page.locator("main").click();
   await expect(page.getByRole("button", { name: title })).toBeVisible();
   await page.keyboard.press("Escape");

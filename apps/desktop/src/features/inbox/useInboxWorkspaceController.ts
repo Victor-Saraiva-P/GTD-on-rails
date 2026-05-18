@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useUndoRedoHistory } from "../history/useUndoRedoHistory";
 import { useActiveZone } from "../keybinds/hooks";
 import { useInboxStuffsQuery } from "./useInboxStuffsQuery";
+import { useStuffSelection } from "./useStuffSelection";
 import type { Stuff, ItemBody } from "./types";
 
 const DRAFT_STUFF_ID = "__draft_stuff__";
@@ -49,39 +50,10 @@ function visibleStuffsWithDraft(draftStuff: Stuff | null, stuffs: Stuff[]): Stuf
   return draftStuff ? [draftStuff, ...stuffs] : stuffs;
 }
 
-function selectedStuff(visibleStuffs: Stuff[], selectedId: string | null): Stuff | null {
-  return visibleStuffs.find((item) => item.id === selectedId) ?? visibleStuffs[0] ?? null;
-}
-
-function selectedStuffIndex(visibleStuffs: Stuff[], selectedItem: Stuff | null): number {
-  return selectedItem ? visibleStuffs.findIndex((item) => item.id === selectedItem.id) : -1;
-}
-
-type SelectionCursor = {
-  selectedIndex: number;
-  setSelectedId: (id: string | null) => void;
-  visibleStuffs: Stuff[];
-};
-
-function selectStuffByOffset(selection: SelectionCursor, offset: number) {
-  if (selection.visibleStuffs.length === 0) {
-    return;
-  }
-
-  const nextIndex = Math.min(Math.max(selection.selectedIndex + offset, 0), selection.visibleStuffs.length - 1);
-  selection.setSelectedId(selection.visibleStuffs[nextIndex].id);
-}
-
 type InboxSelection = ReturnType<typeof useInboxSelection>;
 
 function useInboxSelection(stuffs: Stuff[], draftStuff: Stuff | null) {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const visibleStuffs = visibleStuffsWithDraft(draftStuff, stuffs);
-  const selectedItem = selectedStuff(visibleStuffs, selectedId);
-  const selectedIndex = selectedStuffIndex(visibleStuffs, selectedItem);
-  const selection = { selectedIndex, setSelectedId, visibleStuffs };
-
-  return { ...selection, selectedId, selectedItem, selectNextStuff: () => selectStuffByOffset(selection, 1), selectPreviousStuff: () => selectStuffByOffset(selection, -1) };
+  return useStuffSelection(visibleStuffsWithDraft(draftStuff, stuffs));
 }
 
 function clearTitleEdit(model: InboxModel) {

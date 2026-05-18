@@ -1,42 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useActiveZone } from "../keybinds/hooks";
 import { useDeletedStuffsQuery } from "./useDeletedStuffsQuery";
+import { useStuffSelection } from "./useStuffSelection";
 import type { Stuff } from "./types";
 
 type DeletedQuery = ReturnType<typeof useDeletedStuffsQuery>;
 type DeletedModel = ReturnType<typeof useDeletedInboxWorkspaceModel>;
 type DeletedActions = ReturnType<typeof useDeletedInboxWorkspaceActions>;
 
-function selectedStuff(visibleStuffs: Stuff[], selectedId: string | null): Stuff | null {
-  return visibleStuffs.find((item) => item.id === selectedId) ?? visibleStuffs[0] ?? null;
-}
-
-function selectedStuffIndex(visibleStuffs: Stuff[], selectedItem: Stuff | null): number {
-  return selectedItem ? visibleStuffs.findIndex((item) => item.id === selectedItem.id) : -1;
-}
-
-type SelectionCursor = {
-  selectedIndex: number;
-  setSelectedId: (id: string | null) => void;
-  visibleStuffs: Stuff[];
-};
-
-function selectStuffByOffset(selection: SelectionCursor, offset: number) {
-  if (selection.visibleStuffs.length === 0) {
-    return;
-  }
-
-  const nextIndex = Math.min(Math.max(selection.selectedIndex + offset, 0), selection.visibleStuffs.length - 1);
-  selection.setSelectedId(selection.visibleStuffs[nextIndex].id);
-}
-
 function useDeletedSelection(stuffs: Stuff[]) {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const selectedItem = selectedStuff(stuffs, selectedId);
-  const selectedIndex = selectedStuffIndex(stuffs, selectedItem);
-  const selection = { selectedIndex, setSelectedId, visibleStuffs: stuffs };
-
-  return { ...selection, selectedId, selectedItem, selectNextStuff: () => selectStuffByOffset(selection, 1), selectPreviousStuff: () => selectStuffByOffset(selection, -1) };
+  return useStuffSelection(stuffs);
 }
 
 function pruneEmptyDeleted(model: DeletedModel) {

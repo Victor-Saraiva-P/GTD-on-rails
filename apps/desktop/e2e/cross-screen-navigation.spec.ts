@@ -1,21 +1,11 @@
 import { expect, test } from "@playwright/test";
-
-function uniqueTitle(): string {
-  return `E2E nav ${Date.now()}`;
-}
+import { createInboxStuffFromKeyboard, openApp, uniqueLabel } from "./support/app";
 
 test("returns to stuff detail zone when navigating back from contexts while editing body", async ({ page }) => {
-  const title = uniqueTitle();
+  const title = uniqueLabel("E2E nav");
+  await openApp(page);
 
-  await page.goto("/");
-  await page.locator("main").click();
-
-  // Create a stuff
-  await page.keyboard.press("a");
-  const input = page.locator("input.tree-entry__input");
-  await expect(input).toBeVisible();
-  await input.fill(title);
-  await input.press("Enter");
+  await createInboxStuffFromKeyboard(page, title);
   await expect(page.getByRole("button", { name: title })).toBeVisible();
 
   // Open edit body

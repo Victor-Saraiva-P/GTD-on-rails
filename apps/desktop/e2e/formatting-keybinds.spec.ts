@@ -1,21 +1,14 @@
 import { expect, test, type Page } from "@playwright/test";
-
-function uniqueTitle(): string {
-  return `Formatting test ${Date.now()}`;
-}
+import { createInboxStuffFromKeyboard, focusApp, uniqueLabel } from "./support/app";
 
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
-  await page.locator("main").click();
+  await focusApp(page);
 });
 
 async function createStuff(page: Page, title: string) {
   await page.keyboard.press("h");
-  await page.keyboard.press("a");
-  const input = page.locator("input.tree-entry__input");
-  await expect(input).toBeVisible();
-  await input.fill(title);
-  await input.press("Enter");
+  await createInboxStuffFromKeyboard(page, title);
   await expect(page.getByRole("button", { name: title })).toBeVisible();
 }
 
@@ -60,101 +53,79 @@ async function expectEditorText(page: Page, text: string) {
   await expect(page.locator(".cm-content")).toContainText(text);
 }
 
-test("space m b applies bullet point formatting in full detail screen", async ({ page }) => {
-  const title = uniqueTitle();
-  await createStuff(page, title);
-  await openFullDetail(page);
+async function prepareEditor(page: Page, fullDetail: boolean) {
+  await createStuff(page, uniqueLabel("Formatting test"));
+  if (fullDetail) await openFullDetail(page);
+  else await focusDetail(page);
+  if (fullDetail) await enterEditMode(page);
+}
 
-  await enterEditMode(page);
-  await typeInEditor(page, "Hello world");
-
-  // Apply bullet point: space m b
+async function applyBlockFormatting(page: Page, key: string) {
   await page.keyboard.press(" ");
   await page.keyboard.press("m");
+  await page.keyboard.press(key);
+}
+
+async function selectFirstWord(page: Page) {
+  await page.keyboard.press("0");
+  await page.keyboard.press("v");
+  await page.keyboard.press("e");
+}
+
+async function applyBoldFormatting(page: Page) {
+  await page.keyboard.press(" ");
+  await page.keyboard.press("t");
   await page.keyboard.press("b");
+}
+
+test("space m b applies bullet point formatting in full detail screen", async ({ page }) => {
+  await prepareEditor(page, true);
+  await typeInEditor(page, "Hello world");
+  await applyBlockFormatting(page, "b");
 
   await expect(page.locator(".cm-bullet-mark")).toBeVisible();
   await expectEditorText(page, "Hello world");
 });
 
 test("space t b applies bold formatting in full detail screen", async ({ page }) => {
-  const title = uniqueTitle();
-  await createStuff(page, title);
-  await openFullDetail(page);
-
-  await enterEditMode(page);
+  await prepareEditor(page, true);
   await typeInEditor(page, "Bold text");
-
-  await page.keyboard.press("0");
-
-  await page.keyboard.press("v");
-  await page.keyboard.press("e");
-
-  await page.keyboard.press(" ");
-  await page.keyboard.press("t");
-  await page.keyboard.press("b");
+  await selectFirstWord(page);
+  await applyBoldFormatting(page);
 
   await expect(page.locator(".cm-bold-text")).toContainText("Bold");
   await expectEditorText(page, "Bold text");
 });
 
 test("space m b applies bullet point formatting", async ({ page }) => {
-  const title = uniqueTitle();
-  await createStuff(page, title);
-  await focusDetail(page);
-
+  await prepareEditor(page, false);
   await typeInEditor(page, "Hello world");
-
-  // Apply bullet point: space m b
-  await page.keyboard.press(" ");
-  await page.keyboard.press("m");
-  await page.keyboard.press("b");
+  await applyBlockFormatting(page, "b");
 
   await expect(page.locator(".cm-bullet-mark")).toBeVisible();
   await expectEditorText(page, "Hello world");
 });
 
 test("space m 1 applies H1 formatting", async ({ page }) => {
-  const title = uniqueTitle();
-  await createStuff(page, title);
-  await focusDetail(page);
-
+  await prepareEditor(page, false);
   await typeInEditor(page, "Heading");
-
-  // Apply H1: space m 1
-  await page.keyboard.press(" ");
-  await page.keyboard.press("m");
-  await page.keyboard.press("1");
+  await applyBlockFormatting(page, "1");
 
   await expect(page.locator(".cm-md-heading-1")).toContainText("Heading");
 });
 
 test("space t b applies bold formatting to selection", async ({ page }) => {
-  const title = uniqueTitle();
-  await createStuff(page, title);
-  await focusDetail(page);
-
+  await prepareEditor(page, false);
   await typeInEditor(page, "Bold text");
-
-  // Go back to start of line
-  await page.keyboard.press("0");
-
-  // Select "Bold" using vim keys
-  // 'v' for visual mode, 'e' to end of word
-  await page.keyboard.press("v");
-  await page.keyboard.press("e");
-
-  // Apply bold: space t b
-  await page.keyboard.press(" ");
-  await page.keyboard.press("t");
-  await page.keyboard.press("b");
+  await selectFirstWord(page);
+  await applyBoldFormatting(page);
 
   await expect(page.locator(".cm-bold-text")).toContainText("Bold");
   await expectEditorText(page, "Bold text");
 });
 
 test("space t t clears inline formatting", async ({ page }) => {
-  const title = uniqueTitle();
+  const title = uniqueLabel("Formatting test");
   await createStuff(page, title);
   await focusDetail(page);
 
@@ -186,7 +157,7 @@ test("space t t clears inline formatting", async ({ page }) => {
 });
 
 test("space t l inserts markdown link from clipboard with p", async ({ page, context }) => {
-  const title = uniqueTitle();
+  const title = uniqueLabel("Formatting test");
   const url = "https://www.google.com";
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await createStuff(page, title);
@@ -207,7 +178,7 @@ test("space t l inserts markdown link from clipboard with p", async ({ page, con
 });
 
 test("inserts markdown asset preview from editor event", async ({ page }) => {
-  const title = uniqueTitle();
+  const title = uniqueLabel("Formatting test");
   await createStuff(page, title);
   await focusDetail(page);
 
@@ -218,7 +189,7 @@ test("inserts markdown asset preview from editor event", async ({ page }) => {
 });
 
 test("undoing dd restores markdown asset preview", async ({ page }) => {
-  const title = uniqueTitle();
+  const title = uniqueLabel("Formatting test");
   const token = "⟦asset:3625c437-ee86-45de-8135-01f0b46fd3da⟧";
   await createStuff(page, title);
   await focusDetail(page);
@@ -238,7 +209,7 @@ test("undoing dd restores markdown asset preview", async ({ page }) => {
 });
 
 test("space g d opens link under cursor", async ({ page }) => {
-  const title = uniqueTitle();
+  const title = uniqueLabel("Formatting test");
   const url = "https://example.com/docs";
   await mockWindowOpen(page);
   await createStuff(page, title);
@@ -252,7 +223,7 @@ test("space g d opens link under cursor", async ({ page }) => {
 });
 
 test("space g d opens asset under cursor", async ({ page }) => {
-  const title = uniqueTitle();
+  const title = uniqueLabel("Formatting test");
   const url = "http://127.0.0.1:18080/assets/items/test/asset/clipboard-asset.png";
   await mockWindowOpen(page);
   await createStuff(page, title);
@@ -265,7 +236,7 @@ test("space g d opens asset under cursor", async ({ page }) => {
 });
 
 test("space m c c applies checked checklist", async ({ page }) => {
-  const title = uniqueTitle();
+  const title = uniqueLabel("Formatting test");
   await createStuff(page, title);
   await focusDetail(page);
 
