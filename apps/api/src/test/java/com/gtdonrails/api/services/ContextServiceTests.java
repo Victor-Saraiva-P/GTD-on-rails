@@ -60,10 +60,7 @@ class ContextServiceTests {
     private ItemMapper itemMapper;
 
     @Mock
-    private AssetStorageService assetStorageService;
-
-    @Mock
-    private AssetSyncService assetSyncService;
+    private ContextIconAssetService contextIconAssetService;
 
     @Mock
     private PersistenceGitSyncService persistenceGitSyncService;
@@ -81,8 +78,7 @@ class ContextServiceTests {
             contextMapper,
             itemMapper,
             new ContextNameNormalizer(),
-            assetStorageService,
-            assetSyncService,
+            contextIconAssetService,
             persistenceGitSyncService,
             new AfterCommitExecutor());
     }
@@ -194,6 +190,7 @@ class ContextServiceTests {
         assertEquals(Set.of(), secondAction.getContexts());
         assertEquals(Set.of(), context.getNextActions());
         assertTrue(context.isDeleted());
+        verify(contextIconAssetService).deleteContextIconAsset(context);
     }
 
     @Test

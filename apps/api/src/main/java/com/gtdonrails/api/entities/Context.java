@@ -10,6 +10,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.ManyToMany;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -31,8 +32,8 @@ public class Context extends AuditableEntity {
     @Column(nullable = false, length = MAX_NAME_LENGTH)
     private String name;
 
-    @Column(name = "icon_asset_path")
-    private String iconAssetPath;
+    @OneToOne(mappedBy = "context")
+    private ContextIconAsset iconAsset;
 
     @ManyToMany(mappedBy = "contexts")
     private final Set<NextAction> nextActions = new HashSet<>();
@@ -62,12 +63,12 @@ public class Context extends AuditableEntity {
     }
 
     /**
-     * Stores the asset-relative path for a context icon.
+     * Stores the current icon asset metadata for response mapping.
      *
-     * <p>Example: {@code context.setIconAssetPath("contexts/id/icon.png")}.</p>
+     * <p>Example: {@code context.setIconAsset(iconAsset)}.</p>
      */
-    public void setIconAssetPath(String iconAssetPath) {
-        this.iconAssetPath = iconAssetPath;
+    public void setIconAsset(ContextIconAsset iconAsset) {
+        this.iconAsset = iconAsset;
     }
 
     @PrePersist

@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import com.gtdonrails.api.entities.Item;
+import com.gtdonrails.api.repositories.ContextIconAssetRepository;
 import com.gtdonrails.api.repositories.ContextRepository;
 import com.gtdonrails.api.repositories.ItemAssetRepository;
 import com.gtdonrails.api.repositories.ItemRepository;
@@ -40,6 +41,9 @@ class AssetsControllerTests {
     private ContextRepository contextRepository;
 
     @Autowired
+    private ContextIconAssetRepository contextIconAssetRepository;
+
+    @Autowired
     private ItemAssetRepository itemAssetRepository;
 
     private MockMvc mockMvc;
@@ -49,6 +53,7 @@ class AssetsControllerTests {
         mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).build();
         itemAssetRepository.deleteAll();
         itemRepository.deleteAll();
+        contextIconAssetRepository.deleteAll();
         contextRepository.deleteAll();
     }
 

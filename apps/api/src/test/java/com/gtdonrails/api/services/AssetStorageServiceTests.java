@@ -56,47 +56,48 @@ class AssetStorageServiceTests {
     }
 
     @Test
-    void storesContextIconInExpectedPath() throws IOException {
+    void storesImageAssetInExpectedPath() throws IOException {
         UUID contextId = UUID.randomUUID();
+        UUID assetId = UUID.randomUUID();
         MockMultipartFile file = new MockMultipartFile("file", "icon.png", "image/png", new byte[] {1, 2, 3});
         AssetStorageService assetStorageService = newAssetStorageService();
+        String relativePath = "contexts/" + contextId + "/" + assetId + "/icon.png";
 
-        String relativePath = assetStorageService.storeContextIcon(contextId, file);
+        assetStorageService.storeImageAsset(relativePath, file);
 
-        assertEquals("contexts/" + contextId + "/icon.png", relativePath);
         Path storedFile = tempDir.resolve("assets").resolve(relativePath);
         assertTrue(Files.exists(storedFile));
         assertEquals(new byte[] {1, 2, 3}.length, Files.readAllBytes(storedFile).length);
     }
 
     @Test
-    void rejectsEmptyContextIcon() {
+    void rejectsEmptyImageAsset() {
         UUID contextId = UUID.randomUUID();
         MockMultipartFile file = new MockMultipartFile("file", "icon.png", "image/png", new byte[0]);
         AssetStorageService assetStorageService = newAssetStorageService();
 
         IllegalArgumentException exception = assertThrows(
             IllegalArgumentException.class,
-            () -> assetStorageService.storeContextIcon(contextId, file)
+            () -> assetStorageService.storeImageAsset("contexts/" + contextId + "/asset/icon.png", file)
         );
 
         assertEquals(
-            "icon file value '" + file + "' is invalid; expected non-empty MultipartFile",
+            "image asset file value '" + file + "' is invalid; expected non-empty MultipartFile",
             exception.getMessage());
     }
 
     @Test
-    void rejectsInvalidContextIconType() {
+    void rejectsInvalidImageAssetType() {
         UUID contextId = UUID.randomUUID();
         MockMultipartFile file = new MockMultipartFile("file", "icon.txt", "text/plain", new byte[] {1});
         AssetStorageService assetStorageService = newAssetStorageService();
 
         IllegalArgumentException exception = assertThrows(
             IllegalArgumentException.class,
-            () -> assetStorageService.storeContextIcon(contextId, file)
+            () -> assetStorageService.storeImageAsset("contexts/" + contextId + "/asset/icon.txt", file)
         );
 
-        assertEquals("icon file extension 'txt' is invalid; expected png, svg, or webp", exception.getMessage());
+        assertEquals("image asset file extension 'txt' is invalid; expected png, jpg, jpeg, gif, webp, or svg", exception.getMessage());
     }
 
     @Test

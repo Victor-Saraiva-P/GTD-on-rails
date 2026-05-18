@@ -1,7 +1,6 @@
 create table contexts (
     id blob primary key,
     name text not null,
-    icon_asset_path text,
     created_at timestamp not null,
     updated_at timestamp not null,
     deleted_at timestamp,

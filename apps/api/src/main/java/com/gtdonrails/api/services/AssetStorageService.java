@@ -9,7 +9,6 @@ import java.nio.file.StandardCopyOption;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import java.util.regex.Pattern;
 
 import com.gtdonrails.api.config.AssetsProperties;
@@ -24,7 +23,7 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 public class AssetStorageService {
 
-    private static final Set<String> ALLOWED_ICON_EXTENSIONS = Set.of("png", "svg", "webp");
+    private static final Set<String> ALLOWED_IMAGE_ASSET_EXTENSIONS = Set.of("png", "jpg", "jpeg", "gif", "webp", "svg");
     private static final Set<String> ALLOWED_ITEM_ASSET_EXTENSIONS = Set.of(
         "pdf", "doc", "docx", "xls", "xlsx", "png", "jpg", "jpeg", "gif", "webp", "svg"
     );
@@ -48,21 +47,17 @@ public class AssetStorageService {
     }
 
     /**
-     * Stores a context icon under the configured asset directory.
+     * Stores an image-only asset under the configured asset directory.
      *
-     * <p>Example: {@code assetStorageService.storeContextIcon(contextId, file)}.</p>
+     * <p>Example: {@code assetStorageService.storeImageAsset("contexts/id/asset/icon.png", file)}.</p>
      */
-    public String storeContextIcon(UUID contextId, MultipartFile file) {
+    public void storeImageAsset(String relativePath, MultipartFile file) {
         if (file == null || file.isEmpty()) {
-            throw new IllegalArgumentException("icon file value '" + file + "' is invalid; expected non-empty MultipartFile");
+            throw new IllegalArgumentException("image asset file value '" + file + "' is invalid; expected non-empty MultipartFile");
         }
 
-        String extension = validateIconFile(file);
-        String relativePath = "contexts/" + contextId + "/icon." + extension;
-        Path destination = resolveRelativePath(relativePath);
-
-        writeAssetFile(file, destination);
-        return relativePath;
+        validateImageAssetFile(file);
+        writeAssetFile(file, resolveRelativePath(relativePath));
     }
 
     /**
@@ -175,6 +170,15 @@ public class AssetStorageService {
     }
 
     /**
+     * Sanitizes an uploaded image asset filename for storage.
+     *
+     * <p>Example: {@code assetStorageService.imageAssetFileName(file)} returns {@code icon.png}.</p>
+     */
+    public String imageAssetFileName(MultipartFile file) {
+        return safeAssetFileName(file);
+    }
+
+    /**
      * Sanitizes a local item asset filename for storage.
      *
      * <p>Example: {@code assetStorageService.itemAssetFileName("bad name.pdf")} returns {@code bad-name.pdf}.</p>
@@ -208,23 +212,21 @@ public class AssetStorageService {
         return basePath + "/" + relativePath;
     }
 
-    private String validateIconFile(MultipartFile file) {
+    private void validateImageAssetFile(MultipartFile file) {
         String extension = extensionOf(file.getOriginalFilename());
-        if (!ALLOWED_ICON_EXTENSIONS.contains(extension)) {
+        if (!ALLOWED_IMAGE_ASSET_EXTENSIONS.contains(extension)) {
             throw new IllegalArgumentException(
-                "icon file extension '" + extension + "' is invalid; expected png, svg, or webp");
+                "image asset file extension '" + extension + "' is invalid; expected png, jpg, jpeg, gif, webp, or svg");
         }
 
         String contentType = file.getContentType();
-        if (!isAllowedIconContentType(extension, contentType)) {
+        if (!isAllowedImageContentType(extension, contentType)) {
             throw new IllegalArgumentException(
-                "icon file content type '" + contentType + "' is invalid; expected image/" + extension);
+                "image asset file content type '" + contentType + "' is invalid; expected image content type");
         }
-
-        return extension;
     }
 
-    private boolean isAllowedIconContentType(String extension, String contentType) {
+    private boolean isAllowedImageContentType(String extension, String contentType) {
         if (!StringUtils.hasText(contentType)) {
             return false;
         }
@@ -232,6 +234,8 @@ public class AssetStorageService {
         String normalizedContentType = contentType.toLowerCase(Locale.ROOT);
         return switch (extension) {
             case "png" -> normalizedContentType.equals("image/png");
+            case "jpg", "jpeg" -> normalizedContentType.equals("image/jpeg");
+            case "gif" -> normalizedContentType.equals("image/gif");
             case "svg" -> normalizedContentType.equals("image/svg+xml");
             case "webp" -> normalizedContentType.equals("image/webp");
             default -> false;

@@ -19,8 +19,8 @@ type ContextIconEditorProps = {
   onDelete: () => Promise<void>;
 };
 
-const ACCEPTED_IMAGE_TYPES = new Set(["image/png", "image/svg+xml", "image/webp"]);
-const ACCEPTED_IMAGE_EXTENSIONS = new Set(["png", "svg", "webp"]);
+const ACCEPTED_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/svg+xml", "image/webp"]);
+const ACCEPTED_IMAGE_EXTENSIONS = new Set(["png", "jpg", "jpeg", "gif", "svg", "webp"]);
 
 type IconFileHandler = (file: File | null) => Promise<void>;
 
@@ -79,7 +79,7 @@ async function uploadIconFile(
   }
 
   if (!isAcceptedImage(file)) {
-    setErrorMessage("Icon must be PNG, SVG or WebP.");
+    setErrorMessage("Icon must be an image file.");
     return;
   }
 
@@ -271,7 +271,7 @@ function ContextIconFileInput(
     <input
       ref={props.inputRef}
       type="file"
-      accept=".png,.svg,.webp,image/png,image/svg+xml,image/webp"
+      accept=".png,.jpg,.jpeg,.gif,.svg,.webp,image/png,image/jpeg,image/gif,image/svg+xml,image/webp"
       className="context-icon-dropzone__input"
       onChange={(event) => handleFileInputChange(event, props.handleFile)}
     />

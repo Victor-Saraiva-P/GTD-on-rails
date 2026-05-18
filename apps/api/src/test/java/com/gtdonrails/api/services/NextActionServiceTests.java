@@ -17,6 +17,7 @@ import com.gtdonrails.api.entities.Item;
 import com.gtdonrails.api.entities.NextAction;
 import com.gtdonrails.api.enums.NextActionStatus;
 import com.gtdonrails.api.exceptions.item.ItemNotFoundException;
+import com.gtdonrails.api.mappers.ContextMapper;
 import com.gtdonrails.api.mappers.NextActionMapper;
 import com.gtdonrails.api.repositories.ContextRepository;
 import com.gtdonrails.api.repositories.NextActionRepository;
@@ -64,7 +65,7 @@ class NextActionServiceTests {
 
     @BeforeEach
     void setUp() {
-        nextActionMapper = new NextActionMapper(assetStorageService);
+        nextActionMapper = new NextActionMapper(new ContextMapper(assetStorageService));
         clock = Clock.fixed(Instant.parse("2024-01-01T10:00:00Z"), ZoneId.of("UTC"));
         nextActionService = new NextActionService(nextActionRepository, contextRepository, nextActionMapper, clock);
 

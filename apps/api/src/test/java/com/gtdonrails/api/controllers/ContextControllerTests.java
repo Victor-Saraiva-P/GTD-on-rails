@@ -18,8 +18,10 @@ import java.util.Set;
 
 import com.gtdonrails.api.entities.AuditableEntity;
 import com.gtdonrails.api.entities.Context;
+import com.gtdonrails.api.entities.ContextIconAsset;
 import com.gtdonrails.api.entities.Item;
 import com.gtdonrails.api.entities.NextAction;
+import com.gtdonrails.api.repositories.ContextIconAssetRepository;
 import com.gtdonrails.api.repositories.ContextRepository;
 import com.gtdonrails.api.repositories.ItemRepository;
 import com.gtdonrails.api.types.Title;
@@ -48,6 +50,9 @@ class ContextControllerTests {
     private ContextRepository contextRepository;
 
     @Autowired
+    private ContextIconAssetRepository contextIconAssetRepository;
+
+    @Autowired
     private ItemRepository itemRepository;
 
     private MockMvc mockMvc;
@@ -56,6 +61,7 @@ class ContextControllerTests {
     void setUp() {
         mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).build();
         itemRepository.deleteAll();
+        contextIconAssetRepository.deleteAll();
         contextRepository.deleteAll();
     }
 
@@ -138,7 +144,7 @@ class ContextControllerTests {
 
         putContextIcon(context, file)
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.iconUrl").value("/assets/contexts/" + context.getId() + "/icon.png"));
+            .andExpect(jsonPath("$.iconUrl").value(iconUrl(context)));
 
         assertContextIconIsServed(context);
     }
@@ -160,14 +166,13 @@ class ContextControllerTests {
                     return request;
                 }))
             .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.detail").value("icon file extension 'txt' is invalid; expected png, svg, or webp"));
+            .andExpect(jsonPath("$.detail").value("image asset file extension 'txt' is invalid; expected png, jpg, jpeg, gif, webp, or svg"));
     }
 
     @Test
     void deletesContextIcon() throws Exception {
-        Context context = new Context("home");
-        context.setIconAssetPath("contexts/00000000-0000-0000-0000-000000000001/icon.png");
-        context = contextRepository.save(context);
+        Context context = contextRepository.save(new Context("home"));
+        putContextIcon(context, pngIconFile()).andExpect(status().isOk());
 
         mockMvc.perform(delete("/contexts/{id}/icon", context.getId()))
             .andExpect(status().isOk())
@@ -299,9 +304,14 @@ class ContextControllerTests {
     }
 
     private void assertContextIconIsServed(Context context) throws Exception {
-        mockMvc.perform(get("/assets/contexts/{id}/icon.png", context.getId()))
+        mockMvc.perform(get(iconUrl(context)))
             .andExpect(status().isOk())
             .andExpect(header().string("Content-Type", "image/png"));
+    }
+
+    private String iconUrl(Context context) {
+        ContextIconAsset iconAsset = contextIconAssetRepository.findByContextId(context.getId()).orElseThrow();
+        return "/assets/" + iconAsset.relativePath();
     }
 
     private Item saveContextItem(Context context, String title, Instant updatedAt) throws Exception {

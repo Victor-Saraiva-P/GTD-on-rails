@@ -21,7 +21,6 @@ import com.gtdonrails.api.repositories.NextActionRepository;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class ContextService {
@@ -31,8 +30,7 @@ public class ContextService {
     private final ContextMapper contextMapper;
     private final ItemMapper itemMapper;
     private final ContextNameNormalizer contextNameNormalizer;
-    private final AssetStorageService assetStorageService;
-    private final AssetSyncService assetSyncService;
+    private final ContextIconAssetService contextIconAssetService;
     private final PersistenceGitSyncService persistenceGitSyncService;
     private final AfterCommitExecutor afterCommitExecutor;
 
@@ -42,8 +40,7 @@ public class ContextService {
         ContextMapper contextMapper,
         ItemMapper itemMapper,
         ContextNameNormalizer contextNameNormalizer,
-        AssetStorageService assetStorageService,
-        AssetSyncService assetSyncService,
+        ContextIconAssetService contextIconAssetService,
         PersistenceGitSyncService persistenceGitSyncService,
         AfterCommitExecutor afterCommitExecutor
     ) {
@@ -52,8 +49,7 @@ public class ContextService {
         this.contextMapper = contextMapper;
         this.itemMapper = itemMapper;
         this.contextNameNormalizer = contextNameNormalizer;
-        this.assetStorageService = assetStorageService;
-        this.assetSyncService = assetSyncService;
+        this.contextIconAssetService = contextIconAssetService;
         this.persistenceGitSyncService = persistenceGitSyncService;
         this.afterCommitExecutor = afterCommitExecutor;
     }
@@ -147,10 +143,9 @@ public class ContextService {
     public void deleteContext(UUID id) {
         Context context = findContext(id);
         new HashSet<>(context.getNextActions()).forEach(nextAction -> nextAction.removeContext(context));
-        assetStorageService.deleteAsset(context.getIconAssetPath());
+        contextIconAssetService.deleteContextIconAsset(context);
         context.softDelete();
         contextRepository.save(context);
-        requestAssetSyncAfterCommit("context deleted");
         requestPersistenceSyncAfterCommit("context deleted", PersistenceChangeType.DELETE_CONTEXT);
     }
 
@@ -168,52 +163,9 @@ public class ContextService {
         requestPersistenceSyncAfterCommit("context restored", PersistenceChangeType.UPDATE_CONTEXT);
     }
 
-    /**
-     * Stores a replacement context icon and removes the previous asset.
-     *
-     * <p>Example: {@code contextService.updateContextIcon(contextId, file)}.</p>
-     */
-    @Transactional
-    public ContextResponseDto updateContextIcon(UUID id, MultipartFile file) {
-        Context context = findContext(id);
-        String previousIconAssetPath = context.getIconAssetPath();
-        String iconAssetPath = assetStorageService.storeContextIcon(id, file);
-
-        if (previousIconAssetPath != null && !previousIconAssetPath.equals(iconAssetPath)) {
-            assetStorageService.deleteAsset(previousIconAssetPath);
-        }
-
-        context.setIconAssetPath(iconAssetPath);
-        ContextResponseDto response = contextMapper.toResponse(contextRepository.save(context));
-        requestAssetSyncAfterCommit("context icon updated");
-        requestPersistenceSyncAfterCommit("context icon updated", PersistenceChangeType.UPDATE_CONTEXT_ICON);
-        return response;
-    }
-
-    /**
-     * Removes the current context icon and schedules asset persistence sync.
-     *
-     * <p>Example: {@code contextService.deleteContextIcon(contextId)}.</p>
-     */
-    @Transactional
-    public ContextResponseDto deleteContextIcon(UUID id) {
-        Context context = findContext(id);
-        assetStorageService.deleteAsset(context.getIconAssetPath());
-        context.setIconAssetPath(null);
-
-        ContextResponseDto response = contextMapper.toResponse(contextRepository.save(context));
-        requestAssetSyncAfterCommit("context icon deleted");
-        requestPersistenceSyncAfterCommit("context icon deleted", PersistenceChangeType.DELETE_CONTEXT_ICON);
-        return response;
-    }
-
     private Context findContext(UUID id) {
         return contextRepository.findByIdAndDeletedAtIsNull(id)
             .orElseThrow(() -> new ContextNotFoundException("context not found"));
-    }
-
-    private void requestAssetSyncAfterCommit(String reason) {
-        afterCommitExecutor.run(() -> assetSyncService.requestSync(reason));
     }
 
     private void requestPersistenceSyncAfterCommit(String reason, PersistenceChangeType changeType) {
