@@ -56,8 +56,7 @@ public class ContextIconAssetService {
         deleteExistingIcon(context);
         ContextIconAsset iconAsset = newContextIconAsset(context, file);
         assetStorageService.storeImageAsset(iconAsset.relativePath(), file);
-        iconAsset = contextIconAssetRepository.save(iconAsset);
-        context.setIconAsset(iconAsset);
+        contextIconAssetRepository.save(iconAsset);
         requestAssetSyncAfterCommit("context icon updated");
         requestPersistenceSyncAfterCommit("context icon updated", PersistenceChangeType.UPDATE_CONTEXT_ICON);
         return contextMapper.toResponse(context);
@@ -93,11 +92,10 @@ public class ContextIconAssetService {
     }
 
     private void deleteExistingIcon(Context context) {
-        contextIconAssetRepository.findByContextId(context.getId()).ifPresent(iconAsset -> {
-            context.setIconAsset(null);
-            contextIconAssetRepository.delete(iconAsset);
+        contextIconAssetRepository.findByContextIdAndDeletedAtIsNull(context.getId()).ifPresent(iconAsset -> {
+            iconAsset.softDelete();
+            contextIconAssetRepository.save(iconAsset);
             contextIconAssetRepository.flush();
-            assetStorageService.deleteAsset(iconAsset.relativePath());
         });
     }
 

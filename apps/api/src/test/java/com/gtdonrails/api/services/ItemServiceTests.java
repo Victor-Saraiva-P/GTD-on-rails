@@ -1,6 +1,8 @@
 package com.gtdonrails.api.services;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -96,11 +98,11 @@ class ItemServiceTests {
         assertEquals("Old title", savedItem.getTitle().value());
         assertEquals("New body", savedItem.getBody().text());
         assertEquals(expectedResponse, response);
-        verify(itemAssetService).validateBodyAssetOwnership(itemId, bodyValue("New body"));
+        verify(itemAssetService).reconcileBodyAssetReferences(itemId, bodyValue("New body"));
     }
 
     @Test
-    void patchItemBodyValidatesAssetOwnership() {
+    void patchItemBodyReconcilesAssetReferences() {
         UUID itemId = UUID.randomUUID();
         ItemBody body = bodyWithBlockEntity(UUID.randomUUID().toString());
 
@@ -110,7 +112,36 @@ class ItemServiceTests {
 
         itemService.patchItemBody(itemId, new PatchItemBodyRequestDto(body));
 
-        verify(itemAssetService).validateBodyAssetOwnership(itemId, body);
+        verify(itemAssetService).reconcileBodyAssetReferences(itemId, body);
+    }
+
+    @Test
+    void deleteItemSoftDeletesActiveItemAssets() {
+        UUID itemId = UUID.randomUUID();
+        Item item = new Item(new Title("Title"), null);
+
+        when(itemRepository.findByIdAndDeletedAtIsNull(itemId)).thenReturn(Optional.of(item));
+
+        itemService.deleteItem(itemId);
+
+        assertTrue(item.isDeleted());
+        verify(itemAssetService).softDeleteActiveItemAssets(itemId);
+        verify(persistenceGitSyncService).requestSync("item deleted", PersistenceChangeType.DELETE_ITEM);
+    }
+
+    @Test
+    void restoreItemRestoresReferencedBodyAssets() {
+        UUID itemId = UUID.randomUUID();
+        Item item = new Item(new Title("Title"), null);
+        item.softDelete();
+
+        when(itemRepository.findById(itemId)).thenReturn(Optional.of(item));
+
+        itemService.restoreItem(itemId);
+
+        assertFalse(item.isDeleted());
+        verify(itemAssetService).reconcileBodyAssetReferences(itemId, item.getBody());
+        verify(persistenceGitSyncService).requestSync("item restored", PersistenceChangeType.UPDATE_ITEM);
     }
 
     private void stubSavedItemResponse(ItemResponseDto response) {

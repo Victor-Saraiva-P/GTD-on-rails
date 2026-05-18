@@ -8,5 +8,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ContextIconAssetRepository extends JpaRepository<ContextIconAsset, UUID> {
 
-    Optional<ContextIconAsset> findByContextId(UUID contextId);
+    Optional<ContextIconAsset> findByContextIdAndDeletedAtIsNull(UUID contextId);
 }

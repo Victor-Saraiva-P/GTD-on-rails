@@ -3,6 +3,7 @@ package com.gtdonrails.api.mappers;
 import com.gtdonrails.api.dtos.context.ContextResponseDto;
 import com.gtdonrails.api.entities.Context;
 import com.gtdonrails.api.entities.ContextIconAsset;
+import com.gtdonrails.api.repositories.ContextIconAssetRepository;
 import com.gtdonrails.api.services.AssetStorageService;
 import org.springframework.stereotype.Component;
 
@@ -10,9 +11,11 @@ import org.springframework.stereotype.Component;
 public class ContextMapper {
 
     private final AssetStorageService assetStorageService;
+    private final ContextIconAssetRepository contextIconAssetRepository;
 
-    public ContextMapper(AssetStorageService assetStorageService) {
+    public ContextMapper(AssetStorageService assetStorageService, ContextIconAssetRepository contextIconAssetRepository) {
         this.assetStorageService = assetStorageService;
+        this.contextIconAssetRepository = contextIconAssetRepository;
     }
 
     /**
@@ -24,12 +27,14 @@ public class ContextMapper {
         return new ContextResponseDto(
             context.getId(),
             context.getName(),
-            iconUrl(context.getIconAsset())
+            iconUrl(context)
         );
     }
 
-    private String iconUrl(ContextIconAsset iconAsset) {
-        if (iconAsset == null) return null;
-        return assetStorageService.publicUrl(iconAsset.relativePath());
+    private String iconUrl(Context context) {
+        return contextIconAssetRepository.findByContextIdAndDeletedAtIsNull(context.getId())
+            .map(ContextIconAsset::relativePath)
+            .map(assetStorageService::publicUrl)
+            .orElse(null);
     }
 }

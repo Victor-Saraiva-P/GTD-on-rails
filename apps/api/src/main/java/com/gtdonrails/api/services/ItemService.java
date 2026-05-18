@@ -56,7 +56,7 @@ public class ItemService {
     public ItemResponseDto patchItemBody(UUID id, PatchItemBodyRequestDto request) {
         Item item = findItem(id);
         ItemBody body = itemBodyNormalizer.normalizeBody(request.body());
-        itemAssetService.validateBodyAssetOwnership(id, body);
+        itemAssetService.reconcileBodyAssetReferences(id, body);
         item.setBody(body);
         ItemResponseDto response = itemMapper.toResponse(itemRepository.save(item));
         requestPersistenceSyncAfterCommit("item body updated", PersistenceChangeType.UPDATE_ITEM);
@@ -85,6 +85,7 @@ public class ItemService {
     @Transactional
     public void deleteItem(UUID id) {
         Item item = findItem(id);
+        itemAssetService.softDeleteActiveItemAssets(id);
         item.softDelete();
         itemRepository.save(item);
         requestPersistenceSyncAfterCommit("item deleted", PersistenceChangeType.DELETE_ITEM);
@@ -100,6 +101,7 @@ public class ItemService {
         Item item = itemRepository.findById(id)
             .orElseThrow(() -> new ItemNotFoundException("item not found"));
         item.restore();
+        itemAssetService.reconcileBodyAssetReferences(id, item.getBody());
         itemRepository.save(item);
         requestPersistenceSyncAfterCommit("item restored", PersistenceChangeType.UPDATE_ITEM);
     }

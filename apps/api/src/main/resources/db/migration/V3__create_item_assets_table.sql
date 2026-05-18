@@ -23,8 +23,8 @@ create table context_icon_assets (
     created_at timestamp not null,
     updated_at timestamp not null,
     deleted_at timestamp,
-    constraint fk_context_icon_assets_context foreign key (context_id) references contexts (id),
-    constraint uq_context_icon_assets_context_id unique (context_id)
+    constraint fk_context_icon_assets_context foreign key (context_id) references contexts (id)
 );
 
 create index idx_context_icon_assets_context_id on context_icon_assets (context_id);
+create unique index uq_context_icon_assets_active_context_id on context_icon_assets (context_id) where deleted_at is null;

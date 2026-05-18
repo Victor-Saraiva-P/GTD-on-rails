@@ -23,7 +23,7 @@ import {
   FORMAT_QUOTE_EVENT,
   OPEN_CURSOR_TARGET_EVENT
 } from "./bodyEditorEvents";
-import { normalizeBodyForClient, mapBodyRangesThroughChanges, toggleInlineMark, setLineBlock, toggleChecklist, insertBlockEntity, clearLineBlock, applyInlineMark, removeInlineMarks, reconcileBlockEntityTokenRanges } from "./itemBodyUtils";
+import { normalizeBodyForClient, mapBodyRangesThroughChanges, toggleInlineMark, setLineBlock, toggleChecklist, insertBlockEntity, clearLineBlock, applyInlineMark, removeInlineMarks, reconcileBlockEntityTokenRanges, bodyForPersistence } from "./itemBodyUtils";
 import { type ItemBody, type BlockEntity } from "./types";
 import { INSERT_MARKDOWN_LINK_EVENT, type InsertMarkdownLinkEventDetail } from "./markdownLinks";
 import { findOpenableEditorTarget } from "./openEditorTarget";
@@ -699,7 +699,7 @@ function autosaveAfterFinishedEdit(
   const saveVersion = tracker.changeId;
   tracker.isSaving = true;
   setSaveState("saving");
-  onAutosaveRef.current?.(view.state.field(itemBodyStateField)).then(() => {
+  onAutosaveRef.current?.(bodyForPersistence(view.state.field(itemBodyStateField))).then(() => {
     if (tracker.changeId === saveVersion) {
       tracker.hasUnsavedChanges = false;
       setSaveState("saved");
@@ -716,7 +716,7 @@ async function saveAndExitOnNormalMode(
   setSaveState: (state: MarkdownBodySaveState) => void
 ) {
   setSaveState("saving");
-  const body = view.state.field(itemBodyStateField);
+  const body = bodyForPersistence(view.state.field(itemBodyStateField));
   if (onSave) await onSave(body);
   setSaveState("saved");
   if (onExitNormalMode) await onExitNormalMode(body);
@@ -728,6 +728,6 @@ async function saveMarkdownBody(
   setSaveState: (state: MarkdownBodySaveState) => void
 ): Promise<void> {
   setSaveState("saving");
-  if (onSave) await onSave(body);
+  if (onSave) await onSave(bodyForPersistence(body));
   setSaveState("saved");
 }

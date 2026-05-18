@@ -145,6 +145,15 @@ export function reconcileBlockEntityTokenRanges(body: ItemBody): ItemBody {
   return { ...body, blockEntities };
 }
 
+export function bodyForPersistence(body: ItemBody): ItemBody {
+  const reconciledBody = reconcileBlockEntityTokenRanges(body);
+  const assetTokenRanges = assetTokenRangesById(reconciledBody.text);
+  return {
+    ...reconciledBody,
+    blockEntities: reconciledBody.blockEntities.filter((entity) => assetTokenRanges.has(entity.assetId))
+  };
+}
+
 function assetTokenRangesById(text: string): Map<string, { from: number; to: number }> {
   const ranges = new Map<string, { from: number; to: number }>();
   for (const match of text.matchAll(ASSET_TOKEN_PATTERN)) {

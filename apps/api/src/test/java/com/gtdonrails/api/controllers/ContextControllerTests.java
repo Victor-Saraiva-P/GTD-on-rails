@@ -310,7 +310,7 @@ class ContextControllerTests {
     }
 
     private String iconUrl(Context context) {
-        ContextIconAsset iconAsset = contextIconAssetRepository.findByContextId(context.getId()).orElseThrow();
+        ContextIconAsset iconAsset = contextIconAssetRepository.findByContextIdAndDeletedAtIsNull(context.getId()).orElseThrow();
         return "/assets/" + iconAsset.relativePath();
     }
 

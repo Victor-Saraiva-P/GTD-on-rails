@@ -1,7 +1,9 @@
 package com.gtdonrails.api.services;
 
 import java.nio.file.Path;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import com.gtdonrails.api.dtos.item.CopyLocalItemAssetRequestDto;
 import com.gtdonrails.api.dtos.item.ItemAssetResponseDto;
@@ -73,12 +75,24 @@ public class ItemAssetService {
     }
 
     /**
-     * Validates that every block entity references an asset owned by the item.
+     * Reconciles persisted item assets against the saved body references.
      *
-     * <p>Example: {@code itemAssetService.validateBodyAssetOwnership(itemId, body)}.</p>
+     * <p>Example: {@code itemAssetService.reconcileBodyAssetReferences(itemId, body)}.</p>
      */
-    public void validateBodyAssetOwnership(UUID itemId, ItemBody body) {
-        body.blockEntities().forEach(entity -> validateBlockEntityAsset(itemId, entity));
+    public void reconcileBodyAssetReferences(UUID itemId, ItemBody body) {
+        Set<UUID> referencedAssetIds = referencedAssetIds(body);
+        referencedAssetIds.forEach(assetId -> restoreReferencedAsset(itemId, assetId));
+        softDeleteUnreferencedAssets(itemId, referencedAssetIds);
+    }
+
+    /**
+     * Soft deletes every active asset owned by an item.
+     *
+     * <p>Example: {@code itemAssetService.softDeleteActiveItemAssets(itemId)}.</p>
+     */
+    public void softDeleteActiveItemAssets(UUID itemId) {
+        itemAssetRepository.findAllByItemIdAndDeletedAtIsNull(itemId)
+            .forEach(this::softDeleteItemAsset);
     }
 
     private Item findItem(UUID id) {
@@ -86,12 +100,35 @@ public class ItemAssetService {
             .orElseThrow(() -> new ItemNotFoundException("item not found"));
     }
 
-    private void validateBlockEntityAsset(UUID itemId, BlockEntity entity) {
-        UUID assetId = parseAssetId(entity.assetId());
-        if (itemAssetRepository.existsByIdAndItemId(assetId, itemId)) return;
+    private Set<UUID> referencedAssetIds(ItemBody body) {
+        return body.blockEntities().stream()
+            .map(BlockEntity::assetId)
+            .map(this::parseAssetId)
+            .collect(Collectors.toSet());
+    }
 
-        throw new BusinessException(
-            "body.blockEntities.assetId value '" + entity.assetId() + "' is invalid; expected asset owned by item '" + itemId + "'");
+    private void restoreReferencedAsset(UUID itemId, UUID assetId) {
+        ItemAsset asset = findOwnedItemAsset(itemId, assetId);
+        if (!asset.isDeleted()) return;
+        asset.restore();
+        itemAssetRepository.save(asset);
+    }
+
+    private ItemAsset findOwnedItemAsset(UUID itemId, UUID assetId) {
+        return itemAssetRepository.findByIdAndItemId(assetId, itemId)
+            .orElseThrow(() -> new BusinessException(
+                "body.blockEntities.assetId value '" + assetId + "' is invalid; expected asset owned by item '" + itemId + "'"));
+    }
+
+    private void softDeleteUnreferencedAssets(UUID itemId, Set<UUID> referencedAssetIds) {
+        itemAssetRepository.findAllByItemIdAndDeletedAtIsNull(itemId).stream()
+            .filter(asset -> !referencedAssetIds.contains(asset.getId()))
+            .forEach(this::softDeleteItemAsset);
+    }
+
+    private void softDeleteItemAsset(ItemAsset asset) {
+        asset.softDelete();
+        itemAssetRepository.save(asset);
     }
 
     private UUID parseAssetId(String value) {
