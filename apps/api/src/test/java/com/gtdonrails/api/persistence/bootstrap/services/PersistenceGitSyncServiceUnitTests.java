@@ -33,10 +33,43 @@ class PersistenceGitSyncServiceUnitTests {
 
         service.syncNow("manual", PersistenceChangeType.UPDATE_ITEM);
 
-        assertEquals(List.of("statusPorcelain"), gitCommandService.commands);
+        assertEquals(List.of("statusPorcelain", "hasUnpushedCommits"), gitCommandService.commands);
         assertEquals(PersistenceSyncState.IDLE, service.status().state());
         assertFalse(service.status().hasLocalChanges());
         assertNotNull(service.status().lastSuccessfulSyncAt());
+    }
+
+    @Test
+    void syncPushesPendingCommitsWhenRepositoryIsClean() throws Exception {
+        FakeGitCommandService gitCommandService = new FakeGitCommandService();
+        PersistenceGitSyncService service = createService(gitCommandService, true);
+
+        gitCommandService.statusOutput = "";
+        gitCommandService.hasUnpushedCommits = true;
+
+        service.syncNow("manual", PersistenceChangeType.UPDATE_ITEM);
+
+        assertEquals(List.of("statusPorcelain", "hasUnpushedCommits", "push"), gitCommandService.commands);
+        assertEquals(PersistenceSyncState.IDLE, service.status().state());
+        assertFalse(service.status().hasLocalChanges());
+        assertFalse(service.status().hasUnpushedCommits());
+    }
+
+    @Test
+    void syncKeepsPendingCommitsWhenCleanRepositoryPushFails() throws Exception {
+        FakeGitCommandService gitCommandService = new FakeGitCommandService();
+        PersistenceGitSyncService service = createService(gitCommandService, true);
+
+        gitCommandService.statusOutput = "";
+        gitCommandService.hasUnpushedCommits = true;
+        gitCommandService.pushFailure = new IllegalStateException("push failed");
+
+        service.syncNow("manual", PersistenceChangeType.UPDATE_ITEM);
+
+        assertEquals(PersistenceSyncState.FAILED, service.status().state());
+        assertEquals("push failed", service.status().lastError());
+        assertFalse(service.status().hasLocalChanges());
+        assertTrue(service.status().hasUnpushedCommits());
     }
 
     @Test
@@ -49,7 +82,7 @@ class PersistenceGitSyncServiceUnitTests {
         service.syncNow("manual", PersistenceChangeType.UPDATE_CONTEXT);
 
         assertEquals(
-            List.of("statusPorcelain", "addAll", "commit", "pullFastForwardOnly", "push"),
+            List.of("statusPorcelain", "hasUnpushedCommits", "addAll", "commit", "pullFastForwardOnly", "push"),
             gitCommandService.commands);
         assertEquals("feat(data): update context", gitCommandService.commitMessage);
         assertEquals("GTD on Rails", gitCommandService.authorName);
@@ -152,6 +185,7 @@ class PersistenceGitSyncServiceUnitTests {
         private String commitMessage;
         private String authorName;
         private String authorEmail;
+        private boolean hasUnpushedCommits;
         private RuntimeException pullFailure;
         private RuntimeException pushFailure;
 
@@ -164,6 +198,12 @@ class PersistenceGitSyncServiceUnitTests {
         @Override
         public void addAll(Path repositoryDirectory) {
             commands.add("addAll");
+        }
+
+        @Override
+        public boolean hasUnpushedCommits(Path repositoryDirectory) {
+            commands.add("hasUnpushedCommits");
+            return hasUnpushedCommits;
         }
 
         @Override

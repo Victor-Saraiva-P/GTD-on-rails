@@ -1,6 +1,7 @@
 package com.gtdonrails.api.persistence.bootstrap.services;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -61,6 +62,24 @@ class PersistenceGitSyncServiceTests {
         assertEquals(List.of("remote update", "seed dev"), pulledLogMessages.subList(0, 2));
     }
 
+    @Test
+    void syncPushesPendingLocalCommitWhenCloneIsClean() throws Exception {
+        Path remoteRepository = createBareRepository("remote.git");
+        RuntimePersistence runtimePersistence = bootstrapRuntimePersistence(remoteRepository);
+        PersistenceGitSyncService syncService = createSyncService(
+            runtimePersistence.bootstrapProperties(),
+            runtimePersistence.databasePath()
+        );
+
+        createLocalDatabaseCommit(runtimePersistence, "pending local");
+        syncService.requestSync("retry pending push", PersistenceChangeType.UPDATE_ITEM);
+        waitForIdle(syncService);
+
+        assertEquals(PersistenceSyncState.IDLE, syncService.status().state());
+        assertFalse(syncService.status().hasUnpushedCommits());
+        assertRemoteDatabaseContent(remoteRepository, "pending local");
+    }
+
     private RuntimePersistence bootstrapRuntimePersistence(Path remoteRepository) throws Exception {
         seedRemoteRepository(remoteRepository, "dev", "initial");
         Path cloneDirectory = tempDir.resolve("runtime/gtd-persistence");
@@ -92,6 +111,18 @@ class PersistenceGitSyncServiceTests {
         runGit(writerClone, "config", "user.email", "codex@example.com");
         runGit(writerClone, "commit", "-am", "remote update");
         runGit(writerClone, "push", "origin", "dev");
+    }
+
+    private void createLocalDatabaseCommit(RuntimePersistence runtimePersistence, String content) throws Exception {
+        GitCommandService gitCommandService = new GitCommandService();
+        Files.writeString(runtimePersistence.databasePath(), content);
+        gitCommandService.addAll(runtimePersistence.cloneDirectory());
+        gitCommandService.commit(
+            runtimePersistence.cloneDirectory(),
+            "feat(data): update item",
+            "GTD on Rails Test",
+            "gtdonrails-test@local"
+        );
     }
 
     private void assertRemoteDatabaseContent(Path remoteRepository, String expectedContent) throws Exception {

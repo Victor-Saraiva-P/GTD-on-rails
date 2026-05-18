@@ -21,6 +21,16 @@ public class GitCommandService {
     }
 
     /**
+     * Detects local commits that still need to be pushed to the upstream branch.
+     *
+     * <p>Example: {@code gitCommandService.hasUnpushedCommits(repositoryDirectory)}.</p>
+     */
+    public boolean hasUnpushedCommits(Path repositoryDirectory) throws IOException, InterruptedException {
+        String output = run(repositoryDirectory, Map.of(), "rev-list", "--count", "@{u}..HEAD");
+        return Integer.parseInt(output) > 0;
+    }
+
+    /**
      * Stages all repository changes for the next commit.
      *
      * <p>Example: {@code gitCommandService.addAll(repositoryDirectory)}.</p>

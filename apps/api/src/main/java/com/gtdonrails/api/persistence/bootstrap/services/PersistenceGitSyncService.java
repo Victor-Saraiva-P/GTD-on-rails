@@ -173,28 +173,56 @@ public class PersistenceGitSyncService {
         runTask(reason, () -> {
             Path repository = requiredRepositoryDirectory();
             hasLocalChanges = !gitCommandService.statusPorcelain(repository).isBlank();
+            hasUnpushedCommits = gitCommandService.hasUnpushedCommits(repository);
             if (!hasLocalChanges) {
-                logger.atDebug()
-                    .addKeyValue("event", "persistence_git_sync_skipped")
-                    .addKeyValue("reason", reason)
-                    .addKeyValue("repository", repository)
-                    .log("Skipping persistence Git sync because repository is clean");
+                finishCleanRepositorySync(repository, reason);
                 return;
             }
 
-            gitCommandService.addAll(repository);
-            gitCommandService.commit(
-                repository,
-                changeType.commitMessage(),
-                persistenceSyncProperties.getCommitAuthorName(),
-                persistenceSyncProperties.getCommitAuthorEmail()
-            );
-            hasLocalChanges = false;
-            hasUnpushedCommits = true;
-            gitCommandService.pullFastForwardOnly(repository);
-            gitCommandService.push(repository);
-            hasUnpushedCommits = false;
+            commitAndPushLocalChanges(repository, changeType);
         });
+    }
+
+    private void commitAndPushLocalChanges(Path repository, PersistenceChangeType changeType) throws IOException, InterruptedException {
+        gitCommandService.addAll(repository);
+        gitCommandService.commit(
+            repository,
+            changeType.commitMessage(),
+            persistenceSyncProperties.getCommitAuthorName(),
+            persistenceSyncProperties.getCommitAuthorEmail()
+        );
+        hasLocalChanges = false;
+        hasUnpushedCommits = true;
+        gitCommandService.pullFastForwardOnly(repository);
+        gitCommandService.push(repository);
+        hasUnpushedCommits = false;
+    }
+
+    private void finishCleanRepositorySync(Path repository, String reason) throws IOException, InterruptedException {
+        if (hasUnpushedCommits) {
+            pushPendingCommits(repository, reason);
+            return;
+        }
+
+        logger.atDebug()
+            .addKeyValue("event", "persistence_git_sync_skipped")
+            .addKeyValue("reason", reason)
+            .addKeyValue("repository", repository)
+            .log("Skipping persistence Git sync because repository is clean");
+    }
+
+    private void pushPendingCommits(Path repository, String reason) throws IOException, InterruptedException {
+        if (!hasUnpushedCommits) {
+            return;
+        }
+
+        logger.atInfo()
+            .addKeyValue("event", "persistence_git_push_retry")
+            .addKeyValue("reason", reason)
+            .addKeyValue("repository", repository)
+            .log("Retrying pending persistence Git push");
+        gitCommandService.push(repository);
+        hasUnpushedCommits = false;
     }
 
     void pullNow(String reason) {
