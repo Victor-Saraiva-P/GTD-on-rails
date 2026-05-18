@@ -49,7 +49,7 @@ type AutosaveTracker = {
   changeId: number;
 };
 
-const cursorCache = new Map<string, any>();
+const cursorCache = new Map<string, object>();
 
 const itemBodyStateEffect = StateEffect.define<ItemBody>();
 
@@ -218,6 +218,135 @@ class DividerWidget extends WidgetType {
   }
 }
 
+function buildLineBlockDecorations(view: EditorView, lineBlocks: ItemBody["lineBlocks"], docLength: number, decos: {from: number, to: number, deco: Decoration}[]) {
+  for (const block of lineBlocks) {
+    if (block.from > docLength) continue;
+    const validFrom = Math.max(0, block.from);
+    
+    const line = view.state.doc.lineAt(validFrom);
+
+    if (block.type === "heading1") {
+      decos.push({from: line.from, to: line.from, deco: Decoration.line({class: "cm-md-heading-1"})});
+    } else if (block.type === "heading2") {
+      decos.push({from: line.from, to: line.from, deco: Decoration.line({class: "cm-md-heading-2"})});
+    } else if (block.type === "heading3") {
+      decos.push({from: line.from, to: line.from, deco: Decoration.line({class: "cm-md-heading-3"})});
+    } else if (block.type === "bullet") {
+      decos.push({from: line.from, to: line.from, deco: Decoration.line({class: "cm-bullet-line"})});
+      const textIndent = line.text.match(/^\s*/)?.[0].length || 0;
+      const level = Math.floor(textIndent / 2) % 3;
+      decos.push({
+        from: line.from + textIndent,
+        to: line.from + textIndent,
+        deco: Decoration.widget({
+          widget: new class extends WidgetType {
+            toDOM() {
+              const el = document.createElement("span");
+              el.className = `cm-bullet-mark cm-bullet-level-${level}`;
+              el.textContent = "• ";
+              return el;
+            }
+          }()
+        })
+      });
+    } else if (block.type === "checklist") {
+      const textIndent = line.text.match(/^\s*/)?.[0].length || 0;
+      decos.push({
+        from: line.from + textIndent,
+        to: line.from + textIndent,
+        deco: Decoration.widget({
+          widget: new ChecklistBoxWidget(block.attrs?.checked ?? false)
+        })
+      });
+      const textDeco = block.attrs?.checked ? "cm-checklist-text cm-checklist-text--checked" : "cm-checklist-text";
+      decos.push({from: line.from, to: line.from, deco: Decoration.line({class: textDeco})});
+    } else if (block.type === "divider") {
+      decos.push({
+        from: line.from,
+        to: line.to,
+        deco: Decoration.replace({widget: new DividerWidget()})
+      });
+    } else if (block.type === "quote") {
+      decos.push({from: line.from, to: line.from, deco: Decoration.line({class: "cm-quote-line"})});
+      const textIndent = line.text.match(/^\s*/)?.[0].length || 0;
+      decos.push({
+        from: line.from + textIndent,
+        to: line.from + textIndent,
+        deco: Decoration.widget({
+          widget: new class extends WidgetType {
+            toDOM() {
+              const el = document.createElement("span");
+              el.className = "cm-quote-mark";
+              el.textContent = "▌ ";
+              return el;
+            }
+          }()
+        })
+      });
+    } else if (block.type === "numbered") {
+      const textIndent = line.text.match(/^\s*/)?.[0].length || 0;
+      decos.push({
+        from: line.from + textIndent,
+        to: line.from + textIndent,
+        deco: Decoration.widget({
+          widget: new class extends WidgetType {
+            toDOM() {
+              const el = document.createElement("span");
+              el.className = "cm-numbered-mark";
+              el.textContent = "1. ";
+              return el;
+            }
+          }()
+        })
+      });
+    } else if (block.type === "lettered") {
+      const textIndent = line.text.match(/^\s*/)?.[0].length || 0;
+      decos.push({
+        from: line.from + textIndent,
+        to: line.from + textIndent,
+        deco: Decoration.widget({
+          widget: new class extends WidgetType {
+            toDOM() {
+              const el = document.createElement("span");
+              el.className = "cm-lettered-mark";
+              el.textContent = "a. ";
+              return el;
+            }
+          }()
+        })
+      });
+    }
+  }
+}
+
+function buildInlineMarkDecorations(view: EditorView, inlineMarks: ItemBody["inlineMarks"], docLength: number, decos: {from: number, to: number, deco: Decoration}[]) {
+  for (const mark of inlineMarks) {
+    if (mark.from >= docLength) continue;
+    const validFrom = Math.max(0, mark.from);
+    const validTo = Math.min(docLength, mark.to);
+    if (validFrom >= validTo) continue;
+
+    if (mark.type === "bold") {
+      decos.push({from: validFrom, to: validTo, deco: Decoration.mark({class: "cm-bold-text"})});
+    } else if (mark.type === "italic") {
+      decos.push({from: validFrom, to: validTo, deco: Decoration.mark({class: "cm-italic-text"})});
+    } else if (mark.type === "inlineCode") {
+      decos.push({from: validFrom, to: validTo, deco: Decoration.mark({class: "cm-code-text"})});
+    } else if (mark.type === "link") {
+      decos.push({from: validFrom, to: validTo, deco: Decoration.replace({widget: new MarkdownLinkWidget(view.state.sliceDoc(validFrom, validTo), mark.attrs?.href || "")})});
+    }
+  }
+}
+
+function buildBlockEntityDecorations(blockEntities: ItemBody["blockEntities"], docLength: number, decos: {from: number, to: number, deco: Decoration}[]) {
+  for (const entity of blockEntities) {
+    if (entity.from > docLength) continue;
+    const validFrom = Math.max(0, entity.from);
+    const validTo = Math.min(docLength, entity.to);
+    if (validFrom >= validTo) continue;
+    decos.push({from: validFrom, to: validTo, deco: Decoration.replace({widget: new BlockEntityWidget(entity)})});
+  }
+}
 const itemBodyDecorationsPlugin = ViewPlugin.fromClass(class {
   decorations: DecorationSet;
   constructor(view: EditorView) {
@@ -233,132 +362,9 @@ const itemBodyDecorationsPlugin = ViewPlugin.fromClass(class {
     const builder = new RangeSetBuilder<Decoration>();
     const docLength = view.state.doc.length;
     const decos: {from: number, to: number, deco: Decoration}[] = [];
-
-    for (const block of body.lineBlocks) {
-      if (block.from > docLength) continue;
-      const validFrom = Math.max(0, block.from);
-      
-      const line = view.state.doc.lineAt(validFrom);
-
-      if (block.type === "heading1") {
-        decos.push({from: line.from, to: line.from, deco: Decoration.line({class: "cm-md-heading-1"})});
-      } else if (block.type === "heading2") {
-        decos.push({from: line.from, to: line.from, deco: Decoration.line({class: "cm-md-heading-2"})});
-      } else if (block.type === "heading3") {
-        decos.push({from: line.from, to: line.from, deco: Decoration.line({class: "cm-md-heading-3"})});
-      } else if (block.type === "bullet") {
-        decos.push({from: line.from, to: line.from, deco: Decoration.line({class: "cm-bullet-line"})});
-        const textIndent = line.text.match(/^\s*/)?.[0].length || 0;
-        const level = Math.floor(textIndent / 2) % 3;
-        decos.push({
-          from: line.from + textIndent,
-          to: line.from + textIndent,
-          deco: Decoration.widget({
-            widget: new class extends WidgetType {
-              toDOM() {
-                const el = document.createElement("span");
-                el.className = `cm-bullet-mark cm-bullet-level-${level}`;
-                el.textContent = "• ";
-                return el;
-              }
-            }()
-          })
-        });
-      } else if (block.type === "checklist") {
-        const textIndent = line.text.match(/^\s*/)?.[0].length || 0;
-        decos.push({
-          from: line.from + textIndent,
-          to: line.from + textIndent,
-          deco: Decoration.widget({
-            widget: new ChecklistBoxWidget(block.attrs?.checked ?? false)
-          })
-        });
-        const textDeco = block.attrs?.checked ? "cm-checklist-text cm-checklist-text--checked" : "cm-checklist-text";
-        decos.push({from: line.from, to: line.from, deco: Decoration.line({class: textDeco})});
-      } else if (block.type === "divider") {
-        decos.push({
-          from: line.from,
-          to: line.to,
-          deco: Decoration.replace({widget: new DividerWidget()})
-        });
-      } else if (block.type === "quote") {
-        decos.push({from: line.from, to: line.from, deco: Decoration.line({class: "cm-quote-line"})});
-        const textIndent = line.text.match(/^\s*/)?.[0].length || 0;
-        decos.push({
-          from: line.from + textIndent,
-          to: line.from + textIndent,
-          deco: Decoration.widget({
-            widget: new class extends WidgetType {
-              toDOM() {
-                const el = document.createElement("span");
-                el.className = "cm-quote-mark";
-                el.textContent = "▌ ";
-                return el;
-              }
-            }()
-          })
-        });
-      } else if (block.type === "numbered") {
-        const textIndent = line.text.match(/^\s*/)?.[0].length || 0;
-        decos.push({
-          from: line.from + textIndent,
-          to: line.from + textIndent,
-          deco: Decoration.widget({
-            widget: new class extends WidgetType {
-              toDOM() {
-                const el = document.createElement("span");
-                el.className = "cm-numbered-mark";
-                el.textContent = "1. ";
-                return el;
-              }
-            }()
-          })
-        });
-      } else if (block.type === "lettered") {
-        const textIndent = line.text.match(/^\s*/)?.[0].length || 0;
-        decos.push({
-          from: line.from + textIndent,
-          to: line.from + textIndent,
-          deco: Decoration.widget({
-            widget: new class extends WidgetType {
-              toDOM() {
-                const el = document.createElement("span");
-                el.className = "cm-lettered-mark";
-                el.textContent = "a. ";
-                return el;
-              }
-            }()
-          })
-        });
-      }
-    }
-
-    for (const mark of body.inlineMarks) {
-      if (mark.from >= docLength) continue;
-      const validFrom = Math.max(0, mark.from);
-      const validTo = Math.min(docLength, mark.to);
-      if (validFrom >= validTo) continue;
-
-      if (mark.type === "bold") {
-        decos.push({from: validFrom, to: validTo, deco: Decoration.mark({class: "cm-bold-text"})});
-      } else if (mark.type === "italic") {
-        decos.push({from: validFrom, to: validTo, deco: Decoration.mark({class: "cm-italic-text"})});
-      } else if (mark.type === "inlineCode") {
-        decos.push({from: validFrom, to: validTo, deco: Decoration.mark({class: "cm-code-text"})});
-      } else if (mark.type === "link") {
-        decos.push({from: validFrom, to: validTo, deco: Decoration.replace({widget: new MarkdownLinkWidget(view.state.sliceDoc(validFrom, validTo), mark.attrs?.href || "")})});
-      }
-    }
-
-    for (const entity of body.blockEntities) {
-      if (entity.from > docLength) continue;
-      const validFrom = Math.max(0, entity.from);
-      const validTo = Math.min(docLength, entity.to);
-      if (validFrom >= validTo) continue;
-      decos.push({from: validFrom, to: validTo, deco: Decoration.replace({widget: new BlockEntityWidget(entity)})});
-    }
-
-    decos.sort((a,b) => {
+    buildLineBlockDecorations(view, body.lineBlocks, docLength, decos);
+    buildInlineMarkDecorations(view, body.inlineMarks, docLength, decos);
+    buildBlockEntityDecorations(body.blockEntities, docLength, decos);    decos.sort((a,b) => {
       if (a.from !== b.from) return a.from - b.from;
       const isLineA = a.deco.spec.line ? 1 : 0;
       const isLineB = b.deco.spec.line ? 1 : 0;
