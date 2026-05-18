@@ -306,8 +306,6 @@
 .inbox-detail__codemirror .cm-cursor,
 .inbox-detail__codemirror .cm-dropCursor {
   border-left: 2px solid #ffffff !important;
-  border-left-color: #ffffff !important;
-  border-color: #ffffff !important;
   outline: none !important;
   box-shadow: none !important;
 }
@@ -317,8 +315,6 @@
 .inbox-detail__codemirror .cm-editor.cm-fat-cursor .cm-cursorLayer .cm-cursor {
   background: linear-gradient(180deg, #ffffff 0%, #e8e3df 100%) !important;
   border: 1px solid #ffffff !important;
-  border-left: 1px solid #ffffff !important;
-  border-color: #ffffff !important;
   outline: none !important;
   box-shadow: none !important;
   color: #191716 !important;
