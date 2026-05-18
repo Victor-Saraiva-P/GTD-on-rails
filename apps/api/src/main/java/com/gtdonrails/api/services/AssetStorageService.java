@@ -57,7 +57,7 @@ public class AssetStorageService {
         }
 
         validateImageAssetFile(file);
-        writeAssetFile(file, resolveRelativePath(relativePath));
+        writeAssetFile(file, resolveValidatedAssetPath(relativePath));
     }
 
     /**
@@ -71,7 +71,7 @@ public class AssetStorageService {
         }
 
         validateItemAssetFile(file);
-        writeAssetFile(file, resolveRelativePath(relativePath));
+        writeAssetFile(file, resolveValidatedAssetPath(relativePath));
     }
 
     /**
@@ -81,7 +81,7 @@ public class AssetStorageService {
      */
     public void copyLocalItemAsset(String relativePath, Path sourcePath) {
         validateLocalItemAssetFile(sourcePath);
-        writeLocalAssetFile(sourcePath, resolveRelativePath(relativePath));
+        writeLocalAssetFile(sourcePath, resolveValidatedAssetPath(relativePath));
     }
 
     private void writeAssetFile(MultipartFile file, Path destination) {
@@ -115,7 +115,7 @@ public class AssetStorageService {
         }
 
         try {
-            Files.deleteIfExists(resolveRelativePath(relativePath));
+            Files.deleteIfExists(resolveValidatedAssetPath(relativePath));
         } catch (IOException exception) {
             throw new IllegalStateException("Failed to delete asset", exception);
         }
@@ -128,7 +128,7 @@ public class AssetStorageService {
      * <p>Example: {@code assetStorageService.loadAsResource("contexts/id/icon.png")}.</p>
      */
     public Resource loadAsResource(String relativePath) {
-        Path path = resolveRelativePath(relativePath);
+        Path path = resolveValidatedAssetPath(relativePath);
         if (!Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)) {
             throw new IllegalArgumentException(
                 "asset path value '" + relativePath + "' is invalid; expected existing regular file");
@@ -286,7 +286,7 @@ public class AssetStorageService {
         }
     }
 
-    private Path resolveRelativePath(String relativePath) {
+    private Path resolveValidatedAssetPath(String relativePath) {
         String normalizedRelativePath = assetPathNormalizer.normalize(relativePath);
 
         Path baseDirectory = localDirectory();

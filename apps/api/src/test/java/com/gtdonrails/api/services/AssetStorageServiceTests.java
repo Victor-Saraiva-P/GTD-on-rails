@@ -101,6 +101,20 @@ class AssetStorageServiceTests {
     }
 
     @Test
+    void rejectsImageAssetDestinationTraversal() {
+        MockMultipartFile file = new MockMultipartFile("file", "icon.png", "image/png", new byte[] {1});
+        AssetStorageService assetStorageService = newAssetStorageService();
+
+        IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> assetStorageService.storeImageAsset("../icon.png", file));
+
+        assertEquals(
+            "asset path value '../icon.png' is invalid; expected relative path without parent traversal",
+            exception.getMessage());
+    }
+
+    @Test
     void storesItemAssetInExpectedPath() throws IOException {
         UUID itemId = UUID.randomUUID();
         UUID assetId = UUID.randomUUID();
@@ -111,6 +125,20 @@ class AssetStorageServiceTests {
         assetStorageService.storeItemAsset(relativePath, file);
 
         assertTrue(Files.exists(tempDir.resolve("assets").resolve(relativePath)));
+    }
+
+    @Test
+    void rejectsItemAssetDestinationTraversal() {
+        MockMultipartFile file = new MockMultipartFile("file", "report.pdf", "application/pdf", new byte[] {1});
+        AssetStorageService assetStorageService = newAssetStorageService();
+
+        IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> assetStorageService.storeItemAsset("../report.pdf", file));
+
+        assertEquals(
+            "asset path value '../report.pdf' is invalid; expected relative path without parent traversal",
+            exception.getMessage());
     }
 
     @Test
