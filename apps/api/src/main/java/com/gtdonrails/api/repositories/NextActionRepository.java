@@ -1,5 +1,6 @@
 package com.gtdonrails.api.repositories;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -8,6 +9,7 @@ import com.gtdonrails.api.enums.NextActionStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -50,4 +52,22 @@ public interface NextActionRepository extends JpaRepository<NextAction, UUID> {
     Page<NextAction> findAllByStatusAndItem_DeletedAtIsNullOrderByItem_UpdatedAtDesc(NextActionStatus status, Pageable pageable);
 
     List<NextAction> findAllByStatusAndItem_DeletedAtIsNullOrderByItem_UpdatedAtAsc(NextActionStatus status);
+
+    @Query("""
+        select nextAction
+        from NextAction nextAction
+        where nextAction.status = :status
+        and nextAction.schedule.dateEnd <= :dateEnd
+        """)
+    List<NextAction> findAllDoneBeforeDate(
+        @Param("status") NextActionStatus status,
+        @Param("dateEnd") LocalDate dateEnd);
+
+    @Modifying
+    @Query(value = "delete from next_action_contexts where next_action_id = :id", nativeQuery = true)
+    void deleteContextLinks(@Param("id") UUID id);
+
+    @Modifying
+    @Query(value = "delete from next_action_contexts where context_id = :contextId", nativeQuery = true)
+    void deleteContextLinksForContext(@Param("contextId") UUID contextId);
 }

@@ -9,7 +9,9 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.ManyToMany;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -33,6 +35,9 @@ public class Context extends AuditableEntity {
 
     @ManyToMany(mappedBy = "contexts")
     private final Set<NextAction> nextActions = new HashSet<>();
+
+    @OneToMany(mappedBy = "context", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    private final Set<ContextIconAsset> iconAssets = new HashSet<>();
 
     public Context() {
     }

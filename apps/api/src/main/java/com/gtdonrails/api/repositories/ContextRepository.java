@@ -1,5 +1,6 @@
 package com.gtdonrails.api.repositories;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -15,4 +16,6 @@ public interface ContextRepository extends JpaRepository<Context, UUID> {
     Optional<Context> findByIdAndDeletedAtIsNull(UUID id);
 
     List<Context> findAllByIdInAndDeletedAtIsNull(Collection<UUID> ids);
+
+    List<Context> findAllByDeletedAtLessThanEqual(Instant deletedAt);
 }

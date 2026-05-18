@@ -1,5 +1,6 @@
 package com.gtdonrails.api.repositories;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -13,6 +14,8 @@ public interface ItemRepository extends JpaRepository<Item, UUID> {
     List<Item> findAllByStatusAndDeletedAtIsNullOrderByCreatedAtDesc(ItemStatus status);
 
     List<Item> findAllByStatusAndDeletedAtIsNotNullOrderByUpdatedAtDesc(ItemStatus status);
+
+    List<Item> findAllByDeletedAtLessThanEqual(Instant deletedAt);
 
     Optional<Item> findByIdAndDeletedAtIsNull(UUID id);
 
