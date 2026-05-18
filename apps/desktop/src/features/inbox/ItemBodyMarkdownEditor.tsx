@@ -218,6 +218,44 @@ class DividerWidget extends WidgetType {
   }
 }
 
+class BulletMarkWidget extends WidgetType {
+  constructor(private level: number) { super(); }
+  eq(other: BulletMarkWidget): boolean { return this.level === other.level; }
+  toDOM(): HTMLElement {
+    const el = document.createElement("span");
+    el.className = `cm-bullet-mark cm-bullet-level-${this.level}`;
+    el.textContent = "\u2022 ";
+    return el;
+  }
+}
+
+class QuoteMarkWidget extends WidgetType {
+  toDOM(): HTMLElement {
+    const el = document.createElement("span");
+    el.className = "cm-quote-mark";
+    el.textContent = "\u258c ";
+    return el;
+  }
+}
+
+class NumberedMarkWidget extends WidgetType {
+  toDOM(): HTMLElement {
+    const el = document.createElement("span");
+    el.className = "cm-numbered-mark";
+    el.textContent = "1. ";
+    return el;
+  }
+}
+
+class LetteredMarkWidget extends WidgetType {
+  toDOM(): HTMLElement {
+    const el = document.createElement("span");
+    el.className = "cm-lettered-mark";
+    el.textContent = "a. ";
+    return el;
+  }
+}
+
 function buildLineBlockDecorations(view: EditorView, lineBlocks: ItemBody["lineBlocks"], docLength: number, decos: {from: number, to: number, deco: Decoration}[]) {
   for (const block of lineBlocks) {
     if (block.from > docLength) continue;
@@ -238,16 +276,7 @@ function buildLineBlockDecorations(view: EditorView, lineBlocks: ItemBody["lineB
       decos.push({
         from: line.from + textIndent,
         to: line.from + textIndent,
-        deco: Decoration.widget({
-          widget: new class extends WidgetType {
-            toDOM() {
-              const el = document.createElement("span");
-              el.className = `cm-bullet-mark cm-bullet-level-${level}`;
-              el.textContent = "• ";
-              return el;
-            }
-          }()
-        })
+        deco: Decoration.widget({ widget: new BulletMarkWidget(level) })
       });
     } else if (block.type === "checklist") {
       const textIndent = line.text.match(/^\s*/)?.[0].length || 0;
@@ -272,48 +301,21 @@ function buildLineBlockDecorations(view: EditorView, lineBlocks: ItemBody["lineB
       decos.push({
         from: line.from + textIndent,
         to: line.from + textIndent,
-        deco: Decoration.widget({
-          widget: new class extends WidgetType {
-            toDOM() {
-              const el = document.createElement("span");
-              el.className = "cm-quote-mark";
-              el.textContent = "▌ ";
-              return el;
-            }
-          }()
-        })
+        deco: Decoration.widget({ widget: new QuoteMarkWidget() })
       });
     } else if (block.type === "numbered") {
       const textIndent = line.text.match(/^\s*/)?.[0].length || 0;
       decos.push({
         from: line.from + textIndent,
         to: line.from + textIndent,
-        deco: Decoration.widget({
-          widget: new class extends WidgetType {
-            toDOM() {
-              const el = document.createElement("span");
-              el.className = "cm-numbered-mark";
-              el.textContent = "1. ";
-              return el;
-            }
-          }()
-        })
+        deco: Decoration.widget({ widget: new NumberedMarkWidget() })
       });
     } else if (block.type === "lettered") {
       const textIndent = line.text.match(/^\s*/)?.[0].length || 0;
       decos.push({
         from: line.from + textIndent,
         to: line.from + textIndent,
-        deco: Decoration.widget({
-          widget: new class extends WidgetType {
-            toDOM() {
-              const el = document.createElement("span");
-              el.className = "cm-lettered-mark";
-              el.textContent = "a. ";
-              return el;
-            }
-          }()
-        })
+        deco: Decoration.widget({ widget: new LetteredMarkWidget() })
       });
     }
   }
