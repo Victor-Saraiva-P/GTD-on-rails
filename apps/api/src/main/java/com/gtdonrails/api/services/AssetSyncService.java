@@ -12,6 +12,7 @@ import com.gtdonrails.api.config.AssetsProperties;
 import com.gtdonrails.api.dtos.assets.AssetSyncState;
 import com.gtdonrails.api.dtos.assets.AssetSyncStatusDto;
 import jakarta.annotation.PreDestroy;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
@@ -47,7 +48,7 @@ public class AssetSyncService implements ApplicationRunner {
      * <p>Example: {@code assetSyncService.run(args)}.</p>
      */
     @Override
-    public void run(ApplicationArguments args) throws IOException {
+    public void run(@NonNull ApplicationArguments args) throws IOException {
         Files.createDirectories(localDirectory());
 
         if (!rcloneAssetSyncService.isEnabled()) {

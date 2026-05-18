@@ -144,6 +144,21 @@ class AssetStorageServiceTests {
     }
 
     @Test
+    void rejectsLocalItemAssetDestinationTraversal() throws IOException {
+        Path sourcePath = tempDir.resolve("report.pdf");
+        Files.write(sourcePath, new byte[] {1});
+        AssetStorageService assetStorageService = newAssetStorageService();
+
+        IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> assetStorageService.copyLocalItemAsset("../report.pdf", sourcePath));
+
+        assertEquals(
+            "asset path value '../report.pdf' is invalid; expected relative path without parent traversal",
+            exception.getMessage());
+    }
+
+    @Test
     void rejectsEmptyItemAsset() {
         UUID itemId = UUID.randomUUID();
         MockMultipartFile file = new MockMultipartFile("file", "file.pdf", "application/pdf", new byte[0]);

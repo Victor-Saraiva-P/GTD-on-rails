@@ -11,8 +11,8 @@ export type InsertMarkdownLinkEventDetail = {
   url: string;
 };
 
-const markdownImagePattern = /!\[([^\]\n]*)\]\(([^)\s]+)\)/g;
-const markdownLinkPattern = /\[([^\]\n]+)\]\(([^)\s]+)\)/g;
+const markdownImagePattern = /!\[([^]\n]*)]\(([^)\s]+)\)/g;
+const markdownLinkPattern = /\[([^]\n]+)]\(([^)\s]+)\)/g;
 
 export function dispatchInsertMarkdownLink(url: string, text?: string, image = false) {
   window.dispatchEvent(new CustomEvent<InsertMarkdownLinkEventDetail>(INSERT_MARKDOWN_LINK_EVENT, { detail: { image, text, url } }));

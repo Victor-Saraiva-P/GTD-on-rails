@@ -1,6 +1,7 @@
 package com.gtdonrails.api.entities;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.HashSet;
@@ -109,7 +110,7 @@ public class NextAction extends AuditableEntity {
 
         BigDecimal normalizedEnergy = energy.stripTrailingZeros();
         requireAllowedEnergyScale(normalizedEnergy);
-        normalizedEnergy = energy.setScale(ENERGY_SCALE);
+        normalizedEnergy = energy.setScale(ENERGY_SCALE, RoundingMode.UNNECESSARY);
         requireEnergyInRange(normalizedEnergy);
         this.energy = normalizedEnergy;
     }

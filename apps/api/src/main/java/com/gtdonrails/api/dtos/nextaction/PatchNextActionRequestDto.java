@@ -16,11 +16,9 @@ import jakarta.validation.constraints.Size;
 public record PatchNextActionRequestDto(
     @DecimalMin(
         value = NextAction.MIN_ENERGY_VALUE,
-        inclusive = true,
         message = "expected between " + NextAction.MIN_ENERGY_VALUE + " and " + NextAction.MAX_ENERGY_VALUE)
     @DecimalMax(
         value = NextAction.MAX_ENERGY_VALUE,
-        inclusive = true,
         message = "expected between " + NextAction.MIN_ENERGY_VALUE + " and " + NextAction.MAX_ENERGY_VALUE)
     @Digits(integer = 2, fraction = NextAction.ENERGY_SCALE, message = "expected up to 1 decimal place")
     BigDecimal energy,

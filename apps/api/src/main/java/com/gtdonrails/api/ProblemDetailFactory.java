@@ -13,12 +13,12 @@ import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.context.request.WebRequest;
 
 @Component
-class ProblemDetailFactory {
+public class ProblemDetailFactory {
 
     private final String projectName;
     private final String apiBasePath;
 
-    ProblemDetailFactory(
+    public ProblemDetailFactory(
         @Value("${api.project-name:https://gtdonrails.local}") String projectName,
         @Value("${api.base-url:/errors}") String apiBasePath
     ) {
@@ -26,7 +26,7 @@ class ProblemDetailFactory {
         this.apiBasePath = apiBasePath;
     }
 
-    ProblemDetail create(
+    public ProblemDetail create(
         HttpStatusCode status,
         String title,
         String typePath,
@@ -44,7 +44,7 @@ class ProblemDetailFactory {
         return problemDetail;
     }
 
-    ProblemDetail createDefault(
+    public ProblemDetail createDefault(
         HttpStatusCode status, @Nullable Object body, WebRequest request) {
         if (status.value() == HttpStatus.NOT_FOUND.value()) {
             String path = extractPath(request);

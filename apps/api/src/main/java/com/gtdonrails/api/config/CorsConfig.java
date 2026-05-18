@@ -2,6 +2,7 @@ package com.gtdonrails.api.config;
 
 import java.util.Arrays;
 
+import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
@@ -25,7 +26,7 @@ public class CorsConfig implements WebMvcConfigurer {
      * <p>Example: {@code corsConfig.addCorsMappings(registry)}.</p>
      */
     @Override
-    public void addCorsMappings(CorsRegistry registry) {
+    public void addCorsMappings(@NonNull CorsRegistry registry) {
         if (allowedOrigins.length == 0) {
             return;
         }
