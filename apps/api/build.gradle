@@ -14,6 +14,10 @@ java {
 	targetCompatibility = JavaVersion.VERSION_21
 }
 
+dependencyLocking {
+	lockAllConfigurations()
+}
+
 repositories {
 	mavenCentral()
 }
