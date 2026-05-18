@@ -339,7 +339,15 @@ type ContextIconContentProps = ContextIconDropzoneProps & {
 
 function ContextIconDialog(props: ContextIconDialogProps) {
   return (
-    <div className="context-icon-dialog__backdrop" role="presentation" onClick={props.onClose}>
+    <div
+      className="context-icon-dialog__backdrop"
+      role="presentation"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          props.onClose();
+        }
+      }}
+    >
       <ContextIconDialogPanel {...props} />
     </div>
   );
@@ -347,7 +355,7 @@ function ContextIconDialog(props: ContextIconDialogProps) {
 
 function ContextIconDialogPanel(props: ContextIconDialogProps) {
   return (
-    <section ref={props.dialogRef} className="context-icon-dialog" role="dialog" aria-modal="true" aria-label={`Edit icon for ${props.context.name}`} tabIndex={-1} onClick={(event) => event.stopPropagation()}>
+    <section ref={props.dialogRef} className="context-icon-dialog" role="dialog" aria-modal="true" aria-label={`Edit icon for ${props.context.name}`} tabIndex={-1}>
       <ContextIconHeader context={props.context} isBusy={props.isBusy} onClose={props.onClose} />
       <ContextIconContent {...props} />
     </section>
