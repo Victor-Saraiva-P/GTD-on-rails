@@ -99,7 +99,7 @@ fn spawn_backend(
     ready_file: &Path,
 ) -> Result<(tauri::async_runtime::Receiver<CommandEvent>, CommandChild), Box<dyn std::error::Error>>
 {
-    let jar_path = app.path().resource_dir()?.join("binaries/gtd-api.jar");
+    let jar_path = resolve_backend_jar_path(app)?;
     let child = app
         .shell()
         .sidecar(SIDECAR_PROGRAM)?
@@ -108,6 +108,40 @@ fn spawn_backend(
         .env("GTD_SIDECAR_READY_FILE", ready_file.as_os_str())
         .spawn()?;
     Ok(child)
+}
+
+fn resolve_backend_jar_path(app: &App) -> Result<PathBuf, String> {
+    let candidates = backend_jar_candidates(app);
+    candidates
+        .iter()
+        .find(|path| path.is_file())
+        .cloned()
+        .ok_or_else(|| missing_backend_jar_error(&candidates))
+}
+
+fn backend_jar_candidates(app: &App) -> Vec<PathBuf> {
+    let mut candidates = Vec::new();
+    if let Ok(resource_dir) = app.path().resource_dir() {
+        candidates.push(resource_dir.join("binaries/gtd-api.jar"));
+    }
+    if let Ok(exe_path) = std::env::current_exe() {
+        if let Some(exe_dir) = exe_path.parent() {
+            candidates.push(exe_dir.join("binaries/gtd-api.jar"));
+        }
+    }
+    candidates
+}
+
+fn missing_backend_jar_error(candidates: &[PathBuf]) -> String {
+    let paths = candidates
+        .iter()
+        .map(|path| path.display().to_string())
+        .collect::<Vec<_>>()
+        .join(", ");
+    format!(
+        "gtd-api.jar candidates value '{}' is invalid; expected readable backend jar",
+        paths
+    )
 }
 
 fn sidecar_profiles() -> String {

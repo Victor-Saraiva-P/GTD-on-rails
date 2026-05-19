@@ -23,5 +23,5 @@ cp "scripts/install-native-linux.sh" "$package_dir/install.sh"
 chmod +x "$package_dir/gtd-on-rails" "$package_dir/gtd-api" "$package_dir/install.sh"
 
 tar -C "$native_dir" -czf "$archive_path" "$package_name"
-sha256sum "$archive_path" > "$archive_path.sha256"
+(cd "$native_dir" && sha256sum "$package_name.tar.gz" > "$package_name.tar.gz.sha256")
 printf 'Created %s\n' "$archive_path"
