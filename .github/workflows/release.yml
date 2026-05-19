@@ -82,3 +82,16 @@ jobs:
           releaseDraft: true
           prerelease: false
           projectPath: ./apps/desktop
+
+      - name: Package native Linux tarball
+        run: pnpm run desktop:package:native-linux
+        working-directory: apps/desktop
+
+      - name: Upload native Linux tarball
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${GITHUB_REF_NAME}" \
+            apps/desktop/src-tauri/target/release/native/*.tar.gz \
+            apps/desktop/src-tauri/target/release/native/*.tar.gz.sha256 \
+            --clobber
