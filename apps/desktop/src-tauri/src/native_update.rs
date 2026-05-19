@@ -95,8 +95,8 @@ pub fn native_update_check() -> Result<NativeUpdateStatus, String> {
     recover_native_installation()?;
     let release = fetch_latest_release()?;
     let current_version = env!("CARGO_PKG_VERSION").to_string();
-    let latest_version = release.tag_name.trim_start_matches('v').to_string();
-    if !is_newer_version(&latest_version, &current_version) {
+    let latest_version = release_tag_version(&release.tag_name)?;
+    if !is_newer_version(&latest_version, &current_version)? {
         return Ok(no_update_status(current_version, latest_version));
     }
     build_update_status(current_version, latest_version, &release.assets)
@@ -286,15 +286,41 @@ fn shell_quote(value: &str) -> String {
     format!("'{}'", value.replace('\'', "'\\''"))
 }
 
-fn is_newer_version(latest: &str, current: &str) -> bool {
-    version_parts(latest) > version_parts(current)
+fn release_tag_version(tag_name: &str) -> Result<String, String> {
+    let version = tag_name
+        .strip_prefix("app-v")
+        .or_else(|| tag_name.strip_prefix('v'))
+        .unwrap_or(tag_name);
+    version_parts(version)?;
+    Ok(version.to_string())
 }
 
-fn version_parts(version: &str) -> Vec<u32> {
-    version
+fn is_newer_version(latest: &str, current: &str) -> Result<bool, String> {
+    Ok(version_parts(latest)? > version_parts(current)?)
+}
+
+fn version_parts(version: &str) -> Result<Vec<u32>, String> {
+    let parts = version
         .split('.')
-        .map(|part| part.parse::<u32>().unwrap_or(0))
-        .collect()
+        .map(parse_version_part)
+        .collect::<Result<Vec<_>, _>>()?;
+    if parts.len() == 3 {
+        return Ok(parts);
+    }
+    Err(format!(
+        "version value '{version}' is invalid; expected semantic version like 1.2.3"
+    ))
+}
+
+fn parse_version_part(part: &str) -> Result<u32, String> {
+    if !part.is_empty() && part.chars().all(|character| character.is_ascii_digit()) {
+        return part.parse::<u32>().map_err(|error| {
+            format!("version part value '{part}' is invalid; expected u32: {error}")
+        });
+    }
+    Err(format!(
+        "version part value '{part}' is invalid; expected numeric segment"
+    ))
 }
 
 #[cfg(test)]
@@ -303,8 +329,20 @@ mod tests {
 
     #[test]
     fn newer_version_wins() {
-        assert!(is_newer_version("1.0.5", "1.0.4"));
-        assert!(!is_newer_version("1.0.4", "1.0.4"));
+        assert!(is_newer_version("1.0.5", "1.0.4").unwrap());
+        assert!(!is_newer_version("1.0.4", "1.0.4").unwrap());
+    }
+
+    #[test]
+    fn release_tag_prefixes_are_supported() {
+        assert_eq!(release_tag_version("v1.0.5").unwrap(), "1.0.5");
+        assert_eq!(release_tag_version("app-v1.0.5").unwrap(), "1.0.5");
+    }
+
+    #[test]
+    fn non_semver_tags_are_rejected() {
+        assert!(release_tag_version("app-vnext").is_err());
+        assert!(release_tag_version("release").is_err());
     }
 
     #[test]
