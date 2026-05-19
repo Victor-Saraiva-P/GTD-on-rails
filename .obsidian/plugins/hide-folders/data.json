@@ -15,6 +15,13 @@
     "gen",
     ".ai-jail",
     ".postman",
-    "postman"
+    "postman",
+    "src",
+    "src-tauri",
+    "gradle",
+    "data",
+    "e2e",
+    "scripts",
+    "test"
   ]
 }
