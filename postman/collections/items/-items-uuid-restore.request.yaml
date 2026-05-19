@@ -1,0 +1,7 @@
+$kind: http-request
+name: /items/{{item_id}}/restore
+url: "{{backend_url}}/items/{{item_id}}/restore"
+method: POST
+auth:
+  type: noauth
+order: 5000

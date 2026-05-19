@@ -1,0 +1,5 @@
+$kind: http-request
+name: /next-actions/done
+url: "{{backend_url}}/next-actions/done?page=0&size=20"
+method: GET
+order: 3000

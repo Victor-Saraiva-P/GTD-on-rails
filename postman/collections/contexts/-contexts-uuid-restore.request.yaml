@@ -1,0 +1,7 @@
+$kind: http-request
+name: /contexts/{{context_id}}/restore
+url: "{{backend_url}}/contexts/{{context_id}}/restore"
+method: POST
+auth:
+  type: noauth
+order: 6000

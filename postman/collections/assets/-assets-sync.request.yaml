@@ -1,0 +1,5 @@
+$kind: http-request
+name: /assets/sync
+url: "{{backend_url}}/assets/sync"
+method: POST
+order: 2000

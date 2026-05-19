@@ -4,5 +4,5 @@ Esqueleto mínimo do backend Spring Boot.
 
 ## Comandos
 
-- `./gradlew bootRun`
-- `./gradlew test`
+- `pnpm --filter @gtd-on-rails/api dev`
+- `pnpm --filter @gtd-on-rails/api test`

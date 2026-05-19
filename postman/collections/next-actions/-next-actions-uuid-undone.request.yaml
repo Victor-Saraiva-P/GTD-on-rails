@@ -1,0 +1,5 @@
+$kind: http-request
+name: /next-actions/{{item_id}}/undone
+url: "{{backend_url}}/next-actions/{{item_id}}/undone"
+method: POST
+order: 7000

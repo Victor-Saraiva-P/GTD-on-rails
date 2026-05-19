@@ -1,0 +1,7 @@
+$kind: http-request
+name: /items/{{item_id}}
+url: "{{backend_url}}/items/{{item_id}}"
+method: DELETE
+auth:
+  type: noauth
+order: 4000

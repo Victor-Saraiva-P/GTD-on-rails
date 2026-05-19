@@ -1,0 +1,5 @@
+$kind: http-request
+name: /assets/contexts/
+url: "{{backend_url}}/assets/contexts/230c2c4a-934f-4f4b-bb28-448a080a105a/icon.png"
+method: GET
+order: 3000

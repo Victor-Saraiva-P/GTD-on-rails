@@ -1,0 +1,5 @@
+$kind: http-request
+name: /test/reset
+url: "{{backend_url}}/test/reset"
+method: POST
+order: 1000

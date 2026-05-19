@@ -3,6 +3,25 @@
   "identifier": "main-capability",
   "description": "Capability for the main window of the desktop shell",
   "windows": ["main"],
-  "permissions": ["core:default"]
+  "permissions": [
+    "core:default",
+    "core:path:default",
+    "fs:default",
+    "updater:default",
+    "process:default",
+    {
+      "identifier": "http:default",
+      "allow": [
+        { "url": "http://127.0.0.1:*" },
+        { "url": "http://127.0.0.1:*/*" }
+      ]
+    },
+    {
+      "identifier": "fs:allow-read-file",
+      "allow": [
+        { "path": "$DOCUMENT/dev-gtd-on-rails/assets/**" },
+        { "path": "$DOCUMENT/gtd-on-rails/assets/**" }
+      ]
+    }
+  ]
 }
-

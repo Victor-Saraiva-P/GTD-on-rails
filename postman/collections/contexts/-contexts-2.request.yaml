@@ -1,0 +1,13 @@
+$kind: http-request
+name: /contexts/{{context_id}}
+url: "{{backend_url}}/contexts/{{context_id}}"
+method: PUT
+body:
+  type: json
+  content: |-
+    {
+        "name": "universidade"
+    }
+auth:
+  type: noauth
+order: 3000

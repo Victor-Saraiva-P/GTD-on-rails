@@ -1,0 +1,15 @@
+export const FORMAT_BULLET_EVENT = "gtd:format-bullet";
+export const FORMAT_HEADING_EVENT = "gtd:format-heading";
+export const FORMAT_NUMBERED_LIST_EVENT = "gtd:format-numbered-list";
+export const FORMAT_NORMAL_TEXT_EVENT = "gtd:format-normal-text";
+export const FORMAT_LETTERED_LIST_EVENT = "gtd:format-lettered-list";
+export const FORMAT_CHECKLIST_EVENT = "gtd:format-checklist";
+export const FORMAT_CHECKLIST_CHECKED_EVENT = "gtd:format-checklist-checked";
+export const FORMAT_CHECKLIST_UNCHECKED_EVENT = "gtd:format-checklist-unchecked";
+export const FORMAT_DIVIDER_EVENT = "gtd:format-divider";
+export const FORMAT_QUOTE_EVENT = "gtd:format-quote";
+export const FORMAT_BOLD_EVENT = "gtd:format-bold";
+export const FORMAT_ITALIC_EVENT = "gtd:format-italic";
+export const FORMAT_CODE_EVENT = "gtd:format-code";
+export const FORMAT_CLEAR_INLINE_EVENT = "gtd:format-clear-inline";
+export const OPEN_CURSOR_TARGET_EVENT = "gtd:open-cursor-target";

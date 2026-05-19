@@ -1,0 +1,7 @@
+$kind: http-request
+name: /contexts/{{context_id}}/icon
+url: "{{backend_url}}/contexts/{{context_id}}/icon"
+method: DELETE
+auth:
+  type: noauth
+order: 4500

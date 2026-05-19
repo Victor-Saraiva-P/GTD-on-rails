@@ -1,0 +1,39 @@
+package com.gtdonrails.api.config;
+
+import java.util.Arrays;
+
+import org.jspecify.annotations.NonNull;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+@Configuration
+public class CorsConfig implements WebMvcConfigurer {
+
+    private final String[] allowedOrigins;
+
+    public CorsConfig(@Value("${app.cors.allowed-origins:}") String[] allowedOrigins) {
+        this.allowedOrigins = Arrays.stream(allowedOrigins)
+            .map(String::trim)
+            .filter(origin -> !origin.isBlank())
+            .toArray(String[]::new);
+    }
+
+    /**
+     * Registers CORS mappings when origins are configured.
+     *
+     * <p>Example: {@code corsConfig.addCorsMappings(registry)}.</p>
+     */
+    @Override
+    public void addCorsMappings(@NonNull CorsRegistry registry) {
+        if (allowedOrigins.length == 0) {
+            return;
+        }
+
+        registry.addMapping("/**")
+            .allowedOrigins(allowedOrigins)
+            .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
+            .allowedHeaders("*");
+    }
+}

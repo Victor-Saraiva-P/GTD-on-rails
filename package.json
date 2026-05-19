@@ -5,8 +5,16 @@
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
+    "build:prod": "pnpm --filter @gtd-on-rails/desktop run desktop:build:prod",
+    "build:staging": "pnpm --filter @gtd-on-rails/desktop run desktop:build:staging",
+    "staging": "pnpm --filter @gtd-on-rails/desktop run desktop:staging",
+    "test": "pnpm run unitTest && pnpm run integrationTest && pnpm run e2e",
+    "frontend:coverage": "pnpm --filter @gtd-on-rails/desktop run coverage",
+    "e2e": "turbo run e2e",
     "lint": "turbo run lint",
-    "check": "turbo run check"
+    "check": "turbo run check",
+    "unitTest": "turbo run unitTest",
+    "integrationTest": "turbo run integrationTest"
   },
   "devDependencies": {
     "turbo": "^2.5.8"

@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if ! command -v java >/dev/null 2>&1; then
+  printf 'java command is invalid; expected Java 21 installed for GTD on Rails sidecar\n' >&2
+  exit 127
+fi
+
+if [ -z "${GTD_API_JAR_PATH:-}" ]; then
+  script_dir="$(dirname "$(readlink -f "$0")")"
+  GTD_API_JAR_PATH="$script_dir/gtd-api.jar"
+fi
+
+if [ ! -f "$GTD_API_JAR_PATH" ]; then
+  printf 'GTD_API_JAR_PATH value %s is invalid; expected readable backend jar\n' "$GTD_API_JAR_PATH" >&2
+  exit 1
+fi
+
+exec java -jar "$GTD_API_JAR_PATH" "$@"

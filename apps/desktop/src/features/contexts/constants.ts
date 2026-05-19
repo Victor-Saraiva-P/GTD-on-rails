@@ -1,0 +1,1 @@
+export const CONTEXT_RELATED_ITEMS_LIMIT = 10;

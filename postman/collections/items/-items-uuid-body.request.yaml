@@ -1,0 +1,18 @@
+$kind: http-request
+name: /items/{{item_id}}/body
+url: "{{backend_url}}/items/{{item_id}}/body"
+method: PATCH
+body:
+  type: json
+  content: |-
+    {
+        "body": {
+            "text": "Comprar cabo USB-C\n\nVerificar se precisa ser de 2 metros.",
+            "inlineMarks": [],
+            "lineBlocks": [],
+            "blockEntities": []
+        }
+    }
+auth:
+  type: noauth
+order: 2000

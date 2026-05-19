@@ -1,0 +1,242 @@
+.tree-list,
+.detail-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.tree-list--inbox {
+  gap: 0;
+}
+
+.tree-list--inbox .tree-list__item {
+  border-bottom: 0;
+}
+
+.tree-list--inbox .tree-list__item:last-child {
+  border-bottom: 0;
+}
+
+.tree-list__item,
+.detail-list__item {
+  margin: 0;
+}
+
+.tree-entry {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  min-height: 34px;
+  padding: 4px 8px;
+  border: 0;
+  background: transparent;
+  color: #d4d4d4;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  border-radius: 6px;
+}
+
+.tree-list--inbox .tree-entry {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr);
+  min-height: 26px;
+  width: calc(100% - 12px);
+  margin: 0 6px;
+  padding: 0 18px;
+  align-items: center;
+  column-gap: 8px;
+  border-radius: 0;
+  color: #b0aba7;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+}
+
+.context-item-entry {
+  grid-template-columns: 12px minmax(0, 1fr) auto;
+  column-gap: 10px;
+}
+
+.context-item-entry__status {
+  color: #8c8c8c;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.tree-entry:hover,
+.tree-entry:focus-visible {
+  background: #2e2e2e;
+  outline: none;
+}
+
+.tree-list--inbox .tree-entry:hover,
+.tree-list--inbox .tree-entry:focus-visible {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.tree-entry--active {
+  background: #2e2e2e;
+  color: #d4d4d4;
+}
+
+.tree-list--inbox .tree-entry--active {
+  background: rgba(var(--list-accent-rgb), 0.14);
+  color: #f0e8e4;
+}
+
+.tree-entry__marker {
+  width: 12px;
+  color: #9b9b9b;
+  font-size: 0.72rem;
+  text-align: center;
+  margin-top: 5px;
+}
+
+.tree-list--inbox .tree-entry__marker {
+  display: none;
+}
+
+.tree-entry__icon,
+.detail-card__icon {
+  width: 13px;
+  height: 13px;
+  object-fit: contain;
+  flex: 0 0 auto;
+  margin-top: 4px;
+}
+
+.tree-list--inbox .tree-entry__icon {
+  width: 12px;
+  height: 12px;
+  margin-top: 0;
+}
+
+.tree-entry__glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  height: auto;
+  flex: 0 0 auto;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.tree-entry__glyph--stuff {
+  color: var(--list-accent);
+}
+
+.tree-entry__glyph--context {
+  color: var(--list-accent);
+}
+
+.tree-entry__label,
+.detail-card__title {
+  font-size: 0.95rem;
+}
+
+.tree-entry__label {
+  flex: 1 1 auto;
+  min-width: 0;
+  line-height: 1.35;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-clamp: 2;
+  text-overflow: ellipsis;
+}
+
+.tree-list--inbox .tree-entry__label {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  font-size: 0.74rem;
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+  -webkit-box-orient: unset;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.tree-entry__input {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #d4d4d4;
+  font: inherit;
+  line-height: 1.35;
+}
+
+.tree-list--inbox .tree-entry__input {
+  color: #ece6e4;
+  font-family: var(--font-mono);
+}
+
+.tree-entry__input:focus {
+  outline: none;
+}
+
+.tree-entry__input,
+.inbox-detail__textarea {
+  cursor: text;
+}
+
+.detail-card {
+  display: grid;
+  gap: 14px;
+}
+
+.detail-card__meta {
+  margin: 0;
+  color: #9b9b9b;
+  font-size: 0.85rem;
+}
+
+.detail-card__textarea {
+  width: 100%;
+  min-height: clamp(220px, 42vh, 520px);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #d4d4d4;
+  resize: none;
+  font: inherit;
+  line-height: 1.55;
+}
+
+.detail-card__textarea:focus {
+  outline: none;
+}
+
+.detail-card__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #d4d4d4;
+  font-weight: 600;
+}
+
+.detail-list__item {
+  position: relative;
+  padding-left: 16px;
+  color: #d4d4d4;
+}
+
+.detail-list__item::before {
+  content: "•";
+  position: absolute;
+  left: 4px;
+  color: #9b9b9b;
+}
+

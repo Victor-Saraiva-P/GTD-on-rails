@@ -1,0 +1,13 @@
+$kind: http-request
+name: /items/{{item_id}}/title
+url: "{{backend_url}}/items/{{item_id}}/title"
+method: PATCH
+body:
+  type: json
+  content: |-
+    {
+        "title":"Task with another title"
+    }
+auth:
+  type: noauth
+order: 1000

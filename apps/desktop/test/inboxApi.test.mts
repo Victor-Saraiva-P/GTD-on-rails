@@ -1,0 +1,161 @@
+import assert from "node:assert/strict";
+import test, { describe, afterEach, mock } from "node:test";
+
+import {
+  fetchInboxStuffs,
+  fetchDeletedInboxStuffs,
+  createStuff,
+  deleteStuff,
+  processStuff,
+  restoreStuff,
+  uploadStuffAsset,
+  copyLocalStuffAsset,
+  updateStuffTitle,
+  updateStuffBody
+} from "../src/features/inbox/api.ts";
+import type { Stuff } from "../src/features/inbox/types.ts";
+
+describe("inbox API", () => {
+  const originalFetch = globalThis.fetch;
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  const dummyBody = { text: "# Details\n\n- Next action", inlineMarks: [], lineBlocks: [], blockEntities: [] };
+
+  test("fetchInboxStuffs returns mapped stuff array", async () => {
+    const mockResponse = [
+      { id: "1", title: "Task 1", body: "", status: "INBOX", createdAt: "2026-05-01T00:00:00Z" }
+    ];
+    
+    globalThis.fetch = mock.fn(async () => {
+      return new Response(JSON.stringify(mockResponse), { status: 200 });
+    });
+
+    const stuffs = await fetchInboxStuffs();
+    assert.equal(stuffs.length, 1);
+    assert.equal(stuffs[0].id, "1");
+    assert.deepEqual(stuffs[0].body, { text: "", inlineMarks: [], lineBlocks: [], blockEntities: [] });
+  });
+
+  test("fetchDeletedInboxStuffs returns mapped stuff array", async () => {
+    const mockResponse = [
+      { id: "1", title: "Task 1", body: "", status: "INBOX", createdAt: "2026-05-01T00:00:00Z" }
+    ];
+
+    globalThis.fetch = mock.fn(async (input) => {
+      assert.ok(input.toString().endsWith("/inbox/deleted"));
+      return new Response(JSON.stringify(mockResponse), { status: 200 });
+    });
+
+    const stuffs = await fetchDeletedInboxStuffs();
+    assert.equal(stuffs.length, 1);
+    assert.equal(stuffs[0].id, "1");
+    assert.deepEqual(stuffs[0].body, { text: "", inlineMarks: [], lineBlocks: [], blockEntities: [] });
+  });
+
+  test("createStuff sends correct payload", async () => {
+    const mockResponse = { id: "2", title: "New Task", body: "", status: "INBOX", createdAt: "2026-05-01T00:00:00Z" };
+    
+    globalThis.fetch = mock.fn(async (input, init) => {
+      assert.equal(init?.method, "POST");
+      assert.ok(input.toString().endsWith("/inbox"));
+      assert.equal(init?.body, JSON.stringify({ title: "New Task" }));
+      return new Response(JSON.stringify(mockResponse), { status: 200 });
+    });
+
+    const stuff = await createStuff("New Task");
+    assert.equal(stuff.id, "2");
+  });
+
+  test("deleteStuff sends DELETE method", async () => {
+    globalThis.fetch = mock.fn(async (input, init) => {
+      assert.ok(input.toString().endsWith("/items/123"));
+      assert.equal(init?.method, "DELETE");
+      return new Response("", { status: 200 });
+    });
+
+    await deleteStuff("123");
+  });
+
+  test("restoreStuff sends POST method", async () => {
+    globalThis.fetch = mock.fn(async (input, init) => {
+      assert.ok(input.toString().endsWith("/items/456/restore"));
+      assert.equal(init?.method, "POST");
+      return new Response("", { status: 200 });
+    });
+
+    await restoreStuff("456");
+  });
+
+  test("uploadStuffAsset returns public asset url", async () => {
+    const mockResponse = { id: "asset-1", relativePath: "items/1/report.pdf", url: "/assets/items/1/report.pdf", fileName: "report.pdf", contentType: "application/pdf", image: false };
+    globalThis.fetch = mock.fn(async (input, init) => {
+      assert.ok(input.toString().endsWith("/items/1/assets"));
+      assert.equal(init?.method, "POST");
+      assert.ok(init?.body instanceof FormData);
+      return new Response(JSON.stringify(mockResponse), { status: 200 });
+    });
+
+    const asset = await uploadStuffAsset("1", new File([new Uint8Array([1])], "report.pdf", { type: "application/pdf" }));
+    assert.equal(asset.url, "/assets/items/1/report.pdf");
+  });
+
+  test("copyLocalStuffAsset sends source path", async () => {
+    const mockResponse = { id: "asset-1", relativePath: "items/1/report.pdf", url: "/assets/items/1/report.pdf", fileName: "report.pdf", contentType: "application/pdf", image: false };
+    globalThis.fetch = mock.fn(async (input, init) => {
+      assert.ok(input.toString().endsWith("/items/1/assets/local-file"));
+      assert.equal(init?.method, "POST");
+      assert.equal(init?.body, JSON.stringify({ sourcePath: "/home/victor/Downloads/report.pdf" }));
+      return new Response(JSON.stringify(mockResponse), { status: 200 });
+    });
+
+    const asset = await copyLocalStuffAsset("1", "/home/victor/Downloads/report.pdf");
+    assert.equal(asset.relativePath, "items/1/report.pdf");
+  });
+
+  test("updateStuffTitle only changes title", async () => {
+    const item: Stuff = { id: "3", title: "Old Title", body: dummyBody, status: "INBOX", createdAt: "2026-05-01T00:00:00Z" };
+    const mockResponse = { ...item, title: "New Title" };
+
+    globalThis.fetch = mock.fn(async (input, init) => {
+      assert.ok(input.toString().endsWith("/items/3/title"));
+      assert.equal(init?.method, "PATCH");
+      assert.equal(init?.body, JSON.stringify({ title: "New Title" }));
+      return new Response(JSON.stringify(mockResponse), { status: 200 });
+    });
+
+    const updated = await updateStuffTitle(item, "New Title");
+    assert.equal(updated.title, "New Title");
+    assert.deepEqual(updated.body, dummyBody);
+  });
+
+  test("updateStuffBody only changes body", async () => {
+    const item: Stuff = { id: "4", title: "Title", body: { text: "", inlineMarks: [], lineBlocks: [], blockEntities: [] }, status: "INBOX", createdAt: "2026-05-01T00:00:00Z" };
+    const mockResponse = { ...item, body: dummyBody };
+
+    globalThis.fetch = mock.fn(async (input, init) => {
+      assert.ok(input.toString().endsWith("/items/4/body"));
+      assert.equal(init?.method, "PATCH");
+      assert.equal(init?.body, JSON.stringify({ body: dummyBody }));
+      return new Response(JSON.stringify(mockResponse), { status: 200 });
+    });
+
+    const updated = await updateStuffBody(item, dummyBody);
+    assert.equal(updated.title, "Title");
+    assert.deepEqual(updated.body, dummyBody);
+  });
+
+  test("processStuff sends next action metadata payload", async () => {
+    const item: Stuff = { id: "5", title: "Task", body: dummyBody, status: "INBOX", createdAt: "2026-05-01T00:00:00Z" };
+    globalThis.fetch = mock.fn(async (input, init) => {
+      assert.ok(input.toString().endsWith("/inbox/5/next-action"));
+      assert.equal(init?.method, "POST");
+      assert.equal(init?.body, JSON.stringify({ energy: 4.5, estimatedTime: { hours: 1, minutes: 30 }, contextIds: ["ctx-1"] }));
+      return new Response(null, { status: 204 });
+    });
+
+    await processStuff(item, 4.5, 90, ["ctx-1"]);
+  });
+});

@@ -1,0 +1,18 @@
+$kind: http-request
+name: /inbox/{{item_id}}/next-action
+url: "{{backend_url}}/inbox/{{item_id}}/next-action"
+method: POST
+body:
+  type: json
+  content: |-
+    {
+      "energy": 4.5,
+      "estimatedTime": {
+        "hours": 1,
+        "minutes": 30
+      },
+      "contextIds": [
+        "{{context_id}}"
+      ]
+    }
+order: 3000

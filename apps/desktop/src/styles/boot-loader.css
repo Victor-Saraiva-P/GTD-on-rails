@@ -1,0 +1,68 @@
+.boot-loader {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-background-primary);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-body);
+  z-index: 9999;
+  transition: opacity 0.5s ease-out;
+}
+
+.boot-loader--fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.boot-loader__terminal {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 2rem;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 4px;
+  max-width: 600px;
+  width: 100%;
+}
+
+.boot-loader__brand {
+  color: var(--color-accent-red);
+  font-weight: bold;
+  margin: 0 0 1rem 0;
+}
+
+.boot-loader__line {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.boot-loader__bracket {
+  color: var(--color-text-dim);
+}
+
+.boot-loader__status {
+  color: var(--color-accent-red);
+}
+
+.boot-loader__cursor {
+  display: inline-block;
+  width: 8px;
+  height: 1em;
+  background-color: var(--color-text-primary);
+  margin-left: 0.5rem;
+  animation: boot-cursor-blink 1s step-end infinite;
+}
+
+@keyframes boot-cursor-blink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}

@@ -1,0 +1,5 @@
+$kind: http-request
+name: /next-actions/deleted
+url: "{{backend_url}}/next-actions/deleted"
+method: GET
+order: 4000

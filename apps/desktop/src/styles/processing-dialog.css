@@ -1,0 +1,152 @@
+.processing-dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(620px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  z-index: 30;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  padding: 20px 18px 16px;
+  border: 1px solid var(--list-accent);
+  border-radius: 6px;
+  background: var(--terminal-surface);
+  color: #d7d2ce;
+  font-family: var(--font-mono);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.42);
+  outline: none;
+}
+
+.processing-dialog__title {
+  position: absolute;
+  top: -9px;
+  left: 12px;
+  padding: 0 4px;
+  background: var(--terminal-surface);
+  color: var(--list-accent);
+  font-size: 0.84rem;
+}
+
+.processing-dialog__content {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  overflow: auto;
+}
+
+.processing-dialog__command {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: #d7d2ce;
+  font: inherit;
+  text-align: left;
+}
+
+.processing-dialog__command kbd {
+  justify-self: end;
+  border: 0;
+  background: transparent;
+  color: var(--list-accent);
+  font: inherit;
+}
+
+.processing-dialog__step {
+  outline: none;
+}
+
+.processing-dialog__step--context,
+.processing-dialog__step--energy,
+.processing-dialog__step--time {
+  display: grid;
+  gap: 12px;
+}
+
+.processing-dialog__label {
+  color: var(--list-accent);
+  font-size: 0.82rem;
+  padding: 0 4px;
+}
+
+.processing-dialog__input {
+  width: 100%;
+  min-height: 34px;
+  border: 1px solid rgba(var(--list-accent-rgb), 0.72);
+  border-radius: 2px;
+  background: #171717;
+  color: #f7efe4;
+  padding: 0 10px;
+  font: inherit;
+  outline: none;
+}
+
+.processing-dialog__input--energy,
+.processing-dialog__input--time {
+  font-size: 1.2rem;
+  font-weight: 700;
+  text-align: right;
+  letter-spacing: 0.05em;
+  font-variant-numeric: tabular-nums;
+}
+
+.processing-dialog__input:focus {
+  outline: 1px solid var(--list-accent);
+  outline-offset: 1px;
+}
+
+.processing-dialog__list {
+  display: grid;
+  gap: 4px;
+  outline: none;
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.processing-dialog__list-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  color: #d7d2ce;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.processing-dialog__list-item--focused {
+  background: rgba(var(--list-accent-rgb), 0.15);
+  color: var(--list-accent);
+}
+
+.processing-dialog__list-item--checked {
+  color: #f7efe4;
+}
+
+.processing-dialog__list-item--focused.processing-dialog__list-item--checked {
+  background: rgba(var(--list-accent-rgb), 0.24);
+  color: var(--list-accent);
+}
+
+.processing-dialog__list-item--muted {
+  color: #8f8a86;
+  cursor: default;
+}
+
+.processing-dialog__check {
+  color: var(--list-accent);
+}
+
+.processing-dialog__hint {
+  color: #8f8a86;
+  font-size: 0.78rem;
+  padding: 0 4px;
+}

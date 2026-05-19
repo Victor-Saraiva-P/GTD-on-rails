@@ -1,0 +1,13 @@
+$kind: http-request
+name: /items/{{item_id}}/assets
+url: "{{backend_url}}/items/{{item_id}}/assets"
+method: POST
+body:
+  type: formdata
+  content:
+    - type: file
+      key: file
+      src: /home/victor/Downloads/Modelo de plano de trabalho dos PICs atual - Plano 1.pdf
+auth:
+  type: noauth
+order: 3000
