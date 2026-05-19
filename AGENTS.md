@@ -67,6 +67,7 @@
 
 ## Commits
 
+- Use Git Flow for project development. Create `feature/...`, `bugfix/...`, `release/...`, or `hotfix/...` branches as appropriate.
 - Use Conventional Commit subjects: `feat:`, `fix:`, `test:`, `chore:`,
   `docs:`, or the closest accurate type.
 - Write the subject in lowercase imperative style after the type.
