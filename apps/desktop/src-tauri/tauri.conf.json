@@ -24,17 +24,8 @@
       "csp": null
     }
   },
-  "plugins": {
-    "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEMxQjRFNjFGOUVENTU0OTAKUldTUVZOV2VIK2Ewd1QrUXJqdGJOdFV4cDZ3UUVuREFORGhXYUhIcDJYcG9aWThBQitPY0E1aGgK",
-      "endpoints": [
-        "https://github.com/Victor-Saraiva-P/GTD-on-rails/releases/latest/download/latest.json"
-      ]
-    }
-  },
   "bundle": {
     "active": true,
-    "createUpdaterArtifacts": true,
     "externalBin": ["binaries/gtd-api"],
     "icon": [
       "icons/icon.png",

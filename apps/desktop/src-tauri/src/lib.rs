@@ -5,6 +5,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use serde::Serialize;
 use tauri::Manager;
 
+mod native_update;
 mod sidecar;
 
 #[derive(Serialize)]
@@ -668,8 +669,6 @@ mod tests {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_updater::Builder::new().build())
-        .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_shell::init())
@@ -687,6 +686,8 @@ pub fn run() {
             open_external_url,
             open_temp_asset,
             render_pdf_first_page_preview,
+            native_update::native_update_check,
+            native_update::native_update_install,
             sidecar_backend_status
         ])
         .run(tauri::generate_context!())

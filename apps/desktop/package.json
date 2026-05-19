@@ -8,7 +8,7 @@
     "build": "pnpm run build:web",
     "build:sidecar": "pnpm --filter @gtd-on-rails/api run bootJar && mkdir -p src-tauri/binaries && cp ../api/build/libs/api-1.0.4.jar src-tauri/binaries/gtd-api.jar",
     "build:web": "tsc && vite build",
-    "desktop:build:ci": "GTD_SIDECAR_PROFILES=ci,sidecar tauri build --config src-tauri/tauri.ci.conf.json",
+    "desktop:build:ci": "GTD_SIDECAR_PROFILES=ci,sidecar tauri build --no-bundle",
     "desktop:build:prod": "GTD_SIDECAR_PROFILES=prod,sidecar tauri build",
     "desktop:build:staging": "GTD_SIDECAR_PROFILES=staging,sidecar tauri build",
     "desktop:package:native-linux": "scripts/package-native-linux.sh",
@@ -35,8 +35,6 @@
     "@tauri-apps/api": "^2.10.1",
     "@tauri-apps/plugin-fs": "^2.5.1",
     "@tauri-apps/plugin-http": "^2.5.9",
-    "@tauri-apps/plugin-process": "^2.3.1",
-    "@tauri-apps/plugin-updater": "^2.10.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },

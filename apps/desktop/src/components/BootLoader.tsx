@@ -1,7 +1,5 @@
 import { useEffect, useState, type PropsWithChildren } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { check } from "@tauri-apps/plugin-updater";
-import { relaunch } from "@tauri-apps/plugin-process";
 import { setRuntimeApiBaseUrl } from "../config/env.ts";
 import { apiJson } from "../lib/api/apiClient.ts";
 import { isTauriRuntime } from "../lib/tauriRuntime.ts";
@@ -14,6 +12,15 @@ type SidecarBackendStatus = {
   enabled: boolean;
   baseUrl: string | null;
   error: string | null;
+};
+
+type NativeUpdateStatus = {
+  available: boolean;
+  latestVersion: string;
+  archiveName: string | null;
+  archiveUrl: string | null;
+  checksumName: string | null;
+  checksumUrl: string | null;
 };
 
 async function pingBackend(): Promise<boolean> {
@@ -41,6 +48,26 @@ function delay(milliseconds: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
 }
 
+async function installNativeUpdate(setUpdateStatus: (status: string) => void): Promise<boolean> {
+  if (!isTauriRuntime()) return false;
+
+  const update = await invoke<NativeUpdateStatus>("native_update_check");
+  if (!update.available) return false;
+
+  setUpdateStatus(`Installing update ${update.latestVersion}...`);
+  await invoke("native_update_install", { request: requiredNativeUpdate(update) });
+  return true;
+}
+
+function requiredNativeUpdate(update: NativeUpdateStatus) {
+  if (!update.archiveName || !update.archiveUrl || !update.checksumName || !update.checksumUrl) {
+    throw new Error(
+      `native update ${update.latestVersion} is invalid; expected archive and checksum assets`
+    );
+  }
+  return update;
+}
+
 function useBackendHealth() {
   const [isBooted, setIsBooted] = useState(false);
   const [dots, setDots] = useState("");
@@ -53,14 +80,7 @@ function useBackendHealth() {
     const checkHealth = async () => {
       if (isTauriRuntime()) {
         try {
-          const update = await check();
-          if (update) {
-            setUpdateStatus(`Downloading update ${update.version}...`);
-            await update.downloadAndInstall();
-            setUpdateStatus("Restarting...");
-            await relaunch();
-            return; // Stop boot process, wait for restart
-          }
+          if (await installNativeUpdate(setUpdateStatus)) return;
         } catch (e) {
           console.error("Failed to check for updates:", e);
         }
