@@ -36,6 +36,7 @@
 ## Runtime Environment
 
 - The Tauri desktop app is used only on two Arch Linux computers running Hyprland. Prefer Linux/Arch/Hyprland-specific native integrations when they simplify the implementation, and do not add cross-platform fallbacks unless explicitly requested.
+- Production desktop distribution is always the native Linux `.tar.gz` package installed under `~/.local/share/gtd-on-rails`. Do not add AppImage, deb, rpm, or Tauri updater production flows unless explicitly requested.
 - The only end user is the project owner. They will not edit persistence data on one device before waiting for the other device to finish pushing sync changes, so do not add multi-user or concurrent divergent-edit reconciliation unless explicitly requested.
 
 ## Asset System

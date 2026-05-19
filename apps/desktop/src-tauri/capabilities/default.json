@@ -7,8 +7,6 @@
     "core:default",
     "core:path:default",
     "fs:default",
-    "updater:default",
-    "process:default",
     {
       "identifier": "http:default",
       "allow": [
