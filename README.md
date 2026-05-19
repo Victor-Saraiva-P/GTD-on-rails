@@ -1,16 +1,18 @@
 # GTD on Rails
 
-Monorepo base do projeto, mantido minimalista nesta fase.
+Base monorepo of the project, kept minimalistic in this phase.
 
-## Estrutura
+>  **Documentation Note:** All detailed documentation (architecture, GTD rules, synchronization, and app-specific setup) lives in the `docs/` folder. We recommend that you **open the root of this project (or the `docs/` folder) in Obsidian** to navigate the links and have the best reading experience.
 
-- `apps/desktop`: shell desktop com Tauri 2
-- `apps/api`: backend Spring Boot com Gradle
-- `packages/`: espaço reservado para código compartilhado
-- `infra/`: infraestrutura local mínima
-- `docs/`: documentação de arquitetura e decisões
+## Structure
 
-## Comandos
+- `apps/desktop`: desktop shell with Tauri 2
+- `apps/api`: Spring Boot backend with Gradle
+- `packages/`: reserved space for shared code
+- `infra/`: minimal local infrastructure
+- `docs/`: Knowledge Base. Start with `docs/00 - Home/Dashboard.md`.
+
+## Commands
 
 - `pnpm install`
 - `pnpm dev`
@@ -22,23 +24,15 @@ Monorepo base do projeto, mantido minimalista nesta fase.
 - `pnpm lint`
 - `pnpm check`
 
-Na raiz:
+In the root:
 
-- `pnpm dev`: sobe `desktop` e `api`
-- `pnpm build`: compila o frontend do desktop e o backend
-- `pnpm build:prod`: cria a build Tauri release com backend sidecar usando `prod,sidecar`
-- `pnpm build:staging`: cria a build Tauri release com backend sidecar usando `staging,sidecar`
-- `pnpm staging`: cria a build staging e executa o binário release
-- `pnpm check`: valida TypeScript no desktop e roda testes da API
+- `pnpm dev`: spins up `desktop` and `api`
+- `pnpm build`: builds the desktop frontend and the backend
+- `pnpm build:prod`: creates the release Tauri build with backend sidecar using `prod,sidecar`
+- `pnpm build:staging`: creates the release Tauri build with backend sidecar using `staging,sidecar`
+- `pnpm staging`: creates the staging build and runs the release binary
+- `pnpm check`: validates TypeScript on the desktop and runs API tests
 
-As builds Tauri geram o binário em `apps/desktop/src-tauri/target/release/desktop`.
+Tauri builds generate the binary at `apps/desktop/src-tauri/target/release/desktop`.
 
-Use `pnpm build:prod` para o runtime real (`gtd-on-rails`, branch `main`, remoto `gdrive:gtd-on-rails`) e `pnpm build:staging` para testar o mesmo fluxo de sidecar com dados de desenvolvimento (`dev-gtd-on-rails`, branch `dev`, remoto `gdrive:dev-gtd-on-rails`).
-
-## Sincronização
-
-O projeto utiliza o Git para sincronizar um banco de dados **SQLite** entre dispositivos (PC e Notebook). 
-
-- **Estratégia:** O arquivo do banco é versionado em um repositório Git privado.
-- **Premissa:** Uso sequencial dos dispositivos pelo usuário único, eliminando a necessidade de travas de concorrência (`data.lock`) nesta fase.
-- **Detalhes:** Veja a documentação completa em [docs/synchronization.md](./docs/synchronization.md).
+Use `pnpm build:prod` for the real runtime (`gtd-on-rails`, `main` branch, `gdrive:gtd-on-rails` remote) and `pnpm build:staging` to test the same sidecar flow with development data (`dev-gtd-on-rails`, `dev` branch, `gdrive:dev-gtd-on-rails` remote).
