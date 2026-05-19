@@ -18,15 +18,41 @@ archive_url={archive_url}
 checksum_url={checksum_url}
 current_pid={current_pid}
 install_root="$cache_dir/extracted"
+install_dir="$HOME/.local/share/gtd-on-rails"
+next_dir="$HOME/.local/share/gtd-on-rails.next"
+previous_dir="$HOME/.local/share/gtd-on-rails.previous"
 while kill -0 "$current_pid" >/dev/null 2>&1; do sleep 0.2; done
-rm -rf "$install_root"
-mkdir -p "$cache_dir" "$install_root"
+rm -rf "$install_root" "$next_dir"
+mkdir -p "$cache_dir" "$install_root" "$next_dir/binaries"
 curl -fL "$archive_url" -o "$cache_dir/$archive_name"
 curl -fL "$checksum_url" -o "$cache_dir/$checksum_name"
 (cd "$cache_dir" && sha256sum -c "$checksum_name")
 tar -xzf "$cache_dir/$archive_name" -C "$install_root"
 package_dir="$(find "$install_root" -mindepth 1 -maxdepth 1 -type d | sort | head -n 1)"
-"$package_dir/install.sh"
+test -x "$package_dir/gtd-on-rails"
+test -x "$package_dir/gtd-api"
+test -f "$package_dir/binaries/gtd-api.jar"
+cp "$package_dir/gtd-on-rails" "$next_dir/gtd-on-rails"
+cp "$package_dir/gtd-api" "$next_dir/gtd-api"
+cp "$package_dir/binaries/gtd-api.jar" "$next_dir/binaries/gtd-api.jar"
+cp "$package_dir/icon.png" "$next_dir/icon.png"
+chmod +x "$next_dir/gtd-on-rails" "$next_dir/gtd-api"
+rm -rf "$previous_dir"
+if [ -d "$install_dir" ]; then cp -a "$install_dir" "$previous_dir"; fi
+mkdir -p "$install_dir/binaries" "$HOME/.local/bin" "$HOME/.local/share/applications"
+cp "$next_dir/binaries/gtd-api.jar" "$install_dir/binaries/gtd-api.jar.tmp"
+mv "$install_dir/binaries/gtd-api.jar.tmp" "$install_dir/binaries/gtd-api.jar"
+cp "$next_dir/gtd-api" "$install_dir/gtd-api.tmp"
+mv "$install_dir/gtd-api.tmp" "$install_dir/gtd-api"
+cp "$next_dir/icon.png" "$install_dir/icon.png.tmp"
+mv "$install_dir/icon.png.tmp" "$install_dir/icon.png"
+cp "$next_dir/gtd-on-rails" "$install_dir/gtd-on-rails.tmp"
+mv "$install_dir/gtd-on-rails.tmp" "$install_dir/gtd-on-rails"
+chmod +x "$install_dir/gtd-on-rails" "$install_dir/gtd-api"
+ln -sf "$install_dir/gtd-on-rails" "$HOME/.local/bin/gtd-on-rails"
+printf '%s\n' '[Desktop Entry]' 'Type=Application' 'Name=GTD on Rails' "Exec=$install_dir/gtd-on-rails" "Icon=$install_dir/icon.png" 'Terminal=false' 'Categories=Utility;' > "$HOME/.local/share/applications/gtd-on-rails.desktop"
+command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$HOME/.local/share/applications" || true
+rm -rf "$next_dir"
 nohup "$HOME/.local/bin/gtd-on-rails" >/dev/null 2>&1 &
 "#;
 
@@ -66,6 +92,7 @@ struct GitHubAsset {
 
 #[tauri::command]
 pub fn native_update_check() -> Result<NativeUpdateStatus, String> {
+    recover_native_installation()?;
     let release = fetch_latest_release()?;
     let current_version = env!("CARGO_PKG_VERSION").to_string();
     let latest_version = release.tag_name.trim_start_matches('v').to_string();
@@ -73,6 +100,55 @@ pub fn native_update_check() -> Result<NativeUpdateStatus, String> {
         return Ok(no_update_status(current_version, latest_version));
     }
     build_update_status(current_version, latest_version, &release.assets)
+}
+
+fn recover_native_installation() -> Result<(), String> {
+    let install_dir = local_share_dir("gtd-on-rails")?;
+    let next_dir = local_share_dir("gtd-on-rails.next")?;
+    let previous_dir = local_share_dir("gtd-on-rails.previous")?;
+    remove_abandoned_next_dir(&next_dir)?;
+    if native_installation_is_valid(&install_dir) || !native_installation_is_valid(&previous_dir) {
+        return Ok(());
+    }
+    restore_previous_installation(&install_dir, &previous_dir)
+}
+
+fn remove_abandoned_next_dir(next_dir: &std::path::Path) -> Result<(), String> {
+    if !next_dir.exists() {
+        return Ok(());
+    }
+    fs::remove_dir_all(next_dir).map_err(|error| {
+        format!(
+            "native update staging value '{}' is invalid; expected removable directory: {error}",
+            next_dir.display()
+        )
+    })
+}
+
+fn restore_previous_installation(
+    install_dir: &std::path::Path,
+    previous_dir: &std::path::Path,
+) -> Result<(), String> {
+    if install_dir.exists() {
+        fs::remove_dir_all(install_dir).map_err(|error| {
+            format!("native install directory value '{}' is invalid; expected removable partial install: {error}", install_dir.display())
+        })?;
+    }
+    fs::rename(previous_dir, install_dir).map_err(|error| {
+        format!("native backup directory value '{}' is invalid; expected restorable install backup: {error}", previous_dir.display())
+    })
+}
+
+fn native_installation_is_valid(path: &std::path::Path) -> bool {
+    path.join("gtd-on-rails").is_file()
+        && path.join("gtd-api").is_file()
+        && path.join("binaries/gtd-api.jar").is_file()
+}
+
+fn local_share_dir(name: &str) -> Result<PathBuf, String> {
+    let home = std::env::var("HOME")
+        .map_err(|error| format!("HOME value is invalid; expected home directory: {error}"))?;
+    Ok(PathBuf::from(home).join(".local/share").join(name))
 }
 
 #[tauri::command]

@@ -54,7 +54,8 @@ async function installNativeUpdate(setUpdateStatus: (status: string) => void): P
   const update = await invoke<NativeUpdateStatus>("native_update_check");
   if (!update.available) return false;
 
-  setUpdateStatus(`Installing update ${update.latestVersion}...`);
+  setUpdateStatus(`Installing update ${update.latestVersion}; the app will restart...`);
+  await delay(1500);
   await invoke("native_update_install", { request: requiredNativeUpdate(update) });
   return true;
 }
