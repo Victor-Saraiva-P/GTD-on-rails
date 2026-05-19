@@ -121,7 +121,7 @@ export function BootLoader({ children }: PropsWithChildren) {
       {shouldRenderLoader && (
         <div className={`boot-loader ${isBooted ? "boot-loader--fade-out" : ""}`}>
           <div className="boot-loader__terminal">
-            <p className="boot-loader__brand">GTD ON RAILS v0.1.0</p>
+            <p className="boot-loader__brand">GTD ON RAILS v1.0.0</p>
             {updateStatus ? (
               <p className="boot-loader__line">
                 <span className="boot-loader__bracket">[</span>

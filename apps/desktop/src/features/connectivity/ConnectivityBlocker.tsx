@@ -64,7 +64,7 @@ export function ConnectivityBlocker({ children }: PropsWithChildren) {
   return (
     <div className="boot-loader connectivity-blocker">
       <div className="boot-loader__terminal">
-        <p className="boot-loader__brand">GTD ON RAILS v0.1.0</p>
+        <p className="boot-loader__brand">GTD ON RAILS v1.0.0</p>
         <p className="boot-loader__line"><span className="boot-loader__status">[OFFLINE]</span> {model.title}</p>
         <p className="boot-loader__line connectivity-blocker__message">{model.message}</p>
         {model.rows.map((row) => <SyncStatusLine key={row.label} row={row} />)}
