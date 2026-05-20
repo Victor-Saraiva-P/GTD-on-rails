@@ -4,7 +4,7 @@ This document describes the current GTD on Rails synchronization model for struc
 
 The application is built for one owner using two trusted Arch Linux desktop machines. The expected operating discipline is simple: let one device finish syncing before editing the same persistence state on the other device. The app does not implement multi-user merge resolution or concurrent divergent-edit reconciliation.
 
-See also: [Infrastructure](infrastructure.md).
+The infrastructure that hosts these sync processes is described in [Infrastructure](infrastructure.md).
 
 ---
 
