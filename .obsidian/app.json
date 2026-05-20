@@ -1,4 +1,5 @@
 {
   "userIgnoreFilters": null,
-  "vimMode": true
+  "vimMode": true,
+  "alwaysUpdateLinks": true
 }

@@ -86,6 +86,12 @@
 - Pages that visualize deleted items must use `#9B9B9B` as the predominant color. Pages that visualize completed items must use `#7F8D3F` as the predominant color.
 - Modal keybind scopes must isolate keyboard handling: while a modal dialog is active, page-level keybinds outside that modal must not run.
 
+## Keybindings
+
+- Before adding or changing a keybind, inspect the existing keybind definitions and documentation to verify the shortcut is unused in the same screen, focus zone, leader sequence, and modifier scope.
+- Never create two keybinds that can resolve to the same input sequence in the same scope. For example, do not assign another action to `Space m a` where it already inserts an asset.
+- If two actions need the same physical keys, they must be separated by a different screen, focus zone, modal scope, or modifier combination, and the separation must be explicit in the keybind definition.
+
 ## Processing
 
 - During processing, it is possible to cancel at any time by pressing `esc`. Therefore, backend requests and data persistence must only be performed at the very end of the flow.
