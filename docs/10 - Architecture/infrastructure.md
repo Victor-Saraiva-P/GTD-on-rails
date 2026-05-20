@@ -1,0 +1,279 @@
+# Infrastructure
+
+This document describes the current technical infrastructure of GTD on Rails: repository layout, runtime topology, persistence, synchronization, release packaging, and CI/CD.
+
+The application is desktop-first. The production runtime is a native Linux desktop app that starts a bundled local backend sidecar and stores data on the user's machine.
+
+---
+
+## 1. Repository Layout
+
+The project is a `pnpm` monorepo orchestrated with Turbo.
+
+- `apps/desktop`: Tauri 2 desktop shell with React, Vite, TypeScript, and Rust native commands.
+- `apps/api`: Spring Boot backend built with Gradle.
+- `docs`: project documentation and GTD knowledge base.
+- `infra`: optional local infrastructure for development experiments.
+- `packages`: reserved workspace for future shared packages.
+
+The root `package.json` exposes the main workflows:
+
+- `pnpm dev`: runs the development tasks through Turbo.
+- `pnpm build`: builds the workspace.
+- `pnpm test`: runs unit, integration, and e2e tests.
+- `pnpm check`: runs static checks.
+- `pnpm build:prod`: builds the production desktop sidecar release.
+- `pnpm build:staging`: builds the staging desktop sidecar release.
+- `pnpm staging`: builds and launches the staging release binary.
+
+Tool versions are pinned in `mise.toml`:
+
+- Node.js 22
+- Java 21
+- Rust stable
+
+---
+
+## 2. Application Stack
+
+### Desktop
+
+The desktop app lives in `apps/desktop`.
+
+- Tauri 2 provides the native Linux shell and Rust command layer.
+- React 19 renders the UI.
+- Vite builds the web frontend.
+- TypeScript is used for frontend application code.
+- Rust is used for native integrations, sidecar startup, and native update handling.
+
+The Tauri build embeds a backend sidecar launcher named `gtd-api` and a backend jar at `binaries/gtd-api.jar`.
+
+### Backend
+
+The backend lives in `apps/api`.
+
+- Spring Boot 4 runs the HTTP API.
+- Java 21 is the runtime language.
+- Gradle builds, tests, and packages the backend.
+- Flyway manages database migrations.
+- Spring Data JPA and Hibernate persist application entities.
+- SQLite is the application database for the normal runtime.
+
+The backend package scripts wrap Gradle commands so workspace workflows can call it through `pnpm --filter @gtd-on-rails/api ...`.
+
+### Database
+
+The normal application database is SQLite.
+
+The default JDBC URL points to:
+
+```text
+${gtd.persistence.bootstrap.clone-directory}/db/gtd-on-rails.db
+```
+
+The clone directory defaults to:
+
+```text
+${gtd.data.root-directory}/persistence
+```
+
+Flyway migrations live under `apps/api/src/main/resources/db/migration`.
+
+---
+
+## 3. Runtime Topology
+
+### Development Runtime
+
+During development, the desktop frontend and backend can run as separate local processes.
+
+- The desktop dev server runs on `127.0.0.1:1420`.
+- The API runs through Gradle with the `dev` Spring profile.
+- CORS allows the local desktop dev origin.
+
+### Production Runtime
+
+Production is a self-contained local desktop runtime.
+
+- The user launches the native Linux desktop binary.
+- The Tauri app starts the bundled `gtd-api` sidecar.
+- The sidecar starts Spring Boot with `prod,sidecar` profiles by default.
+- The sidecar binds to `127.0.0.1` on an ephemeral port.
+- The backend writes a readiness file with its selected local base URL.
+- The desktop app reads that readiness file and sends API requests to the sidecar.
+
+This keeps the backend local to the user's machine and avoids a hosted production server.
+
+### Staging Runtime
+
+Staging uses the same sidecar flow as production, but with `staging,sidecar` profiles.
+
+Staging intentionally points to development data defaults so the production data branch and asset remote are not touched while testing release behavior.
+
+---
+
+## 4. Data Directories
+
+The backend resolves the data root from Spring profiles and environment variables.
+
+Production defaults to:
+
+```text
+~/Documents/gtd-on-rails
+```
+
+Development and staging default to:
+
+```text
+~/Documents/dev-gtd-on-rails
+```
+
+The data root contains:
+
+- `persistence`: Git clone that contains the SQLite database file.
+- `assets`: local item asset files.
+- `asset-sync-state`: local sync bookkeeping for assets.
+
+Environment variables can override these paths when needed, but the default runtime is optimized for the owner's Arch Linux desktop machines.
+
+---
+
+## 5. Persistence Synchronization
+
+Structured data is stored in SQLite and synchronized through a private Git repository.
+
+- The persistence repository is configured by `gtd.persistence.bootstrap.repository-url`.
+- Production uses the `main` persistence branch.
+- Development and staging use the `dev` persistence branch.
+- The backend owns database bootstrapping, migration, sync scheduling, and data integrity.
+
+The app is designed for a single owner using two devices. It does not implement multi-user or concurrent divergent-edit reconciliation beyond the project-specific assumptions described in [Synchronization](synchronization.md).
+
+---
+
+## 6. Asset Storage And Synchronization
+
+Item assets are stored as files plus database metadata.
+
+- Asset metadata lives in SQLite.
+- Asset files live under `gtd.assets.local-directory`.
+- The default asset directory is `${gtd.data.root-directory}/assets`.
+- Asset sync state lives under `${gtd.data.root-directory}/asset-sync-state`.
+
+The backend owns final asset storage, metadata creation, validation, and sync scheduling.
+
+Assets are synchronized through `rclone`:
+
+- Production remote: `gdrive:gtd-on-rails`
+- Development and staging remote: `gdrive:dev-gtd-on-rails`
+
+The body model that references these assets is described in [Body Content](../20%20-%20GTD/shared/Body%20Content.md).
+
+---
+
+## 7. Optional Local Infrastructure
+
+`infra/compose.yaml` defines a local Postgres and API container setup.
+
+This compose file is optional development infrastructure. It is not the production desktop runtime and should not be treated as the canonical persistence topology unless the project explicitly moves away from the SQLite sidecar model.
+
+---
+
+## 8. Release And Installation
+
+Production distribution is the native Linux `.tar.gz` package.
+
+The package contains:
+
+- `gtd-on-rails`: desktop executable.
+- `gtd-api`: sidecar launcher.
+- `binaries/gtd-api.jar`: Spring Boot backend jar.
+- `icon.png`: desktop icon.
+- `install.sh`: native Linux installer script.
+
+The installer writes files to:
+
+```text
+~/.local/share/gtd-on-rails
+```
+
+It also creates:
+
+- `~/.local/bin/gtd-on-rails`
+- `~/.local/share/applications/gtd-on-rails.desktop`
+
+The project does not use AppImage, deb, rpm, or the built-in Tauri updater for production distribution.
+
+---
+
+## 9. Native Update Flow
+
+The desktop app contains a project-owned native update flow for Linux tarball releases.
+
+- It checks the latest GitHub release.
+- It downloads the Linux `.tar.gz` and `.sha256` assets.
+- It verifies the checksum.
+- It stages the next installation under `~/.local/share/gtd-on-rails.next`.
+- It preserves a rollback copy under `~/.local/share/gtd-on-rails.previous`.
+- It replaces the active installation under `~/.local/share/gtd-on-rails` after the current process exits.
+
+This flow is specific to the native Linux package layout.
+
+---
+
+## 10. CI/CD
+
+GitHub Actions define the current CI and release pipelines.
+
+### CI
+
+The CI workflow runs on `main` pushes and pull requests.
+
+It performs:
+
+- dependency installation with `pnpm install --frozen-lockfile`.
+- Playwright browser installation.
+- `pnpm test`.
+- `pnpm check`.
+- native desktop build verification.
+- native Linux tarball packaging.
+
+The CI environment installs Node.js 22, Java 21, Rust stable, and Linux Tauri build dependencies.
+
+### Release
+
+The release workflow runs for version tags.
+
+It performs:
+
+- production-like Tauri sidecar build.
+- GitHub release creation when missing.
+- native Linux tarball packaging.
+- upload of `.tar.gz` and `.tar.gz.sha256` assets.
+
+---
+
+## 11. Security Baseline
+
+The normal runtime is local-first.
+
+- The backend binds to localhost in sidecar mode.
+- The SQLite database is protected by operating-system file permissions.
+- Persistence sync credentials and remote access are outside the application database.
+- Asset sync depends on the local `rclone` configuration.
+- GitHub release publishing uses GitHub Actions permissions and repository secrets when needed.
+
+---
+
+## 12. Summary
+
+GTD on Rails currently uses:
+
+- a `pnpm` and Turbo monorepo.
+- a Tauri 2 desktop app with React, Vite, TypeScript, and Rust.
+- a Spring Boot 4 backend with Java 21 and Gradle.
+- SQLite for normal application persistence.
+- Git-based persistence synchronization.
+- filesystem-backed assets synchronized with `rclone`.
+- native Linux `.tar.gz` production packaging.
+- GitHub Actions for CI and release automation.
