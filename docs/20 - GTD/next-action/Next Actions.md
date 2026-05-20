@@ -12,7 +12,7 @@ This page is the umbrella documentation for the next-action lists and related pa
 
 ## Next Actions List
 
-The next actions page is the list of available concrete actions. It supports context filtering, ordering, status changes, editing, and deletion.
+The next actions page is the list of available concrete actions. It supports [[Context]] filtering, ordering, status changes, editing, and deletion.
 
 | Shortcut | Scope | Action |
 | --- | --- | --- |
@@ -35,7 +35,7 @@ The next actions page is the list of available concrete actions. It supports con
 | `]` | List or detail | Open completed next actions. |
 | `Space k` | List or detail | Show available keybindings. |
 
-The next action detail body also supports the shared body formatting shortcuts from [[Global Shortcuts]].
+The next action detail body is [[Body Content]] and supports the shared formatting shortcuts from [[Global Shortcuts]].
 
 ## Next Action Detail Page
 
@@ -49,7 +49,7 @@ Focused detail pages start body editing automatically when opened. `Enter` start
 | `Escape` | Back to next actions when body editing is not active. |
 | `Space k` | Show available keybindings. |
 
-The body supports the shared body formatting shortcuts from [[Global Shortcuts]].
+The body is [[Body Content]] and supports the shared formatting shortcuts from [[Global Shortcuts]].
 
 ## On Going Next Actions List
 
@@ -73,7 +73,7 @@ The on going next actions page is the list of actions currently pulled into acti
 | `Space Enter` | List or detail | Open full detail. |
 | `Space k` | List or detail | Show available keybindings. |
 
-The on going action detail body also supports the shared body formatting shortcuts from [[Global Shortcuts]].
+The on going action detail body is [[Body Content]] and supports the shared formatting shortcuts from [[Global Shortcuts]].
 
 ## On Going Next Action Detail Page
 
@@ -88,7 +88,7 @@ Focused detail pages start body editing automatically when opened. `Enter` start
 | `r` | Restore selected action as a next action. |
 | `Space k` | Show available keybindings. |
 
-The body supports the shared body formatting shortcuts from [[Global Shortcuts]].
+The body is [[Body Content]] and supports the shared formatting shortcuts from [[Global Shortcuts]].
 
 ## Completed Next Actions List
 
@@ -121,4 +121,4 @@ The deleted next actions page is the recovery list for deleted next actions.
 | `]` | List or detail | Open next actions. |
 | `Space k` | List or detail | Show available keybindings. |
 
-Related pages: [[Inbox]], [[Context]], [[Body Content]].
+Items can arrive here by processing captured material from [[Inbox]].

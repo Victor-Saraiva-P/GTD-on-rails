@@ -147,9 +147,7 @@ Structured data is stored in SQLite and synchronized through a private Git repos
 - Development and staging use the `dev` persistence branch.
 - The backend owns database bootstrapping, migration, sync scheduling, and data integrity.
 
-The app is designed for a single owner using two devices. It does not implement multi-user or concurrent divergent-edit reconciliation beyond the project-specific sync assumptions.
-
-See also: [Synchronization](synchronization.md).
+The app is designed for a single owner using two devices. It does not implement multi-user or concurrent divergent-edit reconciliation beyond the project-specific assumptions described in [Synchronization](synchronization.md).
 
 ---
 
@@ -169,7 +167,7 @@ Assets are synchronized through `rclone`:
 - Production remote: `gdrive:gtd-on-rails`
 - Development and staging remote: `gdrive:dev-gtd-on-rails`
 
-See also: [Body Content](../20%20-%20GTD/shared/Body%20Content.md).
+The body model that references these assets is described in [Body Content](../20%20-%20GTD/shared/Body%20Content.md).
 
 ---
 

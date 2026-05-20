@@ -1,10 +1,12 @@
 # Next Action
 
-A next action is a concrete, visible action that can be done when its context, time, and energy fit.
+A next action is a concrete, visible action that can be done when its [[Context]], time, and energy fit.
 
 A valid next action should answer what physical or digital action happens next. It should avoid vague labels such as "think about project" when a clearer action exists.
 
 Use [[Next Actions]] to filter, order, edit, mark done, mark on going, or delete next actions.
+
+Next actions can include [[Body Content]] for notes, links, and file assets that support execution.
 
 ## States
 
@@ -29,5 +31,3 @@ Completed actions are kept as an audit trail and can be recovered when an action
 A deleted next action is an actionable item removed from the next action flow.
 
 Deleted next actions exist as a recoverable workflow state. Recover an item when it should return to active next actions.
-
-Related pages: [[Next Actions]], [[Context]], [[Body Content]].
