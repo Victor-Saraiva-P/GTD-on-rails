@@ -1,6 +1,6 @@
 import type { PropsWithChildren, ReactNode } from "react";
 
-type PaneProps = PropsWithChildren<{
+type ViewProps = PropsWithChildren<{
   iconSrc: string;
   label: string;
   status?: ReactNode;
@@ -9,11 +9,11 @@ type PaneProps = PropsWithChildren<{
   active?: boolean;
 }>;
 
-function paneClassName(active: boolean): string {
+function viewClassName(active: boolean): string {
   return `pane${active ? " pane--active" : ""}`;
 }
 
-function PaneHeader({ iconSrc, label, status, wrapLabel = false }: Omit<PaneProps, "children">) {
+function ViewHeader({ iconSrc, label, status, wrapLabel = false }: Omit<ViewProps, "children">) {
   return (
     <header className={`pane__header${wrapLabel ? " pane__header--wrap" : ""}`}>
       <span className={`pane__tab${wrapLabel ? " pane__tab--wrap" : ""}`}>
@@ -28,14 +28,14 @@ function PaneHeader({ iconSrc, label, status, wrapLabel = false }: Omit<PaneProp
 }
 
 /**
- * Renders a generic pane with a tab-like header and active-state styling.
+ * Renders a generic view with a tab-like header and active-state styling.
  *
- * @example <Pane iconSrc="/icon.svg" label="Inbox">...</Pane>
+ * @example <View iconSrc="/icon.svg" label="Inbox">...</View>
  */
-export function Pane({ bodyClassName, active = false, children, ...headerProps }: PaneProps) {
+export function View({ bodyClassName, active = false, children, ...headerProps }: ViewProps) {
   return (
-    <div className={paneClassName(active)}>
-      <PaneHeader {...headerProps} />
+    <div className={viewClassName(active)}>
+      <ViewHeader {...headerProps} />
       <div className={bodyClassName ? `pane__body ${bodyClassName}` : "pane__body"}>{children}</div>
     </div>
   );
