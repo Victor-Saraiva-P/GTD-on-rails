@@ -10,7 +10,7 @@ import {
   type CalendarSubview
 } from "./calendarWorkspaceState";
 import type { Calendar } from "./types";
-import { useCalendarTodayQuery } from "./useCalendarTodayQuery";
+import { useCalendarQuery } from "./useCalendarQuery";
 
 type CalendarEditState = ReturnType<typeof useCalendarEditState>;
 type CalendarModel = ReturnType<typeof useCalendarWorkspaceModel>;
@@ -80,8 +80,15 @@ function useCalendarPruning(model: CalendarModel): void {
 
 function useCalendarWorkspaceModel() {
   const view = useCalendarViewState();
-  const query = useCalendarTodayQuery();
-  const items = calendarItemsForPanel(query.dueCalendars, query.doneTodayCalendars, view.activePanel);
+  const query = useCalendarQuery(view.activeSubview);
+  const items = calendarItemsForPanel(
+    query.dueCalendars,
+    query.doneTodayCalendars,
+    query.completedCalendars,
+    query.deletedCalendars,
+    query.weeklyCalendars,
+    view.activePanel
+  );
   const selection = useCalendarSelection(items);
   const edit = useCalendarEditState();
   const zone = useActiveZone();
@@ -139,8 +146,18 @@ async function runSelectedCalendarMutation(
   model.zone.setActiveZone(calendarListZoneForPanel(model.view.activePanel));
 }
 
-function calendarListZoneForPanel(panel: CalendarPanel): "calendar-today-due-panel" | "calendar-today-done-panel" {
-  return panel === "done-today" ? "calendar-today-done-panel" : "calendar-today-due-panel";
+function calendarListZoneForPanel(panel: CalendarPanel): any {
+  if (panel === "done-today") return "calendar-today-done-panel";
+  if (panel === "completed") return "calendar-completed-panel";
+  if (panel === "deleted") return "calendar-deleted-panel";
+  if (panel === "mon") return "calendar-mon-panel";
+  if (panel === "tue") return "calendar-tue-panel";
+  if (panel === "wed") return "calendar-wed-panel";
+  if (panel === "thu") return "calendar-thu-panel";
+  if (panel === "fri") return "calendar-fri-panel";
+  if (panel === "sat") return "calendar-sat-panel";
+  if (panel === "sun") return "calendar-sun-panel";
+  return "calendar-today-due-panel";
 }
 
 function focusCalendarPanel(model: CalendarModel, panel: CalendarPanel): void {
@@ -151,6 +168,7 @@ function focusCalendarPanel(model: CalendarModel, panel: CalendarPanel): void {
 
 function resetCalendarWorkspace(model: CalendarModel): void {
   clearCalendarEditing(model.edit);
+  model.view.setActiveSubview("today");
   focusCalendarPanel(model, "due");
 }
 
@@ -168,6 +186,7 @@ function useCalendarWorkspaceActions(model: CalendarModel) {
     reload: model.query.reload,
     resetWorkspace: () => resetCalendarWorkspace(model),
     restoreSelected: () => runSelectedCalendarMutation(model, model.query.restoreStatus),
+    recoverDeleted: () => runSelectedCalendarMutation(model, model.query.recoverDeleted),
     selectNext: model.selection.selectNext,
     selectPrevious: model.selection.selectPrevious,
     startBodyEdit: () => startCalendarBodyEdit(model),
@@ -183,6 +202,9 @@ function buildCalendarController(model: CalendarModel, actions: CalendarActions)
     activeZone: model.zone.activeZone,
     dueCalendars: model.query.dueCalendars,
     doneTodayCalendars: model.query.doneTodayCalendars,
+    completedCalendars: model.query.completedCalendars,
+    deletedCalendars: model.query.deletedCalendars,
+    weeklyCalendars: model.query.weeklyCalendars,
     editingBodyId: model.edit.editingBodyId,
     editingId: model.edit.editingId,
     editingTitle: model.edit.editingTitle,
@@ -202,11 +224,6 @@ function buildCalendarController(model: CalendarModel, actions: CalendarActions)
   };
 }
 
-/**
- * Composes calendar panels, selection, editing, and keybind state.
- *
- * @example const controller = useCalendarWorkspaceController()
- */
 export function useCalendarWorkspaceController() {
   const model = useCalendarWorkspaceModel();
   const actions = useCalendarWorkspaceActions(model);

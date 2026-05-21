@@ -280,3 +280,11 @@
 .pane__body--detail {
   padding-inline: 12px;
 }
+
+.weekly-terminal-layout {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}

@@ -58,6 +58,45 @@ function openCalendarDetailPage(controller: CalendarWorkspaceController, setActi
 }
 
 function buildPanelBindings(controller: CalendarWorkspaceController, setActiveScreen: (screen: ScreenId) => void): KeybindDefinition[] {
+  if (controller.activeSubview === "completed") {
+    return [
+      calendarBinding("calendars.move-completed-down", "j", "Move down", "calendar-completed-panel", () => moveCalendarSelection(controller, "next")),
+      calendarBinding("calendars.move-completed-up", "k", "Move up", "calendar-completed-panel", () => moveCalendarSelection(controller, "previous")),
+      calendarBinding("calendars.open-completed-detail", "Enter", "Open full detail", "calendar-completed-panel", () => openCalendarDetailPage(controller, setActiveScreen), true, ["Enter"]),
+      calendarBinding("calendars.delete-completed", "d", "Delete selected calendar", "calendar-completed-panel", () => runCalendarAction(canEditCalendar(controller), controller.deleteSelected, "Failed to delete calendar")),
+      calendarBinding("calendars.restore-completed", "r", "Restore selected calendar", "calendar-completed-panel", () => runCalendarAction(canEditCalendar(controller), controller.restoreSelected, "Failed to restore calendar"))
+    ];
+  }
+  if (controller.activeSubview === "deleted") {
+    return [
+      calendarBinding("calendars.move-deleted-down", "j", "Move down", "calendar-deleted-panel", () => moveCalendarSelection(controller, "next")),
+      calendarBinding("calendars.move-deleted-up", "k", "Move up", "calendar-deleted-panel", () => moveCalendarSelection(controller, "previous")),
+      calendarBinding("calendars.open-deleted-detail", "Enter", "Open full detail", "calendar-deleted-panel", () => openCalendarDetailPage(controller, setActiveScreen), true, ["Enter"]),
+      calendarBinding("calendars.recover-deleted", "r", "Recover selected calendar", "calendar-deleted-panel", () => runCalendarAction(canEditCalendar(controller), controller.recoverDeleted, "Failed to recover calendar"))
+    ];
+  }
+  if (controller.activeSubview === "weekly") {
+    const bindings: KeybindDefinition[] = [];
+    const days: CalendarPanel[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+    const zones: FocusZoneId[] = ["calendar-mon-panel", "calendar-tue-panel", "calendar-wed-panel", "calendar-thu-panel", "calendar-fri-panel", "calendar-sat-panel", "calendar-sun-panel"];
+    
+    days.forEach((day, i) => {
+      const zone = zones[i];
+      // Note: we don't bind 1..7 directly in the zone because the user might want to press 2 while in zone 1 to switch!
+      // But wait, the switch bindings need to be in ALL zones!
+      days.forEach((targetDay, j) => {
+        bindings.push(
+          calendarBinding(`calendars.focus-${targetDay}-from-${day}`, String(j + 1), `Focus ${targetDay} panel`, zone, () => focusCalendarPanel(controller, targetDay))
+        );
+      });
+      bindings.push(
+        calendarBinding(`calendars.move-${day}-down`, "j", "Move down", zone, () => moveCalendarSelection(controller, "next")),
+        calendarBinding(`calendars.move-${day}-up`, "k", "Move up", zone, () => moveCalendarSelection(controller, "previous")),
+        calendarBinding(`calendars.open-${day}-detail`, "Enter", "Open full detail", zone, () => openCalendarDetailPage(controller, setActiveScreen), true, ["Enter"])
+      );
+    });
+    return bindings;
+  }
   return [
     ...buildDuePanelBindings(controller, setActiveScreen),
     ...buildDoneTodayPanelBindings(controller, setActiveScreen)
@@ -101,7 +140,17 @@ function buildDetailBindings(controller: CalendarWorkspaceController, openLink: 
 }
 
 function activePanelZone(panel: CalendarPanel): FocusZoneId {
-  return panel === "done-today" ? "calendar-today-done-panel" : "calendar-today-due-panel";
+  if (panel === "done-today") return "calendar-today-done-panel";
+  if (panel === "completed") return "calendar-completed-panel";
+  if (panel === "deleted") return "calendar-deleted-panel";
+  if (panel === "mon") return "calendar-mon-panel";
+  if (panel === "tue") return "calendar-tue-panel";
+  if (panel === "wed") return "calendar-wed-panel";
+  if (panel === "thu") return "calendar-thu-panel";
+  if (panel === "fri") return "calendar-fri-panel";
+  if (panel === "sat") return "calendar-sat-panel";
+  if (panel === "sun") return "calendar-sun-panel";
+  return "calendar-today-due-panel";
 }
 
 function useCalendarBindings(controller: CalendarWorkspaceController, openLink: () => void, openAsset: () => void): void {
@@ -109,15 +158,19 @@ function useCalendarBindings(controller: CalendarWorkspaceController, openLink: 
   const bindings = useMemo(() => [
     ...buildPanelBindings(controller, setActiveScreen),
     ...buildDetailBindings(controller, openLink, openAsset)
-  ], [controller, setActiveScreen, openLink, openAsset]);
+  ], [controller.activeSubview, controller, setActiveScreen, openLink, openAsset]);
   useRegisterKeybinds(bindings);
 }
 
 function useCalendarZone(controller: CalendarWorkspaceController): void {
   useEffect(() => {
-    const valid = ["calendar-today-due-panel", "calendar-today-done-panel", "calendar-detail"];
-    if (!valid.includes(controller.activeZone)) controller.setActiveZone("calendar-today-due-panel");
-  }, [controller.activeZone, controller.setActiveZone]);
+    let valid = ["calendar-today-due-panel", "calendar-today-done-panel", "calendar-detail"];
+    if (controller.activeSubview === "completed") valid = ["calendar-completed-panel", "calendar-detail"];
+    if (controller.activeSubview === "deleted") valid = ["calendar-deleted-panel", "calendar-detail"];
+    if (controller.activeSubview === "weekly") valid = ["calendar-mon-panel", "calendar-tue-panel", "calendar-wed-panel", "calendar-thu-panel", "calendar-fri-panel", "calendar-sat-panel", "calendar-sun-panel"];
+    
+    if (!valid.includes(controller.activeZone)) controller.setActiveZone(valid[0] as any);
+  }, [controller.activeZone, controller.activeSubview, controller.setActiveZone]);
 }
 
 function useCalendarAssetPreload(controller: CalendarWorkspaceController): void {
@@ -134,13 +187,26 @@ function commitCalendarTitle(controller: CalendarWorkspaceController): void {
 function CalendarPanelBody(props: CalendarControllerProps & { panel: CalendarPanel }) {
   if (props.controller.isLoading) return <p className="pane-state">Loading calendars...</p>;
   if (props.controller.errorMessage) return <RetryState message={props.controller.errorMessage} onRetry={props.controller.reload} />;
-  const items = props.panel === "due" ? props.controller.dueCalendars : props.controller.doneTodayCalendars;
+  
+  let items = props.controller.dueCalendars;
+  if (props.panel === "done-today") items = props.controller.doneTodayCalendars;
+  if (props.panel === "completed") items = props.controller.completedCalendars;
+  if (props.panel === "deleted") items = props.controller.deletedCalendars;
+  if (["mon", "tue", "wed", "thu", "fri", "sat", "sun"].includes(props.panel)) {
+    const index = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"].indexOf(props.panel);
+    items = props.controller.weeklyCalendars.filter(c => new Date(c.scheduledDate + "T00:00:00").getDay() === index);
+  }
+
   if (items.length === 0) return <p className="pane-state">{emptyPanelMessage(props.panel)}</p>;
   return <CalendarPanelReady controller={props.controller} items={items} />;
 }
 
 function emptyPanelMessage(panel: CalendarPanel): string {
-  return panel === "done-today" ? "No calendars completed today." : "No due or late calendars.";
+  if (panel === "done-today") return "No calendars completed today.";
+  if (panel === "completed") return "No completed calendars.";
+  if (panel === "deleted") return "No deleted calendars.";
+  if (["mon", "tue", "wed", "thu", "fri", "sat", "sun"].includes(panel)) return "";
+  return "No due or late calendars.";
 }
 
 function CalendarPanelReady({ controller, items }: CalendarControllerProps & { items: CalendarWorkspaceController["stuffs"] }) {
@@ -206,6 +272,36 @@ function DoneTodayCalendarPanel({ controller }: CalendarControllerProps) {
   );
 }
 
+function CompletedCalendarPanel({ controller }: CalendarControllerProps) {
+  const meta = `${controller.completedCalendars.length} ${controller.completedCalendars.length === 1 ? "item" : "items"}`;
+  return (
+    <ListView title="Completed" meta={meta} panelIndex={1} active={controller.activeZone === "calendar-completed-panel"} bodyClassName="list-pane__body--flush" className="inbox-pane inbox-pane--list">
+      <CalendarPanelBody controller={controller} panel="completed" />
+    </ListView>
+  );
+}
+
+function DeletedCalendarPanel({ controller }: CalendarControllerProps) {
+  const meta = `${controller.deletedCalendars.length} ${controller.deletedCalendars.length === 1 ? "item" : "items"}`;
+  return (
+    <ListView title="Deleted" meta={meta} panelIndex={1} active={controller.activeZone === "calendar-deleted-panel"} bodyClassName="list-pane__body--flush" className="inbox-pane inbox-pane--list">
+      <CalendarPanelBody controller={controller} panel="deleted" />
+    </ListView>
+  );
+}
+
+function WeeklyCalendarPanel({ controller, day, index }: CalendarControllerProps & { day: CalendarPanel, index: number }) {
+  const title = day.charAt(0).toUpperCase() + day.slice(1);
+  const items = controller.weeklyCalendars.filter(c => new Date(c.scheduledDate + "T00:00:00").getDay() === (index === 7 ? 0 : index));
+  const meta = `${items.length} ${items.length === 1 ? "item" : "items"}`;
+  const zoneId = `calendar-${day}-panel` as FocusZoneId;
+  return (
+    <ListView title={title} meta={meta} panelIndex={index} active={controller.activeZone === zoneId} bodyClassName="list-pane__body--flush" className="inbox-pane inbox-pane--list">
+      <CalendarPanelBody controller={controller} panel={day} />
+    </ListView>
+  );
+}
+
 function CalendarDetailView({ controller }: CalendarControllerProps) {
   return (
     <ListView title="Calendar Detail" viewIndex={2} active={controller.activeZone === "calendar-detail"} bodyClassName="list-pane__body--detail" className="inbox-pane inbox-pane--detail">
@@ -215,17 +311,46 @@ function CalendarDetailView({ controller }: CalendarControllerProps) {
 }
 
 function CalendarViews({ controller }: CalendarControllerProps) {
-  return (
-    <section className="inbox-terminal-layout" aria-label="Calendars">
-      <DueCalendarPanel controller={controller} />
-      <DoneTodayCalendarPanel controller={controller} />
-      <CalendarDetailView controller={controller} />
-    </section>
-  );
+  if (controller.activeSubview === "today") {
+    return (
+      <section className="inbox-terminal-layout" aria-label="Calendars">
+        <DueCalendarPanel controller={controller} />
+        <DoneTodayCalendarPanel controller={controller} />
+        <CalendarDetailView controller={controller} />
+      </section>
+    );
+  } else if (controller.activeSubview === "completed") {
+    return (
+      <section className="inbox-terminal-layout" aria-label="Calendars">
+        <CompletedCalendarPanel controller={controller} />
+        <CalendarDetailView controller={controller} />
+      </section>
+    );
+  } else if (controller.activeSubview === "deleted") {
+    return (
+      <section className="inbox-terminal-layout" aria-label="Calendars">
+        <DeletedCalendarPanel controller={controller} />
+        <CalendarDetailView controller={controller} />
+      </section>
+    );
+  } else if (controller.activeSubview === "weekly") {
+    return (
+      <section className="weekly-terminal-layout" aria-label="Calendars">
+        <WeeklyCalendarPanel day="mon" index={1} controller={controller} />
+        <WeeklyCalendarPanel day="tue" index={2} controller={controller} />
+        <WeeklyCalendarPanel day="wed" index={3} controller={controller} />
+        <WeeklyCalendarPanel day="thu" index={4} controller={controller} />
+        <WeeklyCalendarPanel day="fri" index={5} controller={controller} />
+        <WeeklyCalendarPanel day="sat" index={6} controller={controller} />
+        <WeeklyCalendarPanel day="sun" index={7} controller={controller} />
+      </section>
+    );
+  }
+  return null;
 }
 
 /**
- * Renders the Calendar workspace with Today panels and selected detail.
+ * Renders the Calendar workspace with subviews and selected detail.
  *
  * @example <CalendarPage controller={controller} />
  */
