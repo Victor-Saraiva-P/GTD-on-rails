@@ -2,6 +2,8 @@ package com.gtdonrails.api.entities;
 
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -53,6 +55,9 @@ public class Item extends AuditableEntity {
     @OneToOne(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true)
     private NextAction nextAction;
 
+    @OneToOne(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Calendar calendar;
+
     @OneToMany(mappedBy = "item", cascade = CascadeType.REMOVE, orphanRemoval = true)
     private final Set<ItemAsset> assets = new HashSet<>();
 
@@ -93,14 +98,21 @@ public class Item extends AuditableEntity {
         }
     }
 
+    void setCalendar(Calendar calendar) {
+        this.calendar = calendar;
+        if (calendar != null && calendar.getItem() != this) {
+            calendar.setItem(this);
+        }
+    }
+
     /**
      * Explicitly classifies this item as inbox stuff.
      *
      * <p>Example: {@code item.markAsStuff()}.</p>
      */
     public void markAsStuff() {
-        if (nextAction != null) {
-            throw new IllegalStateException("item nextAction value is invalid; expected no next action when marking as STUFF");
+        if (nextAction != null || calendar != null) {
+            throw new IllegalStateException("item subtype value is invalid; expected no subtype when marking as STUFF");
         }
 
         status = ItemStatus.STUFF;
@@ -118,6 +130,18 @@ public class Item extends AuditableEntity {
         return createdNextAction;
     }
 
+    /**
+     * Converts this active inbox stuff item into a dated GTD calendar item.
+     *
+     * <p>Example: {@code item.convertToCalendar(date, LocalTime.NOON)}.</p>
+     */
+    public Calendar convertToCalendar(LocalDate scheduledDate, LocalTime scheduledTime) {
+        requireActiveStuffBeforeCalendarConversion();
+        Calendar createdCalendar = new Calendar(this, scheduledDate, scheduledTime);
+        status = ItemStatus.CALENDAR;
+        return createdCalendar;
+    }
+
     @PrePersist
     void prePersist() {
         initializeAuditTimestamps();
@@ -132,6 +156,13 @@ public class Item extends AuditableEntity {
         if (status != ItemStatus.STUFF || nextAction != null) {
             throw new IllegalStateException(
                 "item status value '" + status + "' is invalid; expected STUFF without next action");
+        }
+    }
+
+    private void requireActiveStuffBeforeCalendarConversion() {
+        if (status != ItemStatus.STUFF || nextAction != null || calendar != null || isDeleted()) {
+            throw new IllegalStateException(
+                "item value '" + status + "' is invalid; expected active STUFF without subtype");
         }
     }
 }

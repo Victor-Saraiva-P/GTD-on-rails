@@ -197,6 +197,41 @@ class InboxControllerTests {
     }
 
     @Test
+    void convertsStuffToCalendarAndRemovesItFromInbox() throws Exception {
+        Item stuff = itemRepository.save(new Item(new Title("Pay rent"), null));
+
+        mockMvc.perform(post("/inbox/{id}/calendar", stuff.getId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"scheduledDate\":\"2026-05-21\",\"scheduledTime\":\"09:30\"}"))
+            .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/inbox/{id}", stuff.getId()))
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void rejectsCalendarConversionWithoutDate() throws Exception {
+        Item stuff = itemRepository.save(new Item(new Title("Pay rent"), null));
+
+        mockMvc.perform(post("/inbox/{id}/calendar", stuff.getId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.detail", containsString("scheduledDate is required")));
+    }
+
+    @Test
+    void rejectsCalendarConversionWithMalformedTime() throws Exception {
+        Item stuff = itemRepository.save(new Item(new Title("Pay rent"), null));
+
+        mockMvc.perform(post("/inbox/{id}/calendar", stuff.getId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"scheduledDate\":\"2026-05-21\",\"scheduledTime\":\"9am\"}"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.detail", containsString("scheduledTime value '9am' is invalid; expected HH:mm")));
+    }
+
+    @Test
     void allowsDesktopDevOrigin() throws Exception {
         mockMvc.perform(get("/inbox").header("Origin", "http://127.0.0.1:1420"))
             .andExpect(status().isOk())

@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+import com.gtdonrails.api.dtos.calendar.ConvertStuffToCalendarRequestDto;
 import com.gtdonrails.api.dtos.inbox.ConvertStuffToNextActionRequestDto;
 import com.gtdonrails.api.dtos.inbox.CreateStuffRequestDto;
 import com.gtdonrails.api.dtos.inbox.StuffResponseDto;
@@ -112,6 +113,19 @@ public class InboxService {
         item.convertToNextAction(request.energy(), request.estimatedTime().toDuration(), contexts);
         itemRepository.save(item);
         requestPersistenceSyncAfterCommit("stuff converted to next action", PersistenceChangeType.UPDATE_ITEM);
+    }
+
+    /**
+     * Converts one inbox stuff item into a dated GTD calendar item.
+     *
+     * <p>Example: {@code inboxService.convertStuffToCalendar(stuffId, request)}.</p>
+     */
+    @Transactional
+    public void convertStuffToCalendar(UUID id, ConvertStuffToCalendarRequestDto request) {
+        Item item = findStuff(id);
+        item.convertToCalendar(request.toScheduledDate(), request.toScheduledTime());
+        itemRepository.save(item);
+        requestPersistenceSyncAfterCommit("stuff converted to calendar", PersistenceChangeType.UPDATE_ITEM);
     }
 
     private Item findStuff(UUID id) {
