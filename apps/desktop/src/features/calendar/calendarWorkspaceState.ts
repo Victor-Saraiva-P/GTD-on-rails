@@ -1,7 +1,7 @@
 import type { Calendar } from "./types";
 
 export type CalendarSubview = "today" | "weekly" | "completed" | "deleted";
-export type CalendarPanel = "due" | "done-today";
+export type CalendarPanel = "due" | "done-today" | "completed" | "deleted" | "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 
 export type CalendarSelectionCursor = {
   items: Calendar[];
@@ -12,9 +12,24 @@ export type CalendarSelectionCursor = {
 export function calendarItemsForPanel(
   dueCalendars: Calendar[],
   doneTodayCalendars: Calendar[],
+  completedCalendars: Calendar[],
+  deletedCalendars: Calendar[],
+  weeklyCalendars: Calendar[],
   activePanel: CalendarPanel
 ): Calendar[] {
-  return activePanel === "done-today" ? doneTodayCalendars : dueCalendars;
+  switch (activePanel) {
+    case "done-today": return doneTodayCalendars;
+    case "completed": return completedCalendars;
+    case "deleted": return deletedCalendars;
+    case "mon": return weeklyCalendars.filter(c => new Date(c.scheduledDate + "T00:00:00").getDay() === 1);
+    case "tue": return weeklyCalendars.filter(c => new Date(c.scheduledDate + "T00:00:00").getDay() === 2);
+    case "wed": return weeklyCalendars.filter(c => new Date(c.scheduledDate + "T00:00:00").getDay() === 3);
+    case "thu": return weeklyCalendars.filter(c => new Date(c.scheduledDate + "T00:00:00").getDay() === 4);
+    case "fri": return weeklyCalendars.filter(c => new Date(c.scheduledDate + "T00:00:00").getDay() === 5);
+    case "sat": return weeklyCalendars.filter(c => new Date(c.scheduledDate + "T00:00:00").getDay() === 6);
+    case "sun": return weeklyCalendars.filter(c => new Date(c.scheduledDate + "T00:00:00").getDay() === 0);
+    default: return dueCalendars;
+  }
 }
 
 export function selectedCalendar(

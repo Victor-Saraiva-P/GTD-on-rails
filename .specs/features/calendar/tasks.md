@@ -57,12 +57,12 @@ T7 + T9 + T10 → T12
 
 **Done when**:
 
-- [ ] Migration creates a `calendars` table linked one-to-one to `items`.
-- [ ] `CalendarStatus` supports `CALENDAR`, `ONGOING`, and `DONE`.
-- [ ] `Calendar` stores required `scheduledDate`, optional `scheduledTime`, and schedule start/end data.
-- [ ] `ItemStatus` supports `CALENDAR`.
-- [ ] `Item.convertToCalendar(date, time)` only converts active stuff.
-- [ ] Entity tests cover date requirement, optional time, status transitions, restore, and item conversion.
+- [x] Migration creates a `calendars` table linked one-to-one to `items`.
+- [x] `CalendarStatus` supports `CALENDAR`, `ONGOING`, and `DONE`.
+- [x] `Calendar` stores required `scheduledDate`, optional `scheduledTime`, and schedule start/end data.
+- [x] `ItemStatus` supports `CALENDAR`.
+- [x] `Item.convertToCalendar(date, time)` only converts active stuff.
+- [x] Entity tests cover date requirement, optional time, status transitions, restore, and item conversion.
 
 **Tests**: API unit  
 **Gate**: `pnpm --filter @gtd-on-rails/api test`  
@@ -85,11 +85,11 @@ T7 + T9 + T10 → T12
 
 **Done when**:
 
-- [ ] Calendar response includes id, title, body, scheduled date, optional scheduled time, status, and schedule data.
-- [ ] Calendar conversion request validates required date and optional `HH:mm` time.
-- [ ] Calendar patch request supports scheduled date/time edits.
-- [ ] Repository methods support today due/late, done today, weekly range, completed, deleted, and ongoing queries.
-- [ ] Mapper/repository tests cover response shape and query filters.
+- [x] Calendar response includes id, title, body, scheduled date, optional scheduled time, status, and schedule data.
+- [x] Calendar conversion request validates required date and optional `HH:mm` time.
+- [x] Calendar patch request supports scheduled date/time edits.
+- [x] Repository methods support today due/late, done today, weekly range, completed, deleted, and ongoing queries.
+- [x] Mapper/repository tests cover response shape and query filters.
 
 **Tests**: API unit/integration  
 **Gate**: `pnpm --filter @gtd-on-rails/api test`  
@@ -112,13 +112,13 @@ T7 + T9 + T10 → T12
 
 **Done when**:
 
-- [ ] Service returns due/late calendars for Today panel `(1)`.
-- [ ] Service returns done-today calendars from schedule end date for Today panel `(2)`.
-- [ ] Service returns seven-day weekly data by local date range.
-- [ ] Service returns completed, deleted, and ongoing calendars.
-- [ ] Service marks calendars ongoing, done, restored, patched, deleted, and recovered.
-- [ ] Service requests persistence sync after mutating transactions.
-- [ ] Service tests cover filters, transitions, restore behavior, and sync request calls.
+- [x] Service returns due/late calendars for Today panel `(1)`.
+- [x] Service returns done-today calendars from schedule end date for Today panel `(2)`.
+- [x] Service returns seven-day weekly data by local date range.
+- [x] Service returns completed, deleted, and ongoing calendars.
+- [x] Service marks calendars ongoing, done, restored, patched, deleted, and recovered.
+- [x] Service requests persistence sync after mutating transactions.
+- [x] Service tests cover filters, transitions, restore behavior, and sync request calls.
 
 **Tests**: API unit  
 **Gate**: `pnpm --filter @gtd-on-rails/api test`  
@@ -141,13 +141,13 @@ T7 + T9 + T10 → T12
 
 **Done when**:
 
-- [ ] `GET /calendars/today` returns due/late calendars.
-- [ ] `GET /calendars/done/today` returns calendars completed today.
-- [ ] `GET /calendars/week?start=YYYY-MM-DD` returns seven local dates.
-- [ ] `GET /calendars/done`, `/deleted`, and `/ongoing` return matching states.
-- [ ] `PATCH /calendars/{id}` updates scheduled date/time.
-- [ ] `POST /calendars/{id}/ongoing`, `/done`, `/restore`, and `/recover` perform status/recovery changes.
-- [ ] Controller tests cover success and validation error paths.
+- [x] `GET /calendars/today` returns due/late calendars.
+- [x] `GET /calendars/done/today` returns calendars completed today.
+- [x] `GET /calendars/week?start=YYYY-MM-DD` returns seven local dates.
+- [x] `GET /calendars/done`, `/deleted`, and `/ongoing` return matching states.
+- [x] `PATCH /calendars/{id}` updates scheduled date/time.
+- [x] `POST /calendars/{id}/ongoing`, `/done`, `/restore`, and `/recover` perform status/recovery changes.
+- [x] Controller tests cover success and validation error paths.
 
 **Tests**: API integration  
 **Gate**: `pnpm --filter @gtd-on-rails/api test`  
@@ -170,11 +170,11 @@ T7 + T9 + T10 → T12
 
 **Done when**:
 
-- [ ] `POST /inbox/{id}/calendar` accepts scheduled date and optional scheduled time.
-- [ ] Conversion rejects deleted, missing, or non-stuff items.
-- [ ] Conversion persists `ItemStatus.CALENDAR` and matching calendar metadata.
-- [ ] Conversion requests persistence sync after commit.
-- [ ] Controller/service tests cover success, missing date, malformed time, and invalid item states.
+- [x] `POST /inbox/{id}/calendar` accepts scheduled date and optional scheduled time.
+- [x] Conversion rejects deleted, missing, or non-stuff items.
+- [x] Conversion persists `ItemStatus.CALENDAR` and matching calendar metadata.
+- [x] Conversion requests persistence sync after commit.
+- [x] Controller/service tests cover success, missing date, malformed time, and invalid item states.
 
 **Tests**: API unit/integration  
 **Gate**: `pnpm --filter @gtd-on-rails/api test`  
@@ -197,12 +197,12 @@ T7 + T9 + T10 → T12
 
 **Done when**:
 
-- [ ] Calendar type models scheduled date, optional time, status, schedule, title, and body.
-- [ ] API client exposes fetch today, done today, week, done, deleted, ongoing, patch, status transition, recover, and inbox conversion functions.
-- [ ] Calendar theme uses Inbox red as the principal accent.
-- [ ] Completed calendar panel styling uses completed next-actions green.
-- [ ] Calendar item icon text is `C`.
-- [ ] Unit tests cover API request paths, response mapping, and theme constants.
+- [x] Calendar type models scheduled date, optional time, status, schedule, title, and body.
+- [x] API client exposes fetch today, done today, week, done, deleted, ongoing, patch, status transition, recover, and inbox conversion functions.
+- [x] Calendar theme uses Inbox red as the principal accent.
+- [x] Completed calendar panel styling uses completed next-actions green.
+- [x] Calendar item icon text is `C`.
+- [x] Unit tests cover API request paths, response mapping, and theme constants.
 
 **Tests**: Desktop unit  
 **Gate**: `pnpm --filter @gtd-on-rails/desktop test` and `pnpm --filter @gtd-on-rails/desktop check`  
@@ -225,12 +225,12 @@ T7 + T9 + T10 → T12
 
 **Done when**:
 
-- [ ] Initial processing step offers `n Next actions` and `c Calendar`.
-- [ ] Calendar flow asks for scheduled date, then optional scheduled time.
-- [ ] `Escape` cancels on the initial step and goes back on later steps.
-- [ ] Previous compatible choices are preserved when moving backward.
-- [ ] API conversion is called only after the optional time step is confirmed.
-- [ ] Unit tests cover keyboard flow, cancellation/back behavior, and payload.
+- [x] Initial processing step offers `n Next actions` and `c Calendar`.
+- [x] Calendar flow asks for scheduled date, then optional scheduled time.
+- [x] `Escape` cancels on the initial step and goes back on later steps.
+- [x] Previous compatible choices are preserved when moving backward.
+- [x] API conversion is called only after the optional time step is confirmed.
+- [x] Unit tests cover keyboard flow, cancellation/back behavior, and payload.
 
 **Tests**: Desktop unit  
 **Gate**: `pnpm --filter @gtd-on-rails/desktop test` and `pnpm --filter @gtd-on-rails/desktop check`  
@@ -280,14 +280,14 @@ T7 + T9 + T10 → T12
 
 **Done when**:
 
-- [ ] `Space c` opens Calendars and does not conflict with `Space C` contexts.
-- [ ] Today View shows panel `(1)` due/late calendars and panel `(2)` done-today calendars.
-- [ ] `1` and `2` focus Today panels.
-- [ ] `j/k`, `d`, `x`, `o`, `r`, `l`, `Enter`, `Space Enter`, and `Space k` follow established scope rules.
-- [ ] Weekly subview renders seven Monday-Sunday columns.
-- [ ] Completed and Deleted subviews support restore/recover behavior.
-- [ ] Empty/loading/error states are English.
-- [ ] Unit tests cover keybind registration and subview/panel rendering behavior.
+- [x] `Space c` opens Calendars and does not conflict with `Space C` contexts.
+- [x] Today View shows panel `(1)` due/late calendars and panel `(2)` done-today calendars.
+- [x] `1` and `2` focus Today panels.
+- [x] `j/k`, `d`, `x`, `o`, `r`, `l`, `Enter`, `Space Enter`, and `Space k` follow established scope rules.
+- [x] Weekly subview renders seven Monday-Sunday columns.
+- [x] Completed and Deleted subviews support restore/recover behavior.
+- [x] Empty/loading/error states are English.
+- [x] Unit tests cover keybind registration and subview/panel rendering behavior.
 
 **Tests**: Desktop unit  
 **Gate**: `pnpm --filter @gtd-on-rails/desktop test` and `pnpm --filter @gtd-on-rails/desktop check`  

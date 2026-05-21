@@ -44,8 +44,8 @@ describe("calendar workspace state", () => {
     const due = [calendar("due", "Due")];
     const done = [calendar("done", "Done", "DONE")];
 
-    assert.equal(calendarItemsForPanel(due, done, "due")[0].id, "due");
-    assert.equal(calendarItemsForPanel(due, done, "done-today" satisfies CalendarPanel)[0].id, "done");
+    assert.equal(calendarItemsForPanel(due, done, [], [], [], "due")[0].id, "due");
+    assert.equal(calendarItemsForPanel(due, done, [], [], [], "done-today" satisfies CalendarPanel)[0].id, "done");
   });
 });
 
