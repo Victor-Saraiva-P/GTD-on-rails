@@ -3,10 +3,11 @@ import type { KeyboardEvent } from "react";
 
 type ProcessingInitialStepProps = {
   onNextAction: () => void;
+  onCalendar: () => void;
   onCancel: () => void;
 };
 
-export function ProcessingInitialStep({ onNextAction, onCancel }: ProcessingInitialStepProps) {
+export function ProcessingInitialStep({ onNextAction, onCalendar, onCancel }: ProcessingInitialStepProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -25,13 +26,23 @@ export function ProcessingInitialStep({ onNextAction, onCancel }: ProcessingInit
       event.preventDefault();
       event.stopPropagation();
       onNextAction();
+      return;
+    }
+
+    if (event.key.toLowerCase() === "c") {
+      event.preventDefault();
+      event.stopPropagation();
+      onCalendar();
     }
   };
 
   return (
     <div ref={containerRef} className="processing-dialog__step processing-dialog__step--initial" tabIndex={-1} onKeyDown={handleKeyDown}>
-      <button className="processing-dialog__command" type="button">
+      <button className="processing-dialog__command" type="button" onClick={onNextAction}>
         <kbd>n</kbd><span>Next actions</span>
+      </button>
+      <button className="processing-dialog__command" type="button" onClick={onCalendar}>
+        <kbd>c</kbd><span>Calendar</span>
       </button>
     </div>
   );

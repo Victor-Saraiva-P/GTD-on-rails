@@ -1,14 +1,18 @@
 import { useMemo } from "react";
 import { useKeybindContext } from "./KeybindProvider";
-import type { KeybindDefinition } from "./types";
+import type { FocusZoneId, KeybindDefinition } from "./types";
 
-const zoneLabels = {
+const zoneLabels: Record<FocusZoneId, string> = {
   "inbox-list": "Inbox list",
   "stuff-detail": "Stuff detail",
   "deleted-inbox-list": "Deleted stuff list",
   "deleted-stuff-detail": "Deleted stuff detail",
+  "calendar-today-due-panel": "Due calendar panel",
+  "calendar-today-done-panel": "Completed today calendar panel",
+  "calendar-detail": "Calendar detail",
   "next-actions-list": "Next actions list",
   "next-action-detail": "Next action detail",
+  "ongoing-calendars-list": "On going calendars list",
   "done-next-actions-list": "Completed next actions list",
   "done-next-action-detail": "Completed next action detail",
   "deleted-next-actions-list": "Deleted next actions list",

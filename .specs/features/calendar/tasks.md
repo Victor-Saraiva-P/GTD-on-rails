@@ -253,11 +253,11 @@ T7 + T9 + T10 → T12
 
 **Done when**:
 
-- [ ] Calendar controller tracks active subview, active panel, selected calendar, title edit, body edit, and Vim mode.
-- [ ] Calendar Detail View renders title, scheduled date, optional time, and body, but not status.
-- [ ] Title/body edits persist through item endpoints.
-- [ ] Calendar body uses existing rich body and asset rendering.
-- [ ] Unit tests cover selection, panel focus, detail metadata, and omitted status.
+- [x] Calendar controller tracks active subview, active panel, selected calendar, title edit, body edit, and Vim mode.
+- [x] Calendar Detail View renders title, scheduled date, optional time, and body, but not status.
+- [x] Title/body edits persist through item endpoints.
+- [x] Calendar body uses existing rich body and asset rendering.
+- [x] Unit tests cover selection, panel focus, detail metadata, and omitted status.
 
 **Tests**: Desktop unit  
 **Gate**: `pnpm --filter @gtd-on-rails/desktop test` and `pnpm --filter @gtd-on-rails/desktop check`  
@@ -310,13 +310,13 @@ T7 + T9 + T10 → T12
 
 **Done when**:
 
-- [ ] `Space o` opens a combined On Going page.
-- [ ] Panel `(1)` lists ongoing next actions.
-- [ ] Panel `(2)` lists ongoing calendars.
-- [ ] `1` and `2` switch panel focus with independent selection state.
-- [ ] Detail area adapts to selected item type.
-- [ ] Restore sends next actions back to next action status and calendars back to calendar status.
-- [ ] Unit tests cover panel switching, selection preservation, detail type, done, delete, and restore actions.
+- [x] `Space o` opens a combined On Going page.
+- [x] Panel `(1)` lists ongoing next actions.
+- [x] Panel `(2)` lists ongoing calendars.
+- [x] `1` and `2` switch panel focus with independent selection state.
+- [x] Detail area adapts to selected item type.
+- [x] Restore sends next actions back to next action status and calendars back to calendar status.
+- [x] Unit tests cover panel switching, selection preservation, detail type, done, delete, and restore actions.
 
 **Tests**: Desktop unit  
 **Gate**: `pnpm --filter @gtd-on-rails/desktop test` and `pnpm --filter @gtd-on-rails/desktop check`  
@@ -339,12 +339,12 @@ T7 + T9 + T10 → T12
 
 **Done when**:
 
-- [ ] Docs call top-level areas views and nested subdivisions panels.
-- [ ] User-facing labels/help text use view vocabulary for top-level areas.
-- [ ] Reusable top-level layout components use view naming.
-- [ ] Nested Calendar Today and On Going subdivisions use panel naming.
-- [ ] Existing styling remains visually unchanged after rename.
-- [ ] Tests and imports are updated without broad unrelated refactors.
+- [x] Docs call top-level areas views and nested subdivisions panels.
+- [x] User-facing labels/help text use view vocabulary for top-level areas.
+- [x] Reusable top-level layout components use view naming.
+- [x] Nested Calendar Today and On Going subdivisions use panel naming.
+- [x] Existing styling remains visually unchanged after rename.
+- [x] Tests and imports are updated without broad unrelated refactors.
 
 **Tests**: Desktop unit and docs search  
 **Gate**: `pnpm --filter @gtd-on-rails/desktop test`, `pnpm --filter @gtd-on-rails/desktop check`, and `rg -n "Panel|panel" docs apps/desktop/src` reviewed for intentional hits  

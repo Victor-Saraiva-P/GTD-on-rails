@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
-import { ListPane } from "../components/ListPane";
+import { ListView } from "../components/ListView";
 import { ListWorkspace } from "../components/ListWorkspace";
 import { RetryState } from "../components/RetryState";
 import { InboxStuffDetails } from "../features/inbox/InboxStuffDetails";
@@ -130,11 +130,11 @@ function StuffDetailBody({ controller, setActiveScreen }: StuffDetailReadyProps)
   );
 }
 
-function StuffDetailPane({ controller, setActiveScreen }: StuffDetailReadyProps) {
+function StuffDetailView({ controller, setActiveScreen }: StuffDetailReadyProps) {
   return (
-    <ListPane title="Stuff Detail" active bodyClassName="list-pane__body--detail">
+    <ListView title="Stuff Detail" active bodyClassName="list-pane__body--detail">
       <StuffDetailBody controller={controller} setActiveScreen={setActiveScreen} />
-    </ListPane>
+    </ListView>
   );
 }
 
@@ -156,7 +156,7 @@ export function StuffDetailPage({ controller }: StuffDetailPageProps) {
   return (
     <ListWorkspace theme={stuffDetailListTheme} currentLabel={stuffDetailListTheme.label} modeLabel={controller.vimMode ?? undefined}>
       <section className="stuff-detail-layout" aria-label="Stuff detail">
-        <StuffDetailPane controller={controller} setActiveScreen={setActiveScreen} />
+        <StuffDetailView controller={controller} setActiveScreen={setActiveScreen} />
       </section>
       <LeaderMenu />
       <Suspense fallback={null}>

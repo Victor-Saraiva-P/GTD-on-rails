@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from "react";
-import { ListPane } from "../components/ListPane";
+import { ListView } from "../components/ListView";
 import { ListWorkspace } from "../components/ListWorkspace";
 import { RetryState } from "../components/RetryState";
 import { InboxStuffDetails } from "../features/inbox/InboxStuffDetails";
@@ -161,22 +161,22 @@ function ArchivedDetailBody(props: ArchivedNextActionsPageProps) {
   );
 }
 
-function ArchivedListPane(props: ArchivedNextActionsPageProps) {
+function ArchivedListView(props: ArchivedNextActionsPageProps) {
   const count = props.controller.stuffs.length;
   const meta = `${count} ${count === 1 ? "item" : "items"}`;
 
   return (
-    <ListPane title={props.listTitle} meta={meta} panelIndex={1} active={props.controller.activeZone === props.listZone} bodyClassName="list-pane__body--flush" className="inbox-pane inbox-pane--list">
+    <ListView title={props.listTitle} meta={meta} viewIndex={1} active={props.controller.activeZone === props.listZone} bodyClassName="list-pane__body--flush" className="inbox-pane inbox-pane--list">
       <ArchivedListBody {...props} />
-    </ListPane>
+    </ListView>
   );
 }
 
-function ArchivedDetailPane(props: ArchivedNextActionsPageProps) {
+function ArchivedDetailView(props: ArchivedNextActionsPageProps) {
   return (
-    <ListPane title={props.detailTitle} panelIndex={2} active={props.controller.activeZone === props.detailZone} bodyClassName="list-pane__body--detail" className="inbox-pane inbox-pane--detail">
+    <ListView title={props.detailTitle} viewIndex={2} active={props.controller.activeZone === props.detailZone} bodyClassName="list-pane__body--detail" className="inbox-pane inbox-pane--detail">
       <ArchivedDetailBody {...props} />
-    </ListPane>
+    </ListView>
   );
 }
 
@@ -194,8 +194,8 @@ export function ArchivedNextActionsPage(props: ArchivedNextActionsPageProps) {
   return (
     <ListWorkspace theme={props.theme} currentLabel={props.label}>
       <section className="inbox-terminal-layout" aria-label={props.label}>
-        <ArchivedListPane {...props} />
-        <ArchivedDetailPane {...props} />
+        <ArchivedListView {...props} />
+        <ArchivedDetailView {...props} />
       </section>
       <LeaderMenu />
     </ListWorkspace>

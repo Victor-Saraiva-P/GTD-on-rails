@@ -1,7 +1,7 @@
 import { ContextItemsList } from "./ContextItemsList";
 import type { ContextItem, ContextRelatedItem } from "./types";
 
-type ContextItemsPaneProps = {
+type ContextItemsViewProps = {
   context: ContextItem;
   items: ContextRelatedItem[];
 };
@@ -9,9 +9,9 @@ type ContextItemsPaneProps = {
 /**
  * Shows the selected context summary alongside its related item list.
  *
- * @example <ContextItemsPane context={context} items={items} />
+ * @example <ContextItemsView context={context} items={items} />
  */
-export function ContextItemsPane({ context, items }: ContextItemsPaneProps) {
+export function ContextItemsView({ context, items }: ContextItemsViewProps) {
   return (
     <div className="context-items-pane">
       <p className="inbox-detail__meta">Showing latest related items for {context.name}</p>

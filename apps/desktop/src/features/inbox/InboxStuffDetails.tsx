@@ -4,6 +4,8 @@ import estimatedTimeIcon from "../../assets/next-actions/estimated time icon.png
 import scheduleIcon from "../../assets/next-actions/schdule-icon.png";
 import { FilePreview } from "./FilePreview";
 import { formatStuffCreatedAt, getStuffBodyPreviewLines, type Stuff, type ItemBody } from "./types";
+import { calendarDetailMetadata } from "../calendar/calendarDetailMetadata";
+import type { Calendar } from "../calendar/types";
 import { formatScheduleDateTime, type NextAction } from "../next-actions/types";
 import { buildApiUrl } from "../../config/env";
 import { ContextNameWithIcon } from "../contexts/ContextNameWithIcon";
@@ -22,7 +24,7 @@ type InboxStuffDetailsProps = {
   onCancelEditing: () => void;
   onVimModeChange?: (mode: "NORMAL" | "INSERT" | "VISUAL") => void;
   showCreatedMeta?: boolean;
-  metaVariant?: "default" | "next-action";
+  metaVariant?: "default" | "next-action" | "calendar";
 };
 
 function initialMetaParts(item: Stuff, showCreatedMeta: boolean): ReactNode[] {
@@ -123,7 +125,20 @@ function NextActionDetailHeader({ item }: Pick<InboxStuffDetailsProps, "item">) 
   );
 }
 
+function CalendarDetailHeader({ item }: Pick<InboxStuffDetailsProps, "item">) {
+  const metadata = calendarDetailMetadata(item as Calendar);
+
+  return (
+    <>
+      <h1 className="inbox-detail__title">{metadata.title}</h1>
+      <p className="inbox-detail__meta"><MetaParts parts={metadata.parts} /></p>
+      <div className="inbox-detail__divider" />
+    </>
+  );
+}
+
 function DetailHeader({ item, metaVariant, showCreatedMeta }: Pick<InboxStuffDetailsProps, "item" | "metaVariant" | "showCreatedMeta">) {
+  if (metaVariant === "calendar") return <CalendarDetailHeader item={item} />;
   if (metaVariant === "next-action") return <NextActionDetailHeader item={item} />;
   return <InboxDetailHeader item={item} showCreatedMeta={showCreatedMeta} />;
 }

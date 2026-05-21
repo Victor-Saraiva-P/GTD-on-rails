@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
-import { ListPane } from "../components/ListPane";
+import { ListView } from "../components/ListView";
 import { ListWorkspace } from "../components/ListWorkspace";
 import { RetryState } from "../components/RetryState";
 import { InboxStuffDetails } from "../features/inbox/InboxStuffDetails";
@@ -102,8 +102,8 @@ function DetailBody({ controller, setActiveScreen }: DetailReadyProps) {
   return <DetailReady controller={controller} setActiveScreen={setActiveScreen} />;
 }
 
-function DetailPane({ controller, setActiveScreen }: DetailReadyProps) {
-  return <ListPane title="On Going Action Detail" active bodyClassName="list-pane__body--detail"><DetailBody controller={controller} setActiveScreen={setActiveScreen} /></ListPane>;
+function DetailView({ controller, setActiveScreen }: DetailReadyProps) {
+  return <ListView title="On Going Action Detail" active bodyClassName="list-pane__body--detail"><DetailBody controller={controller} setActiveScreen={setActiveScreen} /></ListView>;
 }
 
 /**
@@ -124,7 +124,7 @@ export function OnGoingNextActionDetailPage({ controller, selectNextAction }: On
   return (
     <ListWorkspace theme={onGoingNextActionDetailListTheme} currentLabel={onGoingNextActionDetailListTheme.label} modeLabel={controller.vimMode ?? undefined}>
       <section className="stuff-detail-layout" aria-label="On going action detail">
-        <DetailPane controller={controller} setActiveScreen={setActiveScreen} />
+        <DetailView controller={controller} setActiveScreen={setActiveScreen} />
       </section>
       <LeaderMenu />
       <Suspense fallback={null}>

@@ -1,37 +1,41 @@
 import { useState } from "react";
 import type { Stuff } from "../inbox/types";
 import { ProcessingInitialStep } from "./ProcessingInitialStep";
+import { ProcessingCalendarDateStep } from "./ProcessingCalendarDateStep";
+import { ProcessingCalendarTimeStep } from "./ProcessingCalendarTimeStep";
 import { ProcessingContextStep } from "./ProcessingContextStep";
 import { ProcessingEnergyStep } from "./ProcessingEnergyStep";
 import { ProcessingTimeStep } from "./ProcessingTimeStep";
+import { buildCalendarPayload, previousProcessingStep, stepAfterInitialChoice } from "./processingFlow";
+import type { CalendarConversionPayload } from "../calendar/types";
+import type { ProcessingStep } from "./processingFlow";
 
 type ProcessingDialogProps = {
   item: Stuff;
   onClose: () => void;
   onProcess: (energy: number | null, estimatedTimeMinutes: number | null, contextIds: string[]) => void;
+  onProcessCalendar: (payload: CalendarConversionPayload) => void;
 };
-
-type ProcessingStep = "initial" | "select-context" | "set-energy" | "set-time";
-
-function previousProcessingStep(step: ProcessingStep): ProcessingStep {
-  if (step === "set-time") return "set-energy";
-  if (step === "set-energy") return "select-context";
-  return "initial";
-}
 
 /**
  * Shows the processing command wizard for the selected stuff.
  *
  * @example <ProcessingDialog item={stuff} onClose={close} onProcess={process} />
  */
-export function ProcessingDialog({ item, onClose, onProcess }: ProcessingDialogProps) {
+export function ProcessingDialog({ item, onClose, onProcess, onProcessCalendar }: ProcessingDialogProps) {
   const [step, setStep] = useState<ProcessingStep>("initial");
   const [selectedContextIds, setSelectedContextIds] = useState<string[]>([]);
   const [selectedEnergyDigits, setSelectedEnergyDigits] = useState("");
   const [selectedTimeDigits, setSelectedTimeDigits] = useState("");
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState("");
+  const [selectedCalendarTimeDigits, setSelectedCalendarTimeDigits] = useState("");
 
   const handleNextAction = () => {
-    setStep("select-context");
+    setStep(stepAfterInitialChoice("next-action"));
+  };
+
+  const handleCalendar = () => {
+    setStep(stepAfterInitialChoice("calendar"));
   };
 
   const handleContextsSelected = (contextIds: string[]) => {
@@ -48,6 +52,15 @@ export function ProcessingDialog({ item, onClose, onProcess }: ProcessingDialogP
     onProcess(energy, minutes, selectedContextIds);
   };
 
+  const handleCalendarDateSelected = (scheduledDate: string) => {
+    setSelectedCalendarDate(scheduledDate);
+    setStep("set-calendar-time");
+  };
+
+  const handleCalendarTimeSelected = () => {
+    onProcessCalendar(buildCalendarPayload(selectedCalendarDate, selectedCalendarTimeDigits));
+  };
+
   const handleBack = () => setStep((currentStep) => previousProcessingStep(currentStep));
 
   return (
@@ -55,7 +68,13 @@ export function ProcessingDialog({ item, onClose, onProcess }: ProcessingDialogP
       <div className="processing-dialog__title">Processing</div>
       <div className="processing-dialog__content">
         {step === "initial" && (
-          <ProcessingInitialStep onNextAction={handleNextAction} onCancel={onClose} />
+          <ProcessingInitialStep onNextAction={handleNextAction} onCalendar={handleCalendar} onCancel={onClose} />
+        )}
+        {step === "set-calendar-date" && (
+          <ProcessingCalendarDateStep date={selectedCalendarDate} onDateChange={setSelectedCalendarDate} onDateSelected={handleCalendarDateSelected} onBack={handleBack} />
+        )}
+        {step === "set-calendar-time" && (
+          <ProcessingCalendarTimeStep digits={selectedCalendarTimeDigits} onDigitsChange={setSelectedCalendarTimeDigits} onTimeSelected={handleCalendarTimeSelected} onBack={handleBack} />
         )}
         {step === "select-context" && (
           <ProcessingContextStep onContextsSelected={handleContextsSelected} onSelectedIdsChange={setSelectedContextIds} onBack={handleBack} initialSelectedIds={selectedContextIds} />

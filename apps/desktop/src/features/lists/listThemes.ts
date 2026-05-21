@@ -68,6 +68,29 @@ export const deletedNextActionsListTheme: ListTheme = {
   accentColorRgb: "155, 155, 155"
 };
 
+export const calendarsListTheme: ListTheme = {
+  id: "calendars",
+  label: "Calendars",
+  accentColor: inboxListTheme.accentColor,
+  accentColorRgb: inboxListTheme.accentColorRgb
+};
+
+export const doneCalendarsListTheme: ListTheme = {
+  id: "done-calendars",
+  label: "Completed Calendars",
+  accentColor: doneNextActionsListTheme.accentColor,
+  accentColorRgb: doneNextActionsListTheme.accentColorRgb
+};
+
+export const deletedCalendarsListTheme: ListTheme = {
+  id: "deleted-calendars",
+  label: "Deleted Calendars",
+  accentColor: deletedInboxListTheme.accentColor,
+  accentColorRgb: deletedInboxListTheme.accentColorRgb
+};
+
+export const calendarItemIconText = "C";
+
 export const contextsListTheme: ListTheme = {
   id: "contexts",
   label: "Contexts",

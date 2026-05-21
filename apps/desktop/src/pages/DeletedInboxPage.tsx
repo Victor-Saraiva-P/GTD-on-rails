@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from "react";
-import { ListPane } from "../components/ListPane";
+import { ListView } from "../components/ListView";
 import { ListWorkspace } from "../components/ListWorkspace";
 import { RetryState } from "../components/RetryState";
 import { InboxList } from "../features/inbox/InboxList";
@@ -168,29 +168,29 @@ function DeletedDetailBody({ controller }: DeletedInboxPageProps) {
   );
 }
 
-function DeletedListPane({ controller }: DeletedInboxPageProps) {
+function DeletedListView({ controller }: DeletedInboxPageProps) {
   const listMeta = `${controller.stuffs.length} ${controller.stuffs.length === 1 ? "item" : "items"}`;
 
   return (
-    <ListPane title="Deleted Stuff" meta={listMeta} panelIndex={1} active={controller.activeZone === "deleted-inbox-list"} bodyClassName="list-pane__body--flush" className="inbox-pane inbox-pane--list">
+    <ListView title="Deleted Stuff" meta={listMeta} viewIndex={1} active={controller.activeZone === "deleted-inbox-list"} bodyClassName="list-pane__body--flush" className="inbox-pane inbox-pane--list">
       <DeletedListBody controller={controller} />
-    </ListPane>
+    </ListView>
   );
 }
 
-function DeletedDetailPane({ controller }: DeletedInboxPageProps) {
+function DeletedDetailView({ controller }: DeletedInboxPageProps) {
   return (
-    <ListPane title="Stuff Detail" panelIndex={2} active={controller.activeZone === "deleted-stuff-detail"} bodyClassName="list-pane__body--detail" className="inbox-pane inbox-pane--detail">
+    <ListView title="Stuff Detail" viewIndex={2} active={controller.activeZone === "deleted-stuff-detail"} bodyClassName="list-pane__body--detail" className="inbox-pane inbox-pane--detail">
       <DeletedDetailBody controller={controller} />
-    </ListPane>
+    </ListView>
   );
 }
 
-function DeletedPanes({ controller }: DeletedInboxPageProps) {
+function DeletedViews({ controller }: DeletedInboxPageProps) {
   return (
     <section className="inbox-terminal-layout" aria-label="Deleted stuff">
-      <DeletedListPane controller={controller} />
-      <DeletedDetailPane controller={controller} />
+      <DeletedListView controller={controller} />
+      <DeletedDetailView controller={controller} />
     </section>
   );
 }
@@ -208,7 +208,7 @@ export function DeletedInboxPage({ controller }: DeletedInboxPageProps) {
 
   return (
     <ListWorkspace theme={deletedInboxListTheme} currentLabel={deletedInboxListTheme.label}>
-      <DeletedPanes controller={controller} />
+      <DeletedViews controller={controller} />
       <LeaderMenu />
     </ListWorkspace>
   );
