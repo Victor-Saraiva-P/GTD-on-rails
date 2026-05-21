@@ -2,7 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  calendarItemIconText,
+  calendarsListTheme,
   contextsListTheme,
+  doneCalendarsListTheme,
+  doneNextActionsListTheme,
   inboxListTheme,
   nextActionsListTheme,
   stuffDetailListTheme
@@ -30,4 +34,14 @@ test("nextActionsListTheme defines green next actions styling", () => {
   assert.equal(nextActionsListTheme.id, "next-actions");
   assert.equal(nextActionsListTheme.label, "Next Actions");
   assert.equal(nextActionsListTheme.accentColor, "#4F9768");
+});
+
+test("calendarsListTheme reuses inbox red accent", () => {
+  assert.equal(calendarsListTheme.id, "calendars");
+  assert.equal(calendarsListTheme.accentColor, inboxListTheme.accentColor);
+  assert.equal(calendarItemIconText, "C");
+});
+
+test("doneCalendarsListTheme reuses completed next actions green", () => {
+  assert.equal(doneCalendarsListTheme.accentColor, doneNextActionsListTheme.accentColor);
 });

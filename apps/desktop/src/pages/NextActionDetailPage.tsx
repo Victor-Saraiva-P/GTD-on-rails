@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
-import { ListPane } from "../components/ListPane";
+import { ListView } from "../components/ListView";
 import { ListWorkspace } from "../components/ListWorkspace";
 import { RetryState } from "../components/RetryState";
 import { InboxStuffDetails } from "../features/inbox/InboxStuffDetails";
@@ -124,11 +124,11 @@ function DetailBody({ controller, setActiveScreen }: DetailReadyProps) {
   );
 }
 
-function DetailPane({ controller, setActiveScreen }: DetailReadyProps) {
+function DetailView({ controller, setActiveScreen }: DetailReadyProps) {
   return (
-    <ListPane title="Next Action Detail" active bodyClassName="list-pane__body--detail">
+    <ListView title="Next Action Detail" active bodyClassName="list-pane__body--detail">
       <DetailBody controller={controller} setActiveScreen={setActiveScreen} />
-    </ListPane>
+    </ListView>
   );
 }
 
@@ -150,7 +150,7 @@ export function NextActionDetailPage({ controller }: NextActionDetailPageProps) 
   return (
     <ListWorkspace theme={nextActionDetailListTheme} currentLabel={nextActionDetailListTheme.label} modeLabel={controller.vimMode ?? undefined}>
       <section className="stuff-detail-layout" aria-label="Next action detail">
-        <DetailPane controller={controller} setActiveScreen={setActiveScreen} />
+        <DetailView controller={controller} setActiveScreen={setActiveScreen} />
       </section>
       <LeaderMenu />
       <Suspense fallback={null}>

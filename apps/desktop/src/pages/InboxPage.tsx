@@ -1,9 +1,10 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
-import { ListPane } from "../components/ListPane";
+import { ListView } from "../components/ListView";
 import { ListWorkspace } from "../components/ListWorkspace";
 import { RetryState } from "../components/RetryState";
 import { InboxList } from "../features/inbox/InboxList";
 import { InboxStuffDetails } from "../features/inbox/InboxStuffDetails";
+import type { CalendarConversionPayload } from "../features/calendar/types";
 import { prefetchNearbyInboxAssets } from "../features/inbox/inboxAssetPrefetch";
 import { buildFormattingBindings } from "../features/inbox/formattingKeybinds";
 import type { InboxWorkspaceController } from "../features/inbox/useInboxWorkspaceController";
@@ -246,29 +247,29 @@ function InboxDetailBody({ controller }: InboxPageProps) {
   );
 }
 
-function InboxListPane({ controller }: InboxPageProps) {
+function InboxListView({ controller }: InboxPageProps) {
   const listMeta = `${controller.stuffs.length} ${controller.stuffs.length === 1 ? "item" : "items"}`;
 
   return (
-    <ListPane title="Inbox" meta={listMeta} panelIndex={1} active={controller.activeZone === "inbox-list"} bodyClassName="list-pane__body--flush" className="inbox-pane inbox-pane--list">
+    <ListView title="Inbox" meta={listMeta} viewIndex={1} active={controller.activeZone === "inbox-list"} bodyClassName="list-pane__body--flush" className="inbox-pane inbox-pane--list">
       <InboxListBody controller={controller} />
-    </ListPane>
+    </ListView>
   );
 }
 
-function InboxDetailPane({ controller }: InboxPageProps) {
+function InboxDetailView({ controller }: InboxPageProps) {
   return (
-    <ListPane title="Stuff Detail" panelIndex={2} active={controller.activeZone === "stuff-detail"} bodyClassName="list-pane__body--detail" className="inbox-pane inbox-pane--detail">
+    <ListView title="Stuff Detail" viewIndex={2} active={controller.activeZone === "stuff-detail"} bodyClassName="list-pane__body--detail" className="inbox-pane inbox-pane--detail">
       <InboxDetailBody controller={controller} />
-    </ListPane>
+    </ListView>
   );
 }
 
-function InboxPanes({ controller }: InboxPageProps) {
+function InboxViews({ controller }: InboxPageProps) {
   return (
     <section className="inbox-terminal-layout" aria-label="Inbox">
-      <InboxListPane controller={controller} />
-      <InboxDetailPane controller={controller} />
+      <InboxListView controller={controller} />
+      <InboxDetailView controller={controller} />
     </section>
   );
 }
@@ -289,6 +290,10 @@ export function InboxPage({ controller }: InboxPageProps) {
     void controller.processSelectedStuff(energy, time, contextIds);
     setIsProcessingOpen(false);
   };
+  const processSelectedCalendarItem = (payload: CalendarConversionPayload) => {
+    void controller.processSelectedStuffToCalendar(payload);
+    setIsProcessingOpen(false);
+  };
   useKeybindScreen("inbox");
   useInboxZone(controller);
   useInboxAssetPreload(controller);
@@ -296,13 +301,13 @@ export function InboxPage({ controller }: InboxPageProps) {
 
   return (
     <ListWorkspace theme={inboxListTheme} currentLabel={inboxListTheme.label} modeLabel={controller.vimMode ?? undefined}>
-      <InboxPanes controller={controller} />
+      <InboxViews controller={controller} />
       <LeaderMenu />
       <Suspense fallback={null}>
         {isLinkComboOpen ? <LazyMarkdownLinkComboDialog onClose={() => setIsLinkComboOpen(false)} /> : null}
         {isAssetComboOpen && controller.selectedItem ? <LazyMarkdownAssetComboDialog itemId={controller.selectedItem.id} onClose={() => setIsAssetComboOpen(false)} /> : null}
       </Suspense>
-      {isProcessingOpen && controller.selectedItem ? <ProcessingDialog item={controller.selectedItem} onClose={() => setIsProcessingOpen(false)} onProcess={processSelectedItem} /> : null}
+      {isProcessingOpen && controller.selectedItem ? <ProcessingDialog item={controller.selectedItem} onClose={() => setIsProcessingOpen(false)} onProcess={processSelectedItem} onProcessCalendar={processSelectedCalendarItem} /> : null}
     </ListWorkspace>
   );
 }

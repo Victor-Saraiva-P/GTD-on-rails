@@ -3,6 +3,7 @@ import { useUndoRedoHistory } from "../history/useUndoRedoHistory";
 import { useActiveZone } from "../keybinds/hooks";
 import { useInboxStuffsQuery } from "./useInboxStuffsQuery";
 import { useStuffSelection } from "./useStuffSelection";
+import type { CalendarConversionPayload } from "../calendar/types";
 import type { Stuff, ItemBody } from "./types";
 
 const DRAFT_STUFF_ID = "__draft_stuff__";
@@ -333,6 +334,19 @@ async function processSelectedStuffAction(model: InboxModel, energy: number | nu
   model.zone.setActiveZone("inbox-list");
 }
 
+async function processSelectedStuffToCalendarAction(model: InboxModel, payload: CalendarConversionPayload) {
+  const selectedItem = model.selection.selectedItem;
+
+  if (!selectedItem) {
+    return;
+  }
+
+  await model.query.processStuffToCalendar(selectedItem, payload);
+  model.selection.setSelectedId(model.query.stuffs[0]?.id ?? null);
+  clearAllEditing(model);
+  model.zone.setActiveZone("inbox-list");
+}
+
 function useInboxWorkspaceActions(model: InboxModel) {
   return {
     autosaveEditingSelectedStuffBody: (body: ItemBody) => autosaveEditingSelectedStuffBodyAction(model, body),
@@ -343,6 +357,7 @@ function useInboxWorkspaceActions(model: InboxModel) {
     createNewStuff: async () => { createNewStuffAction(model); },
     deleteSelectedStuff: () => deleteSelectedStuffAction(model),
     processSelectedStuff: (energy: number | null, estimatedTimeMinutes: number | null, contextIds: string[]) => processSelectedStuffAction(model, energy, estimatedTimeMinutes, contextIds),
+    processSelectedStuffToCalendar: (payload: CalendarConversionPayload) => processSelectedStuffToCalendarAction(model, payload),
     undo: () => undoAction(model),
     redo: () => redoAction(model),
     selectNextStuff: model.selection.selectNextStuff,

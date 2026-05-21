@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
-import { ListPane } from "../components/ListPane";
+import { ListView } from "../components/ListView";
 import { ListWorkspace } from "../components/ListWorkspace";
 import { RetryState } from "../components/RetryState";
 import { ContextNameWithIcon } from "../features/contexts/ContextNameWithIcon";
@@ -230,30 +230,30 @@ async function exitBodyEditing(controller: NextActionsWorkspaceController, body:
   controller.setActiveZone("next-actions-list");
 }
 
-function NextActionsListPane({ controller }: NextActionControllerProps) {
+function NextActionsListView({ controller }: NextActionControllerProps) {
   const count = controller.stuffs.length;
   const meta = `${count} ${count === 1 ? "item" : "items"}`;
 
   return (
-    <ListPane title="Next Actions" meta={meta} panelIndex={1} active={controller.activeZone === "next-actions-list"} bodyClassName="list-pane__body--flush" className="inbox-pane inbox-pane--list">
+    <ListView title="Next Actions" meta={meta} viewIndex={1} active={controller.activeZone === "next-actions-list"} bodyClassName="list-pane__body--flush" className="inbox-pane inbox-pane--list">
       <NextActionsListBody controller={controller} />
-    </ListPane>
+    </ListView>
   );
 }
 
-function NextActionDetailPane({ controller }: NextActionControllerProps) {
+function NextActionDetailView({ controller }: NextActionControllerProps) {
   return (
-    <ListPane title="Next Action Detail" panelIndex={2} active={controller.activeZone === "next-action-detail"} bodyClassName="list-pane__body--detail" className="inbox-pane inbox-pane--detail">
+    <ListView title="Next Action Detail" viewIndex={2} active={controller.activeZone === "next-action-detail"} bodyClassName="list-pane__body--detail" className="inbox-pane inbox-pane--detail">
       <NextActionDetailBody controller={controller} />
-    </ListPane>
+    </ListView>
   );
 }
 
-function NextActionPanes({ controller }: NextActionControllerProps) {
+function NextActionViews({ controller }: NextActionControllerProps) {
   return (
     <section className="inbox-terminal-layout" aria-label="Next actions">
-      <NextActionsListPane controller={controller} />
-      <NextActionDetailPane controller={controller} />
+      <NextActionsListView controller={controller} />
+      <NextActionDetailView controller={controller} />
     </section>
   );
 }
@@ -312,7 +312,7 @@ export function NextActionsPage({ controller, selectOnGoingAction }: NextActions
 
   return (
     <ListWorkspace theme={nextActionsListTheme} currentClassName="list-workspace__current--next-actions" currentLabel={<NextActionsFooterLabel controller={controller} />} modeLabel={controller.vimMode ?? undefined}>
-      <NextActionPanes controller={controller} />
+      <NextActionViews controller={controller} />
       <LeaderMenu />
       <Suspense fallback={null}>
         {isLinkOpen ? <LazyMarkdownLinkComboDialog onClose={() => setIsLinkOpen(false)} /> : null}
