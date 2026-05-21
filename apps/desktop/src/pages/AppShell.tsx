@@ -1,5 +1,7 @@
 import { useEffect, useMemo } from "react";
+import { useOnGoingCalendarsWorkspaceController } from "../features/calendar/useOnGoingCalendarsWorkspaceController";
 import { clearAssetObjectUrlCache } from "../features/inbox/assetFiles";
+import { useCalendarWorkspaceController, type CalendarWorkspaceController } from "../features/calendar/useCalendarWorkspaceController";
 import { useDeletedInboxWorkspaceController } from "../features/inbox/useDeletedInboxWorkspaceController";
 import { useInboxWorkspaceController, type InboxWorkspaceController } from "../features/inbox/useInboxWorkspaceController";
 import { useActiveScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
@@ -18,6 +20,8 @@ import {
 import { useNextActionsWorkspaceController } from "../features/next-actions/useNextActionsWorkspaceController";
 import { doneNextActionsListTheme, deletedNextActionsListTheme } from "../features/lists/listThemes";
 import { ArchivedNextActionsPage } from "./ArchivedNextActionsPage";
+import { CalendarDetailPage } from "./CalendarDetailPage";
+import { CalendarPage } from "./CalendarPage";
 import { ContextsPage } from "./ContextsPage";
 import { DeletedInboxPage } from "./DeletedInboxPage";
 import { InboxPage } from "./InboxPage";
@@ -47,8 +51,23 @@ const deletedNextActionsConfig = {
 
 type AppControllers = ReturnType<typeof useAppControllers>;
 
-function buildNavigationBindings(setActiveScreen: (screen: ScreenId) => void, inboxController: InboxWorkspaceController) {
+function buildNavigationBindings(
+  setActiveScreen: (screen: ScreenId) => void,
+  inboxController: InboxWorkspaceController,
+  calendarController: CalendarWorkspaceController
+) {
   return [
+    {
+      id: "navigation.open-calendars",
+      key: "c",
+      description: "Open calendars",
+      leader: true,
+      sequence: ["c"],
+      runKeybind: () => {
+        calendarController.resetWorkspace();
+        setActiveScreen("calendars");
+      }
+    },
     {
       id: "navigation.open-contexts",
       key: "C",
@@ -89,11 +108,13 @@ function buildNavigationBindings(setActiveScreen: (screen: ScreenId) => void, in
 
 function useAppControllers() {
   return {
+    calendars: useCalendarWorkspaceController(),
     deletedInbox: useDeletedInboxWorkspaceController(),
     deletedNextActions: useArchivedNextActionsWorkspaceController(deletedNextActionsConfig),
     doneNextActions: useArchivedNextActionsWorkspaceController(doneNextActionsConfig),
     inbox: useInboxWorkspaceController(),
     nextActions: useNextActionsWorkspaceController(),
+    ongoingCalendars: useOnGoingCalendarsWorkspaceController(),
     ongoingNextActions: useOnGoingNextActionsWorkspaceController()
   };
 }
@@ -103,8 +124,11 @@ function useReloadActiveScreen(activeScreen: ScreenId, controllers: AppControlle
     if (activeScreen === "contexts") clearAssetObjectUrlCache();
     if (activeScreen === "inbox") controllers.inbox.reload();
     if (activeScreen === "deleted-inbox") controllers.deletedInbox.reload();
+    if (activeScreen === "calendars") controllers.calendars.reload();
+    if (activeScreen === "calendar-detail-page") controllers.calendars.reload();
     if (activeScreen === "next-actions") controllers.nextActions.reload();
     if (activeScreen === "ongoing-next-actions") controllers.ongoingNextActions.reload();
+    if (activeScreen === "ongoing-next-actions") controllers.ongoingCalendars.reload();
     if (activeScreen === "ongoing-next-action-detail-page") controllers.ongoingNextActions.reload();
     if (activeScreen === "done-next-actions") controllers.doneNextActions.reload();
     if (activeScreen === "deleted-next-actions") controllers.deletedNextActions.reload();
@@ -149,10 +173,12 @@ function renderDeletedNextActionsPage(controllers: AppControllers) {
 
 function renderActiveScreen(activeScreen: ScreenId, controllers: AppControllers) {
   if (activeScreen === "contexts") return <ContextsPage />;
+  if (activeScreen === "calendars") return <CalendarPage controller={controllers.calendars} />;
+  if (activeScreen === "calendar-detail-page") return <CalendarDetailPage controller={controllers.calendars} />;
   if (activeScreen === "stuff-detail") return <StuffDetailPage controller={controllers.inbox} />;
   if (activeScreen === "deleted-inbox") return <DeletedInboxPage controller={controllers.deletedInbox} />;
   if (activeScreen === "next-actions") return <NextActionsPage controller={controllers.nextActions} selectOnGoingAction={controllers.ongoingNextActions.setSelectedId} />;
-  if (activeScreen === "ongoing-next-actions") return <OnGoingNextActionsPage controller={controllers.ongoingNextActions} selectNextAction={controllers.nextActions.setSelectedId} />;
+  if (activeScreen === "ongoing-next-actions") return <OnGoingNextActionsPage controller={controllers.ongoingNextActions} calendarController={controllers.ongoingCalendars} selectNextAction={controllers.nextActions.setSelectedId} />;
   if (activeScreen === "next-action-detail-page") return <NextActionDetailPage controller={controllers.nextActions} />;
   if (activeScreen === "ongoing-next-action-detail-page") return <OnGoingNextActionDetailPage controller={controllers.ongoingNextActions} selectNextAction={controllers.nextActions.setSelectedId} />;
   if (activeScreen === "done-next-actions") return renderDoneNextActionsPage(controllers);
@@ -169,7 +195,10 @@ function renderActiveScreen(activeScreen: ScreenId, controllers: AppControllers)
 export function AppShell() {
   const { activeScreen, setActiveScreen } = useActiveScreen();
   const controllers = useAppControllers();
-  const navigationBindings = useMemo(() => buildNavigationBindings(setActiveScreen, controllers.inbox), [setActiveScreen, controllers.inbox]);
+  const navigationBindings = useMemo(
+    () => buildNavigationBindings(setActiveScreen, controllers.inbox, controllers.calendars),
+    [setActiveScreen, controllers.inbox, controllers.calendars]
+  );
 
   useReloadActiveScreen(activeScreen, controllers);
   useRegisterKeybinds(navigationBindings);
