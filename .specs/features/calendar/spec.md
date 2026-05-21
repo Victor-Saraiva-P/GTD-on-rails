@@ -84,6 +84,9 @@ This feature also clarifies interface vocabulary. Existing top-level areas such 
 7. WHEN a list panel has focus THEN `j` and `k` SHALL move selection down and up.
 8. WHEN a selected calendar is in panel `(1)` THEN `o` SHALL mark it on going and `x` SHALL mark it done.
 9. WHEN a selected calendar is eligible for deletion THEN `d` SHALL soft-delete it.
+10. WHEN the Calendars page renders THEN its principal accent color SHALL match the Inbox red.
+11. WHEN a calendar item renders in a list or panel THEN its item icon SHALL be the letter `C`.
+12. WHEN completed calendars render in Today View panel `(2)` THEN their visual accent SHALL match the completed next-actions green.
 
 **Independent Test**: Seed a late calendar, a today calendar, an ongoing calendar, and a done-today calendar, then open `Space c` and verify each appears only in the correct panel.
 
@@ -97,7 +100,7 @@ This feature also clarifies interface vocabulary. Existing top-level areas such 
 
 **Acceptance Criteria**:
 
-1. WHEN a calendar is selected THEN Calendar Detail View SHALL render its title, scheduled date, optional time, status, and body.
+1. WHEN a calendar is selected THEN Calendar Detail View SHALL render its title, scheduled date, optional time, and body.
 2. WHEN Calendar Detail View renders body content THEN it SHALL use the same body rendering and asset behavior as stuff and next actions.
 3. WHEN the user edits a calendar title or body THEN the system SHALL persist through existing item title/body endpoints.
 4. WHEN the user presses `Space Enter` on a selected calendar THEN the system SHALL open the focused calendar detail page.
@@ -205,6 +208,7 @@ This feature also clarifies interface vocabulary. Existing top-level areas such 
 - [ ] The owner can process inbox stuff into a calendar using `p`, then `c`, then date and optional time.
 - [ ] `Space c` opens Calendars and shows due or late calendars in panel `(1)` and done-today calendars in panel `(2)`.
 - [ ] Calendar items can move through `CALENDAR`, `ONGOING`, and `DONE` without losing title/body content.
+- [ ] Calendar views use the Inbox red as the principal color, render calendar item icons as `C`, and use completed next-actions green for completed calendars in Today View.
 - [ ] Weekly view displays seven Monday-Sunday columns with the correct local dates.
 - [ ] `Space o` shows on going next actions and on going calendars as separate panels.
 - [ ] Documentation and user-facing terminology consistently use views for top-level areas and panels for nested subdivisions.
