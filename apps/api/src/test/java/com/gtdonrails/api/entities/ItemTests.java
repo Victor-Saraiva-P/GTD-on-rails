@@ -4,6 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
+
 import com.gtdonrails.api.enums.ItemStatus;
 import com.gtdonrails.api.types.ItemBody;
 import com.gtdonrails.api.types.Title;
@@ -59,6 +62,13 @@ class ItemTests {
     }
 
     @Test
+    void constructorWithoutCalendarSetsNullCalendar() {
+        Item item = new Item(new Title("Capture idea"), null);
+
+        assertNull(item.getCalendar());
+    }
+
+    @Test
     void constructorSetsStatusToStuff() {
         Item item = new Item(new Title("Capture idea"), null);
 
@@ -81,7 +91,17 @@ class ItemTests {
 
         IllegalStateException exception = assertThrows(IllegalStateException.class, item::markAsStuff);
 
-        assertEquals("item nextAction value is invalid; expected no next action when marking as STUFF", exception.getMessage());
+        assertEquals("item subtype value is invalid; expected no subtype when marking as STUFF", exception.getMessage());
+    }
+
+    @Test
+    void markAsStuffRejectsItemWithCalendar() {
+        Item item = new Item(new Title("Capture idea"), null);
+        new Calendar(item, LocalDate.parse("2026-05-21"), null);
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class, item::markAsStuff);
+
+        assertEquals("item subtype value is invalid; expected no subtype when marking as STUFF", exception.getMessage());
     }
 
     @Test
@@ -90,6 +110,41 @@ class ItemTests {
         item.convertToNextAction(java.math.BigDecimal.ONE, java.time.Duration.ZERO, java.util.Set.of(new Context("home")));
 
         assertEquals(ItemStatus.NEXT_ACTION, item.getStatus());
+    }
+
+    @Test
+    void convertToCalendarSetsStatusManually() {
+        Item item = new Item(new Title("Capture idea"), null);
+
+        Calendar calendar = item.convertToCalendar(LocalDate.parse("2026-05-21"), LocalTime.parse("14:15"));
+
+        assertEquals(ItemStatus.CALENDAR, item.getStatus());
+        assertEquals(calendar, item.getCalendar());
+        assertEquals(LocalTime.parse("14:15"), calendar.getScheduledTime());
+    }
+
+    @Test
+    void convertToCalendarRejectsDeletedStuff() {
+        Item item = new Item(new Title("Capture idea"), null);
+        item.softDelete();
+
+        IllegalStateException exception = assertThrows(
+            IllegalStateException.class,
+            () -> item.convertToCalendar(LocalDate.parse("2026-05-21"), null));
+
+        assertEquals("item value 'STUFF' is invalid; expected active STUFF without subtype", exception.getMessage());
+    }
+
+    @Test
+    void convertToCalendarRejectsNonStuff() {
+        Item item = new Item(new Title("Capture idea"), null);
+        item.convertToNextAction(java.math.BigDecimal.ONE, java.time.Duration.ZERO, java.util.Set.of(new Context("home")));
+
+        IllegalStateException exception = assertThrows(
+            IllegalStateException.class,
+            () -> item.convertToCalendar(LocalDate.parse("2026-05-21"), null));
+
+        assertEquals("item value 'NEXT_ACTION' is invalid; expected active STUFF without subtype", exception.getMessage());
     }
 
     @Test

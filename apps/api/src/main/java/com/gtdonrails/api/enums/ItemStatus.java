@@ -2,5 +2,6 @@ package com.gtdonrails.api.enums;
 
 public enum ItemStatus {
     STUFF,
-    NEXT_ACTION
+    NEXT_ACTION,
+    CALENDAR
 }
