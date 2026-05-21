@@ -8,6 +8,16 @@
   overflow: hidden;
 }
 
+.ongoing-terminal-layout {
+  padding: 20px 10px 16px;
+  min-height: 0;
+  height: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: 10px;
+  overflow: hidden;
+}
+
 .stuff-detail-layout {
   padding: 20px 10px 16px;
   min-height: 0;
@@ -121,18 +131,18 @@
 }
 
 .list-pane__meta,
-.list-pane__panel-index {
+.list-pane__view-index {
   color: #8a817c;
   font-size: 0.76rem;
   font-family: var(--font-mono);
 }
 
-.list-pane__panel-index {
+.list-pane__view-index {
   flex: 0 0 auto;
   visibility: hidden;
 }
 
-.list-pane--active .list-pane__panel-index {
+.list-pane--active .list-pane__view-index {
   color: var(--list-accent);
 }
 

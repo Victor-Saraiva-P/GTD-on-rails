@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { ListPane } from "../components/ListPane";
+import { ListView } from "../components/ListView";
 import { ListWorkspace } from "../components/ListWorkspace";
 import { RetryState } from "../components/RetryState";
 import { ContextIconEditor } from "../features/contexts/ContextIconEditor";
-import { ContextItemsPane } from "../features/contexts/ContextItemsPane";
+import { ContextItemsView } from "../features/contexts/ContextItemsView";
 import { ContextsList } from "../features/contexts/ContextsList";
 import { CONTEXT_RELATED_ITEMS_LIMIT } from "../features/contexts/constants";
 import { useContextItemsQuery } from "../features/contexts/useContextItemsQuery";
@@ -16,7 +16,6 @@ import type { FocusZoneId, KeybindDefinition } from "../features/keybinds/types"
 import { contextsListTheme } from "../features/lists/listThemes";
 
 const DRAFT_CONTEXT_ID = "__draft_context__";
-
 type ContextsModel = ReturnType<typeof useContextsModel>;
 type ContextsActions = ReturnType<typeof useContextsActions>;
 
@@ -29,20 +28,17 @@ function buildDraftContext(): ContextItem {
 
 function useDraftContextState() {
   const [draftContext, setDraftContext] = useState<ContextItem | null>(null);
-
   return { draftContext, setDraftContext };
 }
 
 function useContextEditState() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
-
   return { editingId, editingName, setEditingId, setEditingName };
 }
 
 function useContextIconEditorState() {
   const [isIconEditorOpen, setIsIconEditorOpen] = useState(false);
-
   return { isIconEditorOpen, setIsIconEditorOpen };
 }
 
@@ -62,7 +58,6 @@ function selectContextByOffset(selection: ContextSelectionCursor, offset: number
   if (selection.visibleContexts.length === 0) {
     return;
   }
-
   const nextIndex = Math.min(Math.max(selection.selectedIndex + offset, 0), selection.visibleContexts.length - 1);
   selection.setSelectedId(selection.visibleContexts[nextIndex].id);
 }
@@ -79,7 +74,6 @@ function useContextSelection(contexts: ContextItem[], draftContext: ContextItem 
   const selectedItem = selectedContext(visibleContexts, selectedId);
   const selectedIndex = selectedContextIndex(visibleContexts, selectedItem);
   const selection = { selectedIndex, setSelectedId, visibleContexts };
-
   return { ...selection, selectedId, selectedItem, selectNextContext: () => selectContextByOffset(selection, 1), selectPreviousContext: () => selectContextByOffset(selection, -1) };
 }
 
@@ -96,7 +90,6 @@ function useContextsModel() {
   const selection = useContextSelection(query.contexts, draft.draftContext);
   const related = useContextItemsQuery(relatedContextId(selection.selectedItem), CONTEXT_RELATED_ITEMS_LIMIT);
   const history = useUndoRedoHistory<ContextItem>();
-
   return { draft, edit, iconEditor, query, related, selection, zone, history };
 }
 
@@ -163,7 +156,6 @@ function closeSelectedContextIconEditor(model: ContextsModel) {
 
 function createNewContextAction(model: ContextsModel) {
   const nextDraft = buildDraftContext();
-
   model.draft.setDraftContext(nextDraft);
   model.selection.setSelectedId(nextDraft.id);
   model.edit.setEditingId(nextDraft.id);
@@ -187,7 +179,6 @@ async function deleteSelectedContextAction(model: ContextsModel) {
 async function undoAction(model: ContextsModel) {
   const action = model.history.popUndo();
   if (!action) return;
-
   if (action.type === "DELETE") {
     await model.query.restoreContext(action.payload.id);
     model.selection.setSelectedId(action.payload.id);
@@ -199,7 +190,6 @@ async function undoAction(model: ContextsModel) {
 async function redoAction(model: ContextsModel) {
   const action = model.history.popRedo();
   if (!action) return;
-
   if (action.type === "RESTORE") {
     await model.query.deleteContext(action.payload.id);
   } else {
@@ -431,36 +421,36 @@ function RelatedItemsResult({ model, selectedItem }: { model: ContextsModel; sel
     return <RetryState message={model.related.errorMessage} onRetry={model.related.reload} />;
   }
 
-  return model.related.items.length === 0 ? <p className="pane-state">No related items for this context yet.</p> : <ContextItemsPane context={selectedItem} items={model.related.items} />;
+  return model.related.items.length === 0 ? <p className="pane-state">No related items for this context yet.</p> : <ContextItemsView context={selectedItem} items={model.related.items} />;
 }
 
-function ContextsListPane(props: ContextsViewProps) {
+function ContextsListView(props: ContextsViewProps) {
   const count = props.model.selection.visibleContexts.length;
   const listMeta = `${count} ${count === 1 ? "item" : "items"}`;
 
   return (
-    <ListPane title="Contexts" meta={listMeta} panelIndex={1} active={props.model.zone.activeZone === "context-list"} bodyClassName="list-pane__body--flush" className="contexts-pane">
+    <ListView title="Contexts" meta={listMeta} viewIndex={1} active={props.model.zone.activeZone === "context-list"} bodyClassName="list-pane__body--flush" className="contexts-pane">
       <ContextsListBody {...props} />
-    </ListPane>
+    </ListView>
   );
 }
 
-function RelatedItemsPane({ model }: Pick<ContextsViewProps, "model">) {
+function RelatedItemsView({ model }: Pick<ContextsViewProps, "model">) {
   const count = model.related.items.length;
   const detailMeta = `${count} ${count === 1 ? "item" : "items"}`;
 
   return (
-    <ListPane title="Related Items" meta={model.selection.selectedItem ? detailMeta : undefined} panelIndex={2} active={model.zone.activeZone === "context-detail"} bodyClassName="list-pane__body--detail" className="contexts-pane">
+    <ListView title="Related Items" meta={model.selection.selectedItem ? detailMeta : undefined} viewIndex={2} active={model.zone.activeZone === "context-detail"} bodyClassName="list-pane__body--detail" className="contexts-pane">
       <RelatedItemsBody model={model} />
-    </ListPane>
+    </ListView>
   );
 }
 
-function ContextPanes(props: ContextsViewProps) {
+function ContextViews(props: ContextsViewProps) {
   return (
     <section className="inbox-terminal-layout" aria-label="Contexts">
-      <ContextsListPane {...props} />
-      <RelatedItemsPane model={props.model} />
+      <ContextsListView {...props} />
+      <RelatedItemsView model={props.model} />
     </section>
   );
 }
@@ -501,7 +491,7 @@ export function ContextsPage() {
 
   return (
     <ListWorkspace theme={contextsListTheme} currentLabel={contextsListTheme.label}>
-      <ContextPanes model={model} actions={actions} />
+      <ContextViews model={model} actions={actions} />
       <ContextIconEditorLayer model={model} actions={actions} />
       <LeaderMenu />
     </ListWorkspace>
