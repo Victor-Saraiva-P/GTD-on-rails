@@ -82,6 +82,13 @@ export function segmentedCalendarDateIsoValue(state: SegmentedCalendarDateState)
   return `${state.year}-${state.month}-${state.day}`;
 }
 
+export function segmentedCalendarDateStateFromIsoValue(value: string): SegmentedCalendarDateState | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const [year, month, day] = value.split("-");
+  const state = dateStateFromSegments(day, month, year);
+  return isSegmentedCalendarDateValid(state) ? state : null;
+}
+
 export function buildCalendarPayload(scheduledDate: string, timeDigits: string): CalendarConversionPayload {
   return {
     scheduledDate,
@@ -145,4 +152,8 @@ function hasCompleteCalendarDateSegments(state: SegmentedCalendarDateState): boo
 function isRealCalendarDate(year: number, month: number, day: number): boolean {
   const date = new Date(year, month - 1, day);
   return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
+}
+
+function dateStateFromSegments(day: string, month: string, year: string): SegmentedCalendarDateState {
+  return { day, month, year, activeSegment: "day", activeDigitCount: 0 };
 }
