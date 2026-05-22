@@ -2,6 +2,9 @@ import type { Calendar } from "./types";
 
 export type CalendarSubview = "today" | "weekly" | "completed" | "deleted";
 export type CalendarPanel = "due" | "done-today" | "completed" | "deleted" | "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
+export type CalendarSubviewDirection = "next" | "previous";
+
+const calendarSubviewOrder: CalendarSubview[] = ["today", "weekly", "completed", "deleted"];
 
 export type CalendarSelectionCursor = {
   items: Calendar[];
@@ -61,4 +64,22 @@ export function moveCalendarSelection(
   const nextIndex = calendarSelectionOffsetIndex(cursor, offset);
   if (nextIndex === null) return;
   cursor.setSelectedId(cursor.items[nextIndex].id);
+}
+
+export function defaultCalendarPanelForSubview(subview: CalendarSubview): CalendarPanel {
+  if (subview === "weekly") return "mon";
+  if (subview === "completed") return "completed";
+  if (subview === "deleted") return "deleted";
+  return "due";
+}
+
+export function calendarSubviewTarget(
+  current: CalendarSubview,
+  direction: CalendarSubviewDirection
+): { panel: CalendarPanel; subview: CalendarSubview } {
+  const offset = direction === "next" ? 1 : -1;
+  const currentIndex = calendarSubviewOrder.indexOf(current);
+  const nextIndex = (currentIndex + offset + calendarSubviewOrder.length) % calendarSubviewOrder.length;
+  const subview = calendarSubviewOrder[nextIndex];
+  return { panel: defaultCalendarPanelForSubview(subview), subview };
 }

@@ -33,12 +33,12 @@ T1 → T2 → T3 → T4
 
 **Done when**:
 
-- [ ] Calendar subviews cycle in the order `today -> weekly -> completed -> deleted -> today`.
-- [ ] Reverse cycling follows `today -> deleted -> completed -> weekly -> today`.
-- [ ] Switching subviews focuses the first valid panel for the target subview: `due`, `mon`, `completed`, or `deleted`.
-- [ ] Switching subviews clears calendar title/body edit state.
-- [ ] `resetWorkspace()` still returns Calendars to Today with the due/calendar panel focused.
-- [ ] Unit tests cover forward cycle, reverse cycle, target panel selection, and edit clearing.
+- [x] Calendar subviews cycle in the order `today -> weekly -> completed -> deleted -> today`.
+- [x] Reverse cycling follows `today -> deleted -> completed -> weekly -> today`.
+- [x] Switching subviews focuses the first valid panel for the target subview: `due`, `mon`, `completed`, or `deleted`.
+- [x] Switching subviews clears calendar title/body edit state.
+- [x] `resetWorkspace()` still returns Calendars to Today with the due/calendar panel focused.
+- [x] Unit tests cover forward cycle, reverse cycle, target panel selection, and edit clearing.
 
 **Tests**: Desktop unit  
 **Gate**: `pnpm test`  
