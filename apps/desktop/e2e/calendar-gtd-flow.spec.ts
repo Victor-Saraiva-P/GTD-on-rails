@@ -17,20 +17,15 @@ test("calendar GTD flow: creates, schedules, manages state, and deletes", async 
   await page.keyboard.press("c");
 
   // Date step
-  const d = new Date();
-  const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  const dateInput = page.getByLabel("Scheduled date");
-  await expect(dateInput).toBeVisible();
-  await dateInput.fill(today);
-  await dateInput.press("Enter");
+  const dateControl = page.getByRole("textbox", { name: "Scheduled date:" });
+  await expect(dateControl).toBeVisible();
+  await page.keyboard.press("Enter");
 
   // Time step
   await expect(page.getByText("Scheduled time (optional)")).toBeVisible();
-  // Ensure we wait a tiny bit for React to focus the time input
-  await page.waitForTimeout(1000);
-  await page.keyboard.press("Enter");
-
-  await expect(page.getByRole("button", { name: title, exact: false }).first()).not.toBeVisible();
+  const calendarResponsePromise = page.waitForResponse((response) => response.url().endsWith("/calendar") && response.request().method() === "POST" && response.ok());
+  await page.locator(".processing-dialog__input--time").press("Enter");
+  await calendarResponsePromise;
 
   // 3. Verify it appears under Space c t (Calendars page)
   await page.keyboard.press("Space");
@@ -44,14 +39,15 @@ test("calendar GTD flow: creates, schedules, manages state, and deletes", async 
 
   // Verify it appears in Today panel (1) (due/late)
   const panel1 = page.locator(".inbox-pane").nth(0);
-  await expect(panel1.getByRole("button", { name: title, exact: false }).first()).toBeVisible();
+  const dueCalendar = panel1.getByRole("button", { name: title, exact: false }).first();
+  await expect(dueCalendar).toBeVisible();
 
   // Focus item and mark ongoing
   await page.keyboard.press("1");
   await expect(panel1).toHaveClass(/list-pane--active/);
-  await page.keyboard.press("j");
+  await dueCalendar.click();
   await page.keyboard.press("o");
-  await expect(panel1.getByRole("button", { name: title, exact: false }).first()).not.toBeVisible();
+  await expect(dueCalendar).not.toBeVisible();
 
   // 4. Verify in On Going page
   await page.keyboard.press("Space");
@@ -60,14 +56,16 @@ test("calendar GTD flow: creates, schedules, manages state, and deletes", async 
   await expect(page.locator(".list-pane__title", { hasText: "On Going" }).first()).toBeVisible();
 
   const ongoingPanel2 = page.locator(".inbox-pane").nth(1);
-  await expect(ongoingPanel2.getByRole("button", { name: title, exact: false }).first()).toBeVisible();
+  const ongoingCalendar = ongoingPanel2.getByRole("button", { name: title, exact: false }).first();
+  await expect(ongoingCalendar).toBeVisible();
 
   // 5. Mark done and verify in Today panel (2)
   await page.keyboard.press("2");
   await expect(ongoingPanel2).toHaveClass(/list-pane--active/);
+  await ongoingCalendar.click();
   await page.keyboard.press("x");
 
-  await expect(ongoingPanel2.getByRole("button", { name: title, exact: false }).first()).not.toBeVisible();
+  await expect(ongoingCalendar).not.toBeVisible();
 
   // Go back to Calendars Today
   await page.keyboard.press("Space");
@@ -77,7 +75,8 @@ test("calendar GTD flow: creates, schedules, manages state, and deletes", async 
   await page.keyboard.press("t");
 
   const todayPanel2 = page.locator(".inbox-pane").nth(1);
-  await expect(todayPanel2.getByRole("button", { name: title, exact: false }).first()).toBeVisible();
+  const doneCalendar = todayPanel2.getByRole("button", { name: title, exact: false }).first();
+  await expect(doneCalendar).toBeVisible();
 
   // 6. Verify Completed and Deleted subviews
   await page.keyboard.press("Space");
@@ -85,15 +84,17 @@ test("calendar GTD flow: creates, schedules, manages state, and deletes", async 
   await page.keyboard.press("c");
   await expect(page.locator(".leader-menu__title")).toHaveText("Space c");
   await page.keyboard.press("c");
-  
-  await expect(page.locator(".inbox-pane").nth(0).getByRole("button", { name: title, exact: false }).first()).toBeVisible();
+
+  const completedCalendar = page.locator(".inbox-pane").nth(0).getByRole("button", { name: title, exact: false }).first();
+  await expect(completedCalendar).toBeVisible();
 
   // Delete the item
   await page.keyboard.press("1");
   await expect(page.locator(".inbox-pane").nth(0)).toHaveClass(/list-pane--active/);
+  await completedCalendar.click();
   await page.keyboard.press("d");
 
-  await expect(page.locator(".inbox-pane").nth(0).getByRole("button", { name: title, exact: false }).first()).not.toBeVisible();
+  await expect(completedCalendar).not.toBeVisible();
 
   // Verify in deleted
   await page.keyboard.press("Space");

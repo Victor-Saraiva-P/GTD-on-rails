@@ -19,8 +19,10 @@ test("edits selected next action contexts with keyboard flow", async ({ page, re
   await page.locator("main").click();
   await page.keyboard.press(" ");
   await page.keyboard.press("n");
-  await expect(page.getByRole("button", { name: title })).toBeVisible();
-  await page.keyboard.press("Shift+E");
+  const nextAction = page.getByRole("button", { name: title }).first();
+  await expect(nextAction).toBeVisible();
+  await nextAction.click();
+  await page.keyboard.press("e");
 
   const dialog = page.getByRole("dialog", { name: "Edit next action" });
   await expect(dialog).toBeVisible();
