@@ -13,6 +13,7 @@ import { LeaderMenu } from "../features/keybinds/LeaderMenu";
 import { useActiveScreen, useKeybindScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
 import type { FocusZoneId, KeybindDefinition, ScreenId } from "../features/keybinds/types";
 import { calendarsListTheme } from "../features/lists/listThemes";
+import { getMondayForOffset } from "../features/calendar/calendarDateUtils";
 
 type CalendarPageProps = {
   controller: CalendarWorkspaceController;
@@ -340,6 +341,20 @@ function CalendarDetailView({ controller }: CalendarControllerProps) {
   );
 }
 
+/** Computes "Month Year" label for the weekly view header (REQ-07). */
+function weeklyMonthLabel(weekOffset: number): string {
+  const monday = getMondayForOffset(weekOffset);
+  return monday.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+}
+
+function WeeklyCalendarHeader({ weekOffset }: { weekOffset: number }) {
+  return (
+    <header className="weekly-calendar-header">
+      {weeklyMonthLabel(weekOffset)}
+    </header>
+  );
+}
+
 function CalendarViews({ controller }: CalendarControllerProps) {
   if (controller.activeSubview === "today") {
     return (
@@ -367,14 +382,17 @@ function CalendarViews({ controller }: CalendarControllerProps) {
     );
   } else if (controller.activeSubview === "weekly") {
     return (
-      <section className="weekly-terminal-layout" aria-label="Calendars">
-        <WeeklyCalendarPanel day="mon" index={1} controller={controller} />
-        <WeeklyCalendarPanel day="tue" index={2} controller={controller} />
-        <WeeklyCalendarPanel day="wed" index={3} controller={controller} />
-        <WeeklyCalendarPanel day="thu" index={4} controller={controller} />
-        <WeeklyCalendarPanel day="fri" index={5} controller={controller} />
-        <WeeklyCalendarPanel day="sat" index={6} controller={controller} />
-        <WeeklyCalendarPanel day="sun" index={7} controller={controller} />
+      <section className="weekly-calendar-wrapper" aria-label="Calendars">
+        <WeeklyCalendarHeader weekOffset={controller.weekOffset} />
+        <section className="weekly-terminal-layout">
+          <WeeklyCalendarPanel day="mon" index={1} controller={controller} />
+          <WeeklyCalendarPanel day="tue" index={2} controller={controller} />
+          <WeeklyCalendarPanel day="wed" index={3} controller={controller} />
+          <WeeklyCalendarPanel day="thu" index={4} controller={controller} />
+          <WeeklyCalendarPanel day="fri" index={5} controller={controller} />
+          <WeeklyCalendarPanel day="sat" index={6} controller={controller} />
+          <WeeklyCalendarPanel day="sun" index={7} controller={controller} />
+        </section>
       </section>
     );
   }
