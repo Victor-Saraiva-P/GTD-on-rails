@@ -132,14 +132,14 @@ The Today calendar layout also reads as three independent panes. The desired vie
 
 | Requirement ID | Story | Phase | Status |
 | --- | --- | --- | --- |
-| CPR-01 | Direct Calendar Navigation | Tasks | Pending |
-| CPR-02 | Direct Calendar Navigation | Tasks | Pending |
-| CPR-03 | Bracket Calendar Subview Navigation | Tasks | Pending |
-| CPR-04 | Bracket Calendar Subview Navigation | Tasks | Pending |
-| CPR-05 | Today Layout Grouping | Tasks | Pending |
-| CPR-06 | Today Layout Grouping | Tasks | Pending |
-| CPR-07 | Calendar Documentation and Test Alignment | Tasks | Pending |
-| CPR-08 | Calendar Documentation and Test Alignment | Tasks | Pending |
+| CPR-01 | Direct Calendar Navigation | Execute | Complete |
+| CPR-02 | Direct Calendar Navigation | Execute | Complete |
+| CPR-03 | Bracket Calendar Subview Navigation | Execute | Complete |
+| CPR-04 | Bracket Calendar Subview Navigation | Execute | Complete |
+| CPR-05 | Today Layout Grouping | Execute | Complete |
+| CPR-06 | Today Layout Grouping | Execute | Complete |
+| CPR-07 | Calendar Documentation and Test Alignment | Execute | Complete |
+| CPR-08 | Calendar Documentation and Test Alignment | Execute | Complete |
 
 **Coverage**: 8 total, 8 mapped to tasks, 0 unmapped.
 
@@ -147,11 +147,11 @@ The Today calendar layout also reads as three independent panes. The desired vie
 
 ## Success Criteria
 
-- [ ] `Space c` opens Calendars directly on Today view.
-- [ ] There are no calendar navigation bindings for `Space c t`, `Space c w`, `Space c c`, or `Space c d`.
-- [ ] `[` and `]` cycle calendar subviews in the order Today, Weekly, Completed, Deleted.
-- [ ] Today view visually groups `Calendar` and `Done` list panes on the left.
-- [ ] Calendar detail remains a separate right-side pane in Today view.
-- [ ] Existing calendar list actions, detail editing, rich body formatting, and asset insertion still work.
-- [ ] Shortcut documentation and calendar e2e tests match the refactored behavior.
-- [ ] `pnpm test` passes.
+- [x] `Space c` opens Calendars directly on Today view.
+- [x] There are no calendar navigation bindings for `Space c t`, `Space c w`, `Space c c`, or `Space c d`.
+- [x] `[` and `]` cycle calendar subviews in the order Today, Weekly, Completed, Deleted.
+- [x] Today view visually groups `Calendar` and `Done` list panes on the left.
+- [x] Calendar detail remains a separate right-side pane in Today view.
+- [x] Existing calendar list actions, detail editing, rich body formatting, and asset insertion still work.
+- [x] Shortcut documentation and calendar e2e tests match the refactored behavior.
+- [x] `pnpm test` passes.

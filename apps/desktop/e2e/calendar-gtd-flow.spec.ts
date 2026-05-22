@@ -34,6 +34,7 @@ test("calendar GTD flow: creates, schedules, manages state, and deletes", async 
   await expect(page.locator(".inbox-pane .list-pane__title").nth(0)).toHaveText("Calendar");
   await expect(page.locator(".inbox-pane .list-pane__title").nth(1)).toHaveText("Done");
   await expect(page.locator(".inbox-pane .list-pane__title").nth(2)).toHaveText("Calendar Detail");
+  await verifyCalendarSubviewShortcuts(page);
 
   // Verify it appears in Today panel (1) (due/late)
   const panel1 = page.locator(".inbox-pane").nth(0);
@@ -99,7 +100,24 @@ async function openCalendars(page: Page): Promise<void> {
   await page.keyboard.press("Space");
   await expect(page.locator(".leader-menu")).toBeVisible();
   await page.keyboard.press("c");
+  await expect(page.locator(".leader-menu")).not.toBeVisible();
   await expect(page.locator(".inbox-pane .list-pane__title").nth(0)).toHaveText("Calendar");
+}
+
+async function verifyCalendarSubviewShortcuts(page: Page): Promise<void> {
+  await expectCalendarSubviewAfterKey(page, "]", "Mon");
+  await expectCalendarSubviewAfterKey(page, "]", "Completed");
+  await expectCalendarSubviewAfterKey(page, "]", "Deleted");
+  await expectCalendarSubviewAfterKey(page, "]", "Calendar");
+  await expectCalendarSubviewAfterKey(page, "[", "Deleted");
+  await expectCalendarSubviewAfterKey(page, "[", "Completed");
+  await expectCalendarSubviewAfterKey(page, "[", "Mon");
+  await expectCalendarSubviewAfterKey(page, "[", "Calendar");
+}
+
+async function expectCalendarSubviewAfterKey(page: Page, key: string, title: string): Promise<void> {
+  await page.keyboard.press(key);
+  await expect(page.locator(".inbox-pane .list-pane__title").nth(0)).toHaveText(title);
 }
 
 async function createStuff(page: Page, title: string): Promise<void> {
