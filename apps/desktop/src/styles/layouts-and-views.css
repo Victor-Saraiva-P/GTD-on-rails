@@ -300,10 +300,32 @@
   padding-inline: 12px;
 }
 
+.weekly-calendar-wrapper {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.weekly-calendar-header {
+  padding: 8px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
 .weekly-terminal-layout {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   flex: 1;
   min-height: 0;
   overflow: hidden;
+}
+
+/* Vertical borders between day columns (REQ-08) */
+.weekly-terminal-layout > .inbox-pane:not(:last-child) {
+  border-right: 1px solid var(--color-border);
 }
