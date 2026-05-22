@@ -3,6 +3,36 @@ import type { Calendar } from "./types";
 export type CalendarSubview = "today" | "weekly" | "completed" | "deleted";
 export type CalendarPanel = "due" | "done-today" | "completed" | "deleted" | "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 export type CalendarSubviewDirection = "next" | "previous";
+export type WeeklyDayPanel = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
+export type ColumnShiftDirection = "left" | "right";
+
+/** Inner shift stays within the same week. */
+type InnerColumnShift = { kind: "inner"; panel: WeeklyDayPanel };
+/** Boundary shift crosses into a different week. */
+type BoundaryColumnShift = { kind: "boundary"; panel: WeeklyDayPanel; weekOffsetDelta: number };
+export type WeeklyColumnShiftResult = InnerColumnShift | BoundaryColumnShift;
+
+const weeklyDayOrder: WeeklyDayPanel[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+
+/**
+ * Resolves h/l column navigation for the weekly view (REQ-02, REQ-03, REQ-04).
+ * Returns an inner shift or a boundary-crossing shift with the week offset delta.
+ *
+ * @example resolveWeeklyColumnShift("mon", "left") // { kind: "boundary", panel: "sun", weekOffsetDelta: -1 }
+ */
+export function resolveWeeklyColumnShift(
+  currentDay: WeeklyDayPanel,
+  direction: ColumnShiftDirection
+): WeeklyColumnShiftResult {
+  const index = weeklyDayOrder.indexOf(currentDay);
+  const offset = direction === "right" ? 1 : -1;
+  const nextIndex = index + offset;
+  if (nextIndex >= 0 && nextIndex < weeklyDayOrder.length) {
+    return { kind: "inner", panel: weeklyDayOrder[nextIndex] };
+  }
+  // Boundary crossing: left from Monday → previous week Sunday, right from Sunday → next week Monday
+  return { kind: "boundary", panel: weeklyDayOrder[nextIndex < 0 ? 6 : 0], weekOffsetDelta: offset };
+}
 
 const calendarSubviewOrder: CalendarSubview[] = ["today", "weekly", "completed", "deleted"];
 

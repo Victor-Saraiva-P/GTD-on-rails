@@ -6,6 +6,7 @@ import {
   calendarItemsForPanel,
   calendarSelectionOffsetIndex,
   calendarSubviewTarget,
+  resolveWeeklyColumnShift,
   selectedCalendar,
   selectedCalendarIndex,
   type CalendarPanel
@@ -79,5 +80,27 @@ describe("calendar detail metadata", () => {
 
     assert.equal(metadata.parts.some((part) => part.includes("DONE")), false);
     assert.equal(metadata.parts.some((part) => part.toLowerCase().includes("status")), false);
+  });
+});
+
+describe("resolveWeeklyColumnShift", () => {
+  test("moves right within the week without crossing a boundary", () => {
+    assert.deepEqual(resolveWeeklyColumnShift("mon", "right"), { kind: "inner", panel: "tue" });
+    assert.deepEqual(resolveWeeklyColumnShift("thu", "right"), { kind: "inner", panel: "fri" });
+    assert.deepEqual(resolveWeeklyColumnShift("sat", "right"), { kind: "inner", panel: "sun" });
+  });
+
+  test("moves left within the week without crossing a boundary", () => {
+    assert.deepEqual(resolveWeeklyColumnShift("sun", "left"), { kind: "inner", panel: "sat" });
+    assert.deepEqual(resolveWeeklyColumnShift("wed", "left"), { kind: "inner", panel: "tue" });
+    assert.deepEqual(resolveWeeklyColumnShift("tue", "left"), { kind: "inner", panel: "mon" });
+  });
+
+  test("crossing right boundary from Sunday goes to next week Monday", () => {
+    assert.deepEqual(resolveWeeklyColumnShift("sun", "right"), { kind: "boundary", panel: "mon", weekOffsetDelta: 1 });
+  });
+
+  test("crossing left boundary from Monday goes to previous week Sunday", () => {
+    assert.deepEqual(resolveWeeklyColumnShift("mon", "left"), { kind: "boundary", panel: "sun", weekOffsetDelta: -1 });
   });
 });
