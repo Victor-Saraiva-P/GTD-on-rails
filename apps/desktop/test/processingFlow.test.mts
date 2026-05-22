@@ -4,10 +4,17 @@ import test, { describe } from "node:test";
 import {
   buildCalendarPayload,
   clockTimeDisplayValue,
+  initialSegmentedCalendarDateState,
+  isSegmentedCalendarDateValid,
+  moveSegmentedCalendarDateFocus,
   nextClockTimeDigits,
+  nextSegmentedCalendarDateDigit,
   previousProcessingStep,
+  segmentedCalendarDateDisplayValue,
+  segmentedCalendarDateIsoValue,
   stepAfterInitialChoice
 } from "../src/features/processing/processingFlow.ts";
+import type { SegmentedCalendarDateState } from "../src/features/processing/processingFlow.ts";
 
 describe("processing flow", () => {
   test("initial keyboard choices branch to next actions or calendar", () => {
@@ -35,6 +42,58 @@ describe("processing flow", () => {
     assert.equal(nextClockTimeDigits("2359", "9"), "2359");
   });
 
+  test("segmented calendar date initializes from the local date", () => {
+    const state = initialSegmentedCalendarDateState(new Date(2026, 4, 22));
+
+    assert.equal(segmentedCalendarDateDisplayValue(state), "22/05/2026");
+    assert.equal(state.activeSegment, "day");
+  });
+
+  test("segmented calendar date digit input overwrites and advances", () => {
+    let state = initialSegmentedCalendarDateState(new Date(2026, 4, 22));
+    state = nextSegmentedCalendarDateDigit(state, "3");
+
+    assert.equal(segmentedCalendarDateDisplayValue(state), "3_/05/2026");
+    assert.equal(state.activeSegment, "day");
+    assert.equal(isSegmentedCalendarDateValid(state), false);
+
+    state = nextSegmentedCalendarDateDigit(state, "1");
+    state = nextSegmentedCalendarDateDigit(state, "1");
+    state = nextSegmentedCalendarDateDigit(state, "2");
+    state = nextSegmentedCalendarDateDigit(state, "2");
+    state = nextSegmentedCalendarDateDigit(state, "0");
+    state = nextSegmentedCalendarDateDigit(state, "2");
+    state = nextSegmentedCalendarDateDigit(state, "8");
+
+    assert.equal(segmentedCalendarDateDisplayValue(state), "31/12/2028");
+    assert.equal(state.activeSegment, "day");
+    assert.equal(segmentedCalendarDateIsoValue(state), "2028-12-31");
+  });
+
+  test("segmented calendar date movement has walls", () => {
+    const state = initialSegmentedCalendarDateState(new Date(2026, 4, 22));
+    const monthState = moveSegmentedCalendarDateFocus(state, "l");
+    const yearState = moveSegmentedCalendarDateFocus(monthState, "l");
+
+    assert.equal(moveSegmentedCalendarDateFocus(state, "h").activeSegment, "day");
+    assert.equal(monthState.activeSegment, "month");
+    assert.equal(yearState.activeSegment, "year");
+    assert.equal(moveSegmentedCalendarDateFocus(yearState, "l").activeSegment, "year");
+    assert.equal(moveSegmentedCalendarDateFocus(yearState, "h").activeSegment, "month");
+  });
+
+  test("segmented calendar date validation uses real calendar dates", () => {
+    const leapDay = dateState("29", "02", "2028");
+    const nonLeapDay = dateState("29", "02", "2026");
+    const impossibleDate = dateState("31", "02", "2026");
+
+    assert.equal(isSegmentedCalendarDateValid(leapDay), true);
+    assert.equal(segmentedCalendarDateIsoValue(leapDay), "2028-02-29");
+    assert.equal(isSegmentedCalendarDateValid(nonLeapDay), false);
+    assert.equal(segmentedCalendarDateIsoValue(nonLeapDay), null);
+    assert.equal(isSegmentedCalendarDateValid(impossibleDate), false);
+  });
+
   test("calendar payload is built only from confirmed date and optional time", () => {
     assert.deepEqual(buildCalendarPayload("2026-05-21", "0930"), {
       scheduledDate: "2026-05-21",
@@ -46,3 +105,13 @@ describe("processing flow", () => {
     });
   });
 });
+
+function dateState(day: string, month: string, year: string): SegmentedCalendarDateState {
+  return {
+    day,
+    month,
+    year,
+    activeSegment: "day" as const,
+    activeDigitCount: 0
+  };
+}
