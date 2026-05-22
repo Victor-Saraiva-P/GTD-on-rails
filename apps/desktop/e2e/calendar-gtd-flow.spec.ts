@@ -30,8 +30,10 @@ test("calendar GTD flow: creates, schedules, manages state, and deletes", async 
   // 3. Verify it appears under Space c (Calendars page)
   await openCalendars(page);
 
-  // By default, it opens Today subview
-  await expect(page.getByText("Due / Late").first()).toBeVisible();
+  // By default, it opens the grouped Today subview.
+  await expect(page.locator(".inbox-pane .list-pane__title").nth(0)).toHaveText("Calendar");
+  await expect(page.locator(".inbox-pane .list-pane__title").nth(1)).toHaveText("Done");
+  await expect(page.locator(".inbox-pane .list-pane__title").nth(2)).toHaveText("Calendar Detail");
 
   // Verify it appears in Today panel (1) (due/late)
   const panel1 = page.locator(".inbox-pane").nth(0);
@@ -97,7 +99,7 @@ async function openCalendars(page: Page): Promise<void> {
   await page.keyboard.press("Space");
   await expect(page.locator(".leader-menu")).toBeVisible();
   await page.keyboard.press("c");
-  await expect(page.getByText("Due / Late").first()).toBeVisible();
+  await expect(page.locator(".inbox-pane .list-pane__title").nth(0)).toHaveText("Calendar");
 }
 
 async function createStuff(page: Page, title: string): Promise<void> {

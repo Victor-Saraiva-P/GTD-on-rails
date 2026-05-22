@@ -51,10 +51,16 @@
     min-height: clamp(220px, 42vh, 420px);
   }
 
-  .inbox-terminal-layout {
+  .inbox-terminal-layout,
+  .calendar-today-layout {
     padding: 16px 8px 10px;
     grid-template-columns: 1fr;
     grid-template-rows: minmax(260px, 42vh) minmax(260px, 1fr);
+  }
+
+  .calendar-today-group {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(220px, 1fr) minmax(220px, 1fr);
   }
 
   .ongoing-terminal-layout {
