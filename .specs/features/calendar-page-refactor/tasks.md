@@ -89,14 +89,14 @@ T1 → T2 → T3 → T4
 
 **Done when**:
 
-- [ ] Today view renders a calendar-specific layout instead of a flat three-pane grid.
-- [ ] The left Today group contains the two list panes side by side on desktop.
-- [ ] The first Today list pane is titled `Calendar`.
-- [ ] The second Today list pane is titled `Done`.
-- [ ] Calendar detail remains a separate right-side pane on desktop.
-- [ ] Active focus styling remains visible for panel `1`, panel `2`, and detail.
-- [ ] Narrow viewports stack without text or pane overlap.
-- [ ] Empty states for due/late and done-today lists remain in English.
+- [x] Today view renders a calendar-specific layout instead of a flat three-pane grid.
+- [x] The left Today group contains the two list panes side by side on desktop.
+- [x] The first Today list pane is titled `Calendar`.
+- [x] The second Today list pane is titled `Done`.
+- [x] Calendar detail remains a separate right-side pane on desktop.
+- [x] Active focus styling remains visible for panel `1`, panel `2`, and detail.
+- [x] Narrow viewports stack without text or pane overlap.
+- [x] Empty states for due/late and done-today lists remain in English.
 
 **Tests**: Desktop e2e visual/behavior assertions  
 **Gate**: `pnpm test`  
