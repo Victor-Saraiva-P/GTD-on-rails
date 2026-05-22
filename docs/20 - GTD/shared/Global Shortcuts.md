@@ -8,10 +8,13 @@ These shortcuts are registered globally by the desktop shell.
 
 | Shortcut | Action |
 | --- | --- |
+| `Space c` | Open calendars and reset the calendar workspace to Today. |
 | `Space C` | Open contexts. |
 | `Space i` | Open inbox and reset the inbox workspace. |
 | `Space n` | Open next actions. |
 | `Space o` | Open on going next actions. |
+
+Calendars use `[` and `]` inside the page to cycle through Today, Weekly, Completed, and Deleted subviews.
 
 ## Shared Body Formatting
 

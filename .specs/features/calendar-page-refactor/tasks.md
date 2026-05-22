@@ -119,12 +119,12 @@ T1 → T2 → T3 → T4
 
 **Done when**:
 
-- [ ] Global shortcut docs list `Space c` as direct Calendars navigation.
-- [ ] Calendar documentation or test comments no longer describe `Space c t`, `Space c w`, `Space c c`, or `Space c d`.
-- [ ] E2E coverage verifies `Space c` opens Today directly.
-- [ ] E2E coverage verifies `[` and `]` reach Weekly, Completed, and Deleted.
-- [ ] E2E coverage verifies the Today view exposes `Calendar`, `Done`, and `Calendar Detail`.
-- [ ] `pnpm test` passes.
+- [x] Global shortcut docs list `Space c` as direct Calendars navigation.
+- [x] Calendar documentation or test comments no longer describe `Space c t`, `Space c w`, `Space c c`, or `Space c d`.
+- [x] E2E coverage verifies `Space c` opens Today directly.
+- [x] E2E coverage verifies `[` and `]` reach Weekly, Completed, and Deleted.
+- [x] E2E coverage verifies the Today view exposes `Calendar`, `Done`, and `Calendar Detail`.
+- [x] `pnpm test` passes.
 
 **Tests**: Desktop unit/e2e plus full project test command  
 **Gate**: `pnpm test`  
@@ -149,7 +149,7 @@ T1 → T2 → T3 → T4
 
 ## Final Verification
 
-- [ ] `pnpm test`
+- [x] `pnpm test`
 - [ ] Manual desktop check: `Space c` opens Today directly.
 - [ ] Manual desktop check: `[` and `]` cycle all calendar subviews in order.
 - [ ] Manual desktop check: Today layout matches the provided sketch at the target desktop resolution.
