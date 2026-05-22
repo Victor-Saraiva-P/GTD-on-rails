@@ -5,11 +5,14 @@ import {
   calendarSubviewTarget,
   calendarItemsForPanel,
   moveCalendarSelection,
+  resolveWeeklyColumnShift,
   selectedCalendar,
   selectedCalendarIndex,
   type CalendarSubviewDirection,
+  type ColumnShiftDirection,
   type CalendarPanel,
-  type CalendarSubview
+  type CalendarSubview,
+  type WeeklyDayPanel
 } from "./calendarWorkspaceState";
 import type { Calendar } from "./types";
 import { useCalendarQuery } from "./useCalendarQuery";
@@ -180,6 +183,19 @@ function switchCalendarSubview(model: CalendarModel, direction: CalendarSubviewD
   focusCalendarPanel(model, target.panel);
 }
 
+/** Shifts weekly column focus left/right, crossing week boundaries when needed (REQ-02..04). */
+function moveCalendarColumn(model: CalendarModel, direction: ColumnShiftDirection): void {
+  const dayPanels: WeeklyDayPanel[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+  const currentDay = dayPanels.includes(model.view.activePanel as WeeklyDayPanel)
+    ? (model.view.activePanel as WeeklyDayPanel)
+    : "mon";
+  const result = resolveWeeklyColumnShift(currentDay, direction);
+  if (result.kind === "boundary") {
+    model.query.setWeekOffset((prev) => prev + result.weekOffsetDelta);
+  }
+  focusCalendarPanel(model, result.panel);
+}
+
 function useCalendarWorkspaceActions(model: CalendarModel) {
   return {
     autosaveBody: (body: ItemBody) => autosaveCalendarBodyEdit(model, body),
@@ -191,6 +207,8 @@ function useCalendarWorkspaceActions(model: CalendarModel) {
     focusPanel: (panel: CalendarPanel) => focusCalendarPanel(model, panel),
     markAsDone: () => runSelectedCalendarMutation(model, model.query.markAsDone),
     markAsOnGoing: () => runSelectedCalendarMutation(model, model.query.markAsOnGoing),
+    moveColumnLeft: () => moveCalendarColumn(model, "left"),
+    moveColumnRight: () => moveCalendarColumn(model, "right"),
     reload: model.query.reload,
     resetWorkspace: () => resetCalendarWorkspace(model),
     restoreSelected: () => runSelectedCalendarMutation(model, model.query.restoreStatus),
@@ -230,7 +248,8 @@ function buildCalendarController(model: CalendarModel, actions: CalendarActions)
     setSelectedId: model.selection.setSelectedId,
     setVimMode: model.edit.setVimMode,
     stuffs: model.selection.items,
-    vimMode: model.edit.vimMode
+    vimMode: model.edit.vimMode,
+    weekOffset: model.query.weekOffset
   };
 }
 
