@@ -27,12 +27,8 @@ test("calendar GTD flow: creates, schedules, manages state, and deletes", async 
   await page.locator(".processing-dialog__input--time").press("Enter");
   await calendarResponsePromise;
 
-  // 3. Verify it appears under Space c t (Calendars page)
-  await page.keyboard.press("Space");
-  await expect(page.locator(".leader-menu")).toBeVisible();
-  await page.keyboard.press("c");
-  await expect(page.locator(".leader-menu__title")).toHaveText("Space c");
-  await page.keyboard.press("t");
+  // 3. Verify it appears under Space c (Calendars page)
+  await openCalendars(page);
 
   // By default, it opens Today subview
   await expect(page.getByText("Due / Late").first()).toBeVisible();
@@ -68,22 +64,17 @@ test("calendar GTD flow: creates, schedules, manages state, and deletes", async 
   await expect(ongoingCalendar).not.toBeVisible();
 
   // Go back to Calendars Today
-  await page.keyboard.press("Space");
-  await expect(page.locator(".leader-menu")).toBeVisible();
-  await page.keyboard.press("c");
-  await expect(page.locator(".leader-menu__title")).toHaveText("Space c");
-  await page.keyboard.press("t");
+  await openCalendars(page);
 
   const todayPanel2 = page.locator(".inbox-pane").nth(1);
   const doneCalendar = todayPanel2.getByRole("button", { name: title, exact: false }).first();
   await expect(doneCalendar).toBeVisible();
 
   // 6. Verify Completed and Deleted subviews
-  await page.keyboard.press("Space");
-  await expect(page.locator(".leader-menu")).toBeVisible();
-  await page.keyboard.press("c");
-  await expect(page.locator(".leader-menu__title")).toHaveText("Space c");
-  await page.keyboard.press("c");
+  await page.keyboard.press("]");
+  await expect(page.getByText("Mon").first()).toBeVisible();
+  await page.keyboard.press("]");
+  await expect(page.getByText("Completed").first()).toBeVisible();
 
   const completedCalendar = page.locator(".inbox-pane").nth(0).getByRole("button", { name: title, exact: false }).first();
   await expect(completedCalendar).toBeVisible();
@@ -97,13 +88,17 @@ test("calendar GTD flow: creates, schedules, manages state, and deletes", async 
   await expect(completedCalendar).not.toBeVisible();
 
   // Verify in deleted
+  await page.keyboard.press("]");
+  await expect(page.getByText("Deleted").first()).toBeVisible();
+  await expect(page.locator(".inbox-pane").nth(0).getByRole("button", { name: title, exact: false }).first()).toBeVisible();
+});
+
+async function openCalendars(page: Page): Promise<void> {
   await page.keyboard.press("Space");
   await expect(page.locator(".leader-menu")).toBeVisible();
   await page.keyboard.press("c");
-  await expect(page.locator(".leader-menu__title")).toHaveText("Space c");
-  await page.keyboard.press("d");
-  await expect(page.locator(".inbox-pane").nth(0).getByRole("button", { name: title, exact: false }).first()).toBeVisible();
-});
+  await expect(page.getByText("Due / Late").first()).toBeVisible();
+}
 
 async function createStuff(page: Page, title: string): Promise<void> {
   await page.keyboard.press("h");

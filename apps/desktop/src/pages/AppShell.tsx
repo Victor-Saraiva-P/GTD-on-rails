@@ -58,53 +58,13 @@ function buildNavigationBindings(
 ) {
   return [
     {
-      id: "navigation.open-calendars-today",
-      key: "t",
-      description: "Open today's calendars",
-      leader: true,
-      sequence: ["c", "t"],
-      runKeybind: () => {
-        calendarController.resetWorkspace();
-        calendarController.setActiveSubview("today");
-        setActiveScreen("calendars");
-      }
-    },
-    {
-      id: "navigation.open-calendars-weekly",
-      key: "w",
-      description: "Open weekly calendars",
-      leader: true,
-      sequence: ["c", "w"],
-      runKeybind: () => {
-        calendarController.resetWorkspace();
-        calendarController.setActiveSubview("weekly");
-        calendarController.focusPanel("mon");
-        setActiveScreen("calendars");
-      }
-    },
-    {
-      id: "navigation.open-calendars-completed",
+      id: "navigation.open-calendars",
       key: "c",
-      description: "Open completed calendars",
+      description: "Open calendars",
       leader: true,
-      sequence: ["c", "c"],
+      sequence: ["c"],
       runKeybind: () => {
         calendarController.resetWorkspace();
-        calendarController.setActiveSubview("completed");
-        calendarController.focusPanel("completed");
-        setActiveScreen("calendars");
-      }
-    },
-    {
-      id: "navigation.open-calendars-deleted",
-      key: "d",
-      description: "Open deleted calendars",
-      leader: true,
-      sequence: ["c", "d"],
-      runKeybind: () => {
-        calendarController.resetWorkspace();
-        calendarController.setActiveSubview("deleted");
-        calendarController.focusPanel("deleted");
         setActiveScreen("calendars");
       }
     },

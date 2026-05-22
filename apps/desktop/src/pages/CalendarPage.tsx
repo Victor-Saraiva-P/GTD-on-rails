@@ -53,6 +53,11 @@ function moveCalendarSelection(controller: CalendarWorkspaceController, directio
   direction === "next" ? controller.selectNext() : controller.selectPrevious();
 }
 
+function switchCalendarSubview(controller: CalendarWorkspaceController, direction: "next" | "previous"): void {
+  if (controller.editingId || controller.editingBodyId) return;
+  direction === "next" ? controller.switchToNextSubview() : controller.switchToPreviousSubview();
+}
+
 function openCalendarDetailPage(controller: CalendarWorkspaceController, setActiveScreen: (screen: ScreenId) => void): void {
   if (controller.selectedItem) setActiveScreen("calendar-detail-page");
 }
@@ -139,6 +144,23 @@ function buildDetailBindings(controller: CalendarWorkspaceController, openLink: 
   ];
 }
 
+function buildSubviewBindings(controller: CalendarWorkspaceController): KeybindDefinition[] {
+  const zones = calendarSubviewKeybindZones();
+  return zones.flatMap((zone) => [
+    calendarBinding(`calendars.switch-next-${zone}`, "]", "Open next calendar view", zone, () => switchCalendarSubview(controller, "next")),
+    calendarBinding(`calendars.switch-previous-${zone}`, "[", "Open previous calendar view", zone, () => switchCalendarSubview(controller, "previous"))
+  ]);
+}
+
+function calendarSubviewKeybindZones(): FocusZoneId[] {
+  return [
+    "calendar-today-due-panel", "calendar-today-done-panel", "calendar-detail",
+    "calendar-completed-panel", "calendar-deleted-panel", "calendar-mon-panel",
+    "calendar-tue-panel", "calendar-wed-panel", "calendar-thu-panel",
+    "calendar-fri-panel", "calendar-sat-panel", "calendar-sun-panel"
+  ];
+}
+
 function activePanelZone(panel: CalendarPanel): FocusZoneId {
   if (panel === "done-today") return "calendar-today-done-panel";
   if (panel === "completed") return "calendar-completed-panel";
@@ -156,6 +178,7 @@ function activePanelZone(panel: CalendarPanel): FocusZoneId {
 function useCalendarBindings(controller: CalendarWorkspaceController, openLink: () => void, openAsset: () => void): void {
   const { setActiveScreen } = useActiveScreen();
   const bindings = useMemo(() => [
+    ...buildSubviewBindings(controller),
     ...buildPanelBindings(controller, setActiveScreen),
     ...buildDetailBindings(controller, openLink, openAsset)
   ], [controller.activeSubview, controller, setActiveScreen, openLink, openAsset]);
