@@ -15,6 +15,7 @@ import {
   updateCalendarBody,
   updateCalendarTitle
 } from "./api";
+import { formatCalendarDate, getMondayForOffset } from "./calendarDateUtils";
 import type { Calendar } from "./types";
 import { calendarLoadErrorMessage } from "./useCalendarTodayQuery";
 import type { CalendarSubview } from "./calendarWorkspaceState";
@@ -28,6 +29,7 @@ function useCalendarDataState() {
   const [completedCalendars, setCompletedCalendars] = useState<Calendar[]>([]);
   const [deletedCalendars, setDeletedCalendars] = useState<Calendar[]>([]);
   const [weeklyCalendars, setWeeklyCalendars] = useState<Calendar[]>([]);
+  const [weekOffset, setWeekOffset] = useState(0);
   
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -35,9 +37,9 @@ function useCalendarDataState() {
   
   return {
     dueCalendars, doneTodayCalendars, completedCalendars, deletedCalendars, weeklyCalendars,
-    errorMessage, isLoading, reloadToken,
+    errorMessage, isLoading, reloadToken, weekOffset,
     setDueCalendars, setDoneTodayCalendars, setCompletedCalendars, setDeletedCalendars, setWeeklyCalendars,
-    setErrorMessage, setIsLoading, setReloadToken
+    setErrorMessage, setIsLoading, setReloadToken, setWeekOffset
   };
 }
 
@@ -47,16 +49,7 @@ function useCalendarMutationState() {
   return { isDeleting, isUpdating, setIsDeleting, setIsUpdating };
 }
 
-function getMonday(d: Date) {
-  const date = new Date(d);
-  const day = date.getDay();
-  const diff = date.getDate() - day + (day === 0 ? -6 : 1);
-  return new Date(date.setDate(diff));
-}
 
-function formatDate(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
 
 async function loadCalendarData(
   subview: CalendarSubview,
@@ -79,8 +72,8 @@ async function loadCalendarData(
       const deleted = await fetchDeletedCalendars();
       if (!cancelled()) state.setDeletedCalendars(deleted);
     } else if (subview === "weekly") {
-      const monday = getMonday(new Date());
-      const week = await fetchWeekCalendars(formatDate(monday));
+      const monday = getMondayForOffset(state.weekOffset);
+      const week = await fetchWeekCalendars(formatCalendarDate(monday));
       if (!cancelled()) state.setWeeklyCalendars(week);
     }
   } catch (error) {
@@ -95,7 +88,7 @@ function useCalendarLoader(subview: CalendarSubview, state: CalendarDataState): 
     let cancelled = false;
     void loadCalendarData(subview, state, () => cancelled);
     return () => { cancelled = true; };
-  }, [subview, state.reloadToken]);
+  }, [subview, state.reloadToken, state.weekOffset]);
 }
 
 function removeCalendar(state: CalendarDataState, id: string): void {
@@ -221,6 +214,8 @@ export function useCalendarQuery(subview: CalendarSubview) {
     isDeleting: mutations.isDeleting,
     isLoading: state.isLoading,
     isUpdating: mutations.isUpdating,
-    reload
+    reload,
+    weekOffset: state.weekOffset,
+    setWeekOffset: state.setWeekOffset
   };
 }
