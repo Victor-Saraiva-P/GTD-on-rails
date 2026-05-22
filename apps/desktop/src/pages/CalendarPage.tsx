@@ -280,7 +280,7 @@ async function exitCalendarBodyEditing(controller: CalendarWorkspaceController, 
 function DueCalendarPanel({ controller }: CalendarControllerProps) {
   const meta = `${controller.dueCalendars.length} ${controller.dueCalendars.length === 1 ? "item" : "items"}`;
   return (
-    <ListView title="Due / Late" meta={meta} panelIndex={1} active={controller.activeZone === "calendar-today-due-panel"} bodyClassName="list-pane__body--flush" className="inbox-pane inbox-pane--list">
+    <ListView title="Calendar" meta={meta} panelIndex={1} active={controller.activeZone === "calendar-today-due-panel"} bodyClassName="list-pane__body--flush" className="inbox-pane inbox-pane--list">
       <CalendarPanelBody controller={controller} panel="due" />
     </ListView>
   );
@@ -289,7 +289,7 @@ function DueCalendarPanel({ controller }: CalendarControllerProps) {
 function DoneTodayCalendarPanel({ controller }: CalendarControllerProps) {
   const meta = `${controller.doneTodayCalendars.length} ${controller.doneTodayCalendars.length === 1 ? "item" : "items"}`;
   return (
-    <ListView title="Done Today" meta={meta} panelIndex={2} active={controller.activeZone === "calendar-today-done-panel"} bodyClassName="list-pane__body--flush" className="inbox-pane inbox-pane--list">
+    <ListView title="Done" meta={meta} panelIndex={2} active={controller.activeZone === "calendar-today-done-panel"} bodyClassName="list-pane__body--flush" className="inbox-pane inbox-pane--list">
       <CalendarPanelBody controller={controller} panel="done-today" />
     </ListView>
   );
@@ -336,9 +336,11 @@ function CalendarDetailView({ controller }: CalendarControllerProps) {
 function CalendarViews({ controller }: CalendarControllerProps) {
   if (controller.activeSubview === "today") {
     return (
-      <section className="inbox-terminal-layout" aria-label="Calendars">
-        <DueCalendarPanel controller={controller} />
-        <DoneTodayCalendarPanel controller={controller} />
+      <section className="calendar-today-layout" aria-label="Calendars">
+        <section className="calendar-today-group" aria-label="Today calendars">
+          <DueCalendarPanel controller={controller} />
+          <DoneTodayCalendarPanel controller={controller} />
+        </section>
         <CalendarDetailView controller={controller} />
       </section>
     );
