@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import { useActiveZone } from "../keybinds/hooks";
 import type { ItemBody } from "../inbox/types";
 import {
+  calendarSubviewTarget,
   calendarItemsForPanel,
   moveCalendarSelection,
   selectedCalendar,
   selectedCalendarIndex,
+  type CalendarSubviewDirection,
   type CalendarPanel,
   type CalendarSubview
 } from "./calendarWorkspaceState";
@@ -172,6 +174,12 @@ function resetCalendarWorkspace(model: CalendarModel): void {
   focusCalendarPanel(model, "due");
 }
 
+function switchCalendarSubview(model: CalendarModel, direction: CalendarSubviewDirection): void {
+  const target = calendarSubviewTarget(model.view.activeSubview, direction);
+  model.view.setActiveSubview(target.subview);
+  focusCalendarPanel(model, target.panel);
+}
+
 function useCalendarWorkspaceActions(model: CalendarModel) {
   return {
     autosaveBody: (body: ItemBody) => autosaveCalendarBodyEdit(model, body),
@@ -190,7 +198,9 @@ function useCalendarWorkspaceActions(model: CalendarModel) {
     selectNext: model.selection.selectNext,
     selectPrevious: model.selection.selectPrevious,
     startBodyEdit: () => startCalendarBodyEdit(model),
-    startTitleEdit: () => startCalendarTitleEdit(model)
+    startTitleEdit: () => startCalendarTitleEdit(model),
+    switchToNextSubview: () => switchCalendarSubview(model, "next"),
+    switchToPreviousSubview: () => switchCalendarSubview(model, "previous")
   };
 }
 
