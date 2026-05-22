@@ -322,14 +322,31 @@ function DeletedCalendarPanel({ controller }: CalendarControllerProps) {
 }
 
 function WeeklyCalendarPanel({ controller, day, index }: CalendarControllerProps & { day: CalendarPanel, index: number }) {
-  const title = day.charAt(0).toUpperCase() + day.slice(1);
-  const items = controller.weeklyCalendars.filter(c => new Date(c.scheduledDate + "T00:00:00").getDay() === (index === 7 ? 0 : index));
-  const meta = `${items.length} ${items.length === 1 ? "item" : "items"}`;
+  const dayName = day.charAt(0).toUpperCase() + day.slice(1);
+  const monday = getMondayForOffset(controller.weekOffset);
+  const columnDate = new Date(monday);
+  columnDate.setDate(monday.getDate() + index - 1);
+  
+  const today = new Date();
+  const isToday = columnDate.getFullYear() === today.getFullYear() &&
+                  columnDate.getMonth() === today.getMonth() &&
+                  columnDate.getDate() === today.getDate();
+
   const zoneId = `calendar-${day}-panel` as FocusZoneId;
+  const active = controller.activeZone === zoneId;
+
   return (
-    <ListView title={title} meta={meta} panelIndex={index} active={controller.activeZone === zoneId} bodyClassName="list-pane__body--flush" className="inbox-pane inbox-pane--list">
-      <CalendarPanelBody controller={controller} panel={day} />
-    </ListView>
+    <section className={`list-pane ${active ? "list-pane--active" : ""} inbox-pane inbox-pane--list`}>
+      <header className="weekly-column-header">
+        <span className="weekly-column-day">{dayName}</span>
+        <span className={`weekly-column-date ${isToday ? "weekly-column-date--today" : ""}`}>
+          {columnDate.getDate()}
+        </span>
+      </header>
+      <div className="list-pane__body list-pane__body--flush">
+        <CalendarPanelBody controller={controller} panel={day} />
+      </div>
+    </section>
   );
 }
 

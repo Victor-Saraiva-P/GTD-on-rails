@@ -1,6 +1,6 @@
-import { InboxListStuff } from "../inbox/InboxListStuff";
 import { calendarItemIconText } from "../lists/listThemes";
 import type { Calendar } from "./types";
+import { CalendarListCard } from "./CalendarListCard";
 
 type CalendarListProps = {
   editingId: string | null;
@@ -22,10 +22,10 @@ type CalendarListProps = {
  */
 export function CalendarList({ items, selectedId, ...itemProps }: CalendarListProps) {
   return (
-    <ol className="tree-list tree-list--inbox" aria-label="Calendars">
+    <ul className="calendar-card-list" aria-label="Calendars">
       {items.map((item) => (
-        <InboxListStuff key={item.id} item={item} glyph={calendarItemIconText} selected={item.id === selectedId} editing={item.id === itemProps.editingId} {...itemProps} />
+        <CalendarListCard key={item.id} item={item} selected={item.id === selectedId} editing={item.id === itemProps.editingId} {...itemProps} />
       ))}
-    </ol>
+    </ul>
   );
 }
