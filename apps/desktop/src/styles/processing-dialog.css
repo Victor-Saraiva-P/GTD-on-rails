@@ -61,6 +61,7 @@
 }
 
 .processing-dialog__step--context,
+.processing-dialog__step--calendar-date,
 .processing-dialog__step--energy,
 .processing-dialog__step--time {
   display: grid;
@@ -86,12 +87,37 @@
 }
 
 .processing-dialog__input--energy,
-.processing-dialog__input--time {
+.processing-dialog__input--time,
+.processing-dialog__date-control {
   font-size: 1.2rem;
   font-weight: 700;
   text-align: right;
   letter-spacing: 0.05em;
   font-variant-numeric: tabular-nums;
+}
+
+.processing-dialog__date-control {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.processing-dialog__date-segment {
+  min-width: 2ch;
+  padding: 0 2px;
+}
+
+.processing-dialog__date-segment--active {
+  background: var(--list-accent);
+  color: #171717;
+}
+
+.processing-dialog__date-segment:last-child {
+  min-width: 4ch;
+}
+
+.processing-dialog__date-separator {
+  color: #8f8a86;
 }
 
 .processing-dialog__input:focus {
@@ -148,5 +174,11 @@
 .processing-dialog__hint {
   color: #8f8a86;
   font-size: 0.78rem;
+  padding: 0 4px;
+}
+
+.processing-dialog__error {
+  color: #f08a72;
+  font-size: 0.82rem;
   padding: 0 4px;
 }

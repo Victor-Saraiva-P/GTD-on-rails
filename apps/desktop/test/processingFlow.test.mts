@@ -12,6 +12,7 @@ import {
   previousProcessingStep,
   segmentedCalendarDateDisplayValue,
   segmentedCalendarDateIsoValue,
+  segmentedCalendarDateStateFromIsoValue,
   stepAfterInitialChoice
 } from "../src/features/processing/processingFlow.ts";
 import type { SegmentedCalendarDateState } from "../src/features/processing/processingFlow.ts";
@@ -92,6 +93,15 @@ describe("processing flow", () => {
     assert.equal(isSegmentedCalendarDateValid(nonLeapDay), false);
     assert.equal(segmentedCalendarDateIsoValue(nonLeapDay), null);
     assert.equal(isSegmentedCalendarDateValid(impossibleDate), false);
+  });
+
+  test("segmented calendar date can restore a confirmed ISO date", () => {
+    const state = segmentedCalendarDateStateFromIsoValue("2028-02-29");
+
+    if (state === null) assert.fail("Expected 2028-02-29 to restore as a segmented date state.");
+    assert.equal(segmentedCalendarDateDisplayValue(state), "29/02/2028");
+    assert.equal(state.activeSegment, "day");
+    assert.equal(segmentedCalendarDateStateFromIsoValue("2028-02-30"), null);
   });
 
   test("calendar payload is built only from confirmed date and optional time", () => {
