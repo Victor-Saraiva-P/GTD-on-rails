@@ -53,6 +53,11 @@ function moveCalendarSelection(controller: CalendarWorkspaceController, directio
   direction === "next" ? controller.selectNext() : controller.selectPrevious();
 }
 
+function moveCalendarColumn(controller: CalendarWorkspaceController, direction: "left" | "right"): void {
+  if (controller.editingId || controller.editingBodyId) return;
+  direction === "left" ? controller.moveColumnLeft() : controller.moveColumnRight();
+}
+
 function switchCalendarSubview(controller: CalendarWorkspaceController, direction: "next" | "previous"): void {
   if (controller.editingId || controller.editingBodyId) return;
   direction === "next" ? controller.switchToNextSubview() : controller.switchToPreviousSubview();
@@ -97,6 +102,8 @@ function buildPanelBindings(controller: CalendarWorkspaceController, setActiveSc
       bindings.push(
         calendarBinding(`calendars.move-${day}-down`, "j", "Move down", zone, () => moveCalendarSelection(controller, "next")),
         calendarBinding(`calendars.move-${day}-up`, "k", "Move up", zone, () => moveCalendarSelection(controller, "previous")),
+        calendarBinding(`calendars.move-${day}-left`, "h", "Move to previous day", zone, () => moveCalendarColumn(controller, "left")),
+        calendarBinding(`calendars.move-${day}-right`, "l", "Move to next day", zone, () => moveCalendarColumn(controller, "right")),
         calendarBinding(`calendars.open-${day}-detail`, "Enter", "Open full detail", zone, () => openCalendarDetailPage(controller, setActiveScreen), true, ["Enter"])
       );
     });
