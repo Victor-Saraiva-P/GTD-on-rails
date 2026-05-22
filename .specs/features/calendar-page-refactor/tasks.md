@@ -61,12 +61,12 @@ T1 → T2 → T3 → T4
 
 **Done when**:
 
-- [ ] Global navigation registers one calendar leader binding with sequence `["c"]`.
-- [ ] Global navigation no longer registers `["c", "t"]`, `["c", "w"]`, `["c", "c"]`, or `["c", "d"]`.
-- [ ] Pressing `Space c` resets the calendar workspace and opens Calendars on Today.
-- [ ] Calendar list and detail zones bind `]` to next subview and `[` to previous subview.
-- [ ] Bracket keybinds do nothing while title or body editing is active.
-- [ ] Existing calendar actions, detail opening, formatting leader bindings, and asset/link dialogs remain available.
+- [x] Global navigation registers one calendar leader binding with sequence `["c"]`.
+- [x] Global navigation no longer registers `["c", "t"]`, `["c", "w"]`, `["c", "c"]`, or `["c", "d"]`.
+- [x] Pressing `Space c` resets the calendar workspace and opens Calendars on Today.
+- [x] Calendar list and detail zones bind `]` to next subview and `[` to previous subview.
+- [x] Bracket keybinds do nothing while title or body editing is active.
+- [x] Existing calendar actions, detail opening, formatting leader bindings, and asset/link dialogs remain available.
 
 **Tests**: Desktop unit/e2e  
 **Gate**: `pnpm test`  
