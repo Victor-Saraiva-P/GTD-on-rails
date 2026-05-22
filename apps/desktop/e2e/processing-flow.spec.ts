@@ -44,16 +44,80 @@ test("selects multiple next action contexts with keyboard", async ({ page, reque
   await expect(dialog.getByText("Energy level")).toBeVisible();
 });
 
+test("enters calendar date with segmented keyboard input", async ({ page }) => {
+  const title = uniqueLabel("Processing calendar");
+  await createStuff(page, title);
+
+  await page.keyboard.press("p");
+  await page.keyboard.press("c");
+
+  const dialog = page.getByRole("dialog", { name: "Processing" });
+  const dateControl = dialog.getByRole("textbox", { name: "Scheduled date:" });
+  const dateSegments = dialog.locator(".processing-dialog__date-segment");
+  await expect(dateControl).toHaveText(todayDisplayValue());
+  await expect(dateSegments.nth(0)).toHaveClass(/processing-dialog__date-segment--active/);
+
+  await page.keyboard.press("Backspace");
+  await expect(dateControl).toHaveText(todayDisplayValue());
+
+  await page.keyboard.type("31");
+  await expect(dateSegments.nth(1)).toHaveClass(/processing-dialog__date-segment--active/);
+  await page.keyboard.type("02");
+  await expect(dateSegments.nth(2)).toHaveClass(/processing-dialog__date-segment--active/);
+  await page.keyboard.type("2026");
+  await expect(dateSegments.nth(0)).toHaveClass(/processing-dialog__date-segment--active/);
+
+  await page.keyboard.press("Enter");
+  await expect(dialog.getByRole("alert")).toHaveText("Enter a valid calendar date.");
+  await expect(dialog.getByText("Scheduled time (optional):")).not.toBeVisible();
+
+  await page.keyboard.press("l");
+  await expect(dateSegments.nth(1)).toHaveClass(/processing-dialog__date-segment--active/);
+  await page.keyboard.press("l");
+  await page.keyboard.press("l");
+  await expect(dateSegments.nth(2)).toHaveClass(/processing-dialog__date-segment--active/);
+  await page.keyboard.press("h");
+  await expect(dateSegments.nth(1)).toHaveClass(/processing-dialog__date-segment--active/);
+  await page.keyboard.press("h");
+
+  await page.keyboard.type("29022028");
+  await expect(dateControl).toHaveText("29/02/2028");
+
+  const calendarRequestPromise = page.waitForRequest((request) => request.url().endsWith("/calendar") && request.method() === "POST");
+  await page.keyboard.press("Enter");
+  await expect(dialog.getByText("Scheduled time (optional):")).toBeVisible();
+  await page.keyboard.press("Enter");
+
+  const calendarRequest = await calendarRequestPromise;
+  const payload = calendarRequest.postDataJSON() as CalendarProcessingRequestPayload;
+  expect(payload).toEqual({ scheduledDate: "2028-02-29", scheduledTime: null });
+});
+
 async function createStuff(page: Page, title: string): Promise<void> {
   await page.keyboard.press("h");
   await createInboxStuffFromKeyboard(page, title);
   await page.locator("main").click();
-  await expect(page.getByRole("button", { name: title })).toBeVisible();
+  const inboxItem = page.getByRole("button", { name: title }).first();
+  await expect(inboxItem).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.getByLabel("Editing mode")).toContainText("NORMAL");
   await page.keyboard.down("Control");
   await page.keyboard.press("h");
   await page.keyboard.up("Control");
   await expect(page.locator(".cm-content")).not.toBeVisible();
-  await page.getByRole("button", { name: title }).click();
+  await inboxItem.click();
 }
+
+function todayDisplayValue(): string {
+  const today = new Date();
+  return `${datePart(today.getDate(), 2)}/${datePart(today.getMonth() + 1, 2)}/${datePart(today.getFullYear(), 4)}`;
+}
+
+function datePart(value: number, width: number): string {
+  return value.toString().padStart(width, "0");
+}
+
+type CalendarProcessingRequestPayload = {
+  scheduledDate: string;
+  scheduledTime: string | null;
+};
