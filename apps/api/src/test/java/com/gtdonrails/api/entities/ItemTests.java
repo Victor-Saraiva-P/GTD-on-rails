@@ -128,9 +128,10 @@ class ItemTests {
         Item item = new Item(new Title("Capture idea"), null);
         item.softDelete();
 
+        LocalDate date = LocalDate.parse("2026-05-21");
         IllegalStateException exception = assertThrows(
             IllegalStateException.class,
-            () -> item.convertToCalendar(LocalDate.parse("2026-05-21"), null));
+            () -> item.convertToCalendar(date, null));
 
         assertEquals("item value 'STUFF' is invalid; expected active STUFF without subtype", exception.getMessage());
     }
@@ -140,9 +141,10 @@ class ItemTests {
         Item item = new Item(new Title("Capture idea"), null);
         item.convertToNextAction(java.math.BigDecimal.ONE, java.time.Duration.ZERO, java.util.Set.of(new Context("home")));
 
+        LocalDate date = LocalDate.parse("2026-05-21");
         IllegalStateException exception = assertThrows(
             IllegalStateException.class,
-            () -> item.convertToCalendar(LocalDate.parse("2026-05-21"), null));
+            () -> item.convertToCalendar(date, null));
 
         assertEquals("item value 'NEXT_ACTION' is invalid; expected active STUFF without subtype", exception.getMessage());
     }
