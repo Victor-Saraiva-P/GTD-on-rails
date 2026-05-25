@@ -1,25 +1,24 @@
 import type { Calendar } from "./types";
+import {
+  actualCalendarScheduleLabel,
+  statedCalendarScheduleLabel
+} from "./calendarDateUtils.ts";
 
 export type CalendarDetailMetadata = {
   title: string;
-  parts: string[];
+  statedSchedule: string;
+  actualSchedule: string | null;
 };
-
-function scheduledDatePart(item: Calendar): string {
-  return `scheduled: ${item.scheduledDate}`;
-}
-
-function scheduledTimePart(item: Calendar): string | null {
-  return item.scheduledTime ? `time: ${item.scheduledTime}` : null;
-}
 
 /**
  * Builds detail header metadata without exposing calendar status.
  *
- * @example calendarDetailMetadata(calendar).parts
+ * @example calendarDetailMetadata(calendar).statedSchedule
  */
 export function calendarDetailMetadata(item: Calendar): CalendarDetailMetadata {
-  const timePart = scheduledTimePart(item);
-  const parts = timePart ? [scheduledDatePart(item), timePart] : [scheduledDatePart(item)];
-  return { title: item.title, parts };
+  return {
+    title: item.title,
+    statedSchedule: statedCalendarScheduleLabel(item.scheduledDate, item.scheduledTime) ?? item.scheduledDate,
+    actualSchedule: actualCalendarScheduleLabel(item.schedule)
+  };
 }
