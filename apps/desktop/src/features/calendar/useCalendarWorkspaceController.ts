@@ -2,6 +2,10 @@ import { useEffect, useState } from "react";
 import { useActiveZone } from "../keybinds/hooks";
 import type { ItemBody } from "../inbox/types";
 import {
+  resolveTodayWeeklyPanel,
+  resolveWeeklyOffset
+} from "./calendarDateUtils";
+import {
   calendarSubviewTarget,
   calendarItemsForPanel,
   moveCalendarSelection,
@@ -203,6 +207,15 @@ function moveCalendarColumn(model: CalendarModel, direction: ColumnShiftDirectio
   focusCalendarPanel(model, result.panel);
 }
 
+function moveCalendarWeek(model: CalendarModel, direction: "previous" | "next"): void {
+  model.query.setWeekOffset((offset) => resolveWeeklyOffset(offset, direction));
+}
+
+function focusTodayCalendarWeek(model: CalendarModel): void {
+  model.query.setWeekOffset(0);
+  focusCalendarPanel(model, resolveTodayWeeklyPanel(new Date()));
+}
+
 function useCalendarWorkspaceActions(model: CalendarModel) {
   return {
     autosaveBody: (body: ItemBody) => autosaveCalendarBodyEdit(model, body),
@@ -216,6 +229,8 @@ function useCalendarWorkspaceActions(model: CalendarModel) {
     markAsOnGoing: () => runSelectedCalendarMutation(model, model.query.markAsOnGoing),
     moveColumnLeft: () => moveCalendarColumn(model, "left"),
     moveColumnRight: () => moveCalendarColumn(model, "right"),
+    moveWeekNext: () => moveCalendarWeek(model, "next"),
+    moveWeekPrevious: () => moveCalendarWeek(model, "previous"),
     reload: model.query.reload,
     resetWorkspace: () => resetCalendarWorkspace(model),
     restoreSelected: () => runSelectedCalendarMutation(model, model.query.restoreStatus),
@@ -224,6 +239,7 @@ function useCalendarWorkspaceActions(model: CalendarModel) {
     selectPrevious: model.selection.selectPrevious,
     startBodyEdit: () => startCalendarBodyEdit(model),
     startTitleEdit: () => startCalendarTitleEdit(model),
+    focusTodayWeek: () => focusTodayCalendarWeek(model),
     switchToNextSubview: () => switchCalendarSubview(model, "next"),
     switchToPreviousSubview: () => switchCalendarSubview(model, "previous"),
     updateSchedule: (patch: CalendarPatch) => updateSelectedCalendarSchedule(model, patch)
