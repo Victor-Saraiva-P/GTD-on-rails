@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { createInboxStuffFromKeyboard, focusApp, openApp, resetTestData, uniqueLabel } from "./support/app";
+import { createAndSelectInboxStuff, createInboxStuffFromKeyboard, focusApp, openApp, openCalendars, resetTestData, uniqueLabel } from "./support/app";
 
 test.beforeEach(async ({ page, request }) => {
   await resetTestData(request);
@@ -10,7 +10,7 @@ test("calendar GTD flow: creates, schedules, manages state, and deletes", async 
   const title = uniqueLabel("Calendar meeting");
 
   // 1. Create stuff in Inbox
-  await createStuff(page, title);
+  await createAndSelectInboxStuff(page, title);
 
   // 2. Process into a calendar
   await page.keyboard.press("p");
@@ -96,13 +96,6 @@ test("calendar GTD flow: creates, schedules, manages state, and deletes", async 
   await expect(page.locator(".inbox-pane").nth(0).getByRole("button", { name: title, exact: false }).first()).toBeVisible();
 });
 
-async function openCalendars(page: Page): Promise<void> {
-  await page.keyboard.press("Space");
-  await expect(page.locator(".leader-menu")).toBeVisible();
-  await page.keyboard.press("c");
-  await expect(page.locator(".leader-menu")).not.toBeVisible();
-  await expect(page.locator(".inbox-pane .list-pane__title").nth(0)).toHaveText("Calendar");
-}
 
 async function verifyCalendarSubviewShortcuts(page: Page): Promise<void> {
   await expectCalendarSubviewAfterKey(page, "]", "Mon");
@@ -124,16 +117,4 @@ async function expectCalendarSubviewAfterKey(page: Page, key: string, title: str
   await expect(page.locator(".inbox-pane .list-pane__title").nth(0)).toHaveText(title);
 }
 
-async function createStuff(page: Page, title: string): Promise<void> {
-  await page.keyboard.press("h");
-  await createInboxStuffFromKeyboard(page, title);
-  await page.locator("main").click();
-  await expect(page.getByRole("button", { name: title, exact: false }).first()).toBeVisible();
-  await page.keyboard.press("Escape");
-  await expect(page.getByLabel("Editing mode")).toContainText("NORMAL");
-  await page.keyboard.down("Control");
-  await page.keyboard.press("h");
-  await page.keyboard.up("Control");
-  await expect(page.locator(".cm-content")).not.toBeVisible();
-  await page.getByRole("button", { name: title, exact: false }).first().click();
-}
+
