@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { createAndSelectInboxStuff, createInboxStuffFromKeyboard, focusApp, openApp, openCalendars, resetTestData, uniqueLabel } from "./support/app";
+import { createAndSelectInboxStuff, createInboxStuffFromKeyboard, focusApp, openApp, openCalendars, resetTestData, uniqueLabel, focusPanelAndSelectItem } from "./support/app";
 
 test.beforeEach(async ({ page, request }) => {
   await resetTestData(request);
@@ -32,14 +32,7 @@ async function createCalendar(page: Page, title: string): Promise<void> {
 async function deleteAndUndoCalendar(page: Page, title: string) {
   await createCalendar(page, title);
 
-  const panel1 = page.locator(".inbox-pane").nth(0);
-  const dueCalendar = panel1.getByRole("button", { name: title, exact: false }).first();
-  await expect(dueCalendar).toBeVisible();
-
-  // Focus panel and select item
-  await page.keyboard.press("1");
-  await expect(panel1).toHaveClass(/list-pane--active/);
-  await dueCalendar.click();
+  const { item: dueCalendar } = await focusPanelAndSelectItem(page, 0, title);
 
   // Delete
   await page.keyboard.press("d");
