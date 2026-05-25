@@ -30,9 +30,9 @@ T2
 - Skill: NONE
 
 **Done when**:
-- [ ] `useUndoRedoHistory` is imported and initialized in the model.
-- [ ] `undoCalendarAction` and `redoCalendarAction` are implemented and exported.
-- [ ] `deleteSelected` pushes the deleted item to the undo history.
+- [x] `useUndoRedoHistory` is imported and initialized in the model.
+- [x] `undoCalendarAction` and `redoCalendarAction` are implemented and exported.
+- [x] `deleteSelected` pushes the deleted item to the undo history.
 
 **Tests**: none
 **Gate**: quick
@@ -51,9 +51,9 @@ T2
 - Skill: NONE
 
 **Done when**:
-- [ ] 'd' is mapped to `deleteSelected` in weekly and today view panels.
-- [ ] 'u' is mapped to `undo` in all relevant panels.
-- [ ] 'ctrl+r' is mapped to `redo` in all relevant panels.
+- [x] 'd' is mapped to `deleteSelected` in weekly and today view panels.
+- [x] 'u' is mapped to `undo` in all relevant panels.
+- [x] 'ctrl+r' is mapped to `redo` in all relevant panels.
 
 **Tests**: none
 **Gate**: quick
