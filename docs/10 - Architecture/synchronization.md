@@ -41,12 +41,16 @@ The persistence repository URL is configured by:
 gtd.persistence.bootstrap.repository-url
 ```
 
-Current branch defaults are profile-specific:
+Current bootstrap branch defaults are profile-specific:
 
 - `prod`: `main`
 - `dev`: `dev`
 - `staging`: `dev`
-- `ci` and `test`: sync disabled by default
+
+Current persistence sync defaults are profile-specific:
+
+- `prod` and `staging`: sync enabled by default
+- `dev`, `ci`, and `test`: sync disabled by default
 
 ---
 
@@ -199,7 +203,11 @@ Current remote defaults are profile-specific:
 - `prod`: `gdrive:gtd-on-rails`
 - `dev`: `gdrive:dev-gtd-on-rails`
 - `staging`: `gdrive:dev-gtd-on-rails`
-- `ci` and `test`: rclone disabled by default
+
+Current rclone defaults are profile-specific:
+
+- `prod` and `staging`: rclone enabled by default
+- `dev`, `ci`, and `test`: rclone disabled by default
 
 ---
 
