@@ -1,6 +1,6 @@
 import type { ItemBody, Stuff } from "../inbox/types";
 
-export type NextActionOrder = "energy" | "time";
+export type NextActionOrder = "energy" | "time" | "priority";
 
 export type ScheduleWindow = {
   dateStart?: string | null;
@@ -12,12 +12,15 @@ export type ScheduleWindow = {
 
 
 export type NextAction = Stuff & {
+  deadline?: string | null;
   schedule?: ScheduleWindow;
 };
 
 export type NextActionPatch = {
   energy?: number | null;
   estimatedTime?: { hours: number; minutes: number } | null;
+  deadline?: string | null;
+  clearDeadline?: boolean;
   contextIds?: string[];
 };
 
@@ -27,6 +30,7 @@ export type NextActionResponse = {
   body: ItemBody | string | null;
   energy?: number | string | null;
   estimatedTime?: { hours: number; minutes: number } | string | null;
+  deadline?: string | null;
   status: string;
   schedule?: ScheduleWindow;
   contexts?: Array<{ id: string; name: string; iconUrl?: string }>;

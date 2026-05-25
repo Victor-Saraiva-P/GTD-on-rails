@@ -14,6 +14,8 @@ Next actions can include [[Body Content]] for notes, links, and file assets that
 
 An available next action is ready to be selected from the next actions list when its context, time, and energy fit.
 
+An optional deadline can mark the date when the action should be preferred. Deadline is used by priority ordering together with urgency, available time, and available energy.
+
 ### On Going
 
 An on going action is a next action that has been intentionally pulled into active execution.

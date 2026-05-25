@@ -1,6 +1,7 @@
 package com.gtdonrails.api.dtos.nextaction;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -25,6 +26,10 @@ public record PatchNextActionRequestDto(
 
     @Valid
     ItemTimeRequestDto estimatedTime,
+
+    LocalDate deadline,
+
+    Boolean clearDeadline,
 
     @Size(
         max = Context.MAX_CONTEXTS_PER_ITEM,

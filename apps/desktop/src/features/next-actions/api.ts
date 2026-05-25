@@ -6,6 +6,8 @@ import { normalizeNextActionBody, parseEstimatedTime } from "./types.ts";
 
 type NextActionsFetchParams = {
   contextId: string | null;
+  currentEnergy: number | null;
+  currentTimeMinutes: number | null;
   orderBy: NextActionOrder;
 };
 
@@ -21,6 +23,8 @@ type NextActionsPageResponse = {
 export async function fetchNextActions(params: NextActionsFetchParams): Promise<NextAction[]> {
   const searchParams = new URLSearchParams({ orderBy: params.orderBy });
   if (params.contextId) searchParams.set("contextId", params.contextId);
+  if (params.currentEnergy != null) searchParams.set("currentEnergy", params.currentEnergy.toFixed(1));
+  if (params.currentTimeMinutes != null) searchParams.set("currentTimeMinutes", String(params.currentTimeMinutes));
   const response = await apiJson<NextActionResponse[]>(`/next-actions?${searchParams.toString()}`);
   return response.map(toNextAction);
 }
@@ -133,6 +137,7 @@ function toNextAction(item: NextActionResponse): NextAction {
     body: normalizeNextActionBody(item.body),
     energy: item.energy == null ? null : Number(item.energy),
     estimatedTime: parseEstimatedTime(item.estimatedTime),
+    deadline: item.deadline ?? null,
     contexts: item.contexts ?? [],
     status: item.status,
     schedule: item.schedule

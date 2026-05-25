@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.util.Set;
 
 import com.gtdonrails.api.entities.Context;
@@ -70,6 +71,19 @@ class NextActionControllerTests {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.energy").value(8.0))
             .andExpect(jsonPath("$.estimatedTime").value("PT15M"));
+    }
+
+    @Test
+    void patchesNextActionDeadline() throws Exception {
+        Item item = itemRepository.save(new Item(new Title("Buy milk"), null));
+        NextAction nextAction = nextActionRepository.save(
+            new NextAction(item, new BigDecimal("2.0"), Duration.ofMinutes(15), Set.of()));
+
+        mockMvc.perform(patch("/next-actions/{id}", nextAction.getItemId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"deadline\":\"2026-06-01\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.deadline").value("2026-06-01"));
     }
 
     @Test
@@ -197,6 +211,18 @@ class NextActionControllerTests {
     }
 
     @Test
+    void getsAllNextActionsOrderedByPriority() throws Exception {
+        NextAction easy = saveNextAction("Easy task", null, "1.0", 15);
+        NextAction urgent = saveNextAction("Urgent task", LocalDate.now().plusDays(1), "8.0", 60);
+
+        mockMvc.perform(get("/next-actions?orderBy=priority&currentTimeMinutes=15&currentEnergy=2.0"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(2)))
+            .andExpect(jsonPath("$[0].id").value(urgent.getItemId().toString()))
+            .andExpect(jsonPath("$[1].id").value(easy.getItemId().toString()));
+    }
+
+    @Test
     void getsOnGoingNextActions() throws Exception {
         Context context = contextRepository.save(new Context("Home"));
         Item item = itemRepository.save(new Item(new Title("Buy milk"), null));
@@ -236,5 +262,12 @@ class NextActionControllerTests {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.content", hasSize(1)))
             .andExpect(jsonPath("$.content[0].status").value(NextActionStatus.DONE.name()));
+    }
+
+    private NextAction saveNextAction(String title, LocalDate deadline, String energy, int minutes) {
+        Item item = itemRepository.save(new Item(new Title(title), null));
+        NextAction nextAction = new NextAction(item, new BigDecimal(energy), Duration.ofMinutes(minutes), Set.of());
+        nextAction.setDeadline(deadline);
+        return nextActionRepository.save(nextAction);
     }
 }

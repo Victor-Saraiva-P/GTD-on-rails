@@ -25,6 +25,7 @@ public class NextActionMapper {
             nextAction.getItem().getBody(),
             nextAction.getEnergy(),
             nextAction.getEstimatedTime(),
+            nextAction.getDeadline(),
             nextAction.getStatus().name(),
             nextAction.getSchedule(),
             nextAction.getContexts().stream()

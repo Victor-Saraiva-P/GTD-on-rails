@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
@@ -86,7 +87,7 @@ class NextActionServiceTests {
 
     @Test
     void patchesNextActionSuccessfully() {
-        PatchNextActionRequestDto request = new PatchNextActionRequestDto(new BigDecimal("7.0"), null, null);
+        PatchNextActionRequestDto request = new PatchNextActionRequestDto(new BigDecimal("7.0"), null, null, null, null);
         when(nextActionRepository.findById(nextActionId)).thenReturn(Optional.of(nextAction));
         when(nextActionRepository.save(any(NextAction.class))).thenReturn(nextAction);
 
@@ -98,7 +99,7 @@ class NextActionServiceTests {
 
     @Test
     void patchesNextActionToAnywhereContext() {
-        PatchNextActionRequestDto request = new PatchNextActionRequestDto(null, null, List.of());
+        PatchNextActionRequestDto request = new PatchNextActionRequestDto(null, null, null, null, List.of());
         when(nextActionRepository.findById(nextActionId)).thenReturn(Optional.of(nextAction));
         when(nextActionRepository.save(any(NextAction.class))).thenReturn(nextAction);
 
@@ -111,7 +112,7 @@ class NextActionServiceTests {
 
     @Test
     void throwsItemNotFoundWhenPatchingMissingNextAction() {
-        PatchNextActionRequestDto request = new PatchNextActionRequestDto(new BigDecimal("7.0"), null, null);
+        PatchNextActionRequestDto request = new PatchNextActionRequestDto(new BigDecimal("7.0"), null, null, null, null);
         when(nextActionRepository.findById(nextActionId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> nextActionService.patchNextAction(nextActionId, request))
@@ -209,6 +210,18 @@ class NextActionServiceTests {
     }
 
     @Test
+    void getsOrderedByPriority() {
+        NextAction later = nextActionWithDeadline("Later", "2024-01-20", 15, "1.0");
+        NextAction dueSoon = nextActionWithDeadline("Soon", "2024-01-02", 60, "8.0");
+        when(nextActionRepository.findAllByStatusAndItem_DeletedAtIsNull(NextActionStatus.NEXT_ACTION))
+            .thenReturn(List.of(later, dueSoon));
+
+        List<NextActionResponseDto> result = nextActionService.getOrderedByPriority(null, 15, new BigDecimal("3.0"));
+
+        assertThat(result.getFirst().title()).isEqualTo("Soon");
+    }
+
+    @Test
     void getsOnGoingNextActions() {
         nextAction.markOnGoing(clock);
         when(nextActionRepository.findAllByStatusAndItem_DeletedAtIsNullOrderByItem_UpdatedAtAsc(NextActionStatus.ONGOING))
@@ -242,5 +255,12 @@ class NextActionServiceTests {
 
         assertThat(result.getContent()).hasSize(1);
         assertThat(result.getContent().getFirst().status()).isEqualTo(NextActionStatus.DONE.name());
+    }
+
+    private NextAction nextActionWithDeadline(String title, String deadline, int minutes, String energy) {
+        Item nextItem = new Item(new Title(title), null);
+        NextAction action = new NextAction(nextItem, new BigDecimal(energy), Duration.ofMinutes(minutes), Set.of());
+        action.setDeadline(LocalDate.parse(deadline));
+        return action;
     }
 }

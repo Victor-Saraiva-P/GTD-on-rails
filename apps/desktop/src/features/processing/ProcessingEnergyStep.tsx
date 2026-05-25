@@ -3,12 +3,13 @@ import type { KeyboardEvent } from "react";
 
 type ProcessingEnergyStepProps = {
   digits: string;
+  label?: string;
   onDigitsChange: (digits: string) => void;
   onEnergySelected: (energy: number | null) => void;
   onBack: () => void;
 };
 
-export function ProcessingEnergyStep({ digits, onDigitsChange, onEnergySelected, onBack }: ProcessingEnergyStepProps) {
+export function ProcessingEnergyStep({ digits, label = "Energy level (0.0 - 10.0):", onDigitsChange, onEnergySelected, onBack }: ProcessingEnergyStepProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Auto-format digits to a decimal string like "0.1", "1.8", "10.0"
@@ -39,7 +40,7 @@ export function ProcessingEnergyStep({ digits, onDigitsChange, onEnergySelected,
 
   return (
     <div className="processing-dialog__step processing-dialog__step--energy">
-      <div className="processing-dialog__label">Energy level (0.0 - 10.0):</div>
+      <div className="processing-dialog__label">{label}</div>
       <input 
         ref={inputRef}
         type="text" 
