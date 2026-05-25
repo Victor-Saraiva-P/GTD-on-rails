@@ -180,7 +180,7 @@ async function undoCalendarAction(model: CalendarModel) {
   if (!action) return;
 
   if (action.type === "DELETE") {
-    await model.query.restoreStatus(action.payload.id);
+    await model.query.recoverDeleted(action.payload.id);
     model.selection.setSelectedId(action.payload.id);
   } else {
     await model.query.deleteItem(action.payload.id);
@@ -194,7 +194,7 @@ async function redoCalendarAction(model: CalendarModel) {
   if (action.type === "RESTORE") {
     await model.query.deleteItem(action.payload.id);
   } else {
-    await model.query.restoreStatus(action.payload.id);
+    await model.query.recoverDeleted(action.payload.id);
     model.selection.setSelectedId(action.payload.id);
   }
 }
