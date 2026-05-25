@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { createAndSelectInboxStuff, createInboxStuffFromKeyboard, focusApp, openApp, openCalendars, resetTestData, uniqueLabel, focusPanelAndSelectItem } from "./support/app";
+import { createAndSelectInboxStuff, createInboxStuffFromKeyboard, focusApp, openApp, openCalendars, resetTestData, uniqueLabel, focusPanelAndSelectItem, processIntoCalendar } from "./support/app";
 
 test.beforeEach(async ({ page, request }) => {
   await resetTestData(request);
@@ -13,22 +13,7 @@ test("calendar GTD flow: creates, schedules, manages state, and deletes", async 
   await createAndSelectInboxStuff(page, title);
 
   // 2. Process into a calendar
-  await page.keyboard.press("p");
-  await page.keyboard.press("c");
-
-  // Date step
-  const dateControl = page.getByRole("textbox", { name: "Scheduled date:" });
-  await expect(dateControl).toBeVisible();
-  await page.keyboard.press("Enter");
-
-  // Time step
-  await expect(page.getByText("Scheduled time (optional)")).toBeVisible();
-  const calendarResponsePromise = page.waitForResponse((response) => response.url().endsWith("/calendar") && response.request().method() === "POST" && response.ok());
-  await page.locator(".processing-dialog__input--time").press("Enter");
-  await calendarResponsePromise;
-
-  // 3. Verify it appears under Space c (Calendars page)
-  await openCalendars(page);
+  await processIntoCalendar(page);
 
   // By default, it opens the grouped Today subview.
   await expect(page.locator(".inbox-pane .list-pane__title").nth(0)).toHaveText("Calendar");
