@@ -20,6 +20,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.Getter;
+import lombok.Setter;
 
 @Entity
 @Table(name = "calendars")
@@ -38,6 +39,12 @@ public class Calendar extends AuditableEntity {
     @Column(name = "scheduled_date", nullable = false)
     private LocalDate scheduledDate;
 
+    /**
+     * Stores the optional local scheduled time.
+     *
+     * <p>Example: {@code calendar.setScheduledTime(LocalTime.parse("09:30"))}.</p>
+     */
+    @Setter
     @Column(name = "scheduled_time")
     private LocalTime scheduledTime;
 
@@ -87,14 +94,6 @@ public class Calendar extends AuditableEntity {
         this.scheduledDate = scheduledDate;
     }
 
-    /**
-     * Stores the optional local scheduled time.
-     *
-     * <p>Example: {@code calendar.setScheduledTime(LocalTime.parse("09:30"))}.</p>
-     */
-    public void setScheduledTime(LocalTime scheduledTime) {
-        this.scheduledTime = scheduledTime;
-    }
 
     /**
      * Marks this calendar as ongoing, resetting the schedule start.
