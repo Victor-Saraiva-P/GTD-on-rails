@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useUndoRedoHistory } from "../history/useUndoRedoHistory";
 import { useActiveZone } from "../keybinds/hooks";
 import type { ItemBody } from "../inbox/types";
+import { isSameBody } from "../inbox/types";
 import type { ContextItem } from "../contexts/types";
 import type { NextAction, NextActionOrder, NextActionPatch } from "./types";
 import { useNextActionsQuery } from "./useNextActionsQuery";
@@ -130,7 +131,7 @@ export async function commitTitleEdit(model: Model) {
 export async function commitBodyEdit(model: Model, body: ItemBody) {
   const item = model.selection.selectedItem;
   if (!item || model.edit.editingBodyId !== item.id) return;
-  const sameBody = item.body.text === body.text && JSON.stringify(item.body) === JSON.stringify(body);
+  const sameBody = isSameBody(item.body, body);
   if (!sameBody) model.selection.setSelectedId((await model.query.updateBody(item, body)).id);
   clearBodyEdit(model.edit);
 }
@@ -138,7 +139,7 @@ export async function commitBodyEdit(model: Model, body: ItemBody) {
 export async function autosaveBodyEdit(model: Model, body: ItemBody) {
   const item = model.selection.selectedItem;
   if (!item || model.edit.editingBodyId !== item.id) return;
-  if (item.body.text === body.text && JSON.stringify(item.body) === JSON.stringify(body)) return;
+  if (isSameBody(item.body, body)) return;
   model.selection.setSelectedId((await model.query.updateBody(item, body)).id);
 }
 
