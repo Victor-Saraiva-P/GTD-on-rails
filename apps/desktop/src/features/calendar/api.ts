@@ -93,12 +93,12 @@ export async function markCalendarDone(id: string): Promise<Calendar> {
 }
 
 /**
- * Restores a done or ongoing calendar to active calendar state.
+ * Resets a done or ongoing calendar to active calendar state.
  *
- * @example await restoreCalendarStatus(calendar.id)
+ * @example await resetCalendarStatus(calendar.id)
  */
-export async function restoreCalendarStatus(id: string): Promise<Calendar> {
-  return postCalendarTransition(id, "restore");
+export async function resetCalendarStatus(id: string): Promise<Calendar> {
+  return postCalendarTransition(id, "reset-status");
 }
 
 /**

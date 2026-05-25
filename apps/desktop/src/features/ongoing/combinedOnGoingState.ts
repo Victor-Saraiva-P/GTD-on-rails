@@ -50,7 +50,7 @@ export function actionLabelForOnGoingSelection(
   selection: OnGoingItemSelection
 ): string {
   const noun = selection.type === "calendar" ? "calendar" : "next action";
-  if (kind === "restore") return `Restore as ${noun}`;
+  if (kind === "restore") return `Reset status to ${noun}`;
   if (kind === "done") return "Mark as done";
   return `Delete selected on going ${noun}`;
 }

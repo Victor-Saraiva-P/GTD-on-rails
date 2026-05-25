@@ -118,9 +118,9 @@ public class Calendar extends AuditableEntity {
     /**
      * Restores this item to the initial calendar state, clearing its schedule.
      *
-     * <p>Example: {@code calendar.restore()}.</p>
+     * <p>Example: {@code calendar.resetStatus()}.</p>
      */
-    public void restore() {
+    public void resetStatus() {
         schedule.clear();
         status = CalendarStatus.CALENDAR;
     }

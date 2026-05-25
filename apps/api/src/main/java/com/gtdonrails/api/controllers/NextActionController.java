@@ -50,9 +50,9 @@ public class NextActionController {
         return nextActionService.markDone(id);
     }
 
-    @PostMapping("/{id}/restore")
-    public NextActionResponseDto restoreNextAction(@PathVariable UUID id) {
-        return nextActionService.restoreNextAction(id);
+    @PostMapping("/{id}/reset-status")
+    public NextActionResponseDto resetNextActionStatus(@PathVariable UUID id) {
+        return nextActionService.resetNextActionStatus(id);
     }
 
     @GetMapping

@@ -153,12 +153,12 @@ public class CalendarService {
     /**
      * Restores a done or ongoing calendar to the active calendar state.
      *
-     * <p>Example: {@code calendarService.restoreCalendar(calendarId)}.</p>
+     * <p>Example: {@code calendarService.resetCalendarStatus(calendarId)}.</p>
      */
     @Transactional
-    public CalendarResponseDto restoreCalendar(UUID id) {
+    public CalendarResponseDto resetCalendarStatus(UUID id) {
         Calendar calendar = findCalendar(id);
-        calendar.restore();
+        calendar.resetStatus();
         return saveWithSync(calendar, "calendar status restored");
     }
 

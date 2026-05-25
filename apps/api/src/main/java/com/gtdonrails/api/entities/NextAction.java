@@ -171,9 +171,9 @@ public class NextAction extends AuditableEntity {
     /**
      * Restores this item to the initial next action state, clearing its schedule.
      *
-     * <p>Example: {@code nextAction.restore()}.</p>
+     * <p>Example: {@code nextAction.resetStatus()}.</p>
      */
-    public void restore() {
+    public void resetStatus() {
         schedule.clear();
         status = NextActionStatus.NEXT_ACTION;
     }

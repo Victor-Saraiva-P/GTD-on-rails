@@ -11,7 +11,7 @@ import {
   fetchDeletedNextActions,
   fetchDoneNextActions,
   recoverDeletedNextAction,
-  restoreNextActionStatus
+  resetNextActionStatus
 } from "../features/next-actions/api";
 import {
   type ArchivedNextActionsConfig,
@@ -38,7 +38,7 @@ const doneNextActionsConfig = {
   listZone: "done-next-actions-list",
   deleteItem: deleteNextAction,
   loadItems: fetchDoneNextActions,
-  recoverItem: restoreNextActionStatus
+  recoverItem: resetNextActionStatus
 } satisfies ArchivedNextActionsConfig;
 
 const deletedNextActionsConfig = {
