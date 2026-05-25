@@ -93,6 +93,11 @@ describe("calendar display time", () => {
     assert.equal(trimCalendarDisplayTime("21:00:00"), "21:00");
   });
 
+  test("hides milliseconds and trailing chars when API time includes them", () => {
+    assert.equal(trimCalendarDisplayTime("14:54:17.118"), "14:54");
+    assert.equal(trimCalendarDisplayTime("14:54:17.118Z"), "14:54");
+  });
+
   test("keeps HH:mm values unchanged", () => {
     assert.equal(trimCalendarDisplayTime("21:00"), "21:00");
   });
