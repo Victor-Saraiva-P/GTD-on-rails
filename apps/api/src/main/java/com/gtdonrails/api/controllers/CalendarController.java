@@ -75,9 +75,9 @@ public class CalendarController {
         return calendarService.markDone(id);
     }
 
-    @PostMapping("/{id}/restore")
-    public CalendarResponseDto restoreCalendar(@PathVariable UUID id) {
-        return calendarService.restoreCalendar(id);
+    @PostMapping("/{id}/reset-status")
+    public CalendarResponseDto resetCalendarStatus(@PathVariable UUID id) {
+        return calendarService.resetCalendarStatus(id);
     }
 
     @PostMapping("/{id}/recover")

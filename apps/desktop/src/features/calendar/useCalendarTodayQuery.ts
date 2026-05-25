@@ -8,7 +8,7 @@ import {
   fetchTodayCalendars,
   markCalendarDone,
   markCalendarOnGoing,
-  restoreCalendarStatus,
+  resetCalendarStatus,
   updateCalendarBody,
   updateCalendarTitle
 } from "./api";
@@ -165,7 +165,7 @@ function useCalendarMutations(
     deleteItem: (id: string) => deleteCalendarItem(id, state, mutations, triggerSyncStatusPolling),
     markAsDone: (id: string) => mutateCalendarStatus(id, state, mutations, triggerSyncStatusPolling, markCalendarDone),
     markAsOnGoing: (id: string) => mutateCalendarStatus(id, state, mutations, triggerSyncStatusPolling, markCalendarOnGoing),
-    restoreStatus: (id: string) => mutateCalendarStatus(id, state, mutations, triggerSyncStatusPolling, restoreCalendarStatus),
+    restoreStatus: (id: string) => mutateCalendarStatus(id, state, mutations, triggerSyncStatusPolling, resetCalendarStatus),
     updateBody: (item: Calendar, body: ItemBody) => updateCalendarItemBody(item, body, state, mutations, triggerSyncStatusPolling),
     updateTitle: (item: Calendar, title: string) => updateCalendarItemTitle(item, title, state, mutations, triggerSyncStatusPolling)
   };

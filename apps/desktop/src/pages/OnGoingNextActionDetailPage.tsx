@@ -65,7 +65,7 @@ function buildDetailBindings(controller: OnGoingNextActionsWorkspaceController, 
   return [
     ongoingDetailBinding("ongoing-next-action-detail-page.edit-body", "Enter", "Edit selected body", () => editBodyFromKeybind(controller)),
     ongoingDetailBinding("ongoing-next-action-detail-page.back", "Escape", "Back to on going actions", () => backToOnGoingActions(controller, setActiveScreen)),
-    ongoingDetailBinding("ongoing-next-action-detail-page.restore", "r", "Restore as next action", () => void restoreAndOpenNextActions(controller, selectNextAction, setActiveScreen)),
+    ongoingDetailBinding("ongoing-next-action-detail-page.restore", "r", "Reset status to next action", () => void restoreAndOpenNextActions(controller, selectNextAction, setActiveScreen)),
     ongoingDetailBinding("ongoing-next-action-detail-page.which-key", "k", "Show available keybinds", () => undefined, true),
     ...buildFormattingBindings("ongoing-next-action-detail-page", openLink, openAsset, "next-action-detail")
   ];

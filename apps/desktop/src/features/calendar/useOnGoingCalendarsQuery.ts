@@ -6,7 +6,7 @@ import {
   deleteCalendar,
   fetchOnGoingCalendars,
   markCalendarDone,
-  restoreCalendarStatus,
+  resetCalendarStatus,
   updateCalendarBody,
   updateCalendarTitle
 } from "./api";
@@ -97,7 +97,7 @@ async function restoreOnGoingCalendar(
   poll: () => void
 ) {
   mutations.setIsUpdating(true);
-  try { await restoreCalendarStatus(id); state.setItems((items) => items.filter((item) => item.id !== id)); completeCalendarMutation(state, poll); }
+  try { await resetCalendarStatus(id); state.setItems((items) => items.filter((item) => item.id !== id)); completeCalendarMutation(state, poll); }
   finally { mutations.setIsUpdating(false); }
 }
 

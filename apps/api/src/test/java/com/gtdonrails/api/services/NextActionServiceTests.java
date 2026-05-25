@@ -147,7 +147,7 @@ class NextActionServiceTests {
         when(nextActionRepository.findById(nextActionId)).thenReturn(Optional.of(nextAction));
         when(nextActionRepository.save(any(NextAction.class))).thenReturn(nextAction);
 
-        NextActionResponseDto response = nextActionService.restoreNextAction(nextActionId);
+        NextActionResponseDto response = nextActionService.resetNextActionStatus(nextActionId);
 
         assertThat(response.status()).isEqualTo(NextActionStatus.NEXT_ACTION.name());
         verify(nextActionRepository).save(nextAction);
@@ -159,7 +159,7 @@ class NextActionServiceTests {
         when(nextActionRepository.findById(nextActionId)).thenReturn(Optional.of(nextAction));
         when(nextActionRepository.save(any(NextAction.class))).thenReturn(nextAction);
 
-        NextActionResponseDto response = nextActionService.restoreNextAction(nextActionId);
+        NextActionResponseDto response = nextActionService.resetNextActionStatus(nextActionId);
 
         assertThat(response.status()).isEqualTo(NextActionStatus.NEXT_ACTION.name());
         verify(nextActionRepository).save(nextAction);

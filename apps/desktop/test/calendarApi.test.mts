@@ -11,7 +11,7 @@ import {
   patchCalendar,
   processStuffToCalendar,
   recoverDeletedCalendar,
-  restoreCalendarStatus,
+  resetCalendarStatus,
   updateCalendarBody,
   updateCalendarTitle
 } from "../src/features/calendar/api.ts";
@@ -105,14 +105,14 @@ describe("calendar API", () => {
     assert.equal(calendars[0].status, "ONGOING");
   });
 
-  test("restoreCalendarStatus posts restore endpoint", async () => {
+  test("resetCalendarStatus posts reset-status endpoint", async () => {
     globalThis.fetch = mock.fn(async (input, init) => {
-      assert.ok(input.toString().endsWith("/calendars/cal-1/restore"));
+      assert.ok(input.toString().endsWith("/calendars/cal-1/reset-status"));
       assert.equal(init?.method, "POST");
       return new Response(JSON.stringify(response), { status: 200 });
     });
 
-    await restoreCalendarStatus("cal-1");
+    await resetCalendarStatus("cal-1");
   });
 
   test("deleteCalendar soft deletes through item endpoint", async () => {

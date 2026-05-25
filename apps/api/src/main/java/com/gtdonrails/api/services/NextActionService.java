@@ -82,9 +82,9 @@ public class NextActionService {
     }
 
     @Transactional
-    public NextActionResponseDto restoreNextAction(UUID id) {
+    public NextActionResponseDto resetNextActionStatus(UUID id) {
         NextAction nextAction = findNextAction(id);
-        nextAction.restore();
+        nextAction.resetStatus();
         return nextActionMapper.toResponse(nextActionRepository.save(nextAction));
     }
 
