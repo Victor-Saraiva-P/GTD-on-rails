@@ -69,11 +69,16 @@ function openCalendarDetailPage(controller: CalendarWorkspaceController, setActi
   if (controller.selectedItem) setActiveScreen("calendar-detail-page");
 }
 
-function buildPanelBindings(controller: CalendarWorkspaceController, setActiveScreen: (screen: ScreenId) => void): KeybindDefinition[] {
+function openCalendarScheduleDialog(controller: CalendarWorkspaceController, openScheduleEdit: () => void): void {
+  if (canEditCalendar(controller)) openScheduleEdit();
+}
+
+function buildPanelBindings(controller: CalendarWorkspaceController, setActiveScreen: (screen: ScreenId) => void, openScheduleEdit: () => void): KeybindDefinition[] {
   if (controller.activeSubview === "completed") {
     return [
       calendarBinding("calendars.move-completed-down", "j", "Move down", "calendar-completed-panel", () => moveCalendarSelection(controller, "next")),
       calendarBinding("calendars.move-completed-up", "k", "Move up", "calendar-completed-panel", () => moveCalendarSelection(controller, "previous")),
+      calendarBinding("calendars.edit-completed-schedule", "e", "Edit selected schedule", "calendar-completed-panel", () => openCalendarScheduleDialog(controller, openScheduleEdit)),
       calendarBinding("calendars.open-completed-detail", "Enter", "Open full detail", "calendar-completed-panel", () => openCalendarDetailPage(controller, setActiveScreen), true, ["Enter"]),
       calendarBinding("calendars.delete-completed", "d", "Delete selected calendar", "calendar-completed-panel", () => runCalendarAction(canEditCalendar(controller), controller.deleteSelected, "Failed to delete calendar")),
       calendarBinding("calendars.restore-completed", "r", "Restore selected calendar", "calendar-completed-panel", () => runCalendarAction(canEditCalendar(controller), controller.restoreSelected, "Failed to restore calendar"))
@@ -83,6 +88,7 @@ function buildPanelBindings(controller: CalendarWorkspaceController, setActiveSc
     return [
       calendarBinding("calendars.move-deleted-down", "j", "Move down", "calendar-deleted-panel", () => moveCalendarSelection(controller, "next")),
       calendarBinding("calendars.move-deleted-up", "k", "Move up", "calendar-deleted-panel", () => moveCalendarSelection(controller, "previous")),
+      calendarBinding("calendars.edit-deleted-schedule", "e", "Edit selected schedule", "calendar-deleted-panel", () => openCalendarScheduleDialog(controller, openScheduleEdit)),
       calendarBinding("calendars.open-deleted-detail", "Enter", "Open full detail", "calendar-deleted-panel", () => openCalendarDetailPage(controller, setActiveScreen), true, ["Enter"]),
       calendarBinding("calendars.recover-deleted", "r", "Recover selected calendar", "calendar-deleted-panel", () => runCalendarAction(canEditCalendar(controller), controller.recoverDeleted, "Failed to recover calendar"))
     ];
@@ -106,23 +112,29 @@ function buildPanelBindings(controller: CalendarWorkspaceController, setActiveSc
         calendarBinding(`calendars.move-${day}-up`, "k", "Move up", zone, () => moveCalendarSelection(controller, "previous")),
         calendarBinding(`calendars.move-${day}-left`, "h", "Move to previous day", zone, () => moveCalendarColumn(controller, "left")),
         calendarBinding(`calendars.move-${day}-right`, "l", "Move to next day", zone, () => moveCalendarColumn(controller, "right")),
+        calendarBinding(`calendars.move-${day}-previous-week`, "H", "Move to previous week", zone, controller.moveWeekPrevious),
+        calendarBinding(`calendars.move-${day}-next-week`, "L", "Move to next week", zone, controller.moveWeekNext),
+        calendarBinding(`calendars.focus-${day}-today`, "t", "Focus today", zone, controller.focusTodayWeek),
+        calendarBinding(`calendars.edit-${day}-schedule`, "e", "Edit selected schedule", zone, () => openCalendarScheduleDialog(controller, openScheduleEdit)),
+        calendarBinding(`calendars.edit-${day}-title`, "Enter", "Edit selected title", zone, () => canEditCalendar(controller) && controller.startTitleEdit()),
         calendarBinding(`calendars.open-${day}-detail`, "Enter", "Open full detail", zone, () => openCalendarDetailPage(controller, setActiveScreen), true, ["Enter"])
       );
     });
     return bindings;
   }
   return [
-    ...buildDuePanelBindings(controller, setActiveScreen),
-    ...buildDoneTodayPanelBindings(controller, setActiveScreen)
+    ...buildDuePanelBindings(controller, setActiveScreen, openScheduleEdit),
+    ...buildDoneTodayPanelBindings(controller, setActiveScreen, openScheduleEdit)
   ];
 }
 
-function buildDuePanelBindings(controller: CalendarWorkspaceController, setActiveScreen: (screen: ScreenId) => void): KeybindDefinition[] {
+function buildDuePanelBindings(controller: CalendarWorkspaceController, setActiveScreen: (screen: ScreenId) => void, openScheduleEdit: () => void): KeybindDefinition[] {
   return [
     calendarBinding("calendars.focus-due", "1", "Focus due calendar panel", "calendar-today-due-panel", () => focusCalendarPanel(controller, "due")),
     calendarBinding("calendars.focus-done-from-due", "2", "Focus completed today panel", "calendar-today-due-panel", () => focusCalendarPanel(controller, "done-today")),
     calendarBinding("calendars.move-due-down", "j", "Move down", "calendar-today-due-panel", () => moveCalendarSelection(controller, "next")),
     calendarBinding("calendars.move-due-up", "k", "Move up", "calendar-today-due-panel", () => moveCalendarSelection(controller, "previous")),
+    calendarBinding("calendars.edit-due-schedule", "e", "Edit selected schedule", "calendar-today-due-panel", () => openCalendarScheduleDialog(controller, openScheduleEdit)),
     calendarBinding("calendars.edit-title", "Enter", "Edit selected title", "calendar-today-due-panel", () => canEditCalendar(controller) && controller.startTitleEdit()),
     calendarBinding("calendars.edit-body", "l", "Edit selected body", "calendar-today-due-panel", () => canEditCalendar(controller) && controller.startBodyEdit()),
     calendarBinding("calendars.open-detail", "Enter", "Open full detail", "calendar-today-due-panel", () => openCalendarDetailPage(controller, setActiveScreen), true, ["Enter"]),
@@ -132,22 +144,24 @@ function buildDuePanelBindings(controller: CalendarWorkspaceController, setActiv
   ];
 }
 
-function buildDoneTodayPanelBindings(controller: CalendarWorkspaceController, setActiveScreen: (screen: ScreenId) => void): KeybindDefinition[] {
+function buildDoneTodayPanelBindings(controller: CalendarWorkspaceController, setActiveScreen: (screen: ScreenId) => void, openScheduleEdit: () => void): KeybindDefinition[] {
   return [
     calendarBinding("calendars.focus-due-from-done", "1", "Focus due calendar panel", "calendar-today-done-panel", () => focusCalendarPanel(controller, "due")),
     calendarBinding("calendars.focus-done", "2", "Focus completed today panel", "calendar-today-done-panel", () => focusCalendarPanel(controller, "done-today")),
     calendarBinding("calendars.move-done-down", "j", "Move down", "calendar-today-done-panel", () => moveCalendarSelection(controller, "next")),
     calendarBinding("calendars.move-done-up", "k", "Move up", "calendar-today-done-panel", () => moveCalendarSelection(controller, "previous")),
+    calendarBinding("calendars.edit-done-schedule", "e", "Edit selected schedule", "calendar-today-done-panel", () => openCalendarScheduleDialog(controller, openScheduleEdit)),
     calendarBinding("calendars.open-done-detail", "Enter", "Open full detail", "calendar-today-done-panel", () => openCalendarDetailPage(controller, setActiveScreen), true, ["Enter"]),
     calendarBinding("calendars.restore-done", "r", "Restore selected calendar", "calendar-today-done-panel", () => runCalendarAction(canEditCalendar(controller), controller.restoreSelected, "Failed to restore calendar"))
   ];
 }
 
-function buildDetailBindings(controller: CalendarWorkspaceController, openLink: () => void, openAsset: () => void): KeybindDefinition[] {
+function buildDetailBindings(controller: CalendarWorkspaceController, openLink: () => void, openAsset: () => void, openScheduleEdit: () => void): KeybindDefinition[] {
   return [
     calendarBinding("calendars.focus-due-from-detail", "1", "Focus due calendar panel", "calendar-detail", () => focusCalendarPanel(controller, "due")),
     calendarBinding("calendars.focus-done-from-detail", "2", "Focus completed today panel", "calendar-detail", () => focusCalendarPanel(controller, "done-today")),
     calendarBinding("calendars.focus-active-list", "h", "Focus active calendar panel", "calendar-detail", () => controller.setActiveZone(activePanelZone(controller.activePanel))),
+    calendarBinding("calendars.edit-detail-schedule", "e", "Edit selected schedule", "calendar-detail", () => openCalendarScheduleDialog(controller, openScheduleEdit)),
     calendarBinding("calendars.edit-body-detail", "Enter", "Edit selected body", "calendar-detail", () => canEditCalendar(controller) && controller.startBodyEdit()),
     ...buildFormattingBindings("calendars", openLink, openAsset, "calendar-detail")
   ];
@@ -184,13 +198,13 @@ function activePanelZone(panel: CalendarPanel): FocusZoneId {
   return "calendar-today-due-panel";
 }
 
-function useCalendarBindings(controller: CalendarWorkspaceController, openLink: () => void, openAsset: () => void): void {
+function useCalendarBindings(controller: CalendarWorkspaceController, openLink: () => void, openAsset: () => void, openScheduleEdit: () => void): void {
   const { setActiveScreen } = useActiveScreen();
   const bindings = useMemo(() => [
     ...buildSubviewBindings(controller),
-    ...buildPanelBindings(controller, setActiveScreen),
-    ...buildDetailBindings(controller, openLink, openAsset)
-  ], [controller.activeSubview, controller, setActiveScreen, openLink, openAsset]);
+    ...buildPanelBindings(controller, setActiveScreen, openScheduleEdit),
+    ...buildDetailBindings(controller, openLink, openAsset, openScheduleEdit)
+  ], [controller.activeSubview, controller, setActiveScreen, openLink, openAsset, openScheduleEdit]);
   useRegisterKeybinds(bindings);
 }
 
@@ -428,10 +442,11 @@ export function CalendarPage({ controller }: CalendarPageProps) {
   const [isScheduleEditOpen, setIsScheduleEditOpen] = useState(false);
   const openLink = useCallback(() => setIsLinkOpen(true), []);
   const openAsset = useCallback(() => setIsAssetOpen(true), []);
+  const openScheduleEdit = useCallback(() => setIsScheduleEditOpen(true), []);
   useKeybindScreen("calendars");
   useCalendarZone(controller);
   useCalendarAssetPreload(controller);
-  useCalendarBindings(controller, openLink, openAsset);
+  useCalendarBindings(controller, openLink, openAsset, openScheduleEdit);
 
   return (
     <ListWorkspace theme={calendarsListTheme} currentLabel="Calendars" modeLabel={controller.vimMode ?? undefined}>
