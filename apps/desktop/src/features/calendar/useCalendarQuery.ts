@@ -128,7 +128,7 @@ async function mutateCalendarStatus(
   mutations.setIsUpdating(true);
   try {
     await action(id);
-    removeCalendar(state, id);
+    state.setReloadToken((v) => v + 1);
     state.setErrorMessage(null);
     poll();
   } finally {
