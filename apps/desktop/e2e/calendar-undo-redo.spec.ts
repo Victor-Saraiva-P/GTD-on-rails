@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { createInboxStuffFromKeyboard, focusApp, openApp, resetTestData, uniqueLabel } from "./support/app";
+import { createAndSelectInboxStuff, createInboxStuffFromKeyboard, focusApp, openApp, openCalendars, resetTestData, uniqueLabel } from "./support/app";
 
 test.beforeEach(async ({ page, request }) => {
   await resetTestData(request);
@@ -8,17 +8,7 @@ test.beforeEach(async ({ page, request }) => {
 
 async function createCalendar(page: Page, title: string): Promise<void> {
   // Create stuff in Inbox
-  await page.keyboard.press("h");
-  await createInboxStuffFromKeyboard(page, title);
-  await page.locator("main").click();
-  await expect(page.getByRole("button", { name: title, exact: false }).first()).toBeVisible();
-  await page.keyboard.press("Escape");
-  await expect(page.getByLabel("Editing mode")).toContainText("NORMAL");
-  await page.keyboard.down("Control");
-  await page.keyboard.press("h");
-  await page.keyboard.up("Control");
-  await expect(page.locator(".cm-content")).not.toBeVisible();
-  await page.getByRole("button", { name: title, exact: false }).first().click();
+  await createAndSelectInboxStuff(page, title);
 
   // Process into a calendar
   await page.keyboard.press("p");
@@ -36,11 +26,7 @@ async function createCalendar(page: Page, title: string): Promise<void> {
   await calendarResponsePromise;
 
   // Open Calendars page
-  await page.keyboard.press("Space");
-  await expect(page.locator(".leader-menu")).toBeVisible();
-  await page.keyboard.press("c");
-  await expect(page.locator(".leader-menu")).not.toBeVisible();
-  await expect(page.locator(".inbox-pane .list-pane__title").nth(0)).toHaveText("Calendar");
+  await openCalendars(page);
 }
 
 test("undoing a calendar deletion restores the item", async ({ page }) => {
