@@ -81,7 +81,9 @@ function buildPanelBindings(controller: CalendarWorkspaceController, setActiveSc
       calendarBinding("calendars.edit-completed-schedule", "e", "Edit selected schedule", "calendar-completed-panel", () => openCalendarScheduleDialog(controller, openScheduleEdit)),
       calendarBinding("calendars.open-completed-detail", "Enter", "Open full detail", "calendar-completed-panel", () => openCalendarDetailPage(controller, setActiveScreen), true, ["Enter"]),
       calendarBinding("calendars.delete-completed", "d", "Delete selected calendar", "calendar-completed-panel", () => runCalendarAction(canEditCalendar(controller), controller.deleteSelected, "Failed to delete calendar")),
-      calendarBinding("calendars.restore-completed", "r", "Restore selected calendar", "calendar-completed-panel", () => runCalendarAction(canEditCalendar(controller), controller.restoreSelected, "Failed to restore calendar"))
+      calendarBinding("calendars.restore-completed", "r", "Restore selected calendar", "calendar-completed-panel", () => runCalendarAction(canEditCalendar(controller), controller.restoreSelected, "Failed to restore calendar")),
+      calendarBinding("calendars.undo-completed", "u", "Undo last action", "calendar-completed-panel", controller.undo),
+      { ...calendarBinding("calendars.redo-completed", "r", "Redo last action", "calendar-completed-panel", controller.redo), ctrl: true }
     ];
   }
   if (controller.activeSubview === "deleted") {
@@ -90,7 +92,9 @@ function buildPanelBindings(controller: CalendarWorkspaceController, setActiveSc
       calendarBinding("calendars.move-deleted-up", "k", "Move up", "calendar-deleted-panel", () => moveCalendarSelection(controller, "previous")),
       calendarBinding("calendars.edit-deleted-schedule", "e", "Edit selected schedule", "calendar-deleted-panel", () => openCalendarScheduleDialog(controller, openScheduleEdit)),
       calendarBinding("calendars.open-deleted-detail", "Enter", "Open full detail", "calendar-deleted-panel", () => openCalendarDetailPage(controller, setActiveScreen), true, ["Enter"]),
-      calendarBinding("calendars.recover-deleted", "r", "Recover selected calendar", "calendar-deleted-panel", () => runCalendarAction(canEditCalendar(controller), controller.recoverDeleted, "Failed to recover calendar"))
+      calendarBinding("calendars.recover-deleted", "r", "Recover selected calendar", "calendar-deleted-panel", () => runCalendarAction(canEditCalendar(controller), controller.recoverDeleted, "Failed to recover calendar")),
+      calendarBinding("calendars.undo-deleted", "u", "Undo last action", "calendar-deleted-panel", controller.undo),
+      { ...calendarBinding("calendars.redo-deleted", "r", "Redo last action", "calendar-deleted-panel", controller.redo), ctrl: true }
     ];
   }
   if (controller.activeSubview === "weekly") {
@@ -117,7 +121,10 @@ function buildPanelBindings(controller: CalendarWorkspaceController, setActiveSc
         calendarBinding(`calendars.focus-${day}-today`, "t", "Focus today", zone, controller.focusTodayWeek),
         calendarBinding(`calendars.edit-${day}-schedule`, "e", "Edit selected schedule", zone, () => openCalendarScheduleDialog(controller, openScheduleEdit)),
         calendarBinding(`calendars.edit-${day}-title`, "Enter", "Edit selected title", zone, () => canEditCalendar(controller) && controller.startTitleEdit()),
-        calendarBinding(`calendars.open-${day}-detail`, "Enter", "Open full detail", zone, () => openCalendarDetailPage(controller, setActiveScreen), true, ["Enter"])
+        calendarBinding(`calendars.open-${day}-detail`, "Enter", "Open full detail", zone, () => openCalendarDetailPage(controller, setActiveScreen), true, ["Enter"]),
+        calendarBinding(`calendars.delete-${day}`, "d", "Delete selected calendar", zone, () => runCalendarAction(canEditCalendar(controller), controller.deleteSelected, "Failed to delete calendar")),
+        calendarBinding(`calendars.undo-${day}`, "u", "Undo last action", zone, controller.undo),
+        { ...calendarBinding(`calendars.redo-${day}`, "r", "Redo last action", zone, controller.redo), ctrl: true }
       );
     });
     return bindings;
@@ -140,7 +147,9 @@ function buildDuePanelBindings(controller: CalendarWorkspaceController, setActiv
     calendarBinding("calendars.open-detail", "Enter", "Open full detail", "calendar-today-due-panel", () => openCalendarDetailPage(controller, setActiveScreen), true, ["Enter"]),
     calendarBinding("calendars.ongoing", "o", "Mark as on going", "calendar-today-due-panel", () => runCalendarAction(canEditCalendar(controller), controller.markAsOnGoing, "Failed to mark calendar as on going")),
     calendarBinding("calendars.done", "x", "Mark as done", "calendar-today-due-panel", () => runCalendarAction(canEditCalendar(controller), controller.markAsDone, "Failed to mark calendar as done")),
-    calendarBinding("calendars.delete", "d", "Delete selected calendar", "calendar-today-due-panel", () => runCalendarAction(canEditCalendar(controller), controller.deleteSelected, "Failed to delete calendar"))
+    calendarBinding("calendars.delete", "d", "Delete selected calendar", "calendar-today-due-panel", () => runCalendarAction(canEditCalendar(controller), controller.deleteSelected, "Failed to delete calendar")),
+    calendarBinding("calendars.undo-due", "u", "Undo last action", "calendar-today-due-panel", controller.undo),
+    { ...calendarBinding("calendars.redo-due", "r", "Redo last action", "calendar-today-due-panel", controller.redo), ctrl: true }
   ];
 }
 
@@ -152,7 +161,10 @@ function buildDoneTodayPanelBindings(controller: CalendarWorkspaceController, se
     calendarBinding("calendars.move-done-up", "k", "Move up", "calendar-today-done-panel", () => moveCalendarSelection(controller, "previous")),
     calendarBinding("calendars.edit-done-schedule", "e", "Edit selected schedule", "calendar-today-done-panel", () => openCalendarScheduleDialog(controller, openScheduleEdit)),
     calendarBinding("calendars.open-done-detail", "Enter", "Open full detail", "calendar-today-done-panel", () => openCalendarDetailPage(controller, setActiveScreen), true, ["Enter"]),
-    calendarBinding("calendars.restore-done", "r", "Restore selected calendar", "calendar-today-done-panel", () => runCalendarAction(canEditCalendar(controller), controller.restoreSelected, "Failed to restore calendar"))
+    calendarBinding("calendars.restore-done", "r", "Restore selected calendar", "calendar-today-done-panel", () => runCalendarAction(canEditCalendar(controller), controller.restoreSelected, "Failed to restore calendar")),
+    calendarBinding("calendars.delete-done", "d", "Delete selected calendar", "calendar-today-done-panel", () => runCalendarAction(canEditCalendar(controller), controller.deleteSelected, "Failed to delete calendar")),
+    calendarBinding("calendars.undo-done", "u", "Undo last action", "calendar-today-done-panel", controller.undo),
+    { ...calendarBinding("calendars.redo-done", "r", "Redo last action", "calendar-today-done-panel", controller.redo), ctrl: true }
   ];
 }
 
@@ -163,6 +175,9 @@ function buildDetailBindings(controller: CalendarWorkspaceController, openLink: 
     calendarBinding("calendars.focus-active-list", "h", "Focus active calendar panel", "calendar-detail", () => controller.setActiveZone(activePanelZone(controller.activePanel))),
     calendarBinding("calendars.edit-detail-schedule", "e", "Edit selected schedule", "calendar-detail", () => openCalendarScheduleDialog(controller, openScheduleEdit)),
     calendarBinding("calendars.edit-body-detail", "Enter", "Edit selected body", "calendar-detail", () => canEditCalendar(controller) && controller.startBodyEdit()),
+    calendarBinding("calendars.delete-detail", "d", "Delete selected calendar", "calendar-detail", () => runCalendarAction(canEditCalendar(controller), controller.deleteSelected, "Failed to delete calendar")),
+    calendarBinding("calendars.undo-detail", "u", "Undo last action", "calendar-detail", controller.undo),
+    { ...calendarBinding("calendars.redo-detail", "r", "Redo last action", "calendar-detail", controller.redo), ctrl: true },
     ...buildFormattingBindings("calendars", openLink, openAsset, "calendar-detail")
   ];
 }

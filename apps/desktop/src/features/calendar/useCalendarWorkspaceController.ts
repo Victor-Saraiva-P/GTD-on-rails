@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useActiveZone } from "../keybinds/hooks";
+import { useUndoRedoHistory } from "../history/useUndoRedoHistory";
 import type { ItemBody } from "../inbox/types";
 import {
   resolveTodayWeeklyPanel,
@@ -101,7 +102,8 @@ function useCalendarWorkspaceModel() {
   const selection = useCalendarSelection(items);
   const edit = useCalendarEditState();
   const zone = useActiveZone();
-  return { edit, query, selection, view, zone };
+  const history = useUndoRedoHistory<Calendar>();
+  return { edit, query, selection, view, zone, history };
 }
 
 function startCalendarTitleEdit(model: CalendarModel): void {
@@ -160,6 +162,41 @@ async function runSelectedCalendarMutation(
   await action(item.id);
   clearCalendarEditing(model.edit);
   model.zone.setActiveZone(calendarListZoneForPanel(model.view.activePanel));
+}
+
+async function deleteSelectedCalendarAction(model: CalendarModel): Promise<void> {
+  const item = model.selection.selectedItem;
+  if (!item) return;
+  
+  await model.query.deleteItem(item.id);
+  model.history.pushUndo({ type: "DELETE", payload: item });
+  
+  clearCalendarEditing(model.edit);
+  model.zone.setActiveZone(calendarListZoneForPanel(model.view.activePanel));
+}
+
+async function undoCalendarAction(model: CalendarModel) {
+  const action = model.history.popUndo();
+  if (!action) return;
+
+  if (action.type === "DELETE") {
+    await model.query.restoreStatus(action.payload.id);
+    model.selection.setSelectedId(action.payload.id);
+  } else {
+    await model.query.deleteItem(action.payload.id);
+  }
+}
+
+async function redoCalendarAction(model: CalendarModel) {
+  const action = model.history.popRedo();
+  if (!action) return;
+
+  if (action.type === "RESTORE") {
+    await model.query.deleteItem(action.payload.id);
+  } else {
+    await model.query.restoreStatus(action.payload.id);
+    model.selection.setSelectedId(action.payload.id);
+  }
 }
 
 function calendarListZoneForPanel(panel: CalendarPanel): any {
@@ -223,7 +260,7 @@ function useCalendarWorkspaceActions(model: CalendarModel) {
     cancelTitleEdit: () => clearCalendarTitleEdit(model.edit),
     commitBody: (body: ItemBody) => commitCalendarBodyEdit(model, body),
     commitTitle: () => commitCalendarTitleEdit(model),
-    deleteSelected: () => runSelectedCalendarMutation(model, model.query.deleteItem),
+    deleteSelected: () => deleteSelectedCalendarAction(model),
     focusPanel: (panel: CalendarPanel) => focusCalendarPanel(model, panel),
     markAsDone: () => runSelectedCalendarMutation(model, model.query.markAsDone),
     markAsOnGoing: () => runSelectedCalendarMutation(model, model.query.markAsOnGoing),
@@ -242,7 +279,9 @@ function useCalendarWorkspaceActions(model: CalendarModel) {
     focusTodayWeek: () => focusTodayCalendarWeek(model),
     switchToNextSubview: () => switchCalendarSubview(model, "next"),
     switchToPreviousSubview: () => switchCalendarSubview(model, "previous"),
-    updateSchedule: (patch: CalendarPatch) => updateSelectedCalendarSchedule(model, patch)
+    updateSchedule: (patch: CalendarPatch) => updateSelectedCalendarSchedule(model, patch),
+    undo: () => undoCalendarAction(model),
+    redo: () => redoCalendarAction(model)
   };
 }
 
