@@ -1,6 +1,7 @@
 import type { KeyboardEvent } from "react";
 import type { Calendar } from "./types";
 import { calendarItemIconText } from "../lists/listThemes";
+import { trimCalendarDisplayTime } from "./calendarDateUtils";
 
 type CalendarListCardProps = {
   item: Calendar;
@@ -43,6 +44,7 @@ function EditingCalendarCard(props: Omit<CalendarListCardProps, "editing" | "onS
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     handleEditKeyDown(event, props.onCommitEditingAndContinue, props.onCancelEditing);
   };
+  const displayTime = trimCalendarDisplayTime(props.item.scheduledTime);
 
   return (
     <li className="calendar-list__item">
@@ -58,10 +60,10 @@ function EditingCalendarCard(props: Omit<CalendarListCardProps, "editing" | "onS
             autoFocus
           />
         </div>
-        {props.item.scheduledTime && (
+        {displayTime && (
           <div className="calendar-card__time-row">
             <span aria-hidden="true">⏱</span>
-            <span>{props.item.scheduledTime}</span>
+            <span>{displayTime}</span>
           </div>
         )}
       </div>
@@ -79,6 +81,7 @@ function handleSelectDoubleClick(props: Pick<CalendarListCardProps, "item" | "se
 
 function ReadOnlyCalendarCard(props: CalendarListCardProps) {
   const { item, selected, onSelect } = props;
+  const displayTime = trimCalendarDisplayTime(item.scheduledTime);
 
   return (
     <li className="calendar-list__item">
@@ -92,10 +95,10 @@ function ReadOnlyCalendarCard(props: CalendarListCardProps) {
           <CalendarGlyph />
           <span className="calendar-card__title">{item.title}</span>
         </div>
-        {item.scheduledTime && (
+        {displayTime && (
           <div className="calendar-card__time-row">
             <span aria-hidden="true" className="calendar-card__time-icon">⏱</span>
-            <span>{item.scheduledTime}</span>
+            <span>{displayTime}</span>
           </div>
         )}
       </button>
