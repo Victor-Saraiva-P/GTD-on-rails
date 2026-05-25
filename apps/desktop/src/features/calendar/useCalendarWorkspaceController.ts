@@ -14,7 +14,7 @@ import {
   type CalendarSubview,
   type WeeklyDayPanel
 } from "./calendarWorkspaceState";
-import type { Calendar } from "./types";
+import type { Calendar, CalendarPatch } from "./types";
 import { useCalendarQuery } from "./useCalendarQuery";
 
 type CalendarEditState = ReturnType<typeof useCalendarEditState>;
@@ -140,6 +140,13 @@ async function autosaveCalendarBodyEdit(model: CalendarModel, body: ItemBody): P
   model.selection.setSelectedId((await model.query.updateBody(item, body)).id);
 }
 
+async function updateSelectedCalendarSchedule(model: CalendarModel, patch: CalendarPatch): Promise<void> {
+  const item = model.selection.selectedItem;
+  if (!item) return;
+  model.selection.setSelectedId((await model.query.updateSchedule(item, patch)).id);
+  clearCalendarEditing(model.edit);
+}
+
 async function runSelectedCalendarMutation(
   model: CalendarModel,
   action: (id: string) => Promise<void>
@@ -218,7 +225,8 @@ function useCalendarWorkspaceActions(model: CalendarModel) {
     startBodyEdit: () => startCalendarBodyEdit(model),
     startTitleEdit: () => startCalendarTitleEdit(model),
     switchToNextSubview: () => switchCalendarSubview(model, "next"),
-    switchToPreviousSubview: () => switchCalendarSubview(model, "previous")
+    switchToPreviousSubview: () => switchCalendarSubview(model, "previous"),
+    updateSchedule: (patch: CalendarPatch) => updateSelectedCalendarSchedule(model, patch)
   };
 }
 
