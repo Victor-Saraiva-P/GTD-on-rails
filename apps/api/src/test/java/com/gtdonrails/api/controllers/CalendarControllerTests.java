@@ -24,6 +24,9 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -34,6 +37,8 @@ import org.springframework.web.context.WebApplicationContext;
 @ActiveProfiles("test")
 @Tag("integration")
 class CalendarControllerTests {
+
+    private static final Clock TEST_CLOCK = clockAt("2026-05-21T12:00:00Z");
 
     @Autowired
     private WebApplicationContext webApplicationContext;
@@ -140,5 +145,15 @@ class CalendarControllerTests {
 
     private static Clock clockAt(String instant) {
         return Clock.fixed(Instant.parse(instant), ZoneId.of("UTC"));
+    }
+
+    @TestConfiguration
+    static class FixedCalendarClockConfiguration {
+
+        @Bean
+        @Primary
+        Clock calendarControllerTestClock() {
+            return TEST_CLOCK;
+        }
     }
 }
