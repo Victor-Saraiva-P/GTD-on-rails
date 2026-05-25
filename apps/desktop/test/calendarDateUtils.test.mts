@@ -2,9 +2,14 @@ import assert from "node:assert/strict";
 import test, { describe } from "node:test";
 
 import {
+  actualCalendarScheduleLabel,
   formatCalendarDate,
   getMonday,
-  getMondayForOffset
+  getMondayForOffset,
+  resolveTodayWeeklyPanel,
+  resolveWeeklyOffset,
+  statedCalendarScheduleLabel,
+  trimCalendarDisplayTime
 } from "../src/features/calendar/calendarDateUtils.ts";
 
 describe("getMonday", () => {
@@ -65,5 +70,55 @@ describe("getMondayForOffset", () => {
     const futureMonday = getMondayForOffset(3);
     const diffDays = (futureMonday.getTime() - thisMonday.getTime()) / (1000 * 60 * 60 * 24);
     assert.equal(diffDays, 21);
+  });
+});
+
+describe("calendar display time", () => {
+  test("hides seconds when API time includes them", () => {
+    assert.equal(trimCalendarDisplayTime("21:00:00"), "21:00");
+  });
+
+  test("keeps HH:mm values unchanged", () => {
+    assert.equal(trimCalendarDisplayTime("21:00"), "21:00");
+  });
+
+  test("keeps missing times absent", () => {
+    assert.equal(trimCalendarDisplayTime(null), null);
+    assert.equal(trimCalendarDisplayTime(undefined), null);
+  });
+});
+
+describe("calendar schedule labels", () => {
+  test("formats stated calendar date with optional time", () => {
+    assert.equal(statedCalendarScheduleLabel("2026-05-21", "21:00:00"), "05/21/2026 21:00");
+    assert.equal(statedCalendarScheduleLabel("2026-05-21", null), "05/21/2026");
+  });
+
+  test("formats actual schedule windows with arrow style", () => {
+    const label = actualCalendarScheduleLabel({
+      dateStart: "2026-05-21",
+      timeStart: "09:00:00",
+      dateEnd: "2026-05-21",
+      timeEnd: "10:30:00"
+    });
+
+    assert.equal(label, "05/21/2026 09:00 → 05/21/2026 10:30");
+  });
+
+  test("omits missing actual schedule windows", () => {
+    assert.equal(actualCalendarScheduleLabel(undefined), null);
+    assert.equal(actualCalendarScheduleLabel({}), null);
+  });
+});
+
+describe("weekly movement helpers", () => {
+  test("resolves previous and next week offsets", () => {
+    assert.equal(resolveWeeklyOffset(2, "previous"), 1);
+    assert.equal(resolveWeeklyOffset(2, "next"), 3);
+  });
+
+  test("resolves today's weekday panel from a Monday-start week", () => {
+    assert.equal(resolveTodayWeeklyPanel(new Date(2026, 4, 18)), "mon");
+    assert.equal(resolveTodayWeeklyPanel(new Date(2026, 4, 24)), "sun");
   });
 });
