@@ -6,11 +6,26 @@ import {
   formatCalendarDate,
   getMonday,
   getMondayForOffset,
+  initialCalendarScheduleDraft,
   resolveTodayWeeklyPanel,
   resolveWeeklyOffset,
+  saveCalendarScheduleDraft,
   statedCalendarScheduleLabel,
   trimCalendarDisplayTime
 } from "../src/features/calendar/calendarDateUtils.ts";
+import type { Calendar } from "../src/features/calendar/types.ts";
+
+function calendar(scheduledTime: string | null): Calendar {
+  return {
+    id: "cal-1",
+    title: "Appointment",
+    body: { text: "", inlineMarks: [], lineBlocks: [], blockEntities: [] },
+    createdAt: "",
+    scheduledDate: "2026-05-21",
+    scheduledTime,
+    status: "CALENDAR"
+  };
+}
 
 describe("getMonday", () => {
   test("returns Monday for a Wednesday input", () => {
@@ -120,5 +135,32 @@ describe("weekly movement helpers", () => {
   test("resolves today's weekday panel from a Monday-start week", () => {
     assert.equal(resolveTodayWeeklyPanel(new Date(2026, 4, 18)), "mon");
     assert.equal(resolveTodayWeeklyPanel(new Date(2026, 4, 24)), "sun");
+  });
+});
+
+describe("calendar schedule edit draft", () => {
+  test("initializes from selected calendar date and HH:mm:ss time", () => {
+    assert.deepEqual(initialCalendarScheduleDraft(calendar("09:30:00")), {
+      scheduledDate: "2026-05-21",
+      timeDigits: "0930"
+    });
+  });
+
+  test("initializes empty time when selected calendar has no time", () => {
+    assert.deepEqual(initialCalendarScheduleDraft(calendar(null)), {
+      scheduledDate: "2026-05-21",
+      timeDigits: ""
+    });
+  });
+
+  test("saves date with optional HH:mm time", () => {
+    assert.deepEqual(saveCalendarScheduleDraft("2026-05-22", "2130"), {
+      scheduledDate: "2026-05-22",
+      scheduledTime: "21:30"
+    });
+    assert.deepEqual(saveCalendarScheduleDraft("2026-05-22", ""), {
+      scheduledDate: "2026-05-22",
+      scheduledTime: null
+    });
   });
 });

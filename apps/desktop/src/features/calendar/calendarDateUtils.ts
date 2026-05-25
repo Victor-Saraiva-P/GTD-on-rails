@@ -1,6 +1,8 @@
 import { formatScheduleDateTime, type ScheduleWindow } from "../next-actions/types.ts";
+import { clockTimeDisplayValue } from "../processing/processingFlow.ts";
 
 import type { WeeklyDayPanel } from "./calendarWorkspaceState.ts";
+import type { Calendar, CalendarPatch } from "./types.ts";
 
 export type WeekMovement = "previous" | "next";
 
@@ -87,6 +89,30 @@ export function resolveTodayWeeklyPanel(today: Date): WeeklyDayPanel {
   return weeklyPanelByDateIndex[today.getDay()];
 }
 
+/**
+ * Builds the initial schedule edit draft from the selected calendar.
+ *
+ * @example initialCalendarScheduleDraft(calendar)
+ */
+export function initialCalendarScheduleDraft(item: Calendar): { scheduledDate: string; timeDigits: string } {
+  return {
+    scheduledDate: item.scheduledDate,
+    timeDigits: calendarTimeDigits(item.scheduledTime)
+  };
+}
+
+/**
+ * Builds a calendar schedule patch from dialog state.
+ *
+ * @example saveCalendarScheduleDraft("2026-05-21", "0930")
+ */
+export function saveCalendarScheduleDraft(scheduledDate: string, timeDigits: string): CalendarPatch {
+  return {
+    scheduledDate,
+    scheduledTime: clockTimeDisplayValue(timeDigits) || null
+  };
+}
+
 function scheduleDateTimeLabel(date?: string | null, time?: string | null): string | null {
   const formattedDate = calendarDateLabel(date);
   const formattedTime = trimCalendarDisplayTime(time);
@@ -99,4 +125,8 @@ function calendarDateLabel(date?: string | null): string | null {
   const [year, month, day] = date.split("-");
   if (!year || !month || !day) return formatScheduleDateTime(date, null);
   return `${month}/${day}/${year}`;
+}
+
+function calendarTimeDigits(time?: string | null): string {
+  return trimCalendarDisplayTime(time)?.replace(":", "") ?? "";
 }
