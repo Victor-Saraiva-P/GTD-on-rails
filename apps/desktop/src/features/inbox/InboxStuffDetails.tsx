@@ -131,9 +131,22 @@ function CalendarDetailHeader({ item }: Pick<InboxStuffDetailsProps, "item">) {
   return (
     <>
       <h1 className="inbox-detail__title">{metadata.title}</h1>
-      <p className="inbox-detail__meta"><MetaParts parts={metadata.parts} /></p>
+      <CalendarScheduleMetaRow label="Calendar stated schedule" value={metadata.statedSchedule} />
+      <CalendarScheduleMetaRow label="Calendar actual schedule" value={metadata.actualSchedule} />
       <div className="inbox-detail__divider" />
     </>
+  );
+}
+
+function CalendarScheduleMetaRow({ label, value }: { label: string; value: string | null }) {
+  if (!value) return null;
+  return (
+    <div className="next-action-meta" aria-label={label}>
+      <span className="next-action-meta__item">
+        <NextActionMetaIcon src={scheduleIcon} />
+        {value}
+      </span>
+    </div>
   );
 }
 
