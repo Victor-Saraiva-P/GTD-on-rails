@@ -117,6 +117,10 @@ async function verifyCalendarSubviewShortcuts(page: Page): Promise<void> {
 
 async function expectCalendarSubviewAfterKey(page: Page, key: string, title: string): Promise<void> {
   await page.keyboard.press(key);
+  if (title === "Mon") {
+    await expect(page.locator(".weekly-column-day").nth(0)).toHaveText(title);
+    return;
+  }
   await expect(page.locator(".inbox-pane .list-pane__title").nth(0)).toHaveText(title);
 }
 
