@@ -29,8 +29,7 @@ async function createCalendar(page: Page, title: string): Promise<void> {
   await openCalendars(page);
 }
 
-test("undoing a calendar deletion restores the item", async ({ page }) => {
-  const title = uniqueLabel("Calendar undo test");
+async function deleteAndUndoCalendar(page: Page, title: string) {
   await createCalendar(page, title);
 
   const panel1 = page.locator(".inbox-pane").nth(0);
@@ -50,29 +49,18 @@ test("undoing a calendar deletion restores the item", async ({ page }) => {
   // Undo
   await page.keyboard.press("u");
   await expect(dueCalendar).toBeVisible();
+  
+  return dueCalendar;
+}
+
+test("undoing a calendar deletion restores the item", async ({ page }) => {
+  const title = uniqueLabel("Calendar undo test");
+  await deleteAndUndoCalendar(page, title);
 });
 
 test("redoing a calendar undo deletes the item again", async ({ page }) => {
   const title = uniqueLabel("Calendar redo test");
-  await createCalendar(page, title);
-
-  const panel1 = page.locator(".inbox-pane").nth(0);
-  const dueCalendar = panel1.getByRole("button", { name: title, exact: false }).first();
-  await expect(dueCalendar).toBeVisible();
-
-  // Focus panel and select item
-  await page.keyboard.press("1");
-  await expect(panel1).toHaveClass(/list-pane--active/);
-  await dueCalendar.click();
-
-  // Delete
-  await page.keyboard.press("d");
-  await expect(dueCalendar).not.toBeVisible();
-  await page.waitForTimeout(200);
-
-  // Undo
-  await page.keyboard.press("u");
-  await expect(dueCalendar).toBeVisible();
+  const dueCalendar = await deleteAndUndoCalendar(page, title);
   await page.waitForTimeout(200);
 
   // Redo
