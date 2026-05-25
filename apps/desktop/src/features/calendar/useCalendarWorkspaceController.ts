@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useActiveZone } from "../keybinds/hooks";
 import { useUndoRedoHistory } from "../history/useUndoRedoHistory";
 import type { ItemBody } from "../inbox/types";
+import { isSameBody } from "../inbox/types";
 import {
   resolveTodayWeeklyPanel,
   resolveWeeklyOffset
@@ -129,20 +130,17 @@ function startCalendarBodyEdit(model: CalendarModel): void {
   model.edit.setEditingBodyId(model.selection.selectedItem.id);
 }
 
-function sameCalendarBody(item: Calendar, body: ItemBody): boolean {
-  return item.body.text === body.text && JSON.stringify(item.body) === JSON.stringify(body);
-}
 
 async function commitCalendarBodyEdit(model: CalendarModel, body: ItemBody): Promise<void> {
   const item = model.selection.selectedItem;
   if (!item || model.edit.editingBodyId !== item.id) return;
-  if (!sameCalendarBody(item, body)) model.selection.setSelectedId((await model.query.updateBody(item, body)).id);
+  if (!isSameBody(item.body, body)) model.selection.setSelectedId((await model.query.updateBody(item, body)).id);
   clearCalendarBodyEdit(model.edit);
 }
 
 async function autosaveCalendarBodyEdit(model: CalendarModel, body: ItemBody): Promise<void> {
   const item = model.selection.selectedItem;
-  if (!item || model.edit.editingBodyId !== item.id || sameCalendarBody(item, body)) return;
+  if (!item || model.edit.editingBodyId !== item.id || isSameBody(item.body, body)) return;
   model.selection.setSelectedId((await model.query.updateBody(item, body)).id);
 }
 

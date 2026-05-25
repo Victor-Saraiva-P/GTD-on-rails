@@ -109,3 +109,12 @@ export function formatStuffCreatedAt(createdAt: string): string {
     timeStyle: "short"
   }).format(new Date(createdAt));
 }
+
+/**
+ * Checks if two item bodies are exactly the same.
+ *
+ * @example isSameBody(item.body, newBody)
+ */
+export function isSameBody(a: ItemBody, b: ItemBody): boolean {
+  return a.text === b.text && JSON.stringify(a) === JSON.stringify(b);
+}

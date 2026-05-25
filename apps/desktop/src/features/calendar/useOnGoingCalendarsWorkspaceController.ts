@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useActiveZone } from "../keybinds/hooks";
 import type { ItemBody } from "../inbox/types";
+import { isSameBody } from "../inbox/types";
 import type { Calendar } from "./types";
 import { useOnGoingCalendarsQuery } from "./useOnGoingCalendarsQuery";
 
@@ -82,7 +83,7 @@ async function commitTitle(model: CalendarModel) {
 async function commitBody(model: CalendarModel, body: ItemBody) {
   const item = model.selection.selectedItem;
   if (!item || model.edit.editingBodyId !== item.id) return;
-  const sameBody = item.body.text === body.text && JSON.stringify(item.body) === JSON.stringify(body);
+  const sameBody = isSameBody(item.body, body);
   if (!sameBody) model.selection.setSelectedId((await model.query.updateBody(item, body)).id);
   clearCalendarEditing(model.edit);
 }
