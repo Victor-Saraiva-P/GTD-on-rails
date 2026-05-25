@@ -86,3 +86,23 @@ export async function focusPanelAndSelectItem(page: Page, panelIndex: number, ti
 
   return { panel, item };
 }
+
+export async function processIntoCalendar(page: Page) {
+  // Process into a calendar
+  await page.keyboard.press("p");
+  await page.keyboard.press("c");
+
+  // Date step
+  const dateControl = page.getByRole("textbox", { name: "Scheduled date:" });
+  await expect(dateControl).toBeVisible();
+  await page.keyboard.press("Enter");
+
+  // Time step
+  await expect(page.getByText("Scheduled time (optional)")).toBeVisible();
+  const calendarResponsePromise = page.waitForResponse((response) => response.url().endsWith("/calendar") && response.request().method() === "POST" && response.ok());
+  await page.locator(".processing-dialog__input--time").press("Enter");
+  await calendarResponsePromise;
+
+  // Open Calendars page
+  await openCalendars(page);
+}
