@@ -10,7 +10,9 @@ export function getMonday(d: Date): Date {
   const date = new Date(d);
   const day = date.getDay();
   const diff = date.getDate() - day + (day === 0 ? -6 : 1);
-  return new Date(date.setDate(diff));
+  const monday = new Date(date.setDate(diff));
+  monday.setHours(0, 0, 0, 0);
+  return monday;
 }
 
 /** Formats a Date as "YYYY-MM-DD" for the calendar API. */
