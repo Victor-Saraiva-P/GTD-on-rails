@@ -46,7 +46,7 @@ export function getMondayForOffset(weekOffset: number): Date {
  */
 export function trimCalendarDisplayTime(time?: string | null): string | null {
   if (!time) return null;
-  const match = /^(\d{2}:\d{2})(?::\d{2})?$/.exec(time);
+  const match = /^(\d{2}:\d{2})/.exec(time);
   return match ? match[1] : time;
 }
 
