@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -55,6 +56,9 @@ public class NextAction extends AuditableEntity {
     @Convert(converter = DurationMinutesConverter.class)
     @Column(name = "estimated_time_minutes", nullable = false)
     private Duration estimatedTime;
+
+    @Column(name = "deadline")
+    private LocalDate deadline;
 
     @Embedded
     private final ScheduleWindow schedule = ScheduleWindow.unscheduled();
@@ -134,6 +138,15 @@ public class NextAction extends AuditableEntity {
         }
 
         this.estimatedTime = estimatedTime;
+    }
+
+    /**
+     * Stores the optional date this action should be done by.
+     *
+     * <p>Example: {@code nextAction.setDeadline(LocalDate.parse("2026-06-01"))}.</p>
+     */
+    public void setDeadline(LocalDate deadline) {
+        this.deadline = deadline;
     }
 
     /**

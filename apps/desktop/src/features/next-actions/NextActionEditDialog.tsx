@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { ProcessingContextStep } from "../processing/ProcessingContextStep";
 import { ProcessingEnergyStep } from "../processing/ProcessingEnergyStep";
 import { ProcessingTimeStep } from "../processing/ProcessingTimeStep";
+import { NextActionDeadlineStep } from "./NextActionDeadlineStep";
 import type { NextAction, NextActionPatch } from "./types";
 
 type NextActionEditDialogProps = {
@@ -10,7 +11,7 @@ type NextActionEditDialogProps = {
   onClose: () => void;
 };
 
-type NextActionEditStep = "initial" | "context" | "energy" | "time";
+type NextActionEditStep = "initial" | "context" | "deadline" | "energy" | "time";
 
 type CommandKeyEvent = {
   key: string;
@@ -51,6 +52,7 @@ function NextActionEditInitialStep(props: { onSelect: (step: NextActionEditStep)
       <EditCommand shortcut="e" label="Energy" />
       <EditCommand shortcut="c" label="Context" />
       <EditCommand shortcut="t" label="Estimated time" />
+      <EditCommand shortcut="d" label="Deadline" />
     </div>
   );
 }
@@ -77,10 +79,19 @@ function renderTimeStep(digits: string, setDigits: (digits: string) => void, sav
   return <ProcessingTimeStep digits={digits} onDigitsChange={setDigits} onTimeSelected={(minutes) => savePatch(estimatedTimePatch(minutes))} onBack={onBack} />;
 }
 
+function renderDeadlineStep(value: string, setValue: (value: string) => void, savePatch: (patch: NextActionPatch) => void, onBack: () => void) {
+  return <NextActionDeadlineStep value={value} onDeadlineChange={setValue} onDeadlineSelected={(deadline) => savePatch(deadlinePatch(deadline))} onBack={onBack} />;
+}
+
+function deadlinePatch(deadline: string | null): NextActionPatch {
+  return deadline ? { deadline } : { clearDeadline: true };
+}
+
 function keyToStep(key: string): NextActionEditStep | null {
   if (key.toLowerCase() === "e") return "energy";
   if (key.toLowerCase() === "c") return "context";
   if (key.toLowerCase() === "t") return "time";
+  if (key.toLowerCase() === "d") return "deadline";
   return null;
 }
 
@@ -104,6 +115,7 @@ function selectKey(event: CommandKeyEvent, onSelect: () => void) {
 export function NextActionEditDialog({ item, onSave, onClose }: NextActionEditDialogProps) {
   const [step, setStep] = useState<NextActionEditStep>("initial");
   const [contextIds, setContextIds] = useState(() => initialContextIds(item));
+  const [deadline, setDeadline] = useState(() => item.deadline ?? "");
   const [energyDigits, setEnergyDigits] = useState(() => initialEnergyDigits(item));
   const [timeDigits, setTimeDigits] = useState(() => initialTimeDigits(item));
   const backToInitial = () => setStep("initial");
@@ -115,6 +127,7 @@ export function NextActionEditDialog({ item, onSave, onClose }: NextActionEditDi
       <div className="processing-dialog__content">
         {step === "initial" ? <NextActionEditInitialStep onSelect={setStep} onCancel={onClose} /> : null}
         {step === "context" ? renderContextStep(contextIds, setContextIds, savePatch, backToInitial) : null}
+        {step === "deadline" ? renderDeadlineStep(deadline, setDeadline, savePatch, backToInitial) : null}
         {step === "energy" ? renderEnergyStep(energyDigits, setEnergyDigits, savePatch, backToInitial) : null}
         {step === "time" ? renderTimeStep(timeDigits, setTimeDigits, savePatch, backToInitial) : null}
       </div>

@@ -54,13 +54,19 @@ export function useNextActionEditState() {
 
 export function useNextActionsFilterState() {
   const [context, setContext] = useState<ContextItem | null>(null);
+  const [currentEnergy, setCurrentEnergy] = useState<number | null>(null);
+  const [currentTimeMinutes, setCurrentTimeMinutes] = useState<number | null>(null);
   const [orderBy, setOrderBy] = useState<NextActionOrder>("energy");
-  return { context, orderBy, setContext, setOrderBy };
+  return { context, currentEnergy, currentTimeMinutes, orderBy, setContext, setCurrentEnergy, setCurrentTimeMinutes, setOrderBy };
 }
 
 export function useNextActionsModel() {
   const filter = useNextActionsFilterState();
-  const query = useNextActionsQuery(filter.context?.id ?? null, filter.orderBy);
+  const query = useNextActionsQuery(
+    filter.context?.id ?? null,
+    filter.currentTimeMinutes,
+    filter.currentEnergy,
+    filter.orderBy);
   const selection = useNextActionSelection(query.items);
   const edit = useNextActionEditState();
   const zone = useActiveZone();
@@ -199,11 +205,19 @@ export function useNextActionsActions(model: Model) {
     selectNext: model.selection.selectNext,
     selectPrevious: model.selection.selectPrevious,
     setContext: model.filter.setContext,
+    setCurrentEnergy: model.filter.setCurrentEnergy,
+    setCurrentTimeMinutes: model.filter.setCurrentTimeMinutes,
     startBodyEdit: () => startBodyEdit(model),
     startTitleEdit: () => startTitleEdit(model),
-    toggleOrder: () => model.filter.setOrderBy((order) => order === "energy" ? "time" : "energy"),
+    toggleOrder: () => model.filter.setOrderBy(nextOrder),
     undo: () => undoAction(model)
   };
+}
+
+export function nextOrder(order: NextActionOrder): NextActionOrder {
+  if (order === "energy") return "time";
+  if (order === "time") return "priority";
+  return "energy";
 }
 
 export function startBodyEdit(model: Model) {
@@ -223,6 +237,8 @@ export function buildController(model: Model, actions: Actions) {
     ...actions,
     activeZone: model.zone.activeZone,
     context: model.filter.context,
+    currentEnergy: model.filter.currentEnergy,
+    currentTimeMinutes: model.filter.currentTimeMinutes,
     editingBodyId: model.edit.editingBodyId,
     editingId: model.edit.editingId,
     editingTitle: model.edit.editingTitle,

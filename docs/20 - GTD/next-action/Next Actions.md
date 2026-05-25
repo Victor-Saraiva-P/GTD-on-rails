@@ -19,7 +19,9 @@ The next actions page is the list of available concrete actions. It supports [[C
 | `d` | List or detail | Delete selected next action. |
 | `x` | List or detail | Mark selected next action as done. |
 | `c` | List or detail | Filter by context. |
-| `e` | List or detail | Edit next action attributes. |
+| `t` | List or detail | Set available time. |
+| `e` | List or detail | Set available energy. |
+| `E` | List or detail | Edit next action attributes. |
 | `o` | List or detail | Mark selected next action as on going and open its detail. |
 | `O` | List or detail | Cycle ordering. |
 | `u` | List or detail | Undo last deletion. |

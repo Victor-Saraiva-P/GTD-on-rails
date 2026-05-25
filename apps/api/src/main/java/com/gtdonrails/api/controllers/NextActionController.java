@@ -1,5 +1,6 @@
 package com.gtdonrails.api.controllers;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -7,6 +8,9 @@ import com.gtdonrails.api.dtos.nextaction.NextActionResponseDto;
 import com.gtdonrails.api.dtos.nextaction.PatchNextActionRequestDto;
 import com.gtdonrails.api.services.NextActionService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Min;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -54,14 +58,20 @@ public class NextActionController {
     @GetMapping
     public List<NextActionResponseDto> getNextActions(
         @RequestParam(required = false) UUID contextId,
+        @RequestParam(required = false) @Min(0) Integer currentTimeMinutes,
+        @RequestParam(required = false)
+        @DecimalMin("0.0") @DecimalMax("10.0") BigDecimal currentEnergy,
         @RequestParam String orderBy
     ) {
+        if ("priority".equalsIgnoreCase(orderBy)) {
+            return nextActionService.getOrderedByPriority(contextId, currentTimeMinutes, currentEnergy);
+        }
         if ("time".equalsIgnoreCase(orderBy)) {
             return nextActionService.getOrderedByTime(contextId);
         } else if ("energy".equalsIgnoreCase(orderBy)) {
             return nextActionService.getOrderedByEnergy(contextId);
         } else {
-            throw new IllegalArgumentException("Invalid orderBy parameter. Expected 'energy' or 'time'.");
+            throw new IllegalArgumentException("Invalid orderBy parameter. Expected 'energy', 'time', or 'priority'.");
         }
     }
 

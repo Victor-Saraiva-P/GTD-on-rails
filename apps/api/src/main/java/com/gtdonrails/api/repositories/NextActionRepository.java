@@ -25,6 +25,19 @@ public interface NextActionRepository extends JpaRepository<NextAction, UUID> {
         where nextAction.status = :status
         and nextAction.item.deletedAt is null
         and (context.id = :contextId or nextAction.contexts is empty)
+        """)
+    List<NextAction> findRunnableInContext(
+        @Param("status") NextActionStatus status,
+        @Param("contextId") UUID contextId);
+
+    List<NextAction> findAllByStatusAndItem_DeletedAtIsNull(NextActionStatus status);
+
+    @Query("""
+        select distinct nextAction
+        from NextAction nextAction left join nextAction.contexts context
+        where nextAction.status = :status
+        and nextAction.item.deletedAt is null
+        and (context.id = :contextId or nextAction.contexts is empty)
         order by nextAction.energy desc
         """)
     List<NextAction> findRunnableInContextOrderByEnergyDesc(

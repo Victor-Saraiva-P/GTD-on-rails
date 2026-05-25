@@ -1,6 +1,8 @@
 package com.gtdonrails.api.services;
 
+import java.math.BigDecimal;
 import java.time.Clock;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -49,6 +51,12 @@ public class NextActionService {
 
         if (request.estimatedTime() != null) {
             nextAction.setEstimatedTime(request.estimatedTime().toDuration());
+        }
+
+        if (Boolean.TRUE.equals(request.clearDeadline())) {
+            nextAction.setDeadline(null);
+        } else if (request.deadline() != null) {
+            nextAction.setDeadline(request.deadline());
         }
 
         if (request.contextIds() != null) {
@@ -114,6 +122,23 @@ public class NextActionService {
     }
 
     @Transactional(readOnly = true)
+    public List<NextActionResponseDto> getOrderedByPriority(
+        UUID contextId,
+        Integer currentTimeMinutes,
+        BigDecimal currentEnergy
+    ) {
+        NextActionPriorityScore score = new NextActionPriorityScore(
+            java.time.LocalDate.now(clock),
+            currentTimeMinutes,
+            currentEnergy);
+        return unorderedRunnableNextActions(contextId)
+            .stream()
+            .sorted(Comparator.comparingDouble(score::calculate).reversed())
+            .map(nextActionMapper::toResponse)
+            .toList();
+    }
+
+    @Transactional(readOnly = true)
     public List<NextActionResponseDto> getDeletedNextActions() {
         return nextActionRepository
             .findAllByItem_DeletedAtIsNotNullOrderByItem_UpdatedAtDesc()
@@ -131,6 +156,13 @@ public class NextActionService {
 
     private NextAction findNextAction(UUID id) {
         return nextActionRepository.findById(id).orElseThrow(() -> new ItemNotFoundException("NextAction " + id + " not found"));
+    }
+
+    private List<NextAction> unorderedRunnableNextActions(UUID contextId) {
+        if (contextId == null) {
+            return nextActionRepository.findAllByStatusAndItem_DeletedAtIsNull(NextActionStatus.NEXT_ACTION);
+        }
+        return nextActionRepository.findRunnableInContext(NextActionStatus.NEXT_ACTION, contextId);
     }
 
     private Set<Context> findContextsOrThrow(List<UUID> contextIds) {

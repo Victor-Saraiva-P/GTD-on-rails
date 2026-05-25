@@ -3,12 +3,13 @@ import type { KeyboardEvent } from "react";
 
 type ProcessingTimeStepProps = {
   digits: string;
+  label?: string;
   onDigitsChange: (digits: string) => void;
   onTimeSelected: (minutes: number | null) => void;
   onBack: () => void;
 };
 
-export function ProcessingTimeStep({ digits, onDigitsChange, onTimeSelected, onBack }: ProcessingTimeStepProps) {
+export function ProcessingTimeStep({ digits, label = "Estimated time (h min):", onDigitsChange, onTimeSelected, onBack }: ProcessingTimeStepProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Auto-format digits to a time string like "0min", "1min", "1h 30min", "12h 45min"
@@ -58,7 +59,7 @@ export function ProcessingTimeStep({ digits, onDigitsChange, onTimeSelected, onB
 
   return (
     <div className="processing-dialog__step processing-dialog__step--time">
-      <div className="processing-dialog__label">Estimated time (h min):</div>
+      <div className="processing-dialog__label">{label}</div>
       <input 
         ref={inputRef}
         type="text" 

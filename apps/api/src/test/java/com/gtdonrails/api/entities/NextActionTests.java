@@ -11,6 +11,7 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Set;
 
@@ -119,6 +120,15 @@ class NextActionTests {
 
         assertNotNull(nextAction.getSchedule());
         assertFalse(nextAction.getSchedule().isAllDay());
+    }
+
+    @Test
+    void setDeadlineStoresOptionalDate() {
+        NextAction nextAction = nextAction();
+
+        nextAction.setDeadline(LocalDate.parse("2026-06-01"));
+
+        assertEquals(LocalDate.parse("2026-06-01"), nextAction.getDeadline());
     }
 
     @Test

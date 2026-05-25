@@ -43,11 +43,18 @@ export function useNextActionsMutationState() {
 
 export type NextActionsMutationState = ReturnType<typeof useNextActionsMutationState>;
 
-async function loadNextActions(state: NextActionsLoadState, contextId: string | null, orderBy: NextActionOrder, cancelled: () => boolean) {
+async function loadNextActions(
+  state: NextActionsLoadState,
+  contextId: string | null,
+  currentTimeMinutes: number | null,
+  currentEnergy: number | null,
+  orderBy: NextActionOrder,
+  cancelled: () => boolean
+) {
   state.setIsLoading(true);
   state.setErrorMessage(null);
   try {
-    const nextItems = await fetchNextActions({ contextId, orderBy });
+    const nextItems = await fetchNextActions({ contextId, currentEnergy, currentTimeMinutes, orderBy });
     if (!cancelled()) state.setItems(nextItems);
   } catch (error) {
     if (!cancelled()) state.setErrorMessage(toErrorMessage(error));
@@ -56,12 +63,18 @@ async function loadNextActions(state: NextActionsLoadState, contextId: string | 
   }
 }
 
-export function useNextActionsLoader(state: NextActionsLoadState, contextId: string | null, orderBy: NextActionOrder) {
+export function useNextActionsLoader(
+  state: NextActionsLoadState,
+  contextId: string | null,
+  currentTimeMinutes: number | null,
+  currentEnergy: number | null,
+  orderBy: NextActionOrder
+) {
   useEffect(() => {
     let cancelled = false;
-    void loadNextActions(state, contextId, orderBy, () => cancelled);
+    void loadNextActions(state, contextId, currentTimeMinutes, currentEnergy, orderBy, () => cancelled);
     return () => { cancelled = true; };
-  }, [contextId, orderBy, state.reloadToken]);
+  }, [contextId, currentEnergy, currentTimeMinutes, orderBy, state.reloadToken]);
 }
 
 function replaceItem(items: NextAction[], updated: NextAction): NextAction[] {
@@ -153,14 +166,19 @@ async function updateTitle(item: NextAction, title: string, state: NextActionsLo
 /**
  * Loads next actions for the active filter and exposes item mutations.
  *
- * @example const query = useNextActionsQuery(null, "energy")
+ * @example const query = useNextActionsQuery(null, null, null, "energy")
  */
-export function useNextActionsQuery(contextId: string | null, orderBy: NextActionOrder) {
+export function useNextActionsQuery(
+  contextId: string | null,
+  currentTimeMinutes: number | null,
+  currentEnergy: number | null,
+  orderBy: NextActionOrder
+) {
   const state = useNextActionsLoadState();
   const mutations = useNextActionsMutationState();
   const reload = () => state.setReloadToken((value) => value + 1);
   const actions = useNextActionsMutations(state, mutations, reload);
-  useNextActionsLoader(state, contextId, orderBy);
+  useNextActionsLoader(state, contextId, currentTimeMinutes, currentEnergy, orderBy);
   return { ...actions, errorMessage: state.errorMessage, isDeleting: mutations.isDeleting, isLoading: state.isLoading, isUpdating: mutations.isUpdating, items: state.items, reload };
 }
 

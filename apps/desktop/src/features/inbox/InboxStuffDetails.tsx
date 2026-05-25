@@ -73,6 +73,13 @@ function formatEnergyValue(energy: number): string {
   return energy.toFixed(1);
 }
 
+function formatDeadlineDate(deadline?: string | null): string | null {
+  if (!deadline) return null;
+  const date = new Date(`${deadline}T00:00:00Z`);
+  if (isNaN(date.getTime())) return null;
+  return new Intl.DateTimeFormat("en-US", { year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
+}
+
 function NextActionContextMeta({ item }: { item: Stuff }) {
   if (!item.contexts || item.contexts.length === 0) return null;
   return <>{item.contexts.map((context) => <span className="next-action-meta__item" key={context.id}><ContextNameWithIcon context={context} /></span>)}</>;
@@ -92,6 +99,7 @@ function NextActionDetailHeader({ item }: Pick<InboxStuffDetailsProps, "item">) 
   const nextAction = item as NextAction;
   const startedAt = formatScheduleDateTime(nextAction.schedule?.dateStart, nextAction.schedule?.timeStart);
   const endedAt = formatScheduleDateTime(nextAction.schedule?.dateEnd, nextAction.schedule?.timeEnd);
+  const deadline = formatDeadlineDate(nextAction.deadline);
 
   return (
     <>
@@ -100,6 +108,7 @@ function NextActionDetailHeader({ item }: Pick<InboxStuffDetailsProps, "item">) 
         <NextActionContextMeta item={item} />
         {item.energy !== undefined && item.energy !== null ? <span className="next-action-meta__item"><NextActionMetaIcon src={energyIcon} />{formatEnergyValue(item.energy)}</span> : null}
         {estimatedMinutes ? <span className="next-action-meta__item"><NextActionMetaIcon src={estimatedTimeIcon} />{estimatedMinutes}</span> : null}
+        {deadline ? <span className="next-action-meta__item"><NextActionMetaIcon src={scheduleIcon} />{deadline}</span> : null}
       </div>
       {(startedAt || endedAt) && (
         <div className="next-action-meta" aria-label="Next action schedule">

@@ -2,6 +2,7 @@ package com.gtdonrails.api.dtos.nextaction;
 
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -15,6 +16,7 @@ public record NextActionResponseDto(
     ItemBody body,
     BigDecimal energy,
     Duration estimatedTime,
+    LocalDate deadline,
     String status,
     ScheduleWindow schedule,
     List<ContextResponseDto> contexts
