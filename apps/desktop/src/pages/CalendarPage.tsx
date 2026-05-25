@@ -4,6 +4,7 @@ import { ListWorkspace } from "../components/ListWorkspace";
 import { RetryState } from "../components/RetryState";
 import { CalendarDetails } from "../features/calendar/CalendarDetails";
 import { CalendarList } from "../features/calendar/CalendarList";
+import { CalendarScheduleEditDialog } from "../features/calendar/CalendarScheduleEditDialog";
 import type { CalendarPanel } from "../features/calendar/calendarWorkspaceState";
 import type { CalendarWorkspaceController } from "../features/calendar/useCalendarWorkspaceController";
 import { buildFormattingBindings } from "../features/inbox/formattingKeybinds";
@@ -424,6 +425,7 @@ function CalendarViews({ controller }: CalendarControllerProps) {
 export function CalendarPage({ controller }: CalendarPageProps) {
   const [isLinkOpen, setIsLinkOpen] = useState(false);
   const [isAssetOpen, setIsAssetOpen] = useState(false);
+  const [isScheduleEditOpen, setIsScheduleEditOpen] = useState(false);
   const openLink = useCallback(() => setIsLinkOpen(true), []);
   const openAsset = useCallback(() => setIsAssetOpen(true), []);
   useKeybindScreen("calendars");
@@ -438,6 +440,7 @@ export function CalendarPage({ controller }: CalendarPageProps) {
       <Suspense fallback={null}>
         {isLinkOpen ? <LazyMarkdownLinkComboDialog onClose={() => setIsLinkOpen(false)} /> : null}
         {isAssetOpen && controller.selectedItem ? <LazyMarkdownAssetComboDialog itemId={controller.selectedItem.id} onClose={() => setIsAssetOpen(false)} /> : null}
+        {isScheduleEditOpen && controller.selectedItem ? <CalendarScheduleEditDialog item={controller.selectedItem} onClose={() => setIsScheduleEditOpen(false)} onSave={async () => undefined} /> : null}
       </Suspense>
     </ListWorkspace>
   );
