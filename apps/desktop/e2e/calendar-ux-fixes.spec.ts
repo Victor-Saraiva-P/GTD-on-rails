@@ -1,7 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 import {
+  createAndSelectInboxStuff,
   createInboxStuffFromKeyboard,
   openApp,
+  openCalendars,
   resetTestData,
   uniqueLabel
 } from "./support/app";
@@ -73,7 +75,7 @@ test("weekly H L t Enter and Space Enter keep separate behavior", async ({ page 
 
 async function createCalendarFromKeyboard(page: Page, prefix: string, timeDigits: string): Promise<string> {
   const title = uniqueLabel(prefix);
-  await createInboxStuff(page, title);
+  await createAndSelectInboxStuff(page, title);
   await page.keyboard.press("p");
   await page.keyboard.press("c");
   await page.keyboard.press("Enter");
@@ -84,22 +86,4 @@ async function createCalendarFromKeyboard(page: Page, prefix: string, timeDigits
   return title;
 }
 
-async function createInboxStuff(page: Page, title: string): Promise<void> {
-  await page.keyboard.press("h");
-  await createInboxStuffFromKeyboard(page, title);
-  await page.locator("main").click();
-  await expect(page.getByRole("button", { name: title, exact: false }).first()).toBeVisible();
-  await page.keyboard.press("Escape");
-  await expect(page.getByLabel("Editing mode")).toContainText("NORMAL");
-  await page.keyboard.down("Control");
-  await page.keyboard.press("h");
-  await page.keyboard.up("Control");
-  await page.getByRole("button", { name: title, exact: false }).first().click();
-}
 
-async function openCalendars(page: Page): Promise<void> {
-  await page.keyboard.press("Space");
-  await expect(page.locator(".leader-menu")).toBeVisible();
-  await page.keyboard.press("c");
-  await expect(page.locator(".leader-menu")).not.toBeVisible();
-}

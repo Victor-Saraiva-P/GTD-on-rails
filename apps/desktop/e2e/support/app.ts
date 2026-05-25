@@ -51,3 +51,26 @@ export async function createInboxStuffFromKeyboard(page: Page, title: string): P
   await input.fill(title);
   await input.press("Enter");
 }
+
+export async function createAndSelectInboxStuff(page: Page, title: string): Promise<void> {
+  await page.keyboard.press("h");
+  await createInboxStuffFromKeyboard(page, title);
+  await page.locator("main").click();
+  const inboxItem = page.getByRole("button", { name: title, exact: false }).first();
+  await expect(inboxItem).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByLabel("Editing mode")).toContainText("NORMAL");
+  await page.keyboard.down("Control");
+  await page.keyboard.press("h");
+  await page.keyboard.up("Control");
+  await expect(page.locator(".cm-content")).not.toBeVisible();
+  await inboxItem.click();
+}
+
+export async function openCalendars(page: Page): Promise<void> {
+  await page.keyboard.press("Space");
+  await expect(page.locator(".leader-menu")).toBeVisible();
+  await page.keyboard.press("c");
+  await expect(page.locator(".leader-menu")).not.toBeVisible();
+  await expect(page.locator(".inbox-pane .list-pane__title").nth(0)).toHaveText("Calendar");
+}

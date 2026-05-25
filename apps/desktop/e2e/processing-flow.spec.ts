@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { createContextApi, createInboxStuffFromKeyboard, openApp, resetTestData, uniqueLabel } from "./support/app";
+import { createContextApi, createAndSelectInboxStuff, createInboxStuffFromKeyboard, openApp, resetTestData, uniqueLabel } from "./support/app";
 
 test.beforeEach(async ({ page, request }) => {
   await resetTestData(request);
@@ -8,7 +8,7 @@ test.beforeEach(async ({ page, request }) => {
 
 test("p opens processing command page for focused inbox stuff", async ({ page }) => {
   const title = uniqueLabel("Processing flow");
-  await createStuff(page, title);
+  await createAndSelectInboxStuff(page, title);
 
   await page.keyboard.press("p");
 
@@ -28,7 +28,7 @@ test("selects multiple next action contexts with keyboard", async ({ page, reque
   const secondContext = `B processing ${Date.now()}`;
   await createContextApi(request, firstContext);
   await createContextApi(request, secondContext);
-  await createStuff(page, title);
+  await createAndSelectInboxStuff(page, title);
 
   await page.keyboard.press("p");
   await page.keyboard.press("n");
@@ -46,7 +46,7 @@ test("selects multiple next action contexts with keyboard", async ({ page, reque
 
 test("enters calendar date with segmented keyboard input", async ({ page }) => {
   const title = uniqueLabel("Processing calendar");
-  await createStuff(page, title);
+  await createAndSelectInboxStuff(page, title);
 
   await page.keyboard.press("p");
   await page.keyboard.press("c");
@@ -93,20 +93,6 @@ test("enters calendar date with segmented keyboard input", async ({ page }) => {
   expect(payload).toEqual({ scheduledDate: "2028-02-29", scheduledTime: null });
 });
 
-async function createStuff(page: Page, title: string): Promise<void> {
-  await page.keyboard.press("h");
-  await createInboxStuffFromKeyboard(page, title);
-  await page.locator("main").click();
-  const inboxItem = page.getByRole("button", { name: title }).first();
-  await expect(inboxItem).toBeVisible();
-  await page.keyboard.press("Escape");
-  await expect(page.getByLabel("Editing mode")).toContainText("NORMAL");
-  await page.keyboard.down("Control");
-  await page.keyboard.press("h");
-  await page.keyboard.up("Control");
-  await expect(page.locator(".cm-content")).not.toBeVisible();
-  await inboxItem.click();
-}
 
 function todayDisplayValue(): string {
   const today = new Date();
