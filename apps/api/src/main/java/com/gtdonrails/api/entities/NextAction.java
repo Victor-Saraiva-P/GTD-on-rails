@@ -28,6 +28,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.Getter;
+import lombok.Setter;
 
 @Entity
 @Table(name = "next_actions")
@@ -57,6 +58,12 @@ public class NextAction extends AuditableEntity {
     @Column(name = "estimated_time_minutes", nullable = false)
     private Duration estimatedTime;
 
+    /**
+     * Stores the optional date this action should be done by.
+     *
+     * <p>Example: {@code nextAction.setDeadline(LocalDate.parse("2026-06-01"))}.</p>
+     */
+    @Setter
     @Column(name = "deadline")
     private LocalDate deadline;
 
@@ -140,14 +147,6 @@ public class NextAction extends AuditableEntity {
         this.estimatedTime = estimatedTime;
     }
 
-    /**
-     * Stores the optional date this action should be done by.
-     *
-     * <p>Example: {@code nextAction.setDeadline(LocalDate.parse("2026-06-01"))}.</p>
-     */
-    public void setDeadline(LocalDate deadline) {
-        this.deadline = deadline;
-    }
 
     /**
      * Marks this next action as ongoing, resetting the schedule start.
