@@ -9,7 +9,7 @@ import {
   markNextActionDone,
   markNextActionOnGoing,
   patchNextActionAttributes,
-  restoreNextActionStatus,
+  resetNextActionStatus,
   restoreNextAction,
   updateNextActionBody,
   updateNextActionTitle
@@ -125,7 +125,7 @@ async function markAsOnGoing(id: string, state: NextActionsLoadState, mutations:
 async function restoreStatus(id: string, state: NextActionsLoadState, mutations: NextActionsMutationState, poll: () => void) {
   mutations.setIsUpdating(true);
   try {
-    await restoreNextActionStatus(id);
+    await resetNextActionStatus(id);
     state.setItems((items) => items.filter((item) => item.id !== id));
     completeMutation(state, poll);
   } finally {

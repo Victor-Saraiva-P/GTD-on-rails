@@ -59,6 +59,6 @@ describe("combined on going state", () => {
     assert.ok(selection);
     assert.equal(actionLabelForOnGoingSelection("delete", selection), "Delete selected on going calendar");
     assert.equal(actionLabelForOnGoingSelection("done", selection), "Mark as done");
-    assert.equal(actionLabelForOnGoingSelection("restore", selection), "Restore as calendar");
+    assert.equal(actionLabelForOnGoingSelection("restore", selection), "Reset status to calendar");
   });
 });

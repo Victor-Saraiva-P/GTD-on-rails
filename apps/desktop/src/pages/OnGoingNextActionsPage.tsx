@@ -155,7 +155,7 @@ function bindingsForZone(props: ControllerProps, setActiveScreen: (screen: Scree
   const editable = canEdit(activeController);
   const deleteLabel = selection ? actionLabelForOnGoingSelection("delete", selection) : "Delete selected on going item";
   const doneLabel = selection ? actionLabelForOnGoingSelection("done", selection) : "Mark as done";
-  const restoreLabel = selection ? actionLabelForOnGoingSelection("restore", selection) : "Restore selected on going item";
+  const restoreLabel = selection ? actionLabelForOnGoingSelection("restore", selection) : "Reset status for selected on going item";
 
   return [
     onGoingBinding(`ongoing.delete.${zone}`, "d", deleteLabel, zone, () => runAsync(editable, activeController.deleteSelected, "Failed to delete on going item")),

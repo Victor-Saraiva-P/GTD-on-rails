@@ -101,7 +101,7 @@ class CalendarTests {
         calendar.markOnGoing(clockAt("2026-05-21T08:00:00Z"));
         calendar.markDone(clockAt("2026-05-21T09:00:00Z"));
 
-        calendar.restore();
+        calendar.resetStatus();
 
         assertEquals(CalendarStatus.CALENDAR, calendar.getStatus());
         assertNull(calendar.getSchedule().getDateStart());

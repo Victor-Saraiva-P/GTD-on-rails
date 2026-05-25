@@ -7,7 +7,7 @@ import {
   fetchNextActions,
   patchNextActionAttributes,
   recoverDeletedNextAction,
-  restoreNextActionStatus
+  resetNextActionStatus
 } from "../src/features/next-actions/api.ts";
 
 describe("next actions API", () => {
@@ -87,15 +87,15 @@ describe("next actions API", () => {
     assert.equal(items[0].id, "na-1");
   });
 
-  test("restoreNextActionStatus posts to restore endpoint", async () => {
+  test("resetNextActionStatus posts to reset-status endpoint", async () => {
     const response = { id: "na-1", title: "Call", body: "", status: "NEXT_ACTION" };
     globalThis.fetch = mock.fn(async (input, init) => {
-      assert.ok(input.toString().endsWith("/next-actions/na-1/restore"));
+      assert.ok(input.toString().endsWith("/next-actions/na-1/reset-status"));
       assert.equal(init?.method, "POST");
       return new Response(JSON.stringify(response), { status: 200 });
     });
 
-    const item = await restoreNextActionStatus("na-1");
+    const item = await resetNextActionStatus("na-1");
 
     assert.equal(item.status, "NEXT_ACTION");
   });

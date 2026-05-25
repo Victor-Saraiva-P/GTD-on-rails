@@ -106,7 +106,7 @@ class CalendarControllerTests {
     }
 
     @Test
-    void marksCalendarOngoingDoneAndRestored() throws Exception {
+    void marksCalendarOngoingDoneAndReset() throws Exception {
         Calendar calendar = saveCalendar("Appointment", "2026-05-21", null);
 
         mockMvc.perform(post("/calendars/{id}/ongoing", calendar.getItemId()))
@@ -117,7 +117,7 @@ class CalendarControllerTests {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value(CalendarStatus.DONE.name()));
 
-        mockMvc.perform(post("/calendars/{id}/restore", calendar.getItemId()))
+        mockMvc.perform(post("/calendars/{id}/reset-status", calendar.getItemId()))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value(CalendarStatus.CALENDAR.name()));
     }
