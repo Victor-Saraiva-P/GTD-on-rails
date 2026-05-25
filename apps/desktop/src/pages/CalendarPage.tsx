@@ -440,7 +440,7 @@ export function CalendarPage({ controller }: CalendarPageProps) {
       <Suspense fallback={null}>
         {isLinkOpen ? <LazyMarkdownLinkComboDialog onClose={() => setIsLinkOpen(false)} /> : null}
         {isAssetOpen && controller.selectedItem ? <LazyMarkdownAssetComboDialog itemId={controller.selectedItem.id} onClose={() => setIsAssetOpen(false)} /> : null}
-        {isScheduleEditOpen && controller.selectedItem ? <CalendarScheduleEditDialog item={controller.selectedItem} onClose={() => setIsScheduleEditOpen(false)} onSave={async () => undefined} /> : null}
+        {isScheduleEditOpen && controller.selectedItem ? <CalendarScheduleEditDialog item={controller.selectedItem} onClose={() => setIsScheduleEditOpen(false)} onSave={controller.updateSchedule} /> : null}
       </Suspense>
     </ListWorkspace>
   );
