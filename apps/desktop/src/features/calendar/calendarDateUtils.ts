@@ -1,9 +1,10 @@
-/**
- * Calendar date utilities for week navigation.
- *
- * Extracted from useCalendarQuery to enable unit testing
- * of offset-based Monday calculation (REQ-01).
- */
+import { formatScheduleDateTime, type ScheduleWindow } from "../next-actions/types.ts";
+
+import type { WeeklyDayPanel } from "./calendarWorkspaceState.ts";
+
+export type WeekMovement = "previous" | "next";
+
+const weeklyPanelByDateIndex: WeeklyDayPanel[] = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
 /** Returns the Monday of the week containing `d`. Week starts on Monday (REQ-06). */
 export function getMonday(d: Date): Date {
@@ -34,4 +35,68 @@ export function getMondayForOffset(weekOffset: number): Date {
   const monday = getMonday(new Date());
   monday.setDate(monday.getDate() + weekOffset * 7);
   return monday;
+}
+
+/**
+ * Normalizes API clock values for human calendar display.
+ *
+ * @example trimCalendarDisplayTime("21:00:00")
+ */
+export function trimCalendarDisplayTime(time?: string | null): string | null {
+  if (!time) return null;
+  const match = /^(\d{2}:\d{2})(?::\d{2})?$/.exec(time);
+  return match ? match[1] : time;
+}
+
+/**
+ * Formats the stated calendar date and optional time.
+ *
+ * @example statedCalendarScheduleLabel("2026-05-21", "21:00:00")
+ */
+export function statedCalendarScheduleLabel(date: string, time?: string | null): string | null {
+  return scheduleDateTimeLabel(date, time);
+}
+
+/**
+ * Formats the actual calendar schedule window with next-action arrow style.
+ *
+ * @example actualCalendarScheduleLabel({ dateStart: "2026-05-21" })
+ */
+export function actualCalendarScheduleLabel(schedule?: ScheduleWindow): string | null {
+  const startedAt = scheduleDateTimeLabel(schedule?.dateStart, schedule?.timeStart);
+  const endedAt = scheduleDateTimeLabel(schedule?.dateEnd, schedule?.timeEnd);
+  if (!startedAt) return endedAt;
+  return endedAt ? `${startedAt} → ${endedAt}` : startedAt;
+}
+
+/**
+ * Resolves week-level navigation offsets.
+ *
+ * @example resolveWeeklyOffset(0, "next")
+ */
+export function resolveWeeklyOffset(currentOffset: number, movement: WeekMovement): number {
+  return currentOffset + (movement === "next" ? 1 : -1);
+}
+
+/**
+ * Resolves the weekly panel for today's date.
+ *
+ * @example resolveTodayWeeklyPanel(new Date())
+ */
+export function resolveTodayWeeklyPanel(today: Date): WeeklyDayPanel {
+  return weeklyPanelByDateIndex[today.getDay()];
+}
+
+function scheduleDateTimeLabel(date?: string | null, time?: string | null): string | null {
+  const formattedDate = calendarDateLabel(date);
+  const formattedTime = trimCalendarDisplayTime(time);
+  if (!formattedDate) return null;
+  return formattedTime ? `${formattedDate} ${formattedTime}` : formattedDate;
+}
+
+function calendarDateLabel(date?: string | null): string | null {
+  if (!date) return null;
+  const [year, month, day] = date.split("-");
+  if (!year || !month || !day) return formatScheduleDateTime(date, null);
+  return `${month}/${day}/${year}`;
 }
