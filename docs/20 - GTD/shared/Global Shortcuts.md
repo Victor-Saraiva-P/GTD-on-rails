@@ -16,6 +16,20 @@ These shortcuts are registered globally by the desktop shell.
 
 Calendars use `[` and `]` inside the page to cycle through Today, Weekly, Completed, and Deleted subviews.
 
+## Calendars
+
+These shortcuts are available in the Calendars workspace when a modal dialog or body/title edit is not active.
+
+| Shortcut | Action |
+| --- | --- |
+| `e` | Edit the selected calendar scheduled date and optional time. |
+| `Enter` | Edit the selected calendar title in Today and Weekly list panels. |
+| `Space Enter` | Open the selected calendar full detail page. |
+| `H` | Move the Weekly view one week backward. |
+| `L` | Move the Weekly view one week forward. |
+| `t` | Return Weekly to the current week and focus today. |
+| `h` / `l` | Move Weekly focus to the previous or next day. |
+
 ## Shared Body Formatting
 
 These shortcuts are available in body/detail editing zones that register markdown formatting bindings in the [[Body Content]].
