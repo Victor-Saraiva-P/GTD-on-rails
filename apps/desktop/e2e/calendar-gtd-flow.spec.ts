@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { createAndSelectInboxStuff, createInboxStuffFromKeyboard, focusApp, openApp, openCalendars, resetTestData, uniqueLabel } from "./support/app";
+import { createAndSelectInboxStuff, createInboxStuffFromKeyboard, focusApp, openApp, openCalendars, resetTestData, uniqueLabel, focusPanelAndSelectItem } from "./support/app";
 
 test.beforeEach(async ({ page, request }) => {
   await resetTestData(request);
@@ -37,14 +37,7 @@ test("calendar GTD flow: creates, schedules, manages state, and deletes", async 
   await verifyCalendarSubviewShortcuts(page);
 
   // Verify it appears in Today panel (1) (due/late)
-  const panel1 = page.locator(".inbox-pane").nth(0);
-  const dueCalendar = panel1.getByRole("button", { name: title, exact: false }).first();
-  await expect(dueCalendar).toBeVisible();
-
-  // Focus item and mark ongoing
-  await page.keyboard.press("1");
-  await expect(panel1).toHaveClass(/list-pane--active/);
-  await dueCalendar.click();
+  const { panel: panel1, item: dueCalendar } = await focusPanelAndSelectItem(page, 0, title);
   await page.keyboard.press("o");
   await expect(dueCalendar).not.toBeVisible();
 

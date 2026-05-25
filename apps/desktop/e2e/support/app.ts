@@ -74,3 +74,15 @@ export async function openCalendars(page: Page): Promise<void> {
   await expect(page.locator(".leader-menu")).not.toBeVisible();
   await expect(page.locator(".inbox-pane .list-pane__title").nth(0)).toHaveText("Calendar");
 }
+
+export async function focusPanelAndSelectItem(page: Page, panelIndex: number, title: string) {
+  const panel = page.locator(".inbox-pane").nth(panelIndex);
+  const item = panel.getByRole("button", { name: title, exact: false }).first();
+  await expect(item).toBeVisible();
+
+  await page.keyboard.press((panelIndex + 1).toString());
+  await expect(panel).toHaveClass(/list-pane--active/);
+  await item.click();
+
+  return { panel, item };
+}
