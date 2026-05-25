@@ -66,20 +66,35 @@ describe("calendar workspace state", () => {
 });
 
 describe("calendar detail metadata", () => {
-  test("includes scheduled date and optional time", () => {
-    const item = { ...calendar("cal-1", "Appointment"), scheduledTime: "09:30" };
+  test("includes stated schedule with trimmed optional time", () => {
+    const item = { ...calendar("cal-1", "Appointment"), scheduledTime: "09:30:00" };
 
     assert.deepEqual(calendarDetailMetadata(item), {
       title: "Appointment",
-      parts: ["scheduled: 2026-05-21", "time: 09:30"]
+      actualSchedule: null,
+      statedSchedule: "05/21/2026 09:30"
     });
+  });
+
+  test("includes actual schedule window when present", () => {
+    const item = {
+      ...calendar("cal-1", "Appointment"),
+      schedule: {
+        dateStart: "2026-05-21",
+        timeStart: "09:30:00",
+        dateEnd: "2026-05-21",
+        timeEnd: "10:00:00"
+      }
+    };
+
+    assert.equal(calendarDetailMetadata(item).actualSchedule, "05/21/2026 09:30 → 05/21/2026 10:00");
   });
 
   test("omits status from detail metadata", () => {
     const metadata = calendarDetailMetadata(calendar("cal-1", "Appointment", "DONE"));
 
-    assert.equal(metadata.parts.some((part) => part.includes("DONE")), false);
-    assert.equal(metadata.parts.some((part) => part.toLowerCase().includes("status")), false);
+    assert.equal(metadata.statedSchedule.includes("DONE"), false);
+    assert.equal(metadata.statedSchedule.toLowerCase().includes("status"), false);
   });
 });
 
