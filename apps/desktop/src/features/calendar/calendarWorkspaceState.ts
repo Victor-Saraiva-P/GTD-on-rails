@@ -65,6 +65,35 @@ export function calendarItemsForPanel(
   }
 }
 
+/**
+ * Replaces a calendar in a local collection after a successful mutation.
+ *
+ * @example calendarListWithReplacement(items, updated)
+ */
+export function calendarListWithReplacement(items: Calendar[], updated: Calendar): Calendar[] {
+  return items.map((item) => item.id === updated.id ? updated : item);
+}
+
+/**
+ * Removes a calendar from a local collection.
+ *
+ * @example calendarListWithoutItem(items, "calendar-id")
+ */
+export function calendarListWithoutItem(items: Calendar[], id: string): Calendar[] {
+  return items.filter((item) => item.id !== id);
+}
+
+/**
+ * Upserts a done calendar only when its actual end date is today.
+ *
+ * @example calendarTodayDoneListAfterDone(items, doneCalendar, "2026-05-21")
+ */
+export function calendarTodayDoneListAfterDone(items: Calendar[], updated: Calendar, today: string): Calendar[] {
+  if (updated.status !== "DONE" || updated.schedule?.dateEnd !== today) return items;
+  const withoutUpdated = calendarListWithoutItem(items, updated.id);
+  return [...withoutUpdated, updated];
+}
+
 export function selectedCalendar(
   items: Calendar[],
   selectedId: string | null

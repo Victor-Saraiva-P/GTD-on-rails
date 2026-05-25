@@ -10,13 +10,19 @@ import {
   fetchWeekCalendars,
   markCalendarDone,
   markCalendarOnGoing,
+  patchCalendar,
   restoreCalendarStatus,
   recoverDeletedCalendar,
   updateCalendarBody,
   updateCalendarTitle
 } from "./api";
 import { formatCalendarDate, getMondayForOffset } from "./calendarDateUtils";
-import type { Calendar } from "./types";
+import {
+  calendarListWithReplacement,
+  calendarListWithoutItem,
+  calendarTodayDoneListAfterDone
+} from "./calendarWorkspaceState";
+import type { Calendar, CalendarPatch } from "./types";
 import { calendarLoadErrorMessage } from "./useCalendarTodayQuery";
 import type { CalendarSubview } from "./calendarWorkspaceState";
 
@@ -92,20 +98,24 @@ function useCalendarLoader(subview: CalendarSubview, state: CalendarDataState): 
 }
 
 function removeCalendar(state: CalendarDataState, id: string): void {
-  state.setDueCalendars((items) => items.filter((item) => item.id !== id));
-  state.setDoneTodayCalendars((items) => items.filter((item) => item.id !== id));
-  state.setCompletedCalendars((items) => items.filter((item) => item.id !== id));
-  state.setDeletedCalendars((items) => items.filter((item) => item.id !== id));
-  state.setWeeklyCalendars((items) => items.filter((item) => item.id !== id));
+  state.setDueCalendars((items) => calendarListWithoutItem(items, id));
+  state.setDoneTodayCalendars((items) => calendarListWithoutItem(items, id));
+  state.setCompletedCalendars((items) => calendarListWithoutItem(items, id));
+  state.setDeletedCalendars((items) => calendarListWithoutItem(items, id));
+  state.setWeeklyCalendars((items) => calendarListWithoutItem(items, id));
 }
 
 function replaceCalendar(state: CalendarDataState, updated: Calendar): void {
-  const replace = (items: Calendar[]) => items.map((item) => item.id === updated.id ? updated : item);
-  state.setDueCalendars(replace);
-  state.setDoneTodayCalendars(replace);
-  state.setCompletedCalendars(replace);
-  state.setDeletedCalendars(replace);
-  state.setWeeklyCalendars(replace);
+  state.setDueCalendars((items) => calendarListWithReplacement(items, updated));
+  state.setDoneTodayCalendars((items) => calendarListWithReplacement(items, updated));
+  state.setCompletedCalendars((items) => calendarListWithReplacement(items, updated));
+  state.setDeletedCalendars((items) => calendarListWithReplacement(items, updated));
+  state.setWeeklyCalendars((items) => calendarListWithReplacement(items, updated));
+}
+
+function appendDoneTodayCalendar(state: CalendarDataState, updated: Calendar): void {
+  const today = formatCalendarDate(new Date());
+  state.setDoneTodayCalendars((items) => calendarTodayDoneListAfterDone(items, updated, today));
 }
 
 async function mutateCalendarStatus(
@@ -119,6 +129,24 @@ async function mutateCalendarStatus(
   try {
     await action(id);
     removeCalendar(state, id);
+    state.setErrorMessage(null);
+    poll();
+  } finally {
+    mutations.setIsUpdating(false);
+  }
+}
+
+async function markCalendarDoneItem(
+  id: string,
+  state: CalendarDataState,
+  mutations: CalendarMutationState,
+  poll: () => void
+): Promise<void> {
+  mutations.setIsUpdating(true);
+  try {
+    const updated = await markCalendarDone(id);
+    removeCalendar(state, id);
+    appendDoneTodayCalendar(state, updated);
     state.setErrorMessage(null);
     poll();
   } finally {
@@ -140,6 +168,25 @@ async function deleteCalendarItem(
     poll();
   } finally {
     mutations.setIsDeleting(false);
+  }
+}
+
+async function updateCalendarItemSchedule(
+  item: Calendar,
+  patch: CalendarPatch,
+  state: CalendarDataState,
+  mutations: CalendarMutationState,
+  poll: () => void
+): Promise<Calendar> {
+  mutations.setIsUpdating(true);
+  try {
+    const updated = await patchCalendar(item.id, patch);
+    replaceCalendar(state, updated);
+    state.setErrorMessage(null);
+    poll();
+    return updated;
+  } finally {
+    mutations.setIsUpdating(false);
   }
 }
 
@@ -188,11 +235,12 @@ function useCalendarMutations(
   const { triggerSyncStatusPolling } = useSyncStatus();
   return {
     deleteItem: (id: string) => deleteCalendarItem(id, state, mutations, triggerSyncStatusPolling),
-    markAsDone: (id: string) => mutateCalendarStatus(id, state, mutations, triggerSyncStatusPolling, markCalendarDone),
+    markAsDone: (id: string) => markCalendarDoneItem(id, state, mutations, triggerSyncStatusPolling),
     markAsOnGoing: (id: string) => mutateCalendarStatus(id, state, mutations, triggerSyncStatusPolling, markCalendarOnGoing),
     restoreStatus: (id: string) => mutateCalendarStatus(id, state, mutations, triggerSyncStatusPolling, restoreCalendarStatus),
     recoverDeleted: (id: string) => mutateCalendarStatus(id, state, mutations, triggerSyncStatusPolling, recoverDeletedCalendar),
     updateBody: (item: Calendar, body: ItemBody) => updateCalendarItemBody(item, body, state, mutations, triggerSyncStatusPolling),
+    updateSchedule: (item: Calendar, patch: CalendarPatch) => updateCalendarItemSchedule(item, patch, state, mutations, triggerSyncStatusPolling),
     updateTitle: (item: Calendar, title: string) => updateCalendarItemTitle(item, title, state, mutations, triggerSyncStatusPolling)
   };
 }

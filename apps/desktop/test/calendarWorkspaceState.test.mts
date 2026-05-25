@@ -4,6 +4,9 @@ import test, { describe } from "node:test";
 import { calendarDetailMetadata } from "../src/features/calendar/calendarDetailMetadata.ts";
 import {
   calendarItemsForPanel,
+  calendarListWithoutItem,
+  calendarListWithReplacement,
+  calendarTodayDoneListAfterDone,
   calendarSelectionOffsetIndex,
   calendarSubviewTarget,
   resolveWeeklyColumnShift,
@@ -117,5 +120,32 @@ describe("resolveWeeklyColumnShift", () => {
 
   test("crossing left boundary from Monday goes to previous week Sunday", () => {
     assert.deepEqual(resolveWeeklyColumnShift("mon", "left"), { kind: "boundary", panel: "sun", weekOffsetDelta: -1 });
+  });
+});
+
+describe("calendar mutation collections", () => {
+  test("replaces a calendar locally after schedule patching", () => {
+    const items = [calendar("cal-1", "Old"), calendar("cal-2", "Other")];
+    const updated = { ...items[0], title: "Updated" };
+
+    assert.deepEqual(calendarListWithReplacement(items, updated), [updated, items[1]]);
+  });
+
+  test("removes a calendar from local collections", () => {
+    const items = [calendar("cal-1", "Old"), calendar("cal-2", "Other")];
+
+    assert.deepEqual(calendarListWithoutItem(items, "cal-1"), [items[1]]);
+  });
+
+  test("appends returned done calendar when actual end date is today", () => {
+    const done = { ...calendar("cal-1", "Done", "DONE"), schedule: { dateEnd: "2026-05-21" } };
+
+    assert.deepEqual(calendarTodayDoneListAfterDone([], done, "2026-05-21"), [done]);
+  });
+
+  test("does not add done calendar when actual end date is not today", () => {
+    const done = { ...calendar("cal-1", "Done", "DONE"), schedule: { dateEnd: "2026-05-20" } };
+
+    assert.deepEqual(calendarTodayDoneListAfterDone([], done, "2026-05-21"), []);
   });
 });
