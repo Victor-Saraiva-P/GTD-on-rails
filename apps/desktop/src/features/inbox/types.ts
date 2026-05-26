@@ -104,7 +104,8 @@ export function getStuffBodyPreviewLines(body: ItemBody | null | undefined): str
  * @example formatStuffCreatedAt(stuff.createdAt)
  */
 export function formatStuffCreatedAt(createdAt: string): string {
-  return new Intl.DateTimeFormat(undefined, {
+  // Enforce dd/mm/yyyy ordering regardless of machine locale.
+  return new Intl.DateTimeFormat("en-GB", {
     dateStyle: "medium",
     timeStyle: "short"
   }).format(new Date(createdAt));
