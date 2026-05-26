@@ -152,6 +152,22 @@
   color: var(--list-accent);
 }
 
+.tree-entry__glyph--calendar-active {
+  color: #c85a53;
+}
+
+.tree-entry__glyph--calendar-ongoing {
+  color: #9B5AB7;
+}
+
+.tree-entry__glyph--calendar-done {
+  color: #7F8D3F;
+}
+
+.tree-entry__glyph--calendar-deleted {
+  color: #9B9B9B;
+}
+
 .tree-entry__label,
 .detail-card__title {
   font-size: 0.95rem;
