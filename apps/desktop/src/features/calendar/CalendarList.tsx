@@ -1,4 +1,3 @@
-import { calendarItemIconText } from "../lists/listThemes";
 import type { Calendar } from "./types";
 import { CalendarListCard } from "./CalendarListCard";
 
@@ -22,10 +21,10 @@ type CalendarListProps = {
  */
 export function CalendarList({ items, selectedId, ...itemProps }: CalendarListProps) {
   return (
-    <ul className="calendar-card-list" aria-label="Calendars">
+    <ol className="tree-list tree-list--inbox" aria-label="Calendars">
       {items.map((item) => (
         <CalendarListCard key={item.id} item={item} selected={item.id === selectedId} editing={item.id === itemProps.editingId} {...itemProps} />
       ))}
-    </ul>
+    </ol>
   );
 }

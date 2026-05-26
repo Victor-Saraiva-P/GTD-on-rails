@@ -18,7 +18,7 @@ type CalendarListCardProps = {
 
 function CalendarGlyph() {
   return (
-    <span className="calendar-card__glyph" aria-hidden="true">
+    <span className="tree-entry__glyph tree-entry__glyph--stuff" aria-hidden="true">
       {calendarItemIconText}
     </span>
   );
@@ -47,25 +47,23 @@ function EditingCalendarCard(props: Omit<CalendarListCardProps, "editing" | "onS
   const displayTime = trimCalendarDisplayTime(props.item.scheduledTime);
 
   return (
-    <li className="calendar-list__item">
-      <div className="calendar-card calendar-card--active">
-        <div className="calendar-card__title-row">
-          <CalendarGlyph />
-          <input
-            value={props.editingTitle}
-            className="calendar-card__input"
-            onChange={(event) => props.onEditingTitleChange(event.target.value)}
-            onBlur={props.onCommitEditing}
-            onKeyDown={handleKeyDown}
-            autoFocus
-          />
-        </div>
-        {displayTime && (
-          <div className="calendar-card__time-row">
+    <li className="tree-list__item">
+      <div className="tree-entry tree-entry--active calendar-item-entry">
+        <CalendarGlyph />
+        <input
+          value={props.editingTitle}
+          className="tree-entry__input"
+          onChange={(event) => props.onEditingTitleChange(event.target.value)}
+          onBlur={props.onCommitEditing}
+          onKeyDown={handleKeyDown}
+          autoFocus
+        />
+        {displayTime ? (
+          <span className="calendar-entry__time">
             <span aria-hidden="true">⏱</span>
             <span>{displayTime}</span>
-          </div>
-        )}
+          </span>
+        ) : null}
       </div>
     </li>
   );
@@ -84,23 +82,21 @@ function ReadOnlyCalendarCard(props: CalendarListCardProps) {
   const displayTime = trimCalendarDisplayTime(item.scheduledTime);
 
   return (
-    <li className="calendar-list__item">
+    <li className="tree-list__item">
       <button
         type="button"
-        className={`calendar-card${selected ? " calendar-card--active" : ""}`}
+        className={`tree-entry calendar-item-entry${selected ? " tree-entry--active" : ""}`}
         onClick={() => onSelect(item.id)}
         onDoubleClick={() => handleSelectDoubleClick(props)}
       >
-        <div className="calendar-card__title-row">
-          <CalendarGlyph />
-          <span className="calendar-card__title">{item.title}</span>
-        </div>
-        {displayTime && (
-          <div className="calendar-card__time-row">
-            <span aria-hidden="true" className="calendar-card__time-icon">⏱</span>
+        <CalendarGlyph />
+        <span className="tree-entry__label">{item.title}</span>
+        {displayTime ? (
+          <span className="calendar-entry__time">
+            <span aria-hidden="true">⏱</span>
             <span>{displayTime}</span>
-          </div>
-        )}
+          </span>
+        ) : null}
       </button>
     </li>
   );
