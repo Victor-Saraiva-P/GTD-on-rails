@@ -83,6 +83,11 @@
   border-color: transparent;
 }
 
+.calendar-pane--done {
+  --list-accent: #7F8D3F;
+  --list-accent-rgb: 127, 141, 63;
+}
+
 .list-pane__header {
   position: relative;
   min-height: 30px;
