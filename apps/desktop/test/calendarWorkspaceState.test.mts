@@ -75,7 +75,7 @@ describe("calendar detail metadata", () => {
     assert.deepEqual(calendarDetailMetadata(item), {
       title: "Appointment",
       actualSchedule: null,
-      statedSchedule: "05/21/2026 09:30"
+      statedSchedule: "21/05/2026 09:30"
     });
   });
 
@@ -90,7 +90,7 @@ describe("calendar detail metadata", () => {
       }
     };
 
-    assert.equal(calendarDetailMetadata(item).actualSchedule, "05/21/2026 09:30 → 05/21/2026 10:00");
+    assert.equal(calendarDetailMetadata(item).actualSchedule, "21/05/2026 09:30 → 21/05/2026 10:00");
   });
 
   test("omits status from detail metadata", () => {

@@ -1,8 +1,8 @@
-import { calendarItemIconText } from "../lists/listThemes";
 import type { Calendar } from "./types";
 import { CalendarListCard } from "./CalendarListCard";
 
 type CalendarListProps = {
+  archiveStatus?: "deleted";
   editingId: string | null;
   editingTitle: string;
   items: Calendar[];
@@ -20,12 +20,12 @@ type CalendarListProps = {
  *
  * @example <CalendarList items={items} selectedId="calendar-1" ... />
  */
-export function CalendarList({ items, selectedId, ...itemProps }: CalendarListProps) {
+export function CalendarList({ archiveStatus, items, selectedId, ...itemProps }: CalendarListProps) {
   return (
-    <ul className="calendar-card-list" aria-label="Calendars">
+    <ol className="tree-list tree-list--inbox" aria-label="Calendars">
       {items.map((item) => (
-        <CalendarListCard key={item.id} item={item} selected={item.id === selectedId} editing={item.id === itemProps.editingId} {...itemProps} />
+        <CalendarListCard key={item.id} archiveStatus={archiveStatus} item={item} selected={item.id === selectedId} editing={item.id === itemProps.editingId} {...itemProps} />
       ))}
-    </ul>
+    </ol>
   );
 }

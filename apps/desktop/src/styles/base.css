@@ -42,8 +42,8 @@ body {
 }
 
 .list-workspace {
-  --list-accent: #c85a53;
-  --list-accent-rgb: 200, 90, 83;
+  --list-accent: #CC782F;
+  --list-accent-rgb: 204, 120, 47;
   height: 100vh;
   min-height: 100vh;
   display: grid;
@@ -139,9 +139,9 @@ body {
 }
 
 .sync-status__item--active {
-  color: #c85a53;
-  border-color: rgba(200, 90, 83, 0.48);
-  background: rgba(200, 90, 83, 0.12);
+  color: #CC782F;
+  border-color: rgba(204, 120, 47, 0.48);
+  background: rgba(204, 120, 47, 0.12);
 }
 
 .sync-status__item--pending {

@@ -6,9 +6,11 @@
       "source": "local",
       "contentHash": "69867b0e19be1fb556d2e697f0f18f1de0363d1aa2de9d36754d5b107156357c",
       "installedAt": "2026-05-21T14:30:24.432Z",
-      "updatedAt": "2026-05-21T14:30:24.432Z",
+      "updatedAt": "2026-05-26T16:01:39.922Z",
       "agents": [
-        "codex"
+        "codex",
+        "antigravity",
+        "opencode"
       ],
       "method": "copy",
       "global": false

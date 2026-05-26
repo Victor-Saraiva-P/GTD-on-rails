@@ -72,12 +72,16 @@ export function formatScheduleDateTime(date?: string | null, time?: string | nul
   
   if (isNaN(dateObj.getTime())) return null;
 
-  const formatted = new Intl.DateTimeFormat("en-US", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    ...(time ? { hour: "2-digit", minute: "2-digit", hour12: false } : {})
-  }).format(dateObj);
+  // We intentionally avoid locale-driven ordering here.
+  const year = dateObj.getUTCFullYear();
+  const month = String(dateObj.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(dateObj.getUTCDate()).padStart(2, "0");
 
-  return formatted.replace(",", "");
+  if (!time) {
+    return `${day}/${month}/${year}`;
+  }
+
+  const hours = String(dateObj.getUTCHours()).padStart(2, "0");
+  const minutes = String(dateObj.getUTCMinutes()).padStart(2, "0");
+  return `${day}/${month}/${year} ${hours}:${minutes}`;
 }

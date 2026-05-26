@@ -8,15 +8,15 @@ export type ListTheme = {
 export const inboxListTheme: ListTheme = {
   id: "inbox",
   label: "Inbox",
-  accentColor: "#c85a53",
-  accentColorRgb: "200, 90, 83"
+  accentColor: "#CC782F",
+  accentColorRgb: "204, 120, 47"
 };
 
 export const stuffDetailListTheme: ListTheme = {
   id: "stuff-detail",
   label: "Stuff Detail",
-  accentColor: "#c85a53",
-  accentColorRgb: "200, 90, 83"
+  accentColor: "#CC782F",
+  accentColorRgb: "204, 120, 47"
 };
 
 export const deletedInboxListTheme: ListTheme = {
@@ -71,8 +71,8 @@ export const deletedNextActionsListTheme: ListTheme = {
 export const calendarsListTheme: ListTheme = {
   id: "calendars",
   label: "Calendars",
-  accentColor: inboxListTheme.accentColor,
-  accentColorRgb: inboxListTheme.accentColorRgb
+  accentColor: "#c85a53",
+  accentColorRgb: "200, 90, 83"
 };
 
 export const doneCalendarsListTheme: ListTheme = {
