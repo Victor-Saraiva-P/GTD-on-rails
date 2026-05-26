@@ -478,14 +478,14 @@ mod tests {
 
     #[test]
     fn newer_version_wins() {
-        assert!(is_newer_version("1.0.5", "1.0.4").unwrap());
-        assert!(!is_newer_version("1.0.4", "1.0.4").unwrap());
+        assert!(is_newer_version("1.1.2", "1.1.1").unwrap());
+        assert!(!is_newer_version("1.1.1", "1.1.1").unwrap());
     }
 
     #[test]
     fn release_tag_prefixes_are_supported() {
-        assert_eq!(release_tag_version("v1.0.5").unwrap(), "1.0.5");
-        assert_eq!(release_tag_version("app-v1.0.5").unwrap(), "1.0.5");
+        assert_eq!(release_tag_version("v1.1.2").unwrap(), "1.1.2");
+        assert_eq!(release_tag_version("app-v1.1.2").unwrap(), "1.1.2");
     }
 
     #[test]
@@ -498,7 +498,7 @@ mod tests {
     fn native_archive_asset_is_selected() {
         let assets = vec![
             asset("unrelated.txt"),
-            asset("GTD.on.Rails_1.0.5_linux-x86_64.tar.gz"),
+            asset("GTD.on.Rails_1.1.2_linux-x86_64.tar.gz"),
         ];
         assert_eq!(
             find_asset(&assets, ARCHIVE_SUFFIX).unwrap().name,

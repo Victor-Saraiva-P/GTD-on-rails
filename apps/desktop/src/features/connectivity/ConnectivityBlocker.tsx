@@ -1,4 +1,5 @@
 import { useEffect, useState, type PropsWithChildren } from "react";
+import { appMetadata } from "../../config/appMetadata";
 import { useSyncStatus } from "../sync-status/SyncStatusProvider";
 import { buildConnectivityBlockerModel, type ConnectivitySyncRow } from "./connectivityBlocker";
 
@@ -64,7 +65,7 @@ export function ConnectivityBlocker({ children }: PropsWithChildren) {
   return (
     <div className="boot-loader connectivity-blocker">
       <div className="boot-loader__terminal">
-        <p className="boot-loader__brand">GTD ON RAILS v1.0.4</p>
+        <p className="boot-loader__brand">{appMetadata.name} v{appMetadata.version}</p>
         <p className="boot-loader__line"><span className="boot-loader__status">[OFFLINE]</span> {model.title}</p>
         <p className="boot-loader__line connectivity-blocker__message">{model.message}</p>
         {model.rows.map((row) => <SyncStatusLine key={row.label} row={row} />)}

@@ -1,6 +1,7 @@
 import { useEffect, useState, type PropsWithChildren } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { setRuntimeApiBaseUrl } from "../config/env.ts";
+import { appMetadata } from "../config/appMetadata.ts";
 import { apiJson } from "../lib/api/apiClient.ts";
 import { isTauriRuntime } from "../lib/tauriRuntime.ts";
 import { shouldCheckNativeUpdates } from "./nativeUpdatePolicy.ts";
@@ -143,7 +144,7 @@ export function BootLoader({ children }: PropsWithChildren) {
       {shouldRenderLoader && (
         <div className={`boot-loader ${isBooted ? "boot-loader--fade-out" : ""}`}>
           <div className="boot-loader__terminal">
-            <p className="boot-loader__brand">GTD ON RAILS v1.0.4</p>
+            <p className="boot-loader__brand">{appMetadata.name} v{appMetadata.version}</p>
             {updateStatus ? (
               <p className="boot-loader__line">
                 <span className="boot-loader__bracket">[</span>
