@@ -391,7 +391,7 @@ function CalendarDetailView({ controller }: CalendarControllerProps) {
 /** Computes "Month Year" label for the weekly view header (REQ-07). */
 function weeklyMonthLabel(weekOffset: number): string {
   const monday = getMondayForOffset(weekOffset);
-  return monday.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  return monday.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
 }
 
 function WeeklyCalendarHeader({ weekOffset }: { weekOffset: number }) {

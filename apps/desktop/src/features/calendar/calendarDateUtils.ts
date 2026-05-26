@@ -124,7 +124,8 @@ function calendarDateLabel(date?: string | null): string | null {
   if (!date) return null;
   const [year, month, day] = date.split("-");
   if (!year || !month || !day) return formatScheduleDateTime(date, null);
-  return `${month}/${day}/${year}`;
+  // Enforce dd/mm/yyyy everywhere in the desktop app.
+  return `${day}/${month}/${year}`;
 }
 
 function calendarTimeDigits(time?: string | null): string {
