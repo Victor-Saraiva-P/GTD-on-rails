@@ -13,7 +13,8 @@ import type { ItemBody } from "../features/inbox/types";
 import { LeaderMenu } from "../features/keybinds/LeaderMenu";
 import { useActiveScreen, useKeybindScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
 import type { FocusZoneId, KeybindDefinition, ScreenId } from "../features/keybinds/types";
-import { calendarsListTheme } from "../features/lists/listThemes";
+import { scrollDetailPane } from "../features/keybinds/scrollDetailPane";
+import { calendarsListTheme, deletedCalendarsListTheme, doneCalendarsListTheme, type ListTheme } from "../features/lists/listThemes";
 import { getMondayForOffset } from "../features/calendar/calendarDateUtils";
 
 type CalendarPageProps = {
@@ -186,7 +187,9 @@ function buildSubviewBindings(controller: CalendarWorkspaceController): KeybindD
   const zones = calendarSubviewKeybindZones();
   return zones.flatMap((zone) => [
     calendarBinding(`calendars.switch-next-${zone}`, "]", "Open next calendar view", zone, () => switchCalendarSubview(controller, "next")),
-    calendarBinding(`calendars.switch-previous-${zone}`, "[", "Open previous calendar view", zone, () => switchCalendarSubview(controller, "previous"))
+    calendarBinding(`calendars.switch-previous-${zone}`, "[", "Open previous calendar view", zone, () => switchCalendarSubview(controller, "previous")),
+    calendarBinding(`calendars.page-down-${zone}`, "PageDown", "Scroll down detail", zone, () => scrollDetailPane(1)),
+    calendarBinding(`calendars.page-up-${zone}`, "PageUp", "Scroll up detail", zone, () => scrollDetailPane(-1))
   ]);
 }
 
@@ -241,6 +244,12 @@ function useCalendarAssetPreload(controller: CalendarWorkspaceController): void 
   }, [controller.selectedIndex, controller.stuffs]);
 }
 
+function calendarWorkspaceTheme(activeSubview: CalendarWorkspaceController["activeSubview"]): ListTheme {
+  if (activeSubview === "completed") return doneCalendarsListTheme;
+  if (activeSubview === "deleted") return deletedCalendarsListTheme;
+  return calendarsListTheme;
+}
+
 function commitCalendarTitle(controller: CalendarWorkspaceController): void {
   void controller.commitTitle().catch((error: unknown) => console.error("Failed to update calendar title", error));
 }
@@ -259,7 +268,7 @@ function CalendarPanelBody(props: CalendarControllerProps & { panel: CalendarPan
   }
 
   if (items.length === 0) return <p className="pane-state">{emptyPanelMessage(props.panel)}</p>;
-  return <CalendarPanelReady controller={props.controller} items={items} />;
+  return <CalendarPanelReady controller={props.controller} items={items} panel={props.panel} />;
 }
 
 function emptyPanelMessage(panel: CalendarPanel): string {
@@ -270,10 +279,11 @@ function emptyPanelMessage(panel: CalendarPanel): string {
   return "No due or late calendars.";
 }
 
-function CalendarPanelReady({ controller, items }: CalendarControllerProps & { items: CalendarWorkspaceController["stuffs"] }) {
+function CalendarPanelReady({ controller, items, panel }: CalendarControllerProps & { items: CalendarWorkspaceController["stuffs"], panel: CalendarPanel }) {
   return (
     <CalendarList
       items={items}
+      archiveStatus={panel === "deleted" ? "deleted" : undefined}
       selectedId={controller.selectedItem?.id ?? ""}
       editingId={controller.editingId}
       editingTitle={controller.editingTitle}
@@ -327,7 +337,7 @@ function DueCalendarPanel({ controller }: CalendarControllerProps) {
 function DoneTodayCalendarPanel({ controller }: CalendarControllerProps) {
   const meta = `${controller.doneTodayCalendars.length} ${controller.doneTodayCalendars.length === 1 ? "item" : "items"}`;
   return (
-    <ListView title="Done" meta={meta} panelIndex={2} active={controller.activeZone === "calendar-today-done-panel"} bodyClassName="list-pane__body--flush" className="inbox-pane inbox-pane--list">
+    <ListView title="Done" meta={meta} panelIndex={2} active={controller.activeZone === "calendar-today-done-panel"} bodyClassName="list-pane__body--flush" className="inbox-pane inbox-pane--list calendar-pane--done">
       <CalendarPanelBody controller={controller} panel="done-today" />
     </ListView>
   );
@@ -391,7 +401,7 @@ function CalendarDetailView({ controller }: CalendarControllerProps) {
 /** Computes "Month Year" label for the weekly view header (REQ-07). */
 function weeklyMonthLabel(weekOffset: number): string {
   const monday = getMondayForOffset(weekOffset);
-  return monday.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  return monday.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
 }
 
 function WeeklyCalendarHeader({ weekOffset }: { weekOffset: number }) {
@@ -464,7 +474,7 @@ export function CalendarPage({ controller }: CalendarPageProps) {
   useCalendarBindings(controller, openLink, openAsset, openScheduleEdit);
 
   return (
-    <ListWorkspace theme={calendarsListTheme} currentLabel="Calendars" modeLabel={controller.vimMode ?? undefined}>
+    <ListWorkspace theme={calendarWorkspaceTheme(controller.activeSubview)} currentLabel="Calendars" modeLabel={controller.vimMode ?? undefined}>
       <CalendarViews controller={controller} />
       <LeaderMenu />
       <Suspense fallback={null}>

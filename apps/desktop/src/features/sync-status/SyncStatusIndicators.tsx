@@ -19,7 +19,8 @@ function formatInstant(value: string | null): string | null {
     return null;
   }
 
-  return new Intl.DateTimeFormat(undefined, {
+  // Enforce dd/mm/yyyy ordering regardless of machine locale.
+  return new Intl.DateTimeFormat("en-GB", {
     dateStyle: "short",
     timeStyle: "medium"
   }).format(new Date(value));

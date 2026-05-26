@@ -110,8 +110,8 @@ describe("calendar display time", () => {
 
 describe("calendar schedule labels", () => {
   test("formats stated calendar date with optional time", () => {
-    assert.equal(statedCalendarScheduleLabel("2026-05-21", "21:00:00"), "05/21/2026 21:00");
-    assert.equal(statedCalendarScheduleLabel("2026-05-21", null), "05/21/2026");
+    assert.equal(statedCalendarScheduleLabel("2026-05-21", "21:00:00"), "21/05/2026 21:00");
+    assert.equal(statedCalendarScheduleLabel("2026-05-21", null), "21/05/2026");
   });
 
   test("formats actual schedule windows with arrow style", () => {
@@ -122,7 +122,7 @@ describe("calendar schedule labels", () => {
       timeEnd: "10:30:00"
     });
 
-    assert.equal(label, "05/21/2026 09:00 → 05/21/2026 10:30");
+    assert.equal(label, "21/05/2026 09:00 → 21/05/2026 10:30");
   });
 
   test("omits missing actual schedule windows", () => {

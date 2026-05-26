@@ -15,13 +15,13 @@ import {
 test("inboxListTheme defines correct default styling", () => {
   assert.equal(inboxListTheme.id, "inbox");
   assert.equal(inboxListTheme.label, "Inbox");
-  assert.ok(inboxListTheme.accentColor.startsWith("#"));
+  assert.equal(inboxListTheme.accentColor, "#CC782F");
 });
 
 test("stuffDetailListTheme defines correct default styling", () => {
   assert.equal(stuffDetailListTheme.id, "stuff-detail");
   assert.equal(stuffDetailListTheme.label, "Stuff Detail");
-  assert.ok(stuffDetailListTheme.accentColor.startsWith("#"));
+  assert.equal(stuffDetailListTheme.accentColor, inboxListTheme.accentColor);
 });
 
 test("contextsListTheme defines correct default styling", () => {
@@ -36,9 +36,9 @@ test("nextActionsListTheme defines green next actions styling", () => {
   assert.equal(nextActionsListTheme.accentColor, "#4F9768");
 });
 
-test("calendarsListTheme reuses inbox red accent", () => {
+test("calendarsListTheme keeps the calendar red accent", () => {
   assert.equal(calendarsListTheme.id, "calendars");
-  assert.equal(calendarsListTheme.accentColor, inboxListTheme.accentColor);
+  assert.equal(calendarsListTheme.accentColor, "#c85a53");
   assert.equal(calendarItemIconText, "C");
 });
 
