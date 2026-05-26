@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { setRuntimeApiBaseUrl } from "../config/env.ts";
 import { apiJson } from "../lib/api/apiClient.ts";
 import { isTauriRuntime } from "../lib/tauriRuntime.ts";
+import { shouldCheckNativeUpdates } from "./nativeUpdatePolicy.ts";
 import "../styles/boot-loader.css";
 
 const PING_INTERVAL_MS = 1000;
@@ -49,7 +50,7 @@ function delay(milliseconds: number): Promise<void> {
 }
 
 async function installNativeUpdate(setUpdateStatus: (status: string) => void): Promise<boolean> {
-  if (!isTauriRuntime()) return false;
+  if (!shouldCheckNativeUpdates(isTauriRuntime(), import.meta.env.DEV)) return false;
 
   const update = await invoke<NativeUpdateStatus>("native_update_check");
   if (!update.available) return false;
