@@ -331,8 +331,11 @@ fn build_update_status(
     latest_version: String,
     assets: &[GitHubAsset],
 ) -> Result<NativeUpdateStatus, String> {
-    let archive = find_asset(assets, ARCHIVE_SUFFIX)?;
-    let checksum = find_asset(assets, CHECKSUM_SUFFIX)?;
+    // Guard against a broken GitHub release where the tag says "vX.Y.Z" but the
+    // uploaded assets are for a different version. Installing the wrong tarball
+    // causes an infinite "update -> restart -> update" loop.
+    let archive = find_versioned_asset(assets, &latest_version, ARCHIVE_SUFFIX)?;
+    let checksum = find_versioned_asset(assets, &latest_version, CHECKSUM_SUFFIX)?;
     Ok(update_status(
         current_version,
         latest_version,
@@ -358,13 +361,18 @@ fn update_status(
     }
 }
 
-fn find_asset<'a>(assets: &'a [GitHubAsset], suffix: &str) -> Result<&'a GitHubAsset, String> {
+fn find_versioned_asset<'a>(
+    assets: &'a [GitHubAsset],
+    version: &str,
+    suffix: &str,
+) -> Result<&'a GitHubAsset, String> {
+    let version_token = format!("_{version}_");
     assets
         .iter()
-        .find(|asset| asset.name.ends_with(suffix))
+        .find(|asset| asset.name.contains(&version_token) && asset.name.ends_with(suffix))
         .ok_or_else(|| {
             format!(
-                "GitHub release assets value '{suffix}' is invalid; expected native tarball asset"
+                "GitHub release assets value '{suffix}' is invalid; expected asset containing version '{version}'"
             )
         })
 }
@@ -501,9 +509,21 @@ mod tests {
             asset("GTD.on.Rails_1.1.2_linux-x86_64.tar.gz"),
         ];
         assert_eq!(
-            find_asset(&assets, ARCHIVE_SUFFIX).unwrap().name,
+            find_versioned_asset(&assets, "1.1.2", ARCHIVE_SUFFIX)
+                .unwrap()
+                .name,
             assets[1].name
         );
+    }
+
+    #[test]
+    fn mismatched_release_assets_are_rejected() {
+        let assets = vec![
+            asset("GTD.on.Rails_1.1.0_linux-x86_64.tar.gz"),
+            asset("GTD.on.Rails_1.1.0_linux-x86_64.tar.gz.sha256"),
+        ];
+        assert!(find_versioned_asset(&assets, "1.1.2", ARCHIVE_SUFFIX).is_err());
+        assert!(find_versioned_asset(&assets, "1.1.2", CHECKSUM_SUFFIX).is_err());
     }
 
     fn asset(name: &str) -> GitHubAsset {
