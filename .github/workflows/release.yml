@@ -72,6 +72,15 @@ jobs:
         run: pnpm run desktop:package:native-linux
         working-directory: apps/desktop
 
+      - name: Verify release asset versions match tag
+        run: |
+          tag_version="${GITHUB_REF_NAME#v}"
+          tag_version="${tag_version#app-v}"
+          printf 'Tag version: %s\n' "$tag_version"
+          test -f "src-tauri/target/release/native/GTD.on.Rails_${tag_version}_linux-x86_64.tar.gz" || { echo "native tarball does not match tag version"; exit 1; }
+          test -f "src-tauri/target/release/native/GTD.on.Rails_${tag_version}_linux-x86_64.tar.gz.sha256" || { echo "native sha256 does not match tag version"; exit 1; }
+        working-directory: apps/desktop
+
       - name: Upload native Linux tarball
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
