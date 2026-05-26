@@ -5,6 +5,7 @@ import type { ItemBody } from "../inbox/types";
 import { isSameBody } from "../inbox/types";
 import type { ContextItem } from "../contexts/types";
 import type { NextAction, NextActionOrder, NextActionPatch } from "./types";
+import { nextOrder } from "./orderCycle";
 import { useNextActionsQuery } from "./useNextActionsQuery";
 
 export type SelectionCursor = {
@@ -213,12 +214,6 @@ export function useNextActionsActions(model: Model) {
     toggleOrder: () => model.filter.setOrderBy(nextOrder),
     undo: () => undoAction(model)
   };
-}
-
-export function nextOrder(order: NextActionOrder): NextActionOrder {
-  if (order === "energy") return "time";
-  if (order === "time") return "priority";
-  return "energy";
 }
 
 export function startBodyEdit(model: Model) {
