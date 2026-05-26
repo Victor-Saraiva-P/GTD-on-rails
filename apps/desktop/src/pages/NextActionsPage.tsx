@@ -11,6 +11,7 @@ import type { ItemBody } from "../features/inbox/types";
 import { LeaderMenu } from "../features/keybinds/LeaderMenu";
 import { useActiveScreen, useKeybindScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
 import type { FocusZoneId, KeybindDefinition, ScreenId } from "../features/keybinds/types";
+import { scrollDetailPane } from "../features/keybinds/scrollDetailPane";
 import { nextActionsListTheme } from "../features/lists/listThemes";
 import { ContextFilterDialog } from "../features/next-actions/ContextFilterDialog";
 import { NextActionEditDialog } from "../features/next-actions/NextActionEditDialog";
@@ -132,6 +133,10 @@ function buildNextActionBindings(
     nextActionBinding("next-actions.focus-list", "h", "Focus next actions list", "next-action-detail", () => !controller.editingBodyId && controller.setActiveZone("next-actions-list")),
     nextActionBinding("next-actions.which-key-list", "k", "Show available keybinds", "next-actions-list", () => undefined, true),
     nextActionBinding("next-actions.which-key-detail", "k", "Show available keybinds", "next-action-detail", () => undefined, true),
+    nextActionBinding("next-actions.page-down-list", "PageDown", "Scroll down detail", "next-actions-list", () => scrollDetailPane(1)),
+    nextActionBinding("next-actions.page-up-list", "PageUp", "Scroll up detail", "next-actions-list", () => scrollDetailPane(-1)),
+    nextActionBinding("next-actions.page-down-detail", "PageDown", "Scroll down detail", "next-action-detail", () => scrollDetailPane(1)),
+    nextActionBinding("next-actions.page-up-detail", "PageUp", "Scroll up detail", "next-action-detail", () => scrollDetailPane(-1)),
     ...buildFormattingBindings("next-actions", openLink, openAsset, "next-action-detail")
   ];
 }

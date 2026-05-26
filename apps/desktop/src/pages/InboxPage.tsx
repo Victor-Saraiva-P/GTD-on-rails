@@ -12,6 +12,7 @@ import type { ItemBody } from "../features/inbox/types";
 import { LeaderMenu } from "../features/keybinds/LeaderMenu";
 import { useActiveScreen, useKeybindScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
 import type { FocusZoneId, KeybindDefinition, ScreenId } from "../features/keybinds/types";
+import { scrollDetailPane } from "../features/keybinds/scrollDetailPane";
 import { inboxListTheme } from "../features/lists/listThemes";
 import { ProcessingDialog } from "../features/processing/ProcessingDialog";
 
@@ -140,6 +141,10 @@ function buildInboxBindings(
     inboxBinding("inbox.open-detail-screen-from-detail", "Enter", "Open full stuff detail", "stuff-detail", () => openStuffDetailScreen(controller, setActiveScreen), true, ["Enter"]),
     inboxBinding("inbox.which-key-list", "k", "Show available keybinds", "inbox-list", () => undefined, true),
     inboxBinding("inbox.which-key-detail", "k", "Show available keybinds", "stuff-detail", () => undefined, true),
+    inboxBinding("inbox.page-down-list", "PageDown", "Scroll down detail", "inbox-list", () => scrollDetailPane(1)),
+    inboxBinding("inbox.page-up-list", "PageUp", "Scroll up detail", "inbox-list", () => scrollDetailPane(-1)),
+    inboxBinding("inbox.page-down-detail", "PageDown", "Scroll down detail", "stuff-detail", () => scrollDetailPane(1)),
+    inboxBinding("inbox.page-up-detail", "PageUp", "Scroll up detail", "stuff-detail", () => scrollDetailPane(-1)),
     ...buildFormattingBindings("inbox", openLinkCombo, openAssetCombo)
   ];
 }
