@@ -4,6 +4,7 @@ import { calendarItemIconText } from "../lists/listThemes";
 import { trimCalendarDisplayTime } from "./calendarDateUtils";
 
 type CalendarListCardProps = {
+  archiveStatus?: "deleted";
   item: Calendar;
   selected: boolean;
   editing: boolean;
@@ -16,9 +17,20 @@ type CalendarListCardProps = {
   onCancelEditing: () => void;
 };
 
-function CalendarGlyph() {
+function calendarGlyphClassName(status: string, archiveStatus?: "deleted"): string {
+  if (archiveStatus === "deleted") return "tree-entry__glyph--calendar-deleted";
+  if (status === "CALENDAR") return "tree-entry__glyph--calendar-active";
+  if (status === "ONGOING") return "tree-entry__glyph--calendar-ongoing";
+  if (status === "DONE") return "tree-entry__glyph--calendar-done";
+  return "";
+}
+
+function CalendarGlyph({ archiveStatus, status }: { archiveStatus?: "deleted", status: string }) {
+  const statusClassName = calendarGlyphClassName(status, archiveStatus);
+  const className = `tree-entry__glyph tree-entry__glyph--stuff${statusClassName ? ` ${statusClassName}` : ""}`;
+
   return (
-    <span className="tree-entry__glyph tree-entry__glyph--stuff" aria-hidden="true">
+    <span className={className} aria-hidden="true">
       {calendarItemIconText}
     </span>
   );
@@ -49,7 +61,7 @@ function EditingCalendarCard(props: Omit<CalendarListCardProps, "editing" | "onS
   return (
     <li className="tree-list__item">
       <div className="tree-entry tree-entry--active calendar-item-entry">
-        <CalendarGlyph />
+        <CalendarGlyph archiveStatus={props.archiveStatus} status={props.item.status} />
         <input
           value={props.editingTitle}
           className="tree-entry__input"
@@ -89,7 +101,7 @@ function ReadOnlyCalendarCard(props: CalendarListCardProps) {
         onClick={() => onSelect(item.id)}
         onDoubleClick={() => handleSelectDoubleClick(props)}
       >
-        <CalendarGlyph />
+        <CalendarGlyph archiveStatus={props.archiveStatus} status={item.status} />
         <span className="tree-entry__label">{item.title}</span>
         {displayTime ? (
           <span className="calendar-entry__time">
