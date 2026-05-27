@@ -36,6 +36,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Check app version sync
+        run: pnpm version:check
+
       - name: Install Playwright browser
         run: pnpm --filter @gtd-on-rails/desktop e2e:install:ci
 
@@ -89,6 +92,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Check app version sync
+        run: pnpm version:check
 
       - name: Build desktop app
         run: pnpm --filter @gtd-on-rails/desktop desktop:build:ci

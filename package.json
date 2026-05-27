@@ -13,8 +13,11 @@
     "e2e": "turbo run e2e",
     "lint": "turbo run lint",
     "check": "turbo run check",
-    "unitTest": "turbo run unitTest",
-    "integrationTest": "turbo run integrationTest"
+    "unitTest": "pnpm run version:test && turbo run unitTest",
+    "integrationTest": "turbo run integrationTest",
+    "version:sync": "node scripts/sync-version.mjs sync",
+    "version:check": "node scripts/sync-version.mjs check",
+    "version:test": "node --test scripts/*.test.mjs"
   },
   "devDependencies": {
     "turbo": "^2.5.8"
