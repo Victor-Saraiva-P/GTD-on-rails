@@ -5,7 +5,7 @@ import type { ItemBody } from "../inbox/types";
 import { isSameBody } from "../inbox/types";
 import type { ContextItem } from "../contexts/types";
 import type { NextAction, NextActionOrder, NextActionPatch } from "./types";
-import { nextOrder } from "./orderCycle";
+import { DEFAULT_NEXT_ACTION_ORDER, nextOrder } from "./orderCycle";
 import { useNextActionsQuery } from "./useNextActionsQuery";
 
 export type SelectionCursor = {
@@ -58,7 +58,7 @@ export function useNextActionsFilterState() {
   const [context, setContext] = useState<ContextItem | null>(null);
   const [currentEnergy, setCurrentEnergy] = useState<number | null>(null);
   const [currentTimeMinutes, setCurrentTimeMinutes] = useState<number | null>(null);
-  const [orderBy, setOrderBy] = useState<NextActionOrder>("energy");
+  const [orderBy, setOrderBy] = useState<NextActionOrder>(DEFAULT_NEXT_ACTION_ORDER);
   return { context, currentEnergy, currentTimeMinutes, orderBy, setContext, setCurrentEnergy, setCurrentTimeMinutes, setOrderBy };
 }
 

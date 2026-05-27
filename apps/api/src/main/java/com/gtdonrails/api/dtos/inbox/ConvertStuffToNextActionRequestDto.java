@@ -1,6 +1,7 @@
 package com.gtdonrails.api.dtos.inbox;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -33,6 +34,8 @@ public record ConvertStuffToNextActionRequestDto(
     @Size(
         max = Context.MAX_CONTEXTS_PER_ITEM,
         message = "expected at most " + Context.MAX_CONTEXTS_PER_ITEM + " context IDs")
-    List<UUID> contextIds
+    List<UUID> contextIds,
+
+    LocalDate deadline
 ) {
 }

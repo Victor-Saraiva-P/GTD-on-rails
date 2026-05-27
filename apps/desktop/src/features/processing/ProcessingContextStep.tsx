@@ -28,13 +28,11 @@ function contextItemClassName(isFocused: boolean, isSelected: boolean): string {
   return classNames.join(" ");
 }
 
-function syncSelectedIds(setSelectedIds: (updater: (currentIds: string[]) => string[]) => void, selectedIdsRef: MutableRefObject<string[]>, contextId: string, onChange?: (contextIds: string[]) => void) {
-  setSelectedIds((currentIds) => {
-    const nextIds = toggleContextId(currentIds, contextId);
-    selectedIdsRef.current = nextIds;
-    onChange?.(nextIds);
-    return nextIds;
-  });
+function syncSelectedIds(model: SelectedIdsModel, contextId: string, onChange?: (contextIds: string[]) => void) {
+  const nextIds = toggleContextId(model.selectedIdsRef.current, contextId);
+  model.selectedIdsRef.current = nextIds;
+  model.setSelectedIds(nextIds);
+  onChange?.(nextIds);
 }
 
 /**
@@ -69,7 +67,7 @@ export function ProcessingContextStep({ onContextsSelected, onSelectedIdsChange,
   const toggleFocusedContext = () => {
     const focusedContext = contextsRef.current[focusedIndexRef.current];
     if (!focusedContext) return;
-    syncSelectedIds(setSelectedIds, selectedIdsRef, focusedContext.id, onSelectedIdsChange);
+    syncSelectedIds({ selectedIdsRef, setSelectedIds }, focusedContext.id, onSelectedIdsChange);
   };
 
   useEffect(() => {
@@ -115,7 +113,7 @@ export function ProcessingContextStep({ onContextsSelected, onSelectedIdsChange,
                 tabIndex={-1}
                 className={contextItemClassName(index === focusedIndex, isSelected)}
                 aria-selected={isSelected}
-                onClick={() => syncSelectedIds(setSelectedIds, selectedIdsRef, context.id, onSelectedIdsChange)}
+                onClick={() => syncSelectedIds({ selectedIdsRef, setSelectedIds }, context.id, onSelectedIdsChange)}
                 onMouseEnter={() => {
                   focusedIndexRef.current = index;
                   setFocusedIndex(index);
@@ -132,3 +130,8 @@ export function ProcessingContextStep({ onContextsSelected, onSelectedIdsChange,
     </div>
   );
 }
+
+type SelectedIdsModel = {
+  selectedIdsRef: MutableRefObject<string[]>;
+  setSelectedIds: (contextIds: string[]) => void;
+};

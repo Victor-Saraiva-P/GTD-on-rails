@@ -19,12 +19,13 @@ import type { SegmentedCalendarDateState } from "../src/features/processing/proc
 
 describe("processing flow", () => {
   test("initial keyboard choices branch to next actions or calendar", () => {
-    assert.equal(stepAfterInitialChoice("next-action"), "select-context");
+    assert.equal(stepAfterInitialChoice("next-action"), "set-deadline");
     assert.equal(stepAfterInitialChoice("calendar"), "set-calendar-date");
   });
 
   test("escape goes back after the initial step", () => {
-    assert.equal(previousProcessingStep("select-context"), "initial");
+    assert.equal(previousProcessingStep("set-deadline"), "initial");
+    assert.equal(previousProcessingStep("select-context"), "set-deadline");
     assert.equal(previousProcessingStep("set-energy"), "select-context");
     assert.equal(previousProcessingStep("set-time"), "set-energy");
     assert.equal(previousProcessingStep("set-calendar-date"), "initial");

@@ -1,5 +1,7 @@
 import type { NextActionOrder } from "./types";
 
+export const DEFAULT_NEXT_ACTION_ORDER: NextActionOrder = "priority";
+
 /**
  * Returns the next ordering mode for the next-actions page.
  *

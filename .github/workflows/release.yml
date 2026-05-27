@@ -54,6 +54,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Check app version sync
+        run: pnpm version:check
+
       - name: Build Tauri app
         run: pnpm run desktop:build:ci
         working-directory: apps/desktop

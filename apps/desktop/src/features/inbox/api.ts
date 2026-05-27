@@ -167,10 +167,11 @@ export async function processStuff(
   item: Stuff,
   energy: number | null,
   estimatedTimeMinutes: number | null,
-  contextIds: string[]
+  contextIds: string[],
+  deadline: string | null
 ): Promise<void> {
   const estimatedTime = buildEstimatedTimePayload(estimatedTimeMinutes);
-  const payload = { energy: energy ?? 0, estimatedTime, contextIds };
+  const payload = { energy: energy ?? 0, estimatedTime, contextIds, deadline };
 
   await apiFetch(`/inbox/${item.id}/next-action`, {
     method: "POST",

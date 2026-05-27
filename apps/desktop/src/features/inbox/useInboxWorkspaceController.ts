@@ -321,14 +321,14 @@ async function autosaveEditingSelectedStuffBodyAction(model: InboxModel, body: I
   clearPendingBodyEdit(model);
 }
 
-async function processSelectedStuffAction(model: InboxModel, energy: number | null, estimatedTimeMinutes: number | null, contextIds: string[]) {
+async function processSelectedStuffAction(model: InboxModel, energy: number | null, estimatedTimeMinutes: number | null, contextIds: string[], deadline: string | null) {
   const selectedItem = model.selection.selectedItem;
 
   if (!selectedItem) {
     return;
   }
 
-  await model.query.processStuff(selectedItem, energy, estimatedTimeMinutes, contextIds);
+  await model.query.processStuff(selectedItem, energy, estimatedTimeMinutes, contextIds, deadline);
   model.selection.setSelectedId(model.query.stuffs[0]?.id ?? null);
   clearAllEditing(model);
   model.zone.setActiveZone("inbox-list");
@@ -356,7 +356,7 @@ function useInboxWorkspaceActions(model: InboxModel) {
     commitEditingSelectedStuffBody: (body: ItemBody) => commitEditingSelectedStuffBodyAction(model, body),
     createNewStuff: async () => { createNewStuffAction(model); },
     deleteSelectedStuff: () => deleteSelectedStuffAction(model),
-    processSelectedStuff: (energy: number | null, estimatedTimeMinutes: number | null, contextIds: string[]) => processSelectedStuffAction(model, energy, estimatedTimeMinutes, contextIds),
+    processSelectedStuff: (energy: number | null, estimatedTimeMinutes: number | null, contextIds: string[], deadline: string | null) => processSelectedStuffAction(model, energy, estimatedTimeMinutes, contextIds, deadline),
     processSelectedStuffToCalendar: (payload: CalendarConversionPayload) => processSelectedStuffToCalendarAction(model, payload),
     undo: () => undoAction(model),
     redo: () => redoAction(model),
