@@ -10,7 +10,8 @@ export type ScreenId =
   | "deleted-next-actions"
   | "stuff-detail"
   | "next-action-detail-page"
-  | "ongoing-next-action-detail-page";
+  | "ongoing-next-action-detail-page"
+  | "google-calendar-integration";
 
 export type FocusZoneId =
   | "inbox-list"

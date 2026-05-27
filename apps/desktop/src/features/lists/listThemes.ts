@@ -97,3 +97,10 @@ export const contextsListTheme: ListTheme = {
   accentColor: "#97353d",
   accentColorRgb: "151, 53, 61"
 };
+
+export const googleCalendarIntegrationTheme: ListTheme = {
+  id: "google-calendar-integration",
+  label: "Google Calendar Integration",
+  accentColor: "#4285F4",
+  accentColorRgb: "66, 133, 244"
+};
