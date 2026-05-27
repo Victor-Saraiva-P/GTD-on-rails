@@ -34,6 +34,8 @@ test("selects multiple next action contexts with keyboard", async ({ page, reque
   await page.keyboard.press("n");
 
   const dialog = page.getByRole("dialog", { name: "Processing" });
+  await expect(dialog.getByRole("textbox", { name: "Deadline:" })).toHaveText("__/__/____");
+  await page.keyboard.press("Enter");
   await expect(dialog.getByText(firstContext)).toBeVisible();
   await expect(dialog.getByText(secondContext)).toBeVisible();
   await page.keyboard.press("Tab");
@@ -42,6 +44,30 @@ test("selects multiple next action contexts with keyboard", async ({ page, reque
   await page.keyboard.press("Enter");
 
   await expect(dialog.getByText("Energy level")).toBeVisible();
+});
+
+test("enters next action deadline before contexts", async ({ page }) => {
+  const title = uniqueLabel("Processing deadline");
+  await createAndSelectInboxStuff(page, title);
+
+  await page.keyboard.press("p");
+  await page.keyboard.press("n");
+
+  const dialog = page.getByRole("dialog", { name: "Processing" });
+  const dateControl = dialog.getByRole("textbox", { name: "Deadline:" });
+  await expect(dateControl).toHaveText("__/__/____");
+  await page.keyboard.type("29022028");
+  await expect(dateControl).toHaveText("29/02/2028");
+
+  const nextActionRequestPromise = page.waitForRequest((request) => request.url().endsWith("/next-action") && request.method() === "POST");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Enter");
+
+  const nextActionRequest = await nextActionRequestPromise;
+  const payload = nextActionRequest.postDataJSON() as NextActionProcessingRequestPayload;
+  expect(payload.deadline).toEqual("2028-02-29");
 });
 
 test("enters calendar date with segmented keyboard input", async ({ page }) => {
@@ -106,4 +132,8 @@ function datePart(value: number, width: number): string {
 type CalendarProcessingRequestPayload = {
   scheduledDate: string;
   scheduledTime: string | null;
+};
+
+type NextActionProcessingRequestPayload = {
+  deadline: string | null;
 };

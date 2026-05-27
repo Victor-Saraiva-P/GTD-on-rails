@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -143,6 +144,7 @@ class InboxServiceTests {
         verify(itemRepository).save(stuff);
         assertEquals(new BigDecimal("4.5"), stuff.getNextAction().getEnergy());
         assertEquals(Duration.ofMinutes(90), stuff.getNextAction().getEstimatedTime());
+        assertEquals(LocalDate.parse("2028-02-29"), stuff.getNextAction().getDeadline());
         assertEquals(context, stuff.getNextAction().getContexts().iterator().next());
         verify(persistenceGitSyncService).requestSync("stuff converted to next action", PersistenceChangeType.UPDATE_ITEM);
     }
@@ -184,7 +186,8 @@ class InboxServiceTests {
         return new ConvertStuffToNextActionRequestDto(
             new BigDecimal("4.5"),
             new ItemTimeRequestDto(1L, 30),
-            contextIds);
+            contextIds,
+            LocalDate.parse("2028-02-29"));
     }
 
     private StuffResponseDto stuffResponse(String title) {

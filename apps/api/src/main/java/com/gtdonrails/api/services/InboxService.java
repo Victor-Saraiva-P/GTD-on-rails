@@ -11,6 +11,7 @@ import com.gtdonrails.api.dtos.inbox.CreateStuffRequestDto;
 import com.gtdonrails.api.dtos.inbox.StuffResponseDto;
 import com.gtdonrails.api.entities.Context;
 import com.gtdonrails.api.entities.Item;
+import com.gtdonrails.api.entities.NextAction;
 import com.gtdonrails.api.enums.ItemStatus;
 import com.gtdonrails.api.exceptions.context.ContextNotFoundException;
 import com.gtdonrails.api.exceptions.item.ItemNotFoundException;
@@ -110,7 +111,8 @@ public class InboxService {
     public void convertStuffToNextAction(UUID id, ConvertStuffToNextActionRequestDto request) {
         Item item = findStuff(id);
         Set<Context> contexts = findContextsOrThrow(request.contextIds());
-        item.convertToNextAction(request.energy(), request.estimatedTime().toDuration(), contexts);
+        NextAction nextAction = item.convertToNextAction(request.energy(), request.estimatedTime().toDuration(), contexts);
+        nextAction.setDeadline(request.deadline());
         itemRepository.save(item);
         requestPersistenceSyncAfterCommit("stuff converted to next action", PersistenceChangeType.UPDATE_ITEM);
     }

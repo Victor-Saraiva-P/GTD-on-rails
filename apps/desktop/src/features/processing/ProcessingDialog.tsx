@@ -6,6 +6,7 @@ import { ProcessingCalendarTimeStep } from "./ProcessingCalendarTimeStep";
 import { ProcessingContextStep } from "./ProcessingContextStep";
 import { ProcessingEnergyStep } from "./ProcessingEnergyStep";
 import { ProcessingTimeStep } from "./ProcessingTimeStep";
+import { NextActionDeadlineStep } from "../next-actions/NextActionDeadlineStep";
 import { buildCalendarPayload, previousProcessingStep, stepAfterInitialChoice } from "./processingFlow";
 import type { CalendarConversionPayload } from "../calendar/types";
 import type { ProcessingStep } from "./processingFlow";
@@ -13,7 +14,7 @@ import type { ProcessingStep } from "./processingFlow";
 type ProcessingDialogProps = {
   item: Stuff;
   onClose: () => void;
-  onProcess: (energy: number | null, estimatedTimeMinutes: number | null, contextIds: string[]) => void;
+  onProcess: (energy: number | null, estimatedTimeMinutes: number | null, contextIds: string[], deadline: string | null) => void;
   onProcessCalendar: (payload: CalendarConversionPayload) => void;
 };
 
@@ -25,6 +26,7 @@ type ProcessingDialogProps = {
 export function ProcessingDialog({ item, onClose, onProcess, onProcessCalendar }: ProcessingDialogProps) {
   const [step, setStep] = useState<ProcessingStep>("initial");
   const [selectedContextIds, setSelectedContextIds] = useState<string[]>([]);
+  const [selectedDeadline, setSelectedDeadline] = useState("");
   const [selectedEnergyDigits, setSelectedEnergyDigits] = useState("");
   const [selectedTimeDigits, setSelectedTimeDigits] = useState("");
   const [selectedCalendarDate, setSelectedCalendarDate] = useState("");
@@ -43,13 +45,18 @@ export function ProcessingDialog({ item, onClose, onProcess, onProcessCalendar }
     setStep("set-energy");
   };
 
+  const handleDeadlineSelected = (deadline: string | null) => {
+    setSelectedDeadline(deadline ?? "");
+    setStep("select-context");
+  };
+
   const handleEnergySelected = (energy: number | null) => {
     setStep("set-time");
   };
 
   const handleTimeSelected = (minutes: number | null) => {
     const energy = selectedEnergyDigits ? parseInt(selectedEnergyDigits, 10) / 10 : null;
-    onProcess(energy, minutes, selectedContextIds);
+    onProcess(energy, minutes, selectedContextIds, selectedDeadline || null);
   };
 
   const handleCalendarDateSelected = (scheduledDate: string) => {
@@ -75,6 +82,9 @@ export function ProcessingDialog({ item, onClose, onProcess, onProcessCalendar }
         )}
         {step === "set-calendar-time" && (
           <ProcessingCalendarTimeStep digits={selectedCalendarTimeDigits} onDigitsChange={setSelectedCalendarTimeDigits} onTimeSelected={handleCalendarTimeSelected} onBack={handleBack} />
+        )}
+        {step === "set-deadline" && (
+          <NextActionDeadlineStep value={selectedDeadline} onDeadlineChange={setSelectedDeadline} onDeadlineSelected={handleDeadlineSelected} onBack={handleBack} />
         )}
         {step === "select-context" && (
           <ProcessingContextStep onContextsSelected={handleContextsSelected} onSelectedIdsChange={setSelectedContextIds} onBack={handleBack} initialSelectedIds={selectedContextIds} />

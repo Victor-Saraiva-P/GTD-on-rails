@@ -23,7 +23,7 @@ type InboxStuffsQueryState = {
   errorMessage: string | null;
   createStuff: (title: string) => Promise<Stuff>;
   deleteStuff: (id: string) => Promise<void>;
-  processStuff: (item: Stuff, energy: number | null, estimatedTimeMinutes: number | null, contextIds: string[]) => Promise<void>;
+  processStuff: (item: Stuff, energy: number | null, estimatedTimeMinutes: number | null, contextIds: string[], deadline: string | null) => Promise<void>;
   processStuffToCalendar: (item: Stuff, payload: CalendarConversionPayload) => Promise<void>;
   restoreStuff: (id: string) => Promise<void>;
   updateStuffBody: (item: Stuff, body: ItemBody) => Promise<Stuff>;
@@ -187,7 +187,7 @@ function useInboxStuffsMutations(state: InboxLoadState, mutations: InboxMutation
     createStuff: (title: string) => createInboxStuff(title, state, mutations, triggerSyncStatusPolling),
     deleteStuff: (id: string) => deleteInboxStuff(id, state, mutations, triggerSyncStatusPolling),
     processStuffToCalendar: (item: Stuff, payload: CalendarConversionPayload) => processInboxStuff(() => processStuffToCalendarRequest(item, payload), state, mutations, triggerSyncStatusPolling),
-    processStuff: (item: Stuff, energy: number | null, estimatedTimeMinutes: number | null, contextIds: string[]) => processInboxStuff(() => processStuffRequest(item, energy, estimatedTimeMinutes, contextIds), state, mutations, triggerSyncStatusPolling),
+    processStuff: (item: Stuff, energy: number | null, estimatedTimeMinutes: number | null, contextIds: string[], deadline: string | null) => processInboxStuff(() => processStuffRequest(item, energy, estimatedTimeMinutes, contextIds, deadline), state, mutations, triggerSyncStatusPolling),
     restoreStuff: (id: string) => restoreInboxStuff(id, state, mutations, triggerSyncStatusPolling),
     updateStuffBody: (item: Stuff, body: ItemBody) => updateInboxStuff(() => updateStuffBodyRequest(item, body), state, mutations, triggerSyncStatusPolling),
     updateStuffTitle: (item: Stuff, title: string) => updateInboxStuff(() => updateStuffTitleRequest(item, title), state, mutations, triggerSyncStatusPolling)
