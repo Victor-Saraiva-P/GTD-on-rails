@@ -39,7 +39,7 @@ public class GoogleCalendarController {
     @Value("${gtd.data.root-directory}")
     private String dataRoot;
 
-    @GetMapping("/api/integrations/google-calendar/status")
+    @GetMapping("/integrations/google-calendar/status")
     public ResponseEntity<Map<String, Object>> getStatus() {
         boolean credentialsConfigured = googleProperties.getClientId() != null && !googleProperties.getClientId().isEmpty();
         GoogleCredential cred = googleCalendarService.getValidCredential();
@@ -58,7 +58,7 @@ public class GoogleCalendarController {
         return ResponseEntity.ok(status);
     }
 
-    @PostMapping("/api/integrations/google-calendar/credentials")
+    @PostMapping("/integrations/google-calendar/credentials")
     public ResponseEntity<Void> saveCredentials(@RequestBody Map<String, String> payload) {
         String clientId = payload.get("clientId");
         String clientSecret = payload.get("clientSecret");
@@ -85,7 +85,7 @@ public class GoogleCalendarController {
         }
     }
 
-    @PostMapping("/api/integrations/google-calendar/auth-url")
+    @PostMapping("/integrations/google-calendar/auth-url")
     public ResponseEntity<Map<String, String>> getAuthUrl() {
         String redirectUri = ServletUriComponentsBuilder.fromCurrentContextPath().path("/oauth/google/callback").toUriString();
         String url = googleCalendarService.buildAuthUrl(redirectUri);

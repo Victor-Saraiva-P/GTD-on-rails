@@ -60,7 +60,7 @@ class GoogleCalendarControllerTests {
     void getStatusReturnsNotConfiguredInitially() throws Exception {
         when(googleCalendarService.getValidCredential()).thenReturn(null);
 
-        mockMvc.perform(get("/api/integrations/google-calendar/status"))
+        mockMvc.perform(get("/integrations/google-calendar/status"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.credentialsConfigured").value(false))
             .andExpect(jsonPath("$.connected").value(false))
@@ -82,7 +82,7 @@ class GoogleCalendarControllerTests {
         cal.setGoogleCalendarId("cal-id");
         calendarRepository.save(cal);
 
-        mockMvc.perform(get("/api/integrations/google-calendar/status"))
+        mockMvc.perform(get("/integrations/google-calendar/status"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.credentialsConfigured").value(true))
             .andExpect(jsonPath("$.connected").value(true))
@@ -93,7 +93,7 @@ class GoogleCalendarControllerTests {
 
     @Test
     void saveCredentialsUpdatesProperties() throws Exception {
-        mockMvc.perform(post("/api/integrations/google-calendar/credentials")
+        mockMvc.perform(post("/integrations/google-calendar/credentials")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -108,7 +108,7 @@ class GoogleCalendarControllerTests {
 
     @Test
     void saveCredentialsRejectsEmptyPayload() throws Exception {
-        mockMvc.perform(post("/api/integrations/google-calendar/credentials")
+        mockMvc.perform(post("/integrations/google-calendar/credentials")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
