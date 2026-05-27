@@ -1,0 +1,189 @@
+package com.gtdonrails.api.services;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestTemplate;
+
+import com.google.api.client.http.HttpRequestInitializer;
+import com.google.api.client.http.javanet.NetHttpTransport;
+import com.google.api.client.json.gson.GsonFactory;
+import com.google.api.services.calendar.Calendar;
+import com.google.api.services.calendar.model.CalendarListEntry;
+import com.gtdonrails.api.config.GoogleProperties;
+import com.gtdonrails.api.entities.GoogleCalendar;
+import com.gtdonrails.api.entities.GoogleCredential;
+import com.gtdonrails.api.repositories.GoogleCalendarRepository;
+import com.gtdonrails.api.repositories.GoogleCredentialRepository;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class GoogleCalendarService {
+
+    private final GoogleProperties googleProperties;
+    private final GoogleCredentialRepository credentialRepository;
+    private final GoogleCalendarRepository calendarRepository;
+    private final RestTemplate restTemplate = new RestTemplate();
+
+    public String buildAuthUrl(String redirectUri) {
+        return "https://accounts.google.com/o/oauth2/v2/auth?" +
+                "client_id=" + googleProperties.getClientId() +
+                "&redirect_uri=" + redirectUri +
+                "&response_type=code" +
+                "&scope=https://www.googleapis.com/auth/calendar" +
+                "&access_type=offline" +
+                "&prompt=consent";
+    }
+
+    @Transactional
+    public void exchangeCodeForTokens(String code, String redirectUri) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+        MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
+        body.add("client_id", googleProperties.getClientId());
+        body.add("client_secret", googleProperties.getClientSecret());
+        body.add("code", code);
+        body.add("grant_type", "authorization_code");
+        body.add("redirect_uri", redirectUri);
+
+        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
+
+        ResponseEntity<Map> response = restTemplate.postForEntity(
+                "https://oauth2.googleapis.com/token",
+                request,
+                Map.class);
+
+        Map<String, Object> data = response.getBody();
+        if (data != null && data.containsKey("access_token")) {
+            GoogleCredential cred = credentialRepository.findAll().stream().findFirst().orElse(new GoogleCredential());
+            cred.setAccessToken((String) data.get("access_token"));
+            if (data.containsKey("refresh_token")) {
+                cred.setRefreshToken((String) data.get("refresh_token"));
+            }
+            cred.setTokenType((String) data.get("token_type"));
+            int expiresIn = ((Number) data.get("expires_in")).intValue();
+            cred.setExpiresAt(Instant.now().plusSeconds(expiresIn));
+            cred.setScope((String) data.get("scope"));
+            
+            credentialRepository.save(cred);
+        }
+    }
+
+    @Transactional
+    public GoogleCredential getValidCredential() {
+        Optional<GoogleCredential> opt = credentialRepository.findAll().stream().findFirst();
+        if (opt.isEmpty()) return null;
+        
+        GoogleCredential cred = opt.get();
+        if (cred.getExpiresAt().isBefore(Instant.now().plusSeconds(60))) {
+            return refreshAccessToken(cred);
+        }
+        return cred;
+    }
+
+    private GoogleCredential refreshAccessToken(GoogleCredential cred) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+        MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
+        body.add("client_id", googleProperties.getClientId());
+        body.add("client_secret", googleProperties.getClientSecret());
+        body.add("refresh_token", cred.getRefreshToken());
+        body.add("grant_type", "refresh_token");
+
+        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
+
+        try {
+            ResponseEntity<Map> response = restTemplate.postForEntity(
+                    "https://oauth2.googleapis.com/token",
+                    request,
+                    Map.class);
+            Map<String, Object> data = response.getBody();
+            if (data != null && data.containsKey("access_token")) {
+                cred.setAccessToken((String) data.get("access_token"));
+                int expiresIn = ((Number) data.get("expires_in")).intValue();
+                cred.setExpiresAt(Instant.now().plusSeconds(expiresIn));
+                return credentialRepository.save(cred);
+            }
+        } catch (Exception e) {
+            log.error("Failed to refresh token", e);
+        }
+        return cred;
+    }
+
+    public Calendar getCalendarClient() {
+        GoogleCredential cred = getValidCredential();
+        if (cred == null) throw new IllegalStateException("Not connected to Google Calendar");
+
+        HttpRequestInitializer requestInitializer = request -> {
+            request.getHeaders().setAuthorization("Bearer " + cred.getAccessToken());
+        };
+
+        return new Calendar.Builder(
+                new NetHttpTransport(),
+                GsonFactory.getDefaultInstance(),
+                requestInitializer)
+                .setApplicationName("GTD-on-Rails")
+                .build();
+    }
+
+    @Transactional
+    public void setupGtdCalendars() {
+        Calendar client = getCalendarClient();
+        try {
+            List<CalendarListEntry> existing = client.calendarList().list().execute().getItems();
+            
+            createOrUpdateCalendar(client, existing, "Next Action", "#4F9768", "10"); // Google's closest Green
+            createOrUpdateCalendar(client, existing, "Calendar", "#c85a53", "11"); // Google's closest Red
+            createOrUpdateCalendar(client, existing, "On Going", "#9B5AB7", "3"); // Google's closest Purple
+            createOrUpdateCalendar(client, existing, "Done", "#7F8D3F", "5"); // Google's closest Yellow/Green
+            
+        } catch (Exception e) {
+            log.error("Failed to setup GTD calendars", e);
+            throw new RuntimeException("Failed to setup calendars", e);
+        }
+    }
+
+    private void createOrUpdateCalendar(Calendar client, List<CalendarListEntry> existing, String name, String colorHex, String colorId) throws Exception {
+        GoogleCalendar dbCal = calendarRepository.findByName(name);
+        if (dbCal != null) return;
+
+        Optional<CalendarListEntry> found = existing == null ? Optional.empty() : existing.stream().filter(c -> name.equals(c.getSummary())).findFirst();
+        String googleCalendarId;
+        
+        if (found.isPresent()) {
+            googleCalendarId = found.get().getId();
+        } else {
+            com.google.api.services.calendar.model.Calendar newCal = new com.google.api.services.calendar.model.Calendar();
+            newCal.setSummary(name);
+            com.google.api.services.calendar.model.Calendar created = client.calendars().insert(newCal).execute();
+            googleCalendarId = created.getId();
+            
+            CalendarListEntry entry = new CalendarListEntry();
+            entry.setId(googleCalendarId);
+            entry.setColorId(colorId);
+            client.calendarList().update(googleCalendarId, entry).execute();
+        }
+
+        dbCal = new GoogleCalendar();
+        dbCal.setName(name);
+        dbCal.setColorHex(colorHex);
+        dbCal.setGoogleCalendarId(googleCalendarId);
+        calendarRepository.save(dbCal);
+    }
+}
