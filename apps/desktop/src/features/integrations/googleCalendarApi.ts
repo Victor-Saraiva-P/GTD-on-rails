@@ -1,4 +1,4 @@
-import { apiJson, apiFetch } from "../../lib/api/apiClient";
+import { apiJson, apiFetch } from "../../lib/api/apiClient.ts";
 
 export type GoogleCalendarInfo = {
   name: string;
