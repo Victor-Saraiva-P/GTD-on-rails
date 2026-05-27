@@ -148,10 +148,10 @@ public class GoogleCalendarService {
         try {
             List<CalendarListEntry> existing = client.calendarList().list().execute().getItems();
             
-            createOrUpdateCalendar(client, existing, "Next Action", "#4F9768", "10"); // Google's closest Green
-            createOrUpdateCalendar(client, existing, "Calendar", "#c85a53", "11"); // Google's closest Red
-            createOrUpdateCalendar(client, existing, "On Going", "#9B5AB7", "3"); // Google's closest Purple
-            createOrUpdateCalendar(client, existing, "Done", "#7F8D3F", "5"); // Google's closest Yellow/Green
+            createOrUpdateCalendar(client, existing, "Next Action", "#4F9768");
+            createOrUpdateCalendar(client, existing, "Calendar", "#c85a53");
+            createOrUpdateCalendar(client, existing, "On Going", "#9B5AB7");
+            createOrUpdateCalendar(client, existing, "Done", "#7F8D3F");
             
         } catch (Exception e) {
             log.error("Failed to setup GTD calendars", e);
@@ -159,31 +159,45 @@ public class GoogleCalendarService {
         }
     }
 
-    private void createOrUpdateCalendar(Calendar client, List<CalendarListEntry> existing, String name, String colorHex, String colorId) throws Exception {
+    private void createOrUpdateCalendar(Calendar client, List<CalendarListEntry> existing, String name, String colorHex) throws Exception {
         GoogleCalendar dbCal = calendarRepository.findByName(name);
-        if (dbCal != null) return;
-
         Optional<CalendarListEntry> found = existing == null ? Optional.empty() : existing.stream().filter(c -> name.equals(c.getSummary())).findFirst();
-        String googleCalendarId;
+        String googleCalendarId = null;
+        boolean existsOnGoogle = false;
         
-        if (found.isPresent()) {
+        if (dbCal != null) {
+            String dbId = dbCal.getGoogleCalendarId();
+            if (existing != null && existing.stream().anyMatch(c -> dbId.equals(c.getId()))) {
+                googleCalendarId = dbId;
+                existsOnGoogle = true;
+            }
+        }
+        
+        if (!existsOnGoogle && found.isPresent()) {
             googleCalendarId = found.get().getId();
-        } else {
+            existsOnGoogle = true;
+        }
+
+        if (!existsOnGoogle) {
             com.google.api.services.calendar.model.Calendar newCal = new com.google.api.services.calendar.model.Calendar();
             newCal.setSummary(name);
             com.google.api.services.calendar.model.Calendar created = client.calendars().insert(newCal).execute();
             googleCalendarId = created.getId();
-            
-            CalendarListEntry entry = new CalendarListEntry();
-            entry.setId(googleCalendarId);
-            entry.setColorId(colorId);
-            client.calendarList().update(googleCalendarId, entry).execute();
         }
 
-        dbCal = new GoogleCalendar();
-        dbCal.setName(name);
-        dbCal.setColorHex(colorHex);
+        // Always ensure the calendar list entry has the exact requested color
+        CalendarListEntry entry = new CalendarListEntry();
+        entry.setId(googleCalendarId);
+        entry.setBackgroundColor(colorHex);
+        entry.setForegroundColor("#FFFFFF");
+        client.calendarList().update(googleCalendarId, entry).setColorRgbFormat(true).execute();
+
+        if (dbCal == null) {
+            dbCal = new GoogleCalendar();
+            dbCal.setName(name);
+        }
         dbCal.setGoogleCalendarId(googleCalendarId);
+        dbCal.setColorHex(colorHex);
         calendarRepository.save(dbCal);
     }
 }
