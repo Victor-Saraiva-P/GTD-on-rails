@@ -21,6 +21,8 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import com.gtdonrails.api.config.GoogleProperties;
 import com.gtdonrails.api.entities.GoogleCalendar;
 import com.gtdonrails.api.entities.GoogleCredential;
+import com.gtdonrails.api.persistence.bootstrap.model.PersistenceChangeType;
+import com.gtdonrails.api.persistence.bootstrap.services.PersistenceGitSyncService;
 import com.gtdonrails.api.repositories.GoogleCalendarRepository;
 import com.gtdonrails.api.services.GoogleCalendarService;
 
@@ -35,9 +37,10 @@ public class GoogleCalendarController {
     private final GoogleCalendarService googleCalendarService;
     private final GoogleCalendarRepository calendarRepository;
     private final GoogleProperties googleProperties;
+    private final PersistenceGitSyncService syncService;
 
-    @Value("${gtd.data.root-directory}")
-    private String dataRoot;
+    @Value("${gtd.persistence.bootstrap.clone-directory}")
+    private String persistenceDir;
 
     @GetMapping("/integrations/google-calendar/status")
     public ResponseEntity<Map<String, Object>> getStatus() {
@@ -68,7 +71,7 @@ public class GoogleCalendarController {
         }
 
         try {
-            Path configPath = Paths.get(dataRoot, "config", "google.properties");
+            Path configPath = Paths.get(persistenceDir, "config", "google.properties");
             Files.createDirectories(configPath.getParent());
             String content = "gtd.google.client-id=" + clientId.trim() + "\n" +
                              "gtd.google.client-secret=" + clientSecret.trim() + "\n";
@@ -77,6 +80,8 @@ public class GoogleCalendarController {
             // Hot reload properties for current session
             googleProperties.setClientId(clientId.trim());
             googleProperties.setClientSecret(clientSecret.trim());
+            
+            syncService.requestSync("integration credentials updated", PersistenceChangeType.UPDATE_INTEGRATION_CREDENTIALS);
             
             return ResponseEntity.ok().build();
         } catch (Exception e) {
