@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { fetchGoogleCalendarStatus, getAuthUrl, type GoogleCalendarStatus } from "./googleCalendarApi";
+import { openExternalUrl } from "../inbox/openExternalResource";
 
 export type GoogleCalendarIntegrationController = ReturnType<typeof useGoogleCalendarIntegrationController>;
 
@@ -20,7 +21,7 @@ export function useGoogleCalendarIntegrationController() {
   const connect = async () => {
     try {
       const { url } = await getAuthUrl();
-      window.open(url, "_blank", "noreferrer");
+      await openExternalUrl(url);
     } catch (e: any) {
       setError(e.message);
     }
