@@ -155,7 +155,8 @@ class InboxControllerTests {
                     {
                       "energy": 4.5,
                       "estimatedTime": { "hours": 1, "minutes": 30 },
-                      "contextIds": ["%s"]
+                      "contextIds": ["%s"],
+                      "deadline": "2028-02-29"
                     }
                     """.formatted(context.getId())))
             .andExpect(status().isNoContent());

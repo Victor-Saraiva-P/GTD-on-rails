@@ -39,3 +39,28 @@ test("edits selected next action contexts with keyboard flow", async ({ page, re
   await expect(page.getByText(firstContext)).toBeVisible();
   await expect(page.getByText(secondContext)).toBeVisible();
 });
+
+test("edits selected next action deadline with segmented keyboard flow", async ({ page, request }) => {
+  const title = uniqueLabel("Next action deadline");
+  const stuff = await createStuffApi(request, title);
+  await convertStuffToNextActionApi(request, stuff.id);
+
+  await page.reload();
+  await page.locator("main").click();
+  await page.keyboard.press(" ");
+  await page.keyboard.press("n");
+  await page.getByRole("button", { name: title }).first().click();
+  await page.keyboard.press("Shift+E");
+
+  const dialog = page.getByRole("dialog", { name: "Edit next action" });
+  await page.keyboard.press("d");
+  const dateControl = dialog.getByRole("textbox", { name: "Deadline:" });
+  await expect(dateControl).toHaveText("__/__/____");
+  const deadlineRequestPromise = page.waitForRequest((request) => request.url().includes("/next-actions/") && request.method() === "PATCH");
+  await page.keyboard.type("29022028");
+  await page.keyboard.press("Enter");
+
+  const deadlineRequest = await deadlineRequestPromise;
+  expect(deadlineRequest.postDataJSON()).toEqual({ deadline: "2028-02-29" });
+  await expect(dialog).not.toBeVisible();
+});

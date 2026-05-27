@@ -152,10 +152,10 @@ describe("inbox API", () => {
     globalThis.fetch = mock.fn(async (input, init) => {
       assert.ok(input.toString().endsWith("/inbox/5/next-action"));
       assert.equal(init?.method, "POST");
-      assert.equal(init?.body, JSON.stringify({ energy: 4.5, estimatedTime: { hours: 1, minutes: 30 }, contextIds: ["ctx-1"] }));
+      assert.equal(init?.body, JSON.stringify({ energy: 4.5, estimatedTime: { hours: 1, minutes: 30 }, contextIds: ["ctx-1"], deadline: "2028-02-29" }));
       return new Response(null, { status: 204 });
     });
 
-    await processStuff(item, 4.5, 90, ["ctx-1"]);
+    await processStuff(item, 4.5, 90, ["ctx-1"], "2028-02-29");
   });
 });

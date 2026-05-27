@@ -291,8 +291,8 @@ export function InboxPage({ controller }: InboxPageProps) {
   const openLinkCombo = useCallback(() => setIsLinkComboOpen(true), []);
   const openAssetCombo = useCallback(() => setIsAssetComboOpen(true), []);
   const openProcessing = useCallback(() => setIsProcessingOpen(true), []);
-  const processSelectedItem = (energy: number | null, time: number | null, contextIds: string[]) => {
-    void controller.processSelectedStuff(energy, time, contextIds);
+  const processSelectedItem = (energy: number | null, time: number | null, contextIds: string[], deadline: string | null) => {
+    void controller.processSelectedStuff(energy, time, contextIds, deadline);
     setIsProcessingOpen(false);
   };
   const processSelectedCalendarItem = (payload: CalendarConversionPayload) => {

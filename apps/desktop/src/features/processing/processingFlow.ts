@@ -2,6 +2,7 @@ import type { CalendarConversionPayload } from "../calendar/types";
 
 export type ProcessingStep =
   | "initial"
+  | "set-deadline"
   | "select-context"
   | "set-energy"
   | "set-time"
@@ -20,12 +21,13 @@ export type SegmentedCalendarDateState = {
 };
 
 export function stepAfterInitialChoice(choice: ProcessingInitialChoice): ProcessingStep {
-  return choice === "calendar" ? "set-calendar-date" : "select-context";
+  return choice === "calendar" ? "set-calendar-date" : "set-deadline";
 }
 
 export function previousProcessingStep(step: ProcessingStep): ProcessingStep {
   if (step === "set-time") return "set-energy";
   if (step === "set-energy") return "select-context";
+  if (step === "select-context") return "set-deadline";
   if (step === "set-calendar-time") return "set-calendar-date";
   return "initial";
 }
@@ -47,6 +49,16 @@ export function initialSegmentedCalendarDateState(currentDate: Date = new Date()
     day: paddedDatePart(currentDate.getDate(), 2),
     month: paddedDatePart(currentDate.getMonth() + 1, 2),
     year: paddedDatePart(currentDate.getFullYear(), 4),
+    activeSegment: "day",
+    activeDigitCount: 0
+  };
+}
+
+export function blankSegmentedCalendarDateState(): SegmentedCalendarDateState {
+  return {
+    day: "",
+    month: "",
+    year: "",
     activeSegment: "day",
     activeDigitCount: 0
   };
