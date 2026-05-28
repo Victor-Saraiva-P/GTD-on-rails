@@ -17,6 +17,8 @@ import org.springframework.stereotype.Service;
 public class GoogleCalendarApiEventGateway implements GoogleCalendarEventGateway {
 
     private static final int NOT_FOUND = 404;
+    // Google returns 410 when deleting an event that was already removed.
+    private static final int GONE = 410;
 
     private final GoogleCalendarService googleCalendarService;
 
@@ -37,10 +39,15 @@ public class GoogleCalendarApiEventGateway implements GoogleCalendarEventGateway
                 .delete(request.googleCalendarId(), request.eventId())
                 .execute();
         } catch (GoogleJsonResponseException exception) {
-            if (exception.getStatusCode() != NOT_FOUND) throw deleteException(request, exception);
+            if (!isAlreadyAbsent(exception)) throw deleteException(request, exception);
         } catch (IOException exception) {
             throw deleteException(request, exception);
         }
+    }
+
+    private boolean isAlreadyAbsent(GoogleJsonResponseException exception) {
+        int status = exception.getStatusCode();
+        return status == NOT_FOUND || status == GONE;
     }
 
     private void upsertEventOrThrow(GoogleCalendarEventRequest request) throws IOException {
@@ -60,7 +67,7 @@ public class GoogleCalendarApiEventGateway implements GoogleCalendarEventGateway
                 .execute();
             return true;
         } catch (GoogleJsonResponseException exception) {
-            if (exception.getStatusCode() == NOT_FOUND) return false;
+            if (isAlreadyAbsent(exception)) return false;
             throw exception;
         }
     }
