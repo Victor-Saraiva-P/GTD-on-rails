@@ -177,6 +177,7 @@ public class CalendarService {
         Calendar calendar = findCalendar(id);
         calendar.getItem().restore();
         CalendarResponseDto response = calendarMapper.toResponse(calendarRepository.save(calendar));
+        requestGoogleCalendarEventSyncAfterCommit(calendar);
         requestPersistenceSyncAfterCommit("calendar recovered", PersistenceChangeType.UPDATE_ITEM);
         return response;
     }

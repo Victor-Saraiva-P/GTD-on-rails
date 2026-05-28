@@ -27,6 +27,7 @@ public class ItemService {
     private final ItemBodyNormalizer itemBodyNormalizer;
     private final ItemAssetService itemAssetService;
     private final PersistenceGitSyncService persistenceGitSyncService;
+    private final GoogleCalendarEventSyncService googleCalendarEventSyncService;
     private final AfterCommitExecutor afterCommitExecutor;
 
     public ItemService(
@@ -36,6 +37,7 @@ public class ItemService {
         ItemBodyNormalizer itemBodyNormalizer,
         ItemAssetService itemAssetService,
         PersistenceGitSyncService persistenceGitSyncService,
+        GoogleCalendarEventSyncService googleCalendarEventSyncService,
         AfterCommitExecutor afterCommitExecutor
     ) {
         this.itemRepository = itemRepository;
@@ -44,6 +46,7 @@ public class ItemService {
         this.itemBodyNormalizer = itemBodyNormalizer;
         this.itemAssetService = itemAssetService;
         this.persistenceGitSyncService = persistenceGitSyncService;
+        this.googleCalendarEventSyncService = googleCalendarEventSyncService;
         this.afterCommitExecutor = afterCommitExecutor;
     }
 
@@ -88,6 +91,9 @@ public class ItemService {
         itemAssetService.softDeleteActiveItemAssets(id);
         item.softDelete();
         itemRepository.save(item);
+        if (item.getCalendar() != null) {
+            afterCommitExecutor.run(() -> googleCalendarEventSyncService.deleteCalendarEvent(item.getCalendar()));
+        }
         requestPersistenceSyncAfterCommit("item deleted", PersistenceChangeType.DELETE_ITEM);
     }
 
@@ -103,6 +109,9 @@ public class ItemService {
         item.restore();
         itemAssetService.reconcileBodyAssetReferences(id, item.getBody());
         itemRepository.save(item);
+        if (item.getCalendar() != null) {
+            afterCommitExecutor.run(() -> googleCalendarEventSyncService.syncCalendarEvent(item.getCalendar()));
+        }
         requestPersistenceSyncAfterCommit("item restored", PersistenceChangeType.UPDATE_ITEM);
     }
 

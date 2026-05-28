@@ -99,6 +99,15 @@ class CalendarServiceTests {
         verifyGoogleCalendarAndPersistenceSync("calendar status restored");
     }
 
+    @Test
+    void recoverCalendarSyncsGoogleCalendarEvent() {
+        calendar.getItem().softDelete();
+
+        calendarService.recoverCalendar(calendarId);
+
+        verifyGoogleCalendarAndPersistenceSync("calendar recovered");
+    }
+
     private void verifyGoogleCalendarAndPersistenceSync(String reason) {
         verify(googleCalendarEventSyncService).syncCalendarEvent(calendar);
         verify(persistenceGitSyncService).requestSync(reason, PersistenceChangeType.UPDATE_ITEM);

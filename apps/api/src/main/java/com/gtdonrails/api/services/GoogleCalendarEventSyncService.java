@@ -40,6 +40,24 @@ public class GoogleCalendarEventSyncService {
         deleteStaleEvents(calendar, calendarIds, eventId(itemId));
     }
 
+    /**
+     * Removes the GTD calendar event from all derived Google calendars.
+     *
+     * <p>Example: {@code syncService.deleteCalendarEvent(calendar)}.</p>
+     */
+    public void deleteCalendarEvent(Calendar calendar) {
+        Optional<GtdGoogleCalendarIds> readyIds = findReadyCalendarIds();
+        if (readyIds.isEmpty()) return;
+
+        UUID itemId = requireItemId(calendar);
+        String id = eventId(itemId);
+        GtdGoogleCalendarIds calendarIds = readyIds.get();
+
+        for (String googleCalendarId : calendarIds.allIds()) {
+            eventGateway.deleteEvent(new GoogleCalendarEventDeleteRequest(googleCalendarId, id));
+        }
+    }
+
     private Optional<GtdGoogleCalendarIds> findReadyCalendarIds() {
         if (googleCalendarService.getValidCredential() == null) return Optional.empty();
 
@@ -155,6 +173,10 @@ public class GoogleCalendarEventSyncService {
             return java.util.stream.Stream.of(calendarId, ongoingId, doneId)
                 .filter(id -> !id.equals(targetId(status)))
                 .toList();
+        }
+
+        private java.util.List<String> allIds() {
+            return java.util.List.of(calendarId, ongoingId, doneId);
         }
     }
 }

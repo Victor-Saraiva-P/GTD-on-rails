@@ -55,6 +55,9 @@ class ItemServiceTests {
 
     private ItemService itemService;
 
+    @Mock
+    private GoogleCalendarEventSyncService googleCalendarEventSyncService;
+
     @BeforeEach
     void setUp() {
         itemService = new ItemService(
@@ -64,6 +67,7 @@ class ItemServiceTests {
             new ItemBodyNormalizer(),
             itemAssetService,
             persistenceGitSyncService,
+            googleCalendarEventSyncService,
             new AfterCommitExecutor());
     }
 
@@ -116,9 +120,10 @@ class ItemServiceTests {
     }
 
     @Test
-    void deleteItemSoftDeletesActiveItemAssets() {
+    void deleteItemSoftDeletesActiveItemAssetsAndSyncsCalendar() {
         UUID itemId = UUID.randomUUID();
         Item item = new Item(new Title("Title"), null);
+        com.gtdonrails.api.entities.Calendar calendar = item.convertToCalendar(java.time.LocalDate.now(), java.time.LocalTime.now());
 
         when(itemRepository.findByIdAndDeletedAtIsNull(itemId)).thenReturn(Optional.of(item));
 
@@ -127,12 +132,14 @@ class ItemServiceTests {
         assertTrue(item.isDeleted());
         verify(itemAssetService).softDeleteActiveItemAssets(itemId);
         verify(persistenceGitSyncService).requestSync("item deleted", PersistenceChangeType.DELETE_ITEM);
+        verify(googleCalendarEventSyncService).deleteCalendarEvent(calendar);
     }
 
     @Test
-    void restoreItemRestoresReferencedBodyAssets() {
+    void restoreItemRestoresReferencedBodyAssetsAndSyncsCalendar() {
         UUID itemId = UUID.randomUUID();
         Item item = new Item(new Title("Title"), null);
+        com.gtdonrails.api.entities.Calendar calendar = item.convertToCalendar(java.time.LocalDate.now(), java.time.LocalTime.now());
         item.softDelete();
 
         when(itemRepository.findById(itemId)).thenReturn(Optional.of(item));
@@ -142,6 +149,7 @@ class ItemServiceTests {
         assertFalse(item.isDeleted());
         verify(itemAssetService).reconcileBodyAssetReferences(itemId, item.getBody());
         verify(persistenceGitSyncService).requestSync("item restored", PersistenceChangeType.UPDATE_ITEM);
+        verify(googleCalendarEventSyncService).syncCalendarEvent(calendar);
     }
 
     private void stubSavedItemResponse(ItemResponseDto response) {
