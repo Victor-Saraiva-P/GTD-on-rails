@@ -23,7 +23,7 @@
 
 ## T2: Invoke event sync from calendar lifecycle changes
 
-**Status:** Pending
+**Status:** Complete
 
 **Requirements:** GCE-01, GCE-03, GCE-04, GCE-06
 

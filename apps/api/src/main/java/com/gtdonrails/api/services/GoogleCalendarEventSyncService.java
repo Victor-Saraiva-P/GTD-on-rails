@@ -31,10 +31,10 @@ public class GoogleCalendarEventSyncService {
      * <p>Example: {@code syncService.syncCalendarEvent(calendar)}.</p>
      */
     public void syncCalendarEvent(Calendar calendar) {
-        UUID itemId = requireItemId(calendar);
         Optional<GtdGoogleCalendarIds> readyIds = findReadyCalendarIds();
         if (readyIds.isEmpty()) return;
 
+        UUID itemId = requireItemId(calendar);
         GtdGoogleCalendarIds calendarIds = readyIds.get();
         eventGateway.upsertEvent(eventRequest(calendar, calendarIds, itemId));
         deleteStaleEvents(calendar, calendarIds, eventId(itemId));
@@ -131,6 +131,7 @@ public class GoogleCalendarEventSyncService {
     private UUID requireItemId(Calendar calendar) {
         UUID itemId = calendar.getItemId();
         if (itemId != null) return itemId;
+        if (calendar.getItem().getId() != null) return calendar.getItem().getId();
         throw new IllegalArgumentException("calendar itemId value 'null' is invalid; expected persisted UUID");
     }
 

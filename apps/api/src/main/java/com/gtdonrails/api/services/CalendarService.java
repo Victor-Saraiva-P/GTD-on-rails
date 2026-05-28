@@ -24,6 +24,7 @@ public class CalendarService {
     private final CalendarMapper calendarMapper;
     private final Clock clock;
     private final PersistenceGitSyncService persistenceGitSyncService;
+    private final GoogleCalendarEventSyncService googleCalendarEventSyncService;
     private final AfterCommitExecutor afterCommitExecutor;
 
     public CalendarService(
@@ -31,12 +32,14 @@ public class CalendarService {
         CalendarMapper calendarMapper,
         Clock clock,
         PersistenceGitSyncService persistenceGitSyncService,
+        GoogleCalendarEventSyncService googleCalendarEventSyncService,
         AfterCommitExecutor afterCommitExecutor
     ) {
         this.calendarRepository = calendarRepository;
         this.calendarMapper = calendarMapper;
         this.clock = clock;
         this.persistenceGitSyncService = persistenceGitSyncService;
+        this.googleCalendarEventSyncService = googleCalendarEventSyncService;
         this.afterCommitExecutor = afterCommitExecutor;
     }
 
@@ -121,7 +124,9 @@ public class CalendarService {
     public CalendarResponseDto patchCalendar(UUID id, PatchCalendarRequestDto request) {
         Calendar calendar = findCalendar(id);
         applyPatch(calendar, request);
-        CalendarResponseDto response = calendarMapper.toResponse(calendarRepository.save(calendar));
+        Calendar savedCalendar = calendarRepository.save(calendar);
+        CalendarResponseDto response = calendarMapper.toResponse(savedCalendar);
+        requestGoogleCalendarEventSyncAfterCommit(savedCalendar);
         requestPersistenceSyncAfterCommit("calendar updated", PersistenceChangeType.UPDATE_ITEM);
         return response;
     }
@@ -171,7 +176,9 @@ public class CalendarService {
     public CalendarResponseDto recoverCalendar(UUID id) {
         Calendar calendar = findCalendar(id);
         calendar.getItem().restore();
-        return saveWithSync(calendar, "calendar recovered");
+        CalendarResponseDto response = calendarMapper.toResponse(calendarRepository.save(calendar));
+        requestPersistenceSyncAfterCommit("calendar recovered", PersistenceChangeType.UPDATE_ITEM);
+        return response;
     }
 
     private void applyPatch(Calendar calendar, PatchCalendarRequestDto request) {
@@ -184,7 +191,9 @@ public class CalendarService {
     }
 
     private CalendarResponseDto saveWithSync(Calendar calendar, String reason) {
-        CalendarResponseDto response = calendarMapper.toResponse(calendarRepository.save(calendar));
+        Calendar savedCalendar = calendarRepository.save(calendar);
+        CalendarResponseDto response = calendarMapper.toResponse(savedCalendar);
+        requestGoogleCalendarEventSyncAfterCommit(savedCalendar);
         requestPersistenceSyncAfterCommit(reason, PersistenceChangeType.UPDATE_ITEM);
         return response;
     }
@@ -200,5 +209,9 @@ public class CalendarService {
 
     private void requestPersistenceSyncAfterCommit(String reason, PersistenceChangeType changeType) {
         afterCommitExecutor.run(() -> persistenceGitSyncService.requestSync(reason, changeType));
+    }
+
+    private void requestGoogleCalendarEventSyncAfterCommit(Calendar calendar) {
+        afterCommitExecutor.run(() -> googleCalendarEventSyncService.syncCalendarEvent(calendar));
     }
 }

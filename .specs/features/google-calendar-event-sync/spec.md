@@ -6,9 +6,9 @@ The existing Google Calendar integration creates the GTD calendars but does not 
 
 ## Goals
 
-- [ ] Create or update Google events after stuff is converted to a GTD calendar item.
-- [ ] Move Google events between Calendar, On Going, and Done calendars as GTD status changes.
-- [ ] Keep Google Calendar as derived state from GTD without supporting edits from Google.
+- [x] Create or update Google events after stuff is converted to a GTD calendar item.
+- [x] Move Google events between Calendar, On Going, and Done calendars as GTD status changes.
+- [x] Keep Google Calendar as derived state from GTD without supporting edits from Google.
 
 ## Out of Scope
 
@@ -62,16 +62,16 @@ The existing Google Calendar integration creates the GTD calendars but does not 
 
 | Requirement ID | Story | Status |
 | --- | --- | --- |
-| GCE-01 | Active calendar item event upsert | Pending |
-| GCE-02 | Active calendar timed/all-day mapping | Pending |
-| GCE-03 | Ongoing calendar move | Pending |
-| GCE-04 | Done calendar move | Pending |
-| GCE-05 | Done schedule window mapping | Pending |
-| GCE-06 | Skip external sync when integration unavailable | Pending |
+| GCE-01 | Active calendar item event upsert | Complete |
+| GCE-02 | Active calendar timed/all-day mapping | Complete |
+| GCE-03 | Ongoing calendar move | Complete |
+| GCE-04 | Done calendar move | Complete |
+| GCE-05 | Done schedule window mapping | Complete |
+| GCE-06 | Skip external sync when integration unavailable | Complete |
 
 **Coverage:** 6 total, 6 mapped to tasks.
 
 ## Success Criteria
 
-- [ ] Calendar conversion, schedule patches, ongoing, done, and reset status trigger the expected Google event sync behavior.
-- [ ] Existing local persistence behavior remains unchanged when Google integration is not ready.
+- [x] Calendar conversion, schedule patches, ongoing, done, and reset status trigger the expected Google event sync behavior.
+- [x] Existing local persistence behavior remains unchanged when Google integration is not ready.
