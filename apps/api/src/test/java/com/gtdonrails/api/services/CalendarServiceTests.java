@@ -43,7 +43,7 @@ class CalendarServiceTests {
     private PersistenceGitSyncService persistenceGitSyncService;
 
     @Mock
-    private GoogleCalendarEventSyncService googleCalendarEventSyncService;
+    private GoogleCalendarEventQueueService googleCalendarEventQueueService;
 
     private CalendarService calendarService;
     private Calendar calendar;
@@ -58,7 +58,7 @@ class CalendarServiceTests {
             new CalendarMapper(),
             CLOCK,
             persistenceGitSyncService,
-            googleCalendarEventSyncService,
+            googleCalendarEventQueueService,
             new AfterCommitExecutor());
         when(calendarRepository.findById(calendarId)).thenReturn(Optional.of(calendar));
         when(calendarRepository.save(any(Calendar.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -109,7 +109,7 @@ class CalendarServiceTests {
     }
 
     private void verifyGoogleCalendarAndPersistenceSync(String reason) {
-        verify(googleCalendarEventSyncService).syncCalendarEvent(calendar);
+        verify(googleCalendarEventQueueService).requestUpsert(calendarId);
         verify(persistenceGitSyncService).requestSync(reason, PersistenceChangeType.UPDATE_ITEM);
     }
 

@@ -60,7 +60,7 @@ class InboxServiceTests {
     private PersistenceGitSyncService persistenceGitSyncService;
 
     @Mock
-    private GoogleCalendarEventSyncService googleCalendarEventSyncService;
+    private GoogleCalendarEventQueueService googleCalendarEventQueueService;
 
     @Captor
     private ArgumentCaptor<Item> itemCaptor;
@@ -75,7 +75,7 @@ class InboxServiceTests {
             stuffMapper,
             new ItemTextNormalizer(),
             persistenceGitSyncService,
-            googleCalendarEventSyncService,
+            googleCalendarEventQueueService,
             new AfterCommitExecutor());
     }
 
@@ -184,7 +184,7 @@ class InboxServiceTests {
     }
 
     @Test
-    void convertStuffToCalendarSyncsGoogleCalendarEvent() {
+    void convertStuffToCalendarQueuesGoogleCalendarEvent() {
         UUID stuffId = UUID.randomUUID();
         Item stuff = new Item(new Title("Pay rent"), null);
         when(itemRepository.findByIdAndStatusAndDeletedAtIsNull(stuffId, ItemStatus.STUFF)).thenReturn(Optional.of(stuff));
@@ -192,7 +192,7 @@ class InboxServiceTests {
         inboxService.convertStuffToCalendar(stuffId, new ConvertStuffToCalendarRequestDto("2026-05-21", "09:30"));
 
         verify(itemRepository).save(stuff);
-        verify(googleCalendarEventSyncService).syncCalendarEvent(stuff.getCalendar());
+        verify(googleCalendarEventQueueService).requestUpsert(stuffId);
     }
 
     private ConvertStuffToNextActionRequestDto convertRequest(UUID contextId) {

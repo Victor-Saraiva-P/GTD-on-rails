@@ -9,7 +9,6 @@ import com.gtdonrails.api.dtos.calendar.ConvertStuffToCalendarRequestDto;
 import com.gtdonrails.api.dtos.inbox.ConvertStuffToNextActionRequestDto;
 import com.gtdonrails.api.dtos.inbox.CreateStuffRequestDto;
 import com.gtdonrails.api.dtos.inbox.StuffResponseDto;
-import com.gtdonrails.api.entities.Calendar;
 import com.gtdonrails.api.entities.Context;
 import com.gtdonrails.api.entities.Item;
 import com.gtdonrails.api.entities.NextAction;
@@ -34,7 +33,7 @@ public class InboxService {
     private final StuffMapper stuffMapper;
     private final ItemTextNormalizer itemTextNormalizer;
     private final PersistenceGitSyncService persistenceGitSyncService;
-    private final GoogleCalendarEventSyncService googleCalendarEventSyncService;
+    private final GoogleCalendarEventQueueService googleCalendarEventQueueService;
     private final AfterCommitExecutor afterCommitExecutor;
 
     public InboxService(
@@ -43,7 +42,7 @@ public class InboxService {
         StuffMapper stuffMapper,
         ItemTextNormalizer itemTextNormalizer,
         PersistenceGitSyncService persistenceGitSyncService,
-        GoogleCalendarEventSyncService googleCalendarEventSyncService,
+        GoogleCalendarEventQueueService googleCalendarEventQueueService,
         AfterCommitExecutor afterCommitExecutor
     ) {
         this.itemRepository = itemRepository;
@@ -51,7 +50,7 @@ public class InboxService {
         this.stuffMapper = stuffMapper;
         this.itemTextNormalizer = itemTextNormalizer;
         this.persistenceGitSyncService = persistenceGitSyncService;
-        this.googleCalendarEventSyncService = googleCalendarEventSyncService;
+        this.googleCalendarEventQueueService = googleCalendarEventQueueService;
         this.afterCommitExecutor = afterCommitExecutor;
     }
 
@@ -129,9 +128,9 @@ public class InboxService {
     @Transactional
     public void convertStuffToCalendar(UUID id, ConvertStuffToCalendarRequestDto request) {
         Item item = findStuff(id);
-        Calendar calendar = item.convertToCalendar(request.toScheduledDate(), request.toScheduledTime());
+        item.convertToCalendar(request.toScheduledDate(), request.toScheduledTime());
         itemRepository.save(item);
-        requestGoogleCalendarEventSyncAfterCommit(calendar);
+        requestGoogleCalendarEventSyncAfterCommit(id);
         requestPersistenceSyncAfterCommit("stuff converted to calendar", PersistenceChangeType.UPDATE_ITEM);
     }
 
@@ -158,7 +157,7 @@ public class InboxService {
         afterCommitExecutor.run(() -> persistenceGitSyncService.requestSync(reason, changeType));
     }
 
-    private void requestGoogleCalendarEventSyncAfterCommit(Calendar calendar) {
-        afterCommitExecutor.run(() -> googleCalendarEventSyncService.syncCalendarEvent(calendar));
+    private void requestGoogleCalendarEventSyncAfterCommit(UUID itemId) {
+        afterCommitExecutor.run(() -> googleCalendarEventQueueService.requestUpsert(itemId));
     }
 }
