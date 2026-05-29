@@ -12,6 +12,7 @@ import {
   updateStuffBody as updateStuffBodyRequest,
   updateStuffTitle as updateStuffTitleRequest
 } from "./api";
+import { removeProcessedInboxStuff } from "./inboxStuffCollections";
 import type { Stuff, ItemBody } from "./types";
 
 type InboxStuffsQueryState = {
@@ -167,13 +168,12 @@ async function updateInboxStuff(updateRequest: () => Promise<Stuff>, state: Inbo
   }
 }
 
-async function processInboxStuff(updateRequest: () => Promise<void>, state: InboxLoadState, mutations: InboxMutationState, triggerSyncStatusPolling: () => void) {
+async function processInboxStuff(item: Stuff, processRequest: () => Promise<void>, state: InboxLoadState, mutations: InboxMutationState, triggerSyncStatusPolling: () => void) {
   mutations.setIsUpdating(true);
 
   try {
-    await updateRequest();
-    const nextStuffs = await fetchInboxStuffs();
-    state.setStuffs(nextStuffs);
+    await processRequest();
+    state.setStuffs((currentStuffs) => removeProcessedInboxStuff(currentStuffs, item.id));
     completeInboxMutation(state, triggerSyncStatusPolling);
   } finally {
     mutations.setIsUpdating(false);
@@ -186,8 +186,8 @@ function useInboxStuffsMutations(state: InboxLoadState, mutations: InboxMutation
   return {
     createStuff: (title: string) => createInboxStuff(title, state, mutations, triggerSyncStatusPolling),
     deleteStuff: (id: string) => deleteInboxStuff(id, state, mutations, triggerSyncStatusPolling),
-    processStuffToCalendar: (item: Stuff, payload: CalendarConversionPayload) => processInboxStuff(() => processStuffToCalendarRequest(item, payload), state, mutations, triggerSyncStatusPolling),
-    processStuff: (item: Stuff, energy: number | null, estimatedTimeMinutes: number | null, contextIds: string[], deadline: string | null) => processInboxStuff(() => processStuffRequest(item, energy, estimatedTimeMinutes, contextIds, deadline), state, mutations, triggerSyncStatusPolling),
+    processStuffToCalendar: (item: Stuff, payload: CalendarConversionPayload) => processInboxStuff(item, () => processStuffToCalendarRequest(item, payload), state, mutations, triggerSyncStatusPolling),
+    processStuff: (item: Stuff, energy: number | null, estimatedTimeMinutes: number | null, contextIds: string[], deadline: string | null) => processInboxStuff(item, () => processStuffRequest(item, energy, estimatedTimeMinutes, contextIds, deadline), state, mutations, triggerSyncStatusPolling),
     restoreStuff: (id: string) => restoreInboxStuff(id, state, mutations, triggerSyncStatusPolling),
     updateStuffBody: (item: Stuff, body: ItemBody) => updateInboxStuff(() => updateStuffBodyRequest(item, body), state, mutations, triggerSyncStatusPolling),
     updateStuffTitle: (item: Stuff, title: string) => updateInboxStuff(() => updateStuffTitleRequest(item, title), state, mutations, triggerSyncStatusPolling)
