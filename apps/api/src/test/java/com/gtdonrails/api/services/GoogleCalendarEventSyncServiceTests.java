@@ -139,7 +139,7 @@ class GoogleCalendarEventSyncServiceTests {
     void syncCalendarEventByItemIdLoadsLatestActiveCalendar() {
         UUID itemId = UUID.fromString("11111111-2222-3333-4444-555555555555");
         Calendar calendar = calendarWithId("Latest title", LocalTime.parse("11:15"));
-        when(calendarRepository.findByIdAndItem_DeletedAtIsNull(itemId)).thenReturn(Optional.of(calendar));
+        when(calendarRepository.findByItemIdAndItem_DeletedAtIsNull(itemId)).thenReturn(Optional.of(calendar));
 
         syncService.syncCalendarEvent(itemId);
 
@@ -150,7 +150,7 @@ class GoogleCalendarEventSyncServiceTests {
     @Test
     void syncCalendarEventByItemIdSkipsMissingActiveCalendar() {
         UUID itemId = UUID.randomUUID();
-        when(calendarRepository.findByIdAndItem_DeletedAtIsNull(itemId)).thenReturn(Optional.empty());
+        when(calendarRepository.findByItemIdAndItem_DeletedAtIsNull(itemId)).thenReturn(Optional.empty());
 
         syncService.syncCalendarEvent(itemId);
 

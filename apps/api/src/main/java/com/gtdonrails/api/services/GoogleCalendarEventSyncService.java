@@ -33,7 +33,7 @@ public class GoogleCalendarEventSyncService {
      * <p>Example: {@code syncService.syncCalendarEvent(itemId)}.</p>
      */
     public void syncCalendarEvent(UUID itemId) {
-        calendarRepository.findByIdAndItem_DeletedAtIsNull(itemId).ifPresent(this::syncCalendarEvent);
+        calendarRepository.findByItemIdAndItem_DeletedAtIsNull(itemId).ifPresent(this::syncCalendarEvent);
     }
 
     /**

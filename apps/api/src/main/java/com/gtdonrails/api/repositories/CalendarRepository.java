@@ -11,7 +11,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface CalendarRepository extends JpaRepository<Calendar, UUID> {
 
-    Optional<Calendar> findByIdAndItem_DeletedAtIsNull(UUID id);
+    Optional<Calendar> findByItemIdAndItem_DeletedAtIsNull(UUID itemId);
 
     List<Calendar> findAllByStatusAndScheduledDateLessThanEqualAndItem_DeletedAtIsNullOrderByScheduledDateAscScheduledTimeAsc(
         CalendarStatus status,

@@ -11,6 +11,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import com.gtdonrails.api.dtos.sync.GoogleCalendarSyncState;
 import com.gtdonrails.api.dtos.sync.GoogleCalendarSyncStatusDto;
 import jakarta.annotation.PreDestroy;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -31,6 +32,7 @@ public class GoogleCalendarEventQueueService {
     private volatile Instant lastSuccessfulSyncAt;
     private volatile String lastError;
 
+    @Autowired
     public GoogleCalendarEventQueueService(GoogleCalendarEventSyncService syncService) {
         this(syncService, 100);
     }
