@@ -22,6 +22,15 @@ describe("sync-status API", () => {
         lastSuccessfulSyncAt: "2026-05-01T00:00:05Z",
         lastError: null
       },
+      googleCalendar: {
+        state: "SYNCED",
+        pending: false,
+        running: false,
+        lastStartedAt: "2026-05-01T00:00:00Z",
+        lastFinishedAt: "2026-05-01T00:00:05Z",
+        lastSuccessfulSyncAt: "2026-05-01T00:00:05Z",
+        lastError: null
+      },
       persistence: {
         state: "IDLE",
         lastStartedAt: "2026-05-01T00:00:00Z",

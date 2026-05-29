@@ -35,6 +35,7 @@ class SyncControllerTests {
         mockMvc.perform(get("/sync/status"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.assets.state").value("DISABLED"))
+            .andExpect(jsonPath("$.googleCalendar.state").exists())
             .andExpect(jsonPath("$.persistence.state").exists());
     }
 

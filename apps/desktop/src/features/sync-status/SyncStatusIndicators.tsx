@@ -1,8 +1,11 @@
 import type { CSSProperties } from "react";
+import googleCalendarIcon from "../../assets/next-actions/google-calendar-icon.png";
 import { useSyncStatus } from "./SyncStatusProvider";
 import type {
   AssetSyncState,
   AssetSyncStatus,
+  GoogleCalendarSyncState,
+  GoogleCalendarSyncStatus,
   PersistenceSyncState,
   PersistenceSyncStatus
 } from "./types";
@@ -60,6 +63,23 @@ function persistenceVisual(state: PersistenceSyncState | null): IndicatorVisual 
   }
 }
 
+function googleCalendarVisual(state: GoogleCalendarSyncState | null): IndicatorVisual {
+  switch (state) {
+    case "SYNCED":
+      return { label: "Synced", tone: "idle" };
+    case "SYNCING":
+      return { label: "Syncing", tone: "active", pulse: true };
+    case "PENDING":
+      return { label: "Pending", tone: "pending", pulse: true };
+    case "FAILED":
+      return { label: "Failed", tone: "error" };
+    case "DISABLED":
+      return { label: "Disabled", tone: "disabled" };
+    default:
+      return { label: "Unknown", tone: "unknown" };
+  }
+}
+
 function describeAssetStatus(status: AssetSyncStatus | null, failed: boolean): string {
   if (!status) {
     return failed ? "Rclone sync status unavailable." : "Loading rclone sync status.";
@@ -81,6 +101,20 @@ function describePersistenceStatus(status: PersistenceSyncStatus | null, failed:
 
   const details = [
     `Git persistence: ${persistenceVisual(status.state).label}`,
+    status.lastSuccessfulSyncAt ? `Last success: ${formatInstant(status.lastSuccessfulSyncAt)}` : null,
+    status.lastError ? `Last error: ${status.lastError}` : null
+  ].filter(Boolean);
+
+  return details.join("\n");
+}
+
+function describeGoogleCalendarStatus(status: GoogleCalendarSyncStatus | null, failed: boolean): string {
+  if (!status) {
+    return failed ? "Google Calendar sync status unavailable." : "Loading Google Calendar sync status.";
+  }
+
+  const details = [
+    `Google Calendar: ${googleCalendarVisual(status.state).label}`,
     status.lastSuccessfulSyncAt ? `Last success: ${formatInstant(status.lastSuccessfulSyncAt)}` : null,
     status.lastError ? `Last error: ${status.lastError}` : null
   ].filter(Boolean);
@@ -115,7 +149,7 @@ type SyncIndicatorProps = {
   ariaLabel: string;
   title: string;
   visual: IndicatorVisual;
-  icon: "drive" | "github";
+  icon: "calendar" | "drive" | "github";
 };
 
 function syncIndicatorClassName(visual: IndicatorVisual): string {
@@ -129,6 +163,10 @@ function syncIndicatorStyle(visual: IndicatorVisual): CSSProperties {
 }
 
 function SyncIndicatorIcon({ icon }: Pick<SyncIndicatorProps, "icon">) {
+  if (icon === "calendar") {
+    return <img src={googleCalendarIcon} alt="" aria-hidden="true" className="sync-status__image" />;
+  }
+
   return icon === "drive" ? <GoogleDriveIcon /> : <GitHubIcon />;
 }
 
@@ -182,6 +220,19 @@ function GitStatusIndicator({ failedBeforeStatus, isLoading, status }: SyncStatu
   );
 }
 
+function GoogleCalendarStatusIndicator({ failedBeforeStatus, isLoading, status }: SyncStatusIndicatorRowProps) {
+  const visual = googleCalendarVisual(status?.googleCalendar.state ?? null);
+
+  return (
+    <SyncIndicator
+      ariaLabel={`Google Calendar sync ${visual.label.toLowerCase()}`}
+      title={describeGoogleCalendarStatus(status?.googleCalendar ?? null, failedBeforeStatus)}
+      visual={loadingVisual(visual, isLoading)}
+      icon="calendar"
+    />
+  );
+}
+
 /**
  * Renders asset and persistence sync status indicators in the workspace footer.
  *
@@ -196,6 +247,7 @@ export function SyncStatusIndicators() {
   return (
     <div className="sync-status" aria-label={groupLabel}>
       <DriveStatusIndicator failedBeforeStatus={failedBeforeStatus} isLoading={loadingBeforeStatus} status={status} />
+      <GoogleCalendarStatusIndicator failedBeforeStatus={failedBeforeStatus} isLoading={loadingBeforeStatus} status={status} />
       <GitStatusIndicator failedBeforeStatus={failedBeforeStatus} isLoading={loadingBeforeStatus} status={status} />
     </div>
   );
