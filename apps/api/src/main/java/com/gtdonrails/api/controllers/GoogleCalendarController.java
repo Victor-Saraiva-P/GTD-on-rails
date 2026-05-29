@@ -1,15 +1,10 @@
 package com.gtdonrails.api.controllers;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -17,13 +12,14 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+import org.springframework.util.StringUtils;
 
-import com.gtdonrails.api.config.GoogleProperties;
 import com.gtdonrails.api.entities.GoogleCalendar;
 import com.gtdonrails.api.entities.GoogleCredential;
 import com.gtdonrails.api.persistence.bootstrap.model.PersistenceChangeType;
 import com.gtdonrails.api.persistence.bootstrap.services.PersistenceGitSyncService;
 import com.gtdonrails.api.repositories.GoogleCalendarRepository;
+import com.gtdonrails.api.services.GoogleClientCredentialsStore;
 import com.gtdonrails.api.services.GoogleCalendarService;
 
 import lombok.RequiredArgsConstructor;
@@ -36,15 +32,12 @@ public class GoogleCalendarController {
 
     private final GoogleCalendarService googleCalendarService;
     private final GoogleCalendarRepository calendarRepository;
-    private final GoogleProperties googleProperties;
+    private final GoogleClientCredentialsStore credentialsStore;
     private final PersistenceGitSyncService syncService;
-
-    @Value("${gtd.persistence.bootstrap.clone-directory}")
-    private String persistenceDir;
 
     @GetMapping("/integrations/google-calendar/status")
     public ResponseEntity<Map<String, Object>> getStatus() {
-        boolean credentialsConfigured = googleProperties.getClientId() != null && !googleProperties.getClientId().isEmpty();
+        boolean credentialsConfigured = credentialsStore.loadConfiguredCredentials();
         GoogleCredential cred = googleCalendarService.getValidCredential();
         boolean connected = cred != null;
         List<GoogleCalendar> calendars = calendarRepository.findAll();
@@ -66,28 +59,20 @@ public class GoogleCalendarController {
         String clientId = payload.get("clientId");
         String clientSecret = payload.get("clientSecret");
 
-        if (clientId == null || clientId.trim().isEmpty() || clientSecret == null || clientSecret.trim().isEmpty()) {
-            return ResponseEntity.badRequest().build();
-        }
+        if (!credentialsPayloadValid(clientId, clientSecret)) return ResponseEntity.badRequest().build();
 
         try {
-            Path configPath = Paths.get(persistenceDir, "config", "google.properties");
-            Files.createDirectories(configPath.getParent());
-            String content = "gtd.google.client-id=" + clientId.trim() + "\n" +
-                             "gtd.google.client-secret=" + clientSecret.trim() + "\n";
-            Files.writeString(configPath, content, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-            
-            // Hot reload properties for current session
-            googleProperties.setClientId(clientId.trim());
-            googleProperties.setClientSecret(clientSecret.trim());
-            
+            credentialsStore.save(clientId, clientSecret);
             syncService.requestSync("integration credentials updated", PersistenceChangeType.UPDATE_INTEGRATION_CREDENTIALS);
-            
             return ResponseEntity.ok().build();
         } catch (Exception e) {
             log.error("Failed to save credentials", e);
             return ResponseEntity.internalServerError().build();
         }
+    }
+
+    private boolean credentialsPayloadValid(String clientId, String clientSecret) {
+        return StringUtils.hasText(clientId) && StringUtils.hasText(clientSecret);
     }
 
     @PostMapping("/integrations/google-calendar/auth-url")

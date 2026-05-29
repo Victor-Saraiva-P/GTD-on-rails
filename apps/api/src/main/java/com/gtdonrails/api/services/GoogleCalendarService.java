@@ -37,9 +37,11 @@ public class GoogleCalendarService {
     private final GoogleProperties googleProperties;
     private final GoogleCredentialRepository credentialRepository;
     private final GoogleCalendarRepository calendarRepository;
+    private final GoogleClientCredentialsStore credentialsStore;
     private final RestTemplate restTemplate = new RestTemplate();
 
     public String buildAuthUrl(String redirectUri) {
+        credentialsStore.loadConfiguredCredentials();
         return "https://accounts.google.com/o/oauth2/v2/auth?" +
                 "client_id=" + googleProperties.getClientId() +
                 "&redirect_uri=" + redirectUri +
@@ -51,6 +53,7 @@ public class GoogleCalendarService {
 
     @Transactional
     public void exchangeCodeForTokens(String code, String redirectUri) {
+        credentialsStore.loadConfiguredCredentials();
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
@@ -97,6 +100,7 @@ public class GoogleCalendarService {
     }
 
     private GoogleCredential refreshAccessToken(GoogleCredential cred) {
+        credentialsStore.loadConfiguredCredentials();
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 

@@ -31,11 +31,18 @@ class GoogleCalendarServiceTests {
     @Mock
     private GoogleCalendarRepository calendarRepository;
 
+    @Mock
+    private GoogleClientCredentialsStore credentialsStore;
+
     private GoogleCalendarService service;
 
     @BeforeEach
     void setUp() {
-        service = new GoogleCalendarService(googleProperties, credentialRepository, calendarRepository);
+        service = new GoogleCalendarService(
+            googleProperties,
+            credentialRepository,
+            calendarRepository,
+            credentialsStore);
     }
 
     @Test

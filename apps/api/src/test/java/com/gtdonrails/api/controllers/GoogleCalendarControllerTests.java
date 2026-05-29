@@ -1,20 +1,20 @@
 package com.gtdonrails.api.controllers;
 
 import static org.hamcrest.Matchers.hasSize;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
-import java.util.List;
-import java.util.UUID;
 
 import com.gtdonrails.api.config.GoogleProperties;
 import com.gtdonrails.api.entities.GoogleCalendar;
 import com.gtdonrails.api.entities.GoogleCredential;
+import com.gtdonrails.api.persistence.bootstrap.properties.PersistenceBootstrapProperties;
 import com.gtdonrails.api.repositories.GoogleCalendarRepository;
 import com.gtdonrails.api.services.GoogleCalendarService;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,17 +43,21 @@ class GoogleCalendarControllerTests {
     @Autowired
     private GoogleProperties googleProperties;
 
+    @Autowired
+    private PersistenceBootstrapProperties bootstrapProperties;
+
     @MockitoBean
     private GoogleCalendarService googleCalendarService;
 
     private MockMvc mockMvc;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).build();
         calendarRepository.deleteAll();
         googleProperties.setClientId(null);
         googleProperties.setClientSecret(null);
+        Files.deleteIfExists(googleCredentialsPath());
     }
 
     @Test
@@ -70,6 +74,7 @@ class GoogleCalendarControllerTests {
     @Test
     void getStatusReturnsConnectedAndCalendarsWhenSetup() throws Exception {
         googleProperties.setClientId("client-id");
+        googleProperties.setClientSecret("client-secret");
         
         GoogleCredential cred = new GoogleCredential();
         cred.setAccessToken("token");
@@ -89,6 +94,17 @@ class GoogleCalendarControllerTests {
             .andExpect(jsonPath("$.calendars", hasSize(1)))
             .andExpect(jsonPath("$.calendars[0].name").value("Next Action"))
             .andExpect(jsonPath("$.calendars[0].colorHex").value("#4F9768"));
+    }
+
+    @Test
+    void getStatusLoadsPersistedCredentialsAfterRestart() throws Exception {
+        writePersistedGoogleCredentials();
+        when(googleCalendarService.getValidCredential()).thenReturn(null);
+
+        mockMvc.perform(get("/integrations/google-calendar/status"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.credentialsConfigured").value(true))
+            .andExpect(jsonPath("$.connected").value(false));
     }
 
     @Test
@@ -117,5 +133,17 @@ class GoogleCalendarControllerTests {
                     }
                     """))
             .andExpect(status().isBadRequest());
+    }
+
+    private void writePersistedGoogleCredentials() throws Exception {
+        Files.createDirectories(googleCredentialsPath().getParent());
+        Files.writeString(googleCredentialsPath(), """
+            gtd.google.client-id=persisted-client
+            gtd.google.client-secret=persisted-secret
+            """);
+    }
+
+    private Path googleCredentialsPath() {
+        return Path.of(bootstrapProperties.getCloneDirectory(), "config", "google.properties");
     }
 }
