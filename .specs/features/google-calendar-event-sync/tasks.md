@@ -1,5 +1,8 @@
 # Google Calendar Event Sync Tasks
 
+**Design**: `.specs/features/google-calendar-event-sync/design.md`
+**Status**: Complete
+
 ## T1: Add Google event sync port and service
 
 **Status:** Complete
@@ -41,3 +44,86 @@
 **Tests:** API unit tests and integration tests updated for the new dependency.
 
 **Gate:** `pnpm --filter @gtd-on-rails/api test`
+
+## T3: Add in-memory Google event queue
+
+**Status:** Complete
+
+**Requirements:** GCE-07, GCE-08, GCE-09
+
+**What:** Add an in-memory single-worker queue and status DTO for Google Calendar event sync.
+
+**Where:** `apps/api/src/main/java/com/gtdonrails/api/services`, `apps/api/src/main/java/com/gtdonrails/api/dtos/sync`, `apps/api/src/test/java/com/gtdonrails/api/services`
+
+**Done when:**
+
+- Enqueue returns before Google gateway work executes.
+- Pending work for the same item keeps the latest pending operation.
+- Upsert execution loads the latest active calendar from the database.
+- Delete execution uses the item id and removes all GTD Google events.
+- Failed work retries 3 attempts before marking failed.
+
+**Tests:** API unit tests with named fake queue dependencies.
+
+**Gate:** `pnpm --filter @gtd-on-rails/api unitTest`
+
+## T4: Route calendar lifecycle sync through the queue
+
+**Status:** Complete
+
+**Requirements:** GCE-07, GCE-08
+
+**What:** Replace direct after-commit Google sync calls with queue enqueue calls.
+
+**Where:** `InboxService`, `CalendarService`, `ItemService`, related tests
+
+**Done when:**
+
+- Conversion, schedule edit, status changes, recover, restore, delete, and title edits enqueue the correct Google operation after local commit.
+- Body-only edits do not enqueue Google sync.
+- Existing persistence sync behavior is unchanged.
+
+**Tests:** API unit tests for service enqueue behavior.
+
+**Gate:** `pnpm --filter @gtd-on-rails/api unitTest`
+
+## T5: Expose Google Calendar sync status
+
+**Status:** Complete
+
+**Requirements:** GCE-10
+
+**What:** Add Google Calendar status to `/sync/status` and desktop sync status types/indicator.
+
+**Where:** `SyncStatusDto`, `SyncController`, `apps/desktop/src/features/sync-status`, `apps/desktop/src/assets/next-actions/google-calendar-icon.png`
+
+**Done when:**
+
+- `/sync/status` includes `googleCalendar`.
+- Desktop types parse `googleCalendar`.
+- Footer shows a Google Calendar indicator using the provided PNG.
+- Tooltip includes state, last success, and last error.
+
+**Tests:** API controller/unit tests and desktop unit tests where existing coverage applies.
+
+**Gate:** `pnpm --filter @gtd-on-rails/api unitTest && pnpm --filter @gtd-on-rails/desktop test`
+
+## T6: Make inbox calendar conversion remove locally after backend success
+
+**Status:** Complete
+
+**Requirements:** GCE-11
+
+**What:** Avoid full inbox reload after successful process-to-calendar or process-to-next-action mutation.
+
+**Where:** `apps/desktop/src/features/inbox/useInboxStuffsQuery.ts`, `apps/desktop/test`
+
+**Done when:**
+
+- Successful calendar conversion removes the processed stuff from local state without fetching the full inbox.
+- Failed conversion leaves the stuff visible.
+- Existing next-action processing remains correct.
+
+**Tests:** Desktop unit test for local removal behavior.
+
+**Gate:** `pnpm --filter @gtd-on-rails/desktop test`
