@@ -15,11 +15,13 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import com.gtdonrails.api.entities.Calendar;
 import com.gtdonrails.api.entities.GoogleCredential;
 import com.gtdonrails.api.entities.Item;
+import com.gtdonrails.api.repositories.CalendarRepository;
 import com.gtdonrails.api.repositories.GoogleCalendarRepository;
 import com.gtdonrails.api.types.Title;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,6 +33,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 class GoogleCalendarEventSyncServiceTests {
 
     private GoogleCalendarService googleCalendarService;
+    private CalendarRepository calendarRepository;
     private GoogleCalendarRepository googleCalendarRepository;
     private FakeGoogleCalendarEventGateway eventGateway;
     private GoogleCalendarEventSyncService syncService;
@@ -38,10 +41,12 @@ class GoogleCalendarEventSyncServiceTests {
     @BeforeEach
     void setUp() {
         googleCalendarService = mock(GoogleCalendarService.class);
+        calendarRepository = mock(CalendarRepository.class);
         googleCalendarRepository = mock(GoogleCalendarRepository.class);
         eventGateway = new FakeGoogleCalendarEventGateway();
         syncService = new GoogleCalendarEventSyncService(
             googleCalendarService,
+            calendarRepository,
             googleCalendarRepository,
             eventGateway);
         when(googleCalendarService.getValidCredential()).thenReturn(new GoogleCredential());
@@ -128,6 +133,40 @@ class GoogleCalendarEventSyncServiceTests {
 
         assertTrue(eventGateway.upserts.isEmpty());
         assertTrue(eventGateway.deletes.isEmpty());
+    }
+
+    @Test
+    void syncCalendarEventByItemIdLoadsLatestActiveCalendar() {
+        UUID itemId = UUID.fromString("11111111-2222-3333-4444-555555555555");
+        Calendar calendar = calendarWithId("Latest title", LocalTime.parse("11:15"));
+        when(calendarRepository.findByIdAndItem_DeletedAtIsNull(itemId)).thenReturn(Optional.of(calendar));
+
+        syncService.syncCalendarEvent(itemId);
+
+        assertEquals("Latest title", eventGateway.upserts.getFirst().title());
+        assertEquals(LocalDateTime.parse("2026-05-21T11:15"), eventGateway.upserts.getFirst().dateTimeStart());
+    }
+
+    @Test
+    void syncCalendarEventByItemIdSkipsMissingActiveCalendar() {
+        UUID itemId = UUID.randomUUID();
+        when(calendarRepository.findByIdAndItem_DeletedAtIsNull(itemId)).thenReturn(Optional.empty());
+
+        syncService.syncCalendarEvent(itemId);
+
+        assertTrue(eventGateway.upserts.isEmpty());
+        assertTrue(eventGateway.deletes.isEmpty());
+    }
+
+    @Test
+    void deleteCalendarEventByItemIdRemovesAllGtdGoogleEvents() {
+        UUID itemId = UUID.fromString("11111111-2222-3333-4444-555555555555");
+
+        syncService.deleteCalendarEvent(itemId);
+
+        assertEquals(
+            List.of("google-calendar-id", "google-ongoing-id", "google-done-id"),
+            eventGateway.deletedCalendarIds());
     }
 
     @Test

@@ -2,6 +2,7 @@ package com.gtdonrails.api.repositories;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import com.gtdonrails.api.entities.Calendar;
@@ -9,6 +10,8 @@ import com.gtdonrails.api.enums.CalendarStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface CalendarRepository extends JpaRepository<Calendar, UUID> {
+
+    Optional<Calendar> findByIdAndItem_DeletedAtIsNull(UUID id);
 
     List<Calendar> findAllByStatusAndScheduledDateLessThanEqualAndItem_DeletedAtIsNullOrderByScheduledDateAscScheduledTimeAsc(
         CalendarStatus status,

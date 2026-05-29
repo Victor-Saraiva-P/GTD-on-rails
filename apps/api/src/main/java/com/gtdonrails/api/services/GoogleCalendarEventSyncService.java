@@ -8,6 +8,7 @@ import java.util.UUID;
 import com.gtdonrails.api.entities.Calendar;
 import com.gtdonrails.api.entities.GoogleCalendar;
 import com.gtdonrails.api.enums.CalendarStatus;
+import com.gtdonrails.api.repositories.CalendarRepository;
 import com.gtdonrails.api.repositories.GoogleCalendarRepository;
 import com.gtdonrails.api.types.ScheduleWindow;
 import lombok.RequiredArgsConstructor;
@@ -22,8 +23,18 @@ public class GoogleCalendarEventSyncService {
     private static final String DONE_NAME = "Done";
 
     private final GoogleCalendarService googleCalendarService;
+    private final CalendarRepository calendarRepository;
     private final GoogleCalendarRepository googleCalendarRepository;
     private final GoogleCalendarEventGateway eventGateway;
+
+    /**
+     * Loads the latest active GTD calendar state and mirrors it into Google.
+     *
+     * <p>Example: {@code syncService.syncCalendarEvent(itemId)}.</p>
+     */
+    public void syncCalendarEvent(UUID itemId) {
+        calendarRepository.findByIdAndItem_DeletedAtIsNull(itemId).ifPresent(this::syncCalendarEvent);
+    }
 
     /**
      * Mirrors the current GTD calendar state into the derived Google calendars.
@@ -46,10 +57,18 @@ public class GoogleCalendarEventSyncService {
      * <p>Example: {@code syncService.deleteCalendarEvent(calendar)}.</p>
      */
     public void deleteCalendarEvent(Calendar calendar) {
+        deleteCalendarEvent(requireItemId(calendar));
+    }
+
+    /**
+     * Removes the GTD calendar event for an item from all derived Google calendars.
+     *
+     * <p>Example: {@code syncService.deleteCalendarEvent(itemId)}.</p>
+     */
+    public void deleteCalendarEvent(UUID itemId) {
         Optional<GtdGoogleCalendarIds> readyIds = findReadyCalendarIds();
         if (readyIds.isEmpty()) return;
 
-        UUID itemId = requireItemId(calendar);
         String id = eventId(itemId);
         GtdGoogleCalendarIds calendarIds = readyIds.get();
 
