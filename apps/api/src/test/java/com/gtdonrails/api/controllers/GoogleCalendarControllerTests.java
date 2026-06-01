@@ -1,9 +1,14 @@
 package com.gtdonrails.api.controllers;
 
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -133,6 +138,17 @@ class GoogleCalendarControllerTests {
                     }
                     """))
             .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void oauthCallbackHidesExceptionDetails() throws Exception {
+        doThrow(new RuntimeException("secret-token-value"))
+            .when(googleCalendarService).exchangeCodeForTokens(anyString(), anyString());
+
+        mockMvc.perform(get("/oauth/google/callback").param("code", "oauth-code"))
+            .andExpect(status().isInternalServerError())
+            .andExpect(content().string(containsString("An unexpected error occurred")))
+            .andExpect(content().string(not(containsString("secret-token-value"))));
     }
 
     private void writePersistedGoogleCredentials() throws Exception {

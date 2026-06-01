@@ -91,7 +91,7 @@ public class GoogleCalendarController {
             return ResponseEntity.ok("<html><body><h2>Connected!</h2><p>You can close this window and return to the app.</p><script>window.close();</script></body></html>");
         } catch (Exception e) {
             log.error("OAuth callback failed", e);
-            return ResponseEntity.internalServerError().body("<html><body><h2>Failed to connect</h2><p>" + e.getMessage() + "</p></body></html>");
+            return ResponseEntity.internalServerError().body("<html><body><h2>Failed to connect</h2><p>An unexpected error occurred. Please try again later.</p></body></html>");
         }
     }
 }
