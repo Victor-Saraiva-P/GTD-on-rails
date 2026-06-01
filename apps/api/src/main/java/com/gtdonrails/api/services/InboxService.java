@@ -117,6 +117,7 @@ public class InboxService {
         NextAction nextAction = item.convertToNextAction(request.energy(), request.estimatedTime().toDuration(), contexts);
         nextAction.setDeadline(request.deadline());
         itemRepository.save(item);
+        requestGoogleCalendarEventSyncAfterCommit(id);
         requestPersistenceSyncAfterCommit("stuff converted to next action", PersistenceChangeType.UPDATE_ITEM);
     }
 

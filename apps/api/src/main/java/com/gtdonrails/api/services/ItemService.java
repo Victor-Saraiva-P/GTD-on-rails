@@ -122,12 +122,12 @@ public class ItemService {
     }
 
     private void requestCalendarEventUpsertAfterCommit(UUID itemId, Item item) {
-        if (item.getCalendar() == null) return;
+        if (item.getCalendar() == null && item.getNextAction() == null) return;
         afterCommitExecutor.run(() -> googleCalendarEventQueueService.requestUpsert(itemId));
     }
 
     private void requestCalendarEventDeleteAfterCommit(UUID itemId, Item item) {
-        if (item.getCalendar() == null) return;
+        if (item.getCalendar() == null && item.getNextAction() == null) return;
         afterCommitExecutor.run(() -> googleCalendarEventQueueService.requestDelete(itemId));
     }
 

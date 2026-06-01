@@ -151,6 +151,7 @@ class InboxServiceTests {
         assertEquals(Duration.ofMinutes(90), stuff.getNextAction().getEstimatedTime());
         assertEquals(LocalDate.parse("2028-02-29"), stuff.getNextAction().getDeadline());
         assertEquals(context, stuff.getNextAction().getContexts().iterator().next());
+        verify(googleCalendarEventQueueService).requestUpsert(stuffId);
         verify(persistenceGitSyncService).requestSync("stuff converted to next action", PersistenceChangeType.UPDATE_ITEM);
     }
 

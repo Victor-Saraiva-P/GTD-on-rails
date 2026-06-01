@@ -58,6 +58,9 @@ class NextActionServiceTests {
     @Mock
     private ContextIconAssetRepository contextIconAssetRepository;
 
+    @Mock
+    private GoogleCalendarEventQueueService googleCalendarEventQueueService;
+
     private NextActionMapper nextActionMapper;
     private Clock clock;
     private NextActionService nextActionService;
@@ -72,7 +75,13 @@ class NextActionServiceTests {
     void setUp() {
         nextActionMapper = new NextActionMapper(new ContextMapper(assetStorageService, contextIconAssetRepository));
         clock = Clock.fixed(Instant.parse("2024-01-01T10:00:00Z"), ZoneId.of("UTC"));
-        nextActionService = new NextActionService(nextActionRepository, contextRepository, nextActionMapper, clock);
+        nextActionService = new NextActionService(
+            nextActionRepository,
+            contextRepository,
+            nextActionMapper,
+            googleCalendarEventQueueService,
+            new AfterCommitExecutor(),
+            clock);
 
         nextActionId = UUID.randomUUID();
         contextId = UUID.randomUUID();
@@ -95,6 +104,29 @@ class NextActionServiceTests {
 
         assertThat(response.energy()).isEqualTo(new BigDecimal("7.0"));
         verify(nextActionRepository).save(nextAction);
+        verify(googleCalendarEventQueueService, never()).requestUpsert(nextActionId);
+    }
+
+    @Test
+    void patchingNextActionDeadlineQueuesGoogleCalendarEvent() {
+        PatchNextActionRequestDto request = new PatchNextActionRequestDto(null, null, LocalDate.parse("2026-06-01"), null, null);
+        when(nextActionRepository.findById(nextActionId)).thenReturn(Optional.of(nextAction));
+        when(nextActionRepository.save(any(NextAction.class))).thenReturn(nextAction);
+
+        nextActionService.patchNextAction(nextActionId, request);
+
+        verify(googleCalendarEventQueueService).requestUpsert(nextActionId);
+    }
+
+    @Test
+    void clearingNextActionDeadlineQueuesGoogleCalendarEvent() {
+        PatchNextActionRequestDto request = new PatchNextActionRequestDto(null, null, null, true, null);
+        when(nextActionRepository.findById(nextActionId)).thenReturn(Optional.of(nextAction));
+        when(nextActionRepository.save(any(NextAction.class))).thenReturn(nextAction);
+
+        nextActionService.patchNextAction(nextActionId, request);
+
+        verify(googleCalendarEventQueueService).requestUpsert(nextActionId);
     }
 
     @Test
@@ -128,6 +160,7 @@ class NextActionServiceTests {
 
         assertThat(response.status()).isEqualTo(NextActionStatus.ONGOING.name());
         verify(nextActionRepository).save(nextAction);
+        verify(googleCalendarEventQueueService).requestUpsert(nextActionId);
     }
 
     @Test
@@ -139,6 +172,7 @@ class NextActionServiceTests {
 
         assertThat(response.status()).isEqualTo(NextActionStatus.DONE.name());
         verify(nextActionRepository).save(nextAction);
+        verify(googleCalendarEventQueueService).requestUpsert(nextActionId);
     }
 
     @Test
@@ -151,6 +185,7 @@ class NextActionServiceTests {
 
         assertThat(response.status()).isEqualTo(NextActionStatus.NEXT_ACTION.name());
         verify(nextActionRepository).save(nextAction);
+        verify(googleCalendarEventQueueService).requestUpsert(nextActionId);
     }
 
     @Test

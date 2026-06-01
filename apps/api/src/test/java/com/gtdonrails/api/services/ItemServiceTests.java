@@ -103,6 +103,20 @@ class ItemServiceTests {
     }
 
     @Test
+    void updateItemTitleQueuesCalendarEventWhenItemIsNextAction() {
+        UUID itemId = UUID.randomUUID();
+        Item item = new Item(new Title("Old title"), "Old body");
+        item.convertToNextAction(new java.math.BigDecimal("5.0"), java.time.Duration.ofMinutes(30), java.util.Set.of());
+
+        when(itemRepository.findByIdAndDeletedAtIsNull(itemId)).thenReturn(Optional.of(item));
+        stubSavedItemResponse(itemResponse("New title", "Old body"));
+
+        itemService.updateItemTitle(itemId, new UpdateItemTitleRequestDto("New title"));
+
+        verify(googleCalendarEventQueueService).requestUpsert(itemId);
+    }
+
+    @Test
     void patchItemBodyUpdatesOnlyBody() {
         UUID itemId = UUID.randomUUID();
         Item item = new Item(new Title("Old title"), "Old body");
@@ -152,6 +166,19 @@ class ItemServiceTests {
     }
 
     @Test
+    void deleteItemSoftDeletesActiveItemAssetsAndSyncsNextAction() {
+        UUID itemId = UUID.randomUUID();
+        Item item = new Item(new Title("Title"), null);
+        item.convertToNextAction(new java.math.BigDecimal("5.0"), java.time.Duration.ofMinutes(30), java.util.Set.of());
+
+        when(itemRepository.findByIdAndDeletedAtIsNull(itemId)).thenReturn(Optional.of(item));
+
+        itemService.deleteItem(itemId);
+
+        verify(googleCalendarEventQueueService).requestDelete(itemId);
+    }
+
+    @Test
     void restoreItemRestoresReferencedBodyAssetsAndSyncsCalendar() {
         UUID itemId = UUID.randomUUID();
         Item item = new Item(new Title("Title"), null);
@@ -165,6 +192,20 @@ class ItemServiceTests {
         assertFalse(item.isDeleted());
         verify(itemAssetService).reconcileBodyAssetReferences(itemId, item.getBody());
         verify(persistenceGitSyncService).requestSync("item restored", PersistenceChangeType.UPDATE_ITEM);
+        verify(googleCalendarEventQueueService).requestUpsert(itemId);
+    }
+
+    @Test
+    void restoreItemRestoresReferencedBodyAssetsAndSyncsNextAction() {
+        UUID itemId = UUID.randomUUID();
+        Item item = new Item(new Title("Title"), null);
+        item.convertToNextAction(new java.math.BigDecimal("5.0"), java.time.Duration.ofMinutes(30), java.util.Set.of());
+        item.softDelete();
+
+        when(itemRepository.findById(itemId)).thenReturn(Optional.of(item));
+
+        itemService.restoreItem(itemId);
+
         verify(googleCalendarEventQueueService).requestUpsert(itemId);
     }
 
