@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
 
 import com.google.api.client.http.HttpRequestInitializer;
@@ -105,6 +106,7 @@ public class GoogleCalendarService {
 
     private GoogleCredential refreshAccessToken(GoogleCredential cred) {
         credentialsStore.loadConfiguredCredentials();
+        requireRefreshToken(cred);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
@@ -132,6 +134,12 @@ public class GoogleCalendarService {
             log.error("Failed to refresh token", e);
         }
         return cred;
+    }
+
+    private void requireRefreshToken(GoogleCredential cred) {
+        if (StringUtils.hasText(cred.getRefreshToken())) return;
+        log.error("Failed to refresh Google Calendar token: missing refresh token");
+        throw new IllegalStateException("google refresh token value '" + cred.getRefreshToken() + "' is invalid; expected non-blank token");
     }
 
     public Calendar getCalendarClient() {

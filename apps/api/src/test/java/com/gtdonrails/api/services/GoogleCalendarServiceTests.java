@@ -2,10 +2,13 @@ package com.gtdonrails.api.services;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
@@ -91,5 +94,36 @@ class GoogleCalendarServiceTests {
         assertEquals(cred, service.getValidCredential());
 
         verify(restTemplate).postForEntity(eq("https://oauth2.googleapis.com/token"), any(), eq(Map.class));
+    }
+
+    @Test
+    void getValidCredentialRejectsMissingRefreshToken() {
+        GoogleCredential cred = new GoogleCredential();
+        cred.setAccessToken("expired-token");
+        cred.setExpiresAt(Instant.now().minusSeconds(60));
+        when(credentialRepository.findAll()).thenReturn(java.util.List.of(cred));
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class, service::getValidCredential);
+
+        assertEquals("google refresh token value 'null' is invalid; expected non-blank token", exception.getMessage());
+        verifyNoInteractions(restTemplate);
+        verify(credentialRepository).findAll();
+        verifyNoMoreInteractions(credentialRepository);
+    }
+
+    @Test
+    void getValidCredentialRejectsBlankRefreshToken() {
+        GoogleCredential cred = new GoogleCredential();
+        cred.setAccessToken("expired-token");
+        cred.setRefreshToken(" ");
+        cred.setExpiresAt(Instant.now().minusSeconds(60));
+        when(credentialRepository.findAll()).thenReturn(java.util.List.of(cred));
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class, service::getValidCredential);
+
+        assertEquals("google refresh token value ' ' is invalid; expected non-blank token", exception.getMessage());
+        verifyNoInteractions(restTemplate);
+        verify(credentialRepository).findAll();
+        verifyNoMoreInteractions(credentialRepository);
     }
 }
