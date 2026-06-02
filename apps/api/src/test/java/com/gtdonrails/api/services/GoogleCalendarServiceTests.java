@@ -3,9 +3,13 @@ package com.gtdonrails.api.services;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
+import java.util.Map;
 
 import com.gtdonrails.api.config.GoogleProperties;
 import com.gtdonrails.api.entities.GoogleCredential;
@@ -35,6 +39,9 @@ class GoogleCalendarServiceTests {
     @Mock
     private GoogleClientCredentialsStore credentialsStore;
 
+    @Mock
+    private RestTemplate restTemplate;
+
     private GoogleCalendarService service;
 
     @BeforeEach
@@ -44,7 +51,7 @@ class GoogleCalendarServiceTests {
             credentialRepository,
             calendarRepository,
             credentialsStore,
-            new RestTemplate());
+            restTemplate);
     }
 
     @Test
@@ -70,5 +77,19 @@ class GoogleCalendarServiceTests {
         when(credentialRepository.findAll()).thenReturn(java.util.List.of(cred));
         
         assertEquals(cred, service.getValidCredential());
+    }
+
+    @Test
+    void getValidCredentialRefreshesWhenExpiresAtIsMissing() {
+        GoogleCredential cred = new GoogleCredential();
+        cred.setAccessToken("token");
+        cred.setRefreshToken("refresh-token");
+        when(credentialRepository.findAll()).thenReturn(java.util.List.of(cred));
+        when(restTemplate.postForEntity(eq("https://oauth2.googleapis.com/token"), any(), eq(Map.class)))
+            .thenThrow(new RuntimeException("network disabled in unit test"));
+
+        assertEquals(cred, service.getValidCredential());
+
+        verify(restTemplate).postForEntity(eq("https://oauth2.googleapis.com/token"), any(), eq(Map.class));
     }
 }

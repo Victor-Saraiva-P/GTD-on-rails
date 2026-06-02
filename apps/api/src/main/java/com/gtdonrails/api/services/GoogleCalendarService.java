@@ -93,10 +93,14 @@ public class GoogleCalendarService {
         if (opt.isEmpty()) return null;
         
         GoogleCredential cred = opt.get();
-        if (cred.getExpiresAt().isBefore(Instant.now().plusSeconds(60))) {
+        if (credentialExpiresSoon(cred)) {
             return refreshAccessToken(cred);
         }
         return cred;
+    }
+
+    private boolean credentialExpiresSoon(GoogleCredential cred) {
+        return cred.getExpiresAt() == null || cred.getExpiresAt().isBefore(Instant.now().plusSeconds(60));
     }
 
     private GoogleCredential refreshAccessToken(GoogleCredential cred) {
