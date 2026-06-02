@@ -12,7 +12,6 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
-import java.util.Map;
 
 import com.gtdonrails.api.config.GoogleProperties;
 import com.gtdonrails.api.entities.GoogleCredential;
@@ -24,6 +23,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpMethod;
 import org.springframework.web.client.RestTemplate;
 
 @ExtendWith(MockitoExtension.class)
@@ -88,12 +89,12 @@ class GoogleCalendarServiceTests {
         cred.setAccessToken("token");
         cred.setRefreshToken("refresh-token");
         when(credentialRepository.findAll()).thenReturn(java.util.List.of(cred));
-        when(restTemplate.postForEntity(eq("https://oauth2.googleapis.com/token"), any(), eq(Map.class)))
+        when(restTemplate.exchange(eq("https://oauth2.googleapis.com/token"), eq(HttpMethod.POST), any(), anyTokenResponseType()))
             .thenThrow(new RuntimeException("network disabled in unit test"));
 
         assertEquals(cred, service.getValidCredential());
 
-        verify(restTemplate).postForEntity(eq("https://oauth2.googleapis.com/token"), any(), eq(Map.class));
+        verify(restTemplate).exchange(eq("https://oauth2.googleapis.com/token"), eq(HttpMethod.POST), any(), anyTokenResponseType());
     }
 
     @Test
@@ -125,5 +126,9 @@ class GoogleCalendarServiceTests {
         verifyNoInteractions(restTemplate);
         verify(credentialRepository).findAll();
         verifyNoMoreInteractions(credentialRepository);
+    }
+
+    private ParameterizedTypeReference<java.util.Map<String, Object>> anyTokenResponseType() {
+        return any();
     }
 }

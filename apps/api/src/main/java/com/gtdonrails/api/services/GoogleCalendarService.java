@@ -7,7 +7,9 @@ import java.util.Optional;
 
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +36,10 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 @Slf4j
 public class GoogleCalendarService {
+
+    private static final String GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
+    private static final ParameterizedTypeReference<Map<String, Object>> TOKEN_RESPONSE_TYPE = new ParameterizedTypeReference<>() {
+    };
 
     private final GoogleProperties googleProperties;
     private final GoogleCredentialRepository credentialRepository;
@@ -67,10 +73,7 @@ public class GoogleCalendarService {
 
         HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
 
-        ResponseEntity<Map> response = restTemplate.postForEntity(
-                "https://oauth2.googleapis.com/token",
-                request,
-                Map.class);
+        ResponseEntity<Map<String, Object>> response = tokenRequest(request);
 
         Map<String, Object> data = response.getBody();
         if (data != null && data.containsKey("access_token")) {
@@ -123,10 +126,7 @@ public class GoogleCalendarService {
         HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
 
         try {
-            ResponseEntity<Map> response = restTemplate.postForEntity(
-                    "https://oauth2.googleapis.com/token",
-                    request,
-                    Map.class);
+            ResponseEntity<Map<String, Object>> response = tokenRequest(request);
             Map<String, Object> data = response.getBody();
             if (data != null && data.containsKey("access_token")) {
                 cred.setAccessToken((String) data.get("access_token"));
@@ -138,6 +138,10 @@ public class GoogleCalendarService {
             log.error("Failed to refresh token", e);
         }
         return cred;
+    }
+
+    private ResponseEntity<Map<String, Object>> tokenRequest(HttpEntity<MultiValueMap<String, String>> request) {
+        return restTemplate.exchange(GOOGLE_TOKEN_URL, HttpMethod.POST, request, TOKEN_RESPONSE_TYPE);
     }
 
     private void requireRefreshToken(GoogleCredential cred) {
