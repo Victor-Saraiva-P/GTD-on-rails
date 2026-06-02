@@ -19,8 +19,8 @@ export function useGoogleCalendarIntegrationController() {
       const s = await fetchGoogleCalendarStatus();
       setStatus(s);
       setError(null);
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      setError(errorMessageFrom(e));
     }
   };
 
@@ -28,8 +28,8 @@ export function useGoogleCalendarIntegrationController() {
     try {
       const { url } = await getAuthUrl();
       await openExternalUrl(url);
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      setError(errorMessageFrom(e));
     }
   };
 
@@ -38,4 +38,9 @@ export function useGoogleCalendarIntegrationController() {
   }, []);
 
   return { status, error, reload, connect, setError };
+}
+
+function errorMessageFrom(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return String(error);
 }
