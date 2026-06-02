@@ -38,7 +38,7 @@ public class GoogleCalendarService {
     private final GoogleCredentialRepository credentialRepository;
     private final GoogleCalendarRepository calendarRepository;
     private final GoogleClientCredentialsStore credentialsStore;
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
 
     public String buildAuthUrl(String redirectUri) {
         credentialsStore.loadConfiguredCredentials();
@@ -204,4 +204,5 @@ public class GoogleCalendarService {
         dbCal.setColorHex(colorHex);
         calendarRepository.save(dbCal);
     }
+
 }
