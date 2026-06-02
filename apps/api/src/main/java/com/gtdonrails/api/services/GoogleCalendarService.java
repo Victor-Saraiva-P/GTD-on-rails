@@ -90,6 +90,10 @@ public class GoogleCalendarService {
 
     @Transactional
     public GoogleCredential getValidCredential() {
+        return getValidCredentialInCurrentTransaction();
+    }
+
+    private GoogleCredential getValidCredentialInCurrentTransaction() {
         Optional<GoogleCredential> opt = credentialRepository.findAll().stream().findFirst();
         if (opt.isEmpty()) return null;
         
@@ -143,7 +147,7 @@ public class GoogleCalendarService {
     }
 
     public Calendar getCalendarClient() {
-        GoogleCredential cred = getValidCredential();
+        GoogleCredential cred = getValidCredentialInCurrentTransaction();
         if (cred == null) throw new IllegalStateException("Not connected to Google Calendar");
 
         HttpRequestInitializer requestInitializer = request -> {
