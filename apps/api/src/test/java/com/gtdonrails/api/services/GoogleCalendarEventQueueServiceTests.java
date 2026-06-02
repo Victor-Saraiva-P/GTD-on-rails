@@ -4,12 +4,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
 import com.gtdonrails.api.dtos.sync.GoogleCalendarSyncState;
+import com.gtdonrails.api.dtos.sync.GoogleCalendarSyncStatusDto;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -106,17 +108,23 @@ class GoogleCalendarEventQueueServiceTests {
     }
 
     private void waitForIdle() {
+        GoogleCalendarSyncStatusDto status = queueService.status();
         for (int attempt = 0; attempt < 100; attempt += 1) {
-            if (!queueService.status().running() && !queueService.status().pending()) return;
+            status = queueService.status();
+            if (!status.running() && !status.pending()) return;
             sleep();
         }
+        fail("queue did not become idle; last running=" + status.running() + ", pending=" + status.pending());
     }
 
     private void waitForRunning() {
+        GoogleCalendarSyncStatusDto status = queueService.status();
         for (int attempt = 0; attempt < 100; attempt += 1) {
-            if (queueService.status().running()) return;
+            status = queueService.status();
+            if (status.running()) return;
             sleep();
         }
+        fail("queue did not start running; last running=" + status.running() + ", pending=" + status.pending());
     }
 
     private void sleep() {
