@@ -37,3 +37,4 @@ out/
 .vscode/
 
 gtd-persistence/
+gtd-persistence-test/
