@@ -6,6 +6,9 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import com.gtdonrails.api.persistence.bootstrap.model.PersistenceChangeType;
 import com.gtdonrails.api.persistence.bootstrap.model.PersistenceSyncState;
@@ -22,6 +25,7 @@ import org.springframework.stereotype.Service;
 public class PersistenceGitSyncService {
 
     private static final Logger logger = LoggerFactory.getLogger(PersistenceGitSyncService.class);
+    private static final long BLOCKING_SYNC_TIMEOUT_SECONDS = 30L;
 
     private final PersistenceBootstrapProperties persistenceBootstrapProperties;
     private final PersistenceSyncProperties persistenceSyncProperties;
@@ -139,6 +143,46 @@ public class PersistenceGitSyncService {
     }
 
     /**
+     * Runs commit, pull, and push before returning to the caller.
+     *
+     * <p>Example: {@code syncService.syncBlocking("credentials", UPDATE_INTEGRATION_CREDENTIALS)}.</p>
+     */
+    public void syncBlocking(String reason, PersistenceChangeType changeType) {
+        if (!persistenceSyncProperties.isEnabled()) {
+            state = PersistenceSyncState.DISABLED;
+            return;
+        }
+
+        RuntimeException failure = runBlockingTask(reason, () -> syncRepository(reason, changeType));
+        if (failure != null) throw failure;
+    }
+
+    private RuntimeException runBlockingTask(String reason, GitTask task) {
+        ExecutorService blockingExecutor = Executors.newSingleThreadExecutor();
+        try {
+            Future<RuntimeException> future = blockingExecutor.submit(() -> runTask(reason, task));
+            return future.get(BLOCKING_SYNC_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        } catch (TimeoutException exception) {
+            markBlockingSyncTimedOut(reason);
+            return new IllegalStateException("Persistence Git sync timed out after 30 seconds", exception);
+        } catch (Exception exception) {
+            return runtimeFailure(exception);
+        } finally {
+            blockingExecutor.shutdownNow();
+        }
+    }
+
+    private void markBlockingSyncTimedOut(String reason) {
+        lastFinishedAt = Instant.now();
+        lastError = "Persistence Git sync timed out after 30 seconds";
+        state = PersistenceSyncState.FAILED;
+        logger.atWarn()
+            .addKeyValue("event", "persistence_git_sync_timed_out")
+            .addKeyValue("reason", reason)
+            .log("Persistence Git sync timed out");
+    }
+
+    /**
      * Queues a pull-only persistence sync for remote changes.
      *
      * <p>Example: {@code persistenceGitSyncService.requestPull("manual")}.</p>
@@ -170,17 +214,19 @@ public class PersistenceGitSyncService {
     }
 
     void syncNow(String reason, PersistenceChangeType changeType) {
-        runTask(reason, () -> {
-            Path repository = requiredRepositoryDirectory();
-            hasLocalChanges = !gitCommandService.statusPorcelain(repository).isBlank();
-            hasUnpushedCommits = gitCommandService.hasUnpushedCommits(repository);
-            if (!hasLocalChanges) {
-                finishCleanRepositorySync(repository, reason);
-                return;
-            }
+        runTask(reason, () -> syncRepository(reason, changeType));
+    }
 
-            commitAndPushLocalChanges(repository, changeType);
-        });
+    private void syncRepository(String reason, PersistenceChangeType changeType) throws IOException, InterruptedException {
+        Path repository = requiredRepositoryDirectory();
+        hasLocalChanges = !gitCommandService.statusPorcelain(repository).isBlank();
+        hasUnpushedCommits = gitCommandService.hasUnpushedCommits(repository);
+        if (!hasLocalChanges) {
+            finishCleanRepositorySync(repository, reason);
+            return;
+        }
+
+        commitAndPushLocalChanges(repository, changeType);
     }
 
     private void commitAndPushLocalChanges(Path repository, PersistenceChangeType changeType) throws IOException, InterruptedException {
@@ -237,7 +283,7 @@ public class PersistenceGitSyncService {
         return databasePath;
     }
 
-    private void runTask(String reason, GitTask task) {
+    private RuntimeException runTask(String reason, GitTask task) {
         lastStartedAt = Instant.now();
         state = PersistenceSyncState.SYNCING;
         logger.atInfo()
@@ -248,6 +294,7 @@ public class PersistenceGitSyncService {
         try {
             task.run();
             markTaskSucceeded();
+            return null;
         } catch (IllegalStateException | IOException exception) {
             markTaskFailed(exception);
             logger.atWarn()
@@ -255,6 +302,7 @@ public class PersistenceGitSyncService {
                 .addKeyValue("reason", reason)
                 .setCause(exception)
                 .log("Persistence Git sync failed");
+            return runtimeFailure(exception);
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
             markTaskFailed(exception);
@@ -263,9 +311,15 @@ public class PersistenceGitSyncService {
                 .addKeyValue("reason", reason)
                 .setCause(exception)
                 .log("Persistence Git sync interrupted");
+            return new IllegalStateException("Persistence Git sync was interrupted", exception);
         } finally {
             lastFinishedAt = Instant.now();
         }
+    }
+
+    private RuntimeException runtimeFailure(Exception exception) {
+        if (exception instanceof RuntimeException runtimeException) return runtimeException;
+        return new IllegalStateException(exception.getMessage(), exception);
     }
 
     private void markTaskSucceeded() {

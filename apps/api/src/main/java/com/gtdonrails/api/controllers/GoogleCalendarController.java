@@ -21,6 +21,9 @@ import com.gtdonrails.api.persistence.bootstrap.services.PersistenceGitSyncServi
 import com.gtdonrails.api.repositories.GoogleCalendarRepository;
 import com.gtdonrails.api.services.GoogleClientCredentialsStore;
 import com.gtdonrails.api.services.GoogleCalendarService;
+import com.gtdonrails.api.services.GoogleIntegrationConfigurationHealth;
+import com.gtdonrails.api.services.GoogleIntegrationConfigurationStatus;
+import com.gtdonrails.api.services.GoogleClientCredentialsStore.GoogleConfigurationSnapshot;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,13 +40,17 @@ public class GoogleCalendarController {
 
     @GetMapping("/integrations/google-calendar/status")
     public ResponseEntity<Map<String, Object>> getStatus() {
+        boolean repairFailed = !repairLegacyConfigurationIfNeeded();
         boolean credentialsConfigured = credentialsStore.loadConfiguredCredentials();
+        GoogleIntegrationConfigurationHealth configurationHealth = configurationHealth(repairFailed);
         GoogleCredential cred = googleCalendarService.getValidCredential();
         boolean connected = cred != null;
         List<GoogleCalendar> calendars = calendarRepository.findAll();
 
         Map<String, Object> status = new HashMap<>();
         status.put("credentialsConfigured", credentialsConfigured);
+        status.put("configurationStatus", configurationHealth.status().name());
+        status.put("configurationMessage", configurationHealth.message());
         status.put("connected", connected);
         status.put("calendars", calendars.stream().map(c -> Map.of(
                 "name", c.getName(),
@@ -54,6 +61,27 @@ public class GoogleCalendarController {
         return ResponseEntity.ok(status);
     }
 
+    private boolean repairLegacyConfigurationIfNeeded() {
+        try {
+            if (credentialsStore.repairMissingTokenEncryptionKey()) {
+                syncService.syncBlocking("integration credentials repaired", PersistenceChangeType.UPDATE_INTEGRATION_CREDENTIALS);
+            }
+            return true;
+        } catch (Exception exception) {
+            log.error("Failed to repair Google Integration Configuration", exception);
+            return false;
+        }
+    }
+
+    private GoogleIntegrationConfigurationHealth configurationHealth(boolean repairFailed) {
+        if (repairFailed) {
+            return new GoogleIntegrationConfigurationHealth(
+                GoogleIntegrationConfigurationStatus.REPAIR_FAILED,
+                "Google Integration Configuration repair failed; fix persistence sync and try again.");
+        }
+        return credentialsStore.configurationHealth();
+    }
+
     @PostMapping("/integrations/google-calendar/credentials")
     public ResponseEntity<Void> saveCredentials(@RequestBody Map<String, String> payload) {
         String clientId = payload.get("clientId");
@@ -61,13 +89,24 @@ public class GoogleCalendarController {
 
         if (!credentialsPayloadValid(clientId, clientSecret)) return ResponseEntity.badRequest().build();
 
+        GoogleConfigurationSnapshot snapshot = credentialsStore.snapshot();
         try {
             credentialsStore.save(clientId, clientSecret);
-            syncService.requestSync("integration credentials updated", PersistenceChangeType.UPDATE_INTEGRATION_CREDENTIALS);
+            syncService.syncBlocking("integration credentials updated", PersistenceChangeType.UPDATE_INTEGRATION_CREDENTIALS);
             return ResponseEntity.ok().build();
         } catch (Exception e) {
+            rollbackGoogleIntegrationConfigurationSafely(snapshot);
             log.error("Failed to save credentials", e);
-            return ResponseEntity.internalServerError().build();
+            return ResponseEntity.status(503).build();
+        }
+    }
+
+    private void rollbackGoogleIntegrationConfigurationSafely(GoogleConfigurationSnapshot snapshot) {
+        try {
+            credentialsStore.restore(snapshot);
+            syncService.syncBlocking("integration credentials rollback", PersistenceChangeType.UPDATE_INTEGRATION_CREDENTIALS);
+        } catch (Exception exception) {
+            log.error("Failed to rollback Google Integration Configuration", exception);
         }
     }
 
@@ -86,6 +125,7 @@ public class GoogleCalendarController {
     public ResponseEntity<String> oauthCallback(@RequestParam("code") String code) {
         String redirectUri = ServletUriComponentsBuilder.fromCurrentContextPath().path("/oauth/google/callback").toUriString();
         try {
+            if (!configurationReady()) return configurationNotReadyResponse();
             googleCalendarService.exchangeCodeForTokens(code, redirectUri);
             googleCalendarService.setupGtdCalendars();
             return ResponseEntity.ok("<html><body><h2>Connected!</h2><p>You can close this window and return to the app.</p><script>window.close();</script></body></html>");
@@ -93,5 +133,13 @@ public class GoogleCalendarController {
             log.error("OAuth callback failed", e);
             return ResponseEntity.internalServerError().body("<html><body><h2>Failed to connect</h2><p>An unexpected error occurred. Please try again later.</p></body></html>");
         }
+    }
+
+    private boolean configurationReady() {
+        return credentialsStore.configurationHealth().status() == GoogleIntegrationConfigurationStatus.READY;
+    }
+
+    private ResponseEntity<String> configurationNotReadyResponse() {
+        return ResponseEntity.status(503).body("<html><body><h2>Google Calendar configuration is not ready</h2><p>Return to the app and fix Google Calendar configuration first.</p></body></html>");
     }
 }

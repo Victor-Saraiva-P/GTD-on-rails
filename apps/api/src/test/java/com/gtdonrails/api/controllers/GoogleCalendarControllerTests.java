@@ -5,6 +5,8 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -72,6 +74,7 @@ class GoogleCalendarControllerTests {
         mockMvc.perform(get("/integrations/google-calendar/status"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.credentialsConfigured").value(false))
+            .andExpect(jsonPath("$.configurationStatus").value("MISSING"))
             .andExpect(jsonPath("$.connected").value(false))
             .andExpect(jsonPath("$.calendars", hasSize(0)));
     }
@@ -95,6 +98,7 @@ class GoogleCalendarControllerTests {
         mockMvc.perform(get("/integrations/google-calendar/status"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.credentialsConfigured").value(true))
+            .andExpect(jsonPath("$.configurationStatus").value("READY"))
             .andExpect(jsonPath("$.connected").value(true))
             .andExpect(jsonPath("$.calendars", hasSize(1)))
             .andExpect(jsonPath("$.calendars[0].name").value("Next Action"))
@@ -142,6 +146,9 @@ class GoogleCalendarControllerTests {
 
     @Test
     void oauthCallbackHidesExceptionDetails() throws Exception {
+        googleProperties.setClientId("client-id");
+        googleProperties.setClientSecret("client-secret");
+        googleProperties.setTokenEncryptionKey("MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=");
         doThrow(new RuntimeException("secret-token-value"))
             .when(googleCalendarService).exchangeCodeForTokens(anyString(), anyString());
 
@@ -149,6 +156,15 @@ class GoogleCalendarControllerTests {
             .andExpect(status().isInternalServerError())
             .andExpect(content().string(containsString("An unexpected error occurred")))
             .andExpect(content().string(not(containsString("secret-token-value"))));
+    }
+
+    @Test
+    void oauthCallbackBlocksTokenExchangeWhenConfigurationIsNotReady() throws Exception {
+        mockMvc.perform(get("/oauth/google/callback").param("code", "oauth-code"))
+            .andExpect(status().isServiceUnavailable())
+            .andExpect(content().string(containsString("fix Google Calendar configuration first")));
+
+        verify(googleCalendarService, never()).exchangeCodeForTokens(anyString(), anyString());
     }
 
     private void writePersistedGoogleCredentials() throws Exception {

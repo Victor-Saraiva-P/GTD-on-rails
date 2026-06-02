@@ -1,10 +1,12 @@
 package com.gtdonrails.api.services;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Base64;
 
 import com.gtdonrails.api.config.GoogleProperties;
 import com.gtdonrails.api.persistence.bootstrap.properties.PersistenceBootstrapProperties;
@@ -49,7 +51,46 @@ class GoogleClientCredentialsStoreTests {
 
         assertEquals("new-client", googleProperties.getClientId());
         assertEquals("new-secret", googleProperties.getClientSecret());
-        assertEquals(expectedCredentialsFile(), Files.readString(tempDir.resolve("config/google.properties")));
+        assertTrue(Files.readString(tempDir.resolve("config/google.properties")).contains(expectedCredentialsFile()));
+    }
+
+    @Test
+    void saveGeneratesAndAppliesTokenEncryptionKey() throws Exception {
+        store.save("new-client", "new-secret");
+
+        String tokenEncryptionKey = googleProperties.getTokenEncryptionKey();
+        assertNotNull(tokenEncryptionKey);
+        assertEquals(32, Base64.getDecoder().decode(tokenEncryptionKey).length);
+        assertTrue(Files.readString(tempDir.resolve("config/google.properties"))
+            .contains("gtd.google.token-encryption-key=" + tokenEncryptionKey));
+    }
+
+    @Test
+    void configurationHealthIsInvalidWhenTokenEncryptionKeyIsMalformed() throws Exception {
+        Files.createDirectories(tempDir.resolve("config"));
+        Files.writeString(tempDir.resolve("config/google.properties"), """
+            gtd.google.client-id=persisted-client
+            gtd.google.client-secret=persisted-secret
+            gtd.google.token-encryption-key=not-base64
+            """);
+
+        GoogleIntegrationConfigurationHealth health = store.configurationHealth();
+
+        assertEquals(GoogleIntegrationConfigurationStatus.INVALID, health.status());
+        assertTrue(health.message().contains("Token Encryption Key"));
+    }
+
+    @Test
+    void repairMissingTokenEncryptionKeyWritesGeneratedKey() throws Exception {
+        Files.createDirectories(tempDir.resolve("config"));
+        Files.writeString(tempDir.resolve("config/google.properties"), expectedCredentialsFile());
+
+        assertTrue(store.repairMissingTokenEncryptionKey());
+
+        String tokenEncryptionKey = googleProperties.getTokenEncryptionKey();
+        assertNotNull(tokenEncryptionKey);
+        assertTrue(Files.readString(tempDir.resolve("config/google.properties"))
+            .contains("gtd.google.token-encryption-key=" + tokenEncryptionKey));
     }
 
     private String expectedCredentialsFile() {

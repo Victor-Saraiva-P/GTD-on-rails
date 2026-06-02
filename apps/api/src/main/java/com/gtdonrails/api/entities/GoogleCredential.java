@@ -4,11 +4,13 @@ import java.time.Instant;
 import java.util.UUID;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import com.gtdonrails.api.persistence.converters.CryptoConverter;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -24,9 +26,11 @@ public class GoogleCredential {
     private UUID id;
 
     @Column(name = "access_token", nullable = false, columnDefinition = "text")
+    @Convert(converter = CryptoConverter.class)
     private String accessToken;
 
     @Column(name = "refresh_token", nullable = false, columnDefinition = "text")
+    @Convert(converter = CryptoConverter.class)
     private String refreshToken;
 
     @Column(name = "token_type", nullable = false, columnDefinition = "text")

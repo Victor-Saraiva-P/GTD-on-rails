@@ -6,6 +6,7 @@ import { googleCalendarIntegrationTheme } from "../features/lists/listThemes";
 import type { GoogleCalendarIntegrationController } from "../features/integrations/useGoogleCalendarIntegrationController";
 import { saveGoogleCredentials } from "../features/integrations/googleCalendarApi";
 import { LeaderMenu } from "../features/keybinds/LeaderMenu";
+import { ApiRequestError } from "../lib/api/apiClient";
 
 type Props = {
   controller: GoogleCalendarIntegrationController;
@@ -17,6 +18,8 @@ export function GoogleCalendarIntegrationPage({ controller }: Props) {
   const [clientId, setClientId] = useState("");
   const [clientSecret, setClientSecret] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
+  const canConnect = controller.status?.configurationStatus === "READY";
+  const connectReason = controller.status?.configurationMessage ?? "Loading Google Calendar configuration.";
 
   const closeForm = () => setIsFormOpen(false);
 
@@ -27,6 +30,10 @@ export function GoogleCalendarIntegrationPage({ controller }: Props) {
       closeForm();
       controller.reload();
     } catch (e: any) {
+      if (e instanceof ApiRequestError && e.status === 503) {
+        setFormError("Google Calendar configuration could not be synced; fix persistence sync and try again before connecting.");
+        return;
+      }
       setFormError("Failed to save credentials.");
     }
   };
@@ -61,10 +68,10 @@ export function GoogleCalendarIntegrationPage({ controller }: Props) {
       description: "Connect to Google Calendar",
       screen: "google-calendar-integration",
       runKeybind: () => {
-        if (!isFormOpen && controller.status?.credentialsConfigured) {
+        if (!isFormOpen && canConnect) {
           controller.connect();
-        } else if (!controller.status?.credentialsConfigured) {
-          controller.setError("Configure credentials first.");
+        } else {
+          controller.setError(connectReason);
         }
       }
     }
@@ -87,6 +94,9 @@ export function GoogleCalendarIntegrationPage({ controller }: Props) {
                 {controller.status?.credentialsConfigured 
                   ? <span style={{ color: "var(--color-done)" }}>Configured</span> 
                   : <span style={{ color: "var(--color-muted-text)" }}>Not configured (Press 's' to configure)</span>}
+              </p>
+              <p style={{ color: "var(--color-muted-text)", marginTop: "0.5rem" }}>
+                Google Calendar tokens are encrypted locally. The Token Encryption Key is generated automatically and must sync before connecting.
               </p>
               
               {isFormOpen && (
@@ -120,8 +130,15 @@ export function GoogleCalendarIntegrationPage({ controller }: Props) {
               <p>
                 {controller.status?.connected 
                   ? <span style={{ color: "var(--color-done)" }}>Connected</span> 
-                  : <span style={{ color: "var(--color-muted-text)" }}>Disconnected (Press 'c' to connect)</span>}
+                  : <span style={{ color: "var(--color-muted-text)" }}>{canConnect ? "Disconnected (Press 'c' to connect)" : `Disconnected (${connectReason})`}</span>}
               </p>
+              <button
+                disabled={!canConnect}
+                onClick={controller.connect}
+                style={{ padding: "0.5rem", marginTop: "0.75rem", opacity: canConnect ? 1 : 0.5 }}
+              >
+                Connect to Google Calendar
+              </button>
             </div>
 
             <div>

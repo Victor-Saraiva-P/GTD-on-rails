@@ -20,6 +20,18 @@ _Avoid_: Calendar source, remote truth
 One of the external agendas owned by the GTD system, including Calendar, Next Action, On Going, and Done. A GTD item should appear on at most one of these agendas at a time.
 _Avoid_: Google agenda set, remote GTD state
 
+**Token Encryption Key**:
+A user-controlled secret that allows stored external integration tokens to be read by trusted local app installations while avoiding casual plaintext token exposure.
+_Avoid_: Token, password, Google credential
+
+**Google Integration Configuration**:
+The synced local secrets that allow trusted app installations to connect to the same Google Calendar integration.
+_Avoid_: Google account, environment config
+
+**Configuration Status**:
+The health of a local integration configuration, including whether required secrets are missing, ready, invalid, or failed to repair.
+_Avoid_: Connected status, sync status
+
 **On Going**:
 An item state for work that has been pulled into active execution. On going items are represented on the shared on-going external agenda.
 _Avoid_: In progress, active task

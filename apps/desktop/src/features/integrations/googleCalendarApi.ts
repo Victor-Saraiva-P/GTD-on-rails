@@ -8,6 +8,8 @@ export type GoogleCalendarInfo = {
 
 export type GoogleCalendarStatus = {
   credentialsConfigured: boolean;
+  configurationStatus: "MISSING" | "READY" | "REPAIR_FAILED" | "INVALID";
+  configurationMessage: string;
   connected: boolean;
   calendars: GoogleCalendarInfo[];
 };

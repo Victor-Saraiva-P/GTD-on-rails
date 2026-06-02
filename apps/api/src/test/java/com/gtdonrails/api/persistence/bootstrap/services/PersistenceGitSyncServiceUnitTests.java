@@ -93,6 +93,37 @@ class PersistenceGitSyncServiceUnitTests {
     }
 
     @Test
+    void syncBlockingCompletesOnlyAfterPushSucceeds() throws Exception {
+        FakeGitCommandService gitCommandService = new FakeGitCommandService();
+        PersistenceGitSyncService service = createService(gitCommandService, true);
+
+        gitCommandService.statusOutput = " M config/google.properties";
+
+        service.syncBlocking("integration credentials updated", PersistenceChangeType.UPDATE_INTEGRATION_CREDENTIALS);
+
+        assertEquals(
+            List.of("statusPorcelain", "hasUnpushedCommits", "addAll", "commit", "pullFastForwardOnly", "push"),
+            gitCommandService.commands);
+        assertEquals(PersistenceSyncState.IDLE, service.status().state());
+    }
+
+    @Test
+    void syncBlockingThrowsWhenPushFails() throws Exception {
+        FakeGitCommandService gitCommandService = new FakeGitCommandService();
+        PersistenceGitSyncService service = createService(gitCommandService, true);
+
+        gitCommandService.statusOutput = " M config/google.properties";
+        gitCommandService.pushFailure = new IllegalStateException("push failed");
+
+        IllegalStateException exception = org.junit.jupiter.api.Assertions.assertThrows(
+            IllegalStateException.class,
+            () -> service.syncBlocking("integration credentials updated", PersistenceChangeType.UPDATE_INTEGRATION_CREDENTIALS));
+
+        assertEquals("push failed", exception.getMessage());
+        assertEquals(PersistenceSyncState.FAILED, service.status().state());
+    }
+
+    @Test
     void syncMarksFailureWhenPullFails() throws Exception {
         FakeGitCommandService gitCommandService = new FakeGitCommandService();
         PersistenceGitSyncService service = createService(gitCommandService, true);
