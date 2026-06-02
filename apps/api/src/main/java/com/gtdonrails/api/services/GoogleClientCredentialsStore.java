@@ -55,11 +55,24 @@ public class GoogleClientCredentialsStore {
     public void save(String clientId, String clientSecret) {
         String tokenEncryptionKey = existingTokenEncryptionKey().orElseGet(this::generateTokenEncryptionKey);
         GoogleClientCredentials credentials = new GoogleClientCredentials(
-            clientId.trim(),
-            clientSecret.trim(),
+            validatedCredentialValue("clientId", clientId),
+            validatedCredentialValue("clientSecret", clientSecret),
             tokenEncryptionKey);
         writeCredentials(credentials);
         applyCredentials(credentials);
+    }
+
+    private String validatedCredentialValue(String fieldName, String value) {
+        if (value == null) throw invalidCredentialValue(fieldName, null);
+
+        String trimmedValue = value.trim();
+        if (!trimmedValue.isEmpty()) return trimmedValue;
+        throw invalidCredentialValue(fieldName, value);
+    }
+
+    private IllegalArgumentException invalidCredentialValue(String fieldName, String value) {
+        return new IllegalArgumentException(
+            "Google credential " + fieldName + " value '" + value + "' is invalid; expected non-empty, non-null string");
     }
 
     /**

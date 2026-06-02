@@ -2,6 +2,7 @@ package com.gtdonrails.api.services;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Files;
@@ -63,6 +64,24 @@ class GoogleClientCredentialsStoreTests {
         assertEquals(32, Base64.getDecoder().decode(tokenEncryptionKey).length);
         assertTrue(Files.readString(tempDir.resolve("config/google.properties"))
             .contains("gtd.google.token-encryption-key=" + tokenEncryptionKey));
+    }
+
+    @Test
+    void saveRejectsNullClientId() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> store.save(null, "new-secret"));
+
+        assertEquals(
+            "Google credential clientId value 'null' is invalid; expected non-empty, non-null string",
+            exception.getMessage());
+    }
+
+    @Test
+    void saveRejectsBlankClientSecret() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> store.save("new-client", " "));
+
+        assertEquals(
+            "Google credential clientSecret value ' ' is invalid; expected non-empty, non-null string",
+            exception.getMessage());
     }
 
     @Test
