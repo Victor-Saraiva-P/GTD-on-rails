@@ -155,7 +155,7 @@ public class GoogleCalendarEventSyncService {
     ) {
         if (nextAction.getStatus() == NextActionStatus.DONE) return doneEvent(nextAction, calendarIds.doneId(), itemId);
         if (nextAction.getStatus() == NextActionStatus.ONGOING) return ongoingEvent(nextAction, calendarIds.ongoingId(), itemId);
-        return allDayEvent(nextAction, calendarIds.nextActionId(), itemId, nextAction.getDeadline(), nextAction.getDeadline());
+        return allDayEvent(nextAction.getItem().getTitle().value(), calendarIds.nextActionId(), itemId, nextAction.getDeadline(), nextAction.getDeadline());
     }
 
     private boolean mirrorableNextAction(NextAction nextAction) {
@@ -164,39 +164,36 @@ public class GoogleCalendarEventSyncService {
 
     private GoogleCalendarEventRequest activeEvent(Calendar calendar, String googleCalendarId, UUID itemId) {
         if (calendar.getScheduledTime() == null) {
-            return allDayEvent(calendar, googleCalendarId, itemId, calendar.getScheduledDate(), calendar.getScheduledDate());
+            return allDayEvent(calendar.getItem().getTitle().value(), googleCalendarId, itemId, calendar.getScheduledDate(), calendar.getScheduledDate());
         }
         LocalDateTime start = LocalDateTime.of(calendar.getScheduledDate(), calendar.getScheduledTime());
-        return timedEvent(calendar, googleCalendarId, itemId, start, start.plusMinutes(30));
+        return timedEvent(calendar.getItem().getTitle().value(), googleCalendarId, itemId, start, start.plusMinutes(30));
     }
 
     private GoogleCalendarEventRequest doneEvent(Calendar calendar, String googleCalendarId, UUID itemId) {
-        ScheduleWindow schedule = calendar.getSchedule();
-        if (schedule.isAllDay()) {
-            return allDayEvent(calendar, googleCalendarId, itemId, schedule.getDateStart(), schedule.getDateEnd());
-        }
-        LocalDateTime start = LocalDateTime.of(schedule.getDateStart(), schedule.getTimeStart());
-        LocalDateTime end = LocalDateTime.of(schedule.getDateEnd(), schedule.getTimeEnd());
-        return timedEvent(calendar, googleCalendarId, itemId, start, end);
+        return scheduledEvent(calendar.getItem().getTitle().value(), googleCalendarId, itemId, calendar.getSchedule());
     }
 
     private GoogleCalendarEventRequest ongoingEvent(NextAction nextAction, String googleCalendarId, UUID itemId) {
         ScheduleWindow schedule = nextAction.getSchedule();
         LocalDateTime start = LocalDateTime.of(schedule.getDateStart(), schedule.getTimeStart());
-        return timedEvent(nextAction, googleCalendarId, itemId, start, start.plusMinutes(30));
+        return timedEvent(nextAction.getItem().getTitle().value(), googleCalendarId, itemId, start, start.plusMinutes(30));
     }
 
     private GoogleCalendarEventRequest doneEvent(NextAction nextAction, String googleCalendarId, UUID itemId) {
         ScheduleWindow schedule = nextAction.getSchedule();
         if (missingDoneSchedule(schedule)) {
             LocalDate completedDate = fallbackDoneDate(nextAction);
-            return allDayEvent(nextAction, googleCalendarId, itemId, completedDate, completedDate);
+            return allDayEvent(nextAction.getItem().getTitle().value(), googleCalendarId, itemId, completedDate, completedDate);
         }
-        if (schedule.isAllDay()) return allDayEvent(nextAction, googleCalendarId, itemId, schedule.getDateStart(), schedule.getDateEnd());
+        return scheduledEvent(nextAction.getItem().getTitle().value(), googleCalendarId, itemId, schedule);
+    }
 
+    private GoogleCalendarEventRequest scheduledEvent(String title, String googleCalendarId, UUID itemId, ScheduleWindow schedule) {
+        if (schedule.isAllDay()) return allDayEvent(title, googleCalendarId, itemId, schedule.getDateStart(), schedule.getDateEnd());
         LocalDateTime start = LocalDateTime.of(schedule.getDateStart(), schedule.getTimeStart());
         LocalDateTime end = LocalDateTime.of(schedule.getDateEnd(), schedule.getTimeEnd());
-        return timedEvent(nextAction, googleCalendarId, itemId, start, end);
+        return timedEvent(title, googleCalendarId, itemId, start, end);
     }
 
     private boolean missingDoneSchedule(ScheduleWindow schedule) {
@@ -209,7 +206,7 @@ public class GoogleCalendarEventSyncService {
     }
 
     private GoogleCalendarEventRequest allDayEvent(
-        Calendar calendar,
+        String title,
         String googleCalendarId,
         UUID itemId,
         LocalDate start,
@@ -218,7 +215,7 @@ public class GoogleCalendarEventSyncService {
         return new GoogleCalendarEventRequest(
             googleCalendarId,
             eventId(itemId),
-            calendar.getItem().getTitle().value(),
+            title,
             start,
             end.plusDays(1),
             null,
@@ -226,7 +223,7 @@ public class GoogleCalendarEventSyncService {
     }
 
     private GoogleCalendarEventRequest timedEvent(
-        Calendar calendar,
+        String title,
         String googleCalendarId,
         UUID itemId,
         LocalDateTime start,
@@ -235,41 +232,7 @@ public class GoogleCalendarEventSyncService {
         return new GoogleCalendarEventRequest(
             googleCalendarId,
             eventId(itemId),
-            calendar.getItem().getTitle().value(),
-            null,
-            null,
-            start,
-            end);
-    }
-
-    private GoogleCalendarEventRequest allDayEvent(
-        NextAction nextAction,
-        String googleCalendarId,
-        UUID itemId,
-        LocalDate start,
-        LocalDate end
-    ) {
-        return new GoogleCalendarEventRequest(
-            googleCalendarId,
-            eventId(itemId),
-            nextAction.getItem().getTitle().value(),
-            start,
-            end.plusDays(1),
-            null,
-            null);
-    }
-
-    private GoogleCalendarEventRequest timedEvent(
-        NextAction nextAction,
-        String googleCalendarId,
-        UUID itemId,
-        LocalDateTime start,
-        LocalDateTime end
-    ) {
-        return new GoogleCalendarEventRequest(
-            googleCalendarId,
-            eventId(itemId),
-            nextAction.getItem().getTitle().value(),
+            title,
             null,
             null,
             start,
