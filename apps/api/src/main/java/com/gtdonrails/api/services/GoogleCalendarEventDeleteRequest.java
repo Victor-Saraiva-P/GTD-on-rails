@@ -1,4 +1,4 @@
 package com.gtdonrails.api.services;
 
-record GoogleCalendarEventDeleteRequest(String googleCalendarId, String eventId) {
+public record GoogleCalendarEventDeleteRequest(String googleCalendarId, String eventId) {
 }
