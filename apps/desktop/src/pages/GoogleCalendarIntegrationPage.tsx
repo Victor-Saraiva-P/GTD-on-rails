@@ -29,12 +29,12 @@ export function GoogleCalendarIntegrationPage({ controller }: Props) {
       setFormError(null);
       closeForm();
       controller.reload();
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (e instanceof ApiRequestError && e.status === 503) {
         setFormError("Google Calendar configuration could not be synced; fix persistence sync and try again before connecting.");
         return;
       }
-      setFormError("Failed to save credentials.");
+      setFormError(errorMessageFrom(e));
     }
   };
 
@@ -159,4 +159,11 @@ export function GoogleCalendarIntegrationPage({ controller }: Props) {
       <LeaderMenu />
     </ListWorkspace>
   );
+}
+
+function errorMessageFrom(error: unknown): string {
+  if (typeof error === "object" && error !== null && "message" in error) {
+    return String((error as { message?: unknown }).message) || "Failed to save credentials.";
+  }
+  return String(error) || "Failed to save credentials.";
 }
