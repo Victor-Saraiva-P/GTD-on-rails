@@ -3,7 +3,7 @@ package com.gtdonrails.api.services;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-record GoogleCalendarEventRequest(
+public record GoogleCalendarEventRequest(
     String googleCalendarId,
     String eventId,
     String title,
@@ -13,7 +13,7 @@ record GoogleCalendarEventRequest(
     LocalDateTime dateTimeEnd
 ) {
 
-    GoogleCalendarEventRequest {
+    public GoogleCalendarEventRequest {
         boolean validAllDay = hasCompleteAllDayShape(allDayStartDate, allDayEndDate, dateTimeStart, dateTimeEnd);
         boolean validTimed = hasCompleteTimedShape(allDayStartDate, allDayEndDate, dateTimeStart, dateTimeEnd);
         if (!validAllDay && !validTimed) {
