@@ -22,6 +22,7 @@ import com.gtdonrails.api.entities.Calendar;
 import com.gtdonrails.api.entities.GoogleCredential;
 import com.gtdonrails.api.entities.Item;
 import com.gtdonrails.api.entities.NextAction;
+import com.gtdonrails.api.enums.NextActionStatus;
 import com.gtdonrails.api.repositories.CalendarRepository;
 import com.gtdonrails.api.repositories.GoogleCalendarRepository;
 import com.gtdonrails.api.repositories.NextActionRepository;
@@ -120,6 +121,21 @@ class GoogleCalendarEventSyncServiceTests {
     void syncDoneNextActionWithoutStartUsesCompletionDate() {
         NextAction nextAction = nextActionWithId("Quick task", null);
         nextAction.markDone(clockAt("2026-05-22T09:45:00Z"));
+
+        syncService.syncNextActionEvent(nextAction);
+
+        GoogleCalendarEventRequest request = eventGateway.upserts.getFirst();
+        assertEquals("google-done-id", request.googleCalendarId());
+        assertEquals(LocalDate.parse("2026-05-22"), request.allDayStartDate());
+        assertEquals(LocalDate.parse("2026-05-23"), request.allDayEndDate());
+    }
+
+    @Test
+    void syncDoneNextActionWithoutScheduleUsesUpdatedDate() {
+        NextAction nextAction = nextActionWithId("Imported done task", null);
+        ReflectionTestUtils.setField(nextAction, "status", NextActionStatus.DONE);
+        ReflectionTestUtils.setField(nextAction, "schedule", null);
+        ReflectionTestUtils.setField(nextAction, "updatedAt", Instant.parse("2026-05-22T09:45:00Z"));
 
         syncService.syncNextActionEvent(nextAction);
 

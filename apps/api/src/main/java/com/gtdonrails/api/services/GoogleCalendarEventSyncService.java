@@ -2,6 +2,7 @@ package com.gtdonrails.api.services;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -187,11 +188,24 @@ public class GoogleCalendarEventSyncService {
 
     private GoogleCalendarEventRequest doneEvent(NextAction nextAction, String googleCalendarId, UUID itemId) {
         ScheduleWindow schedule = nextAction.getSchedule();
+        if (missingDoneSchedule(schedule)) {
+            LocalDate completedDate = fallbackDoneDate(nextAction);
+            return allDayEvent(nextAction, googleCalendarId, itemId, completedDate, completedDate);
+        }
         if (schedule.isAllDay()) return allDayEvent(nextAction, googleCalendarId, itemId, schedule.getDateStart(), schedule.getDateEnd());
 
         LocalDateTime start = LocalDateTime.of(schedule.getDateStart(), schedule.getTimeStart());
         LocalDateTime end = LocalDateTime.of(schedule.getDateEnd(), schedule.getTimeEnd());
         return timedEvent(nextAction, googleCalendarId, itemId, start, end);
+    }
+
+    private boolean missingDoneSchedule(ScheduleWindow schedule) {
+        return schedule == null || schedule.getDateStart() == null || schedule.getDateEnd() == null;
+    }
+
+    private LocalDate fallbackDoneDate(NextAction nextAction) {
+        if (nextAction.getUpdatedAt() == null) return LocalDate.now();
+        return LocalDateTime.ofInstant(nextAction.getUpdatedAt(), ZoneId.systemDefault()).toLocalDate();
     }
 
     private GoogleCalendarEventRequest allDayEvent(
