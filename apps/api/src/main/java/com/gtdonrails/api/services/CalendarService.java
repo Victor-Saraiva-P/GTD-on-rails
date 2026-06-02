@@ -176,10 +176,7 @@ public class CalendarService {
     public CalendarResponseDto recoverCalendar(UUID id) {
         Calendar calendar = findCalendar(id);
         calendar.getItem().restore();
-        CalendarResponseDto response = calendarMapper.toResponse(calendarRepository.save(calendar));
-        requestGoogleCalendarEventSyncAfterCommit(calendar.getItemId());
-        requestPersistenceSyncAfterCommit("calendar recovered", PersistenceChangeType.UPDATE_ITEM);
-        return response;
+        return saveWithSync(calendar, "calendar recovered");
     }
 
     private void applyPatch(Calendar calendar, PatchCalendarRequestDto request) {
