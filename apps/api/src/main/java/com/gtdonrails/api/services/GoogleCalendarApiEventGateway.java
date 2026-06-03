@@ -9,10 +9,12 @@ import com.google.api.client.util.DateTime;
 import com.google.api.services.calendar.model.Event;
 import com.google.api.services.calendar.model.EventDateTime;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class GoogleCalendarApiEventGateway implements GoogleCalendarEventGateway {
 
     private final GoogleCalendarEventClient eventClient;
@@ -31,6 +33,12 @@ public class GoogleCalendarApiEventGateway implements GoogleCalendarEventGateway
         try {
             eventClient.deleteEvent(request.googleCalendarId(), request.eventId());
         } catch (GoogleCalendarEventNotFoundException exception) {
+            log.atDebug()
+                .addKeyValue("event", "google_calendar_event_delete_skipped")
+                .addKeyValue("googleCalendarId", request.googleCalendarId())
+                .addKeyValue("eventId", request.eventId())
+                .setCause(exception)
+                .log("Skipping Google Calendar event delete because the event is already absent");
         } catch (IOException exception) {
             throw deleteException(request, exception);
         }
