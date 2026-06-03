@@ -84,7 +84,7 @@ function CredentialsForm(props: CredentialsFormProps) {
   );
 }
 
-function CredentialsSummary({ credentialsConfigured }: { credentialsConfigured: boolean }) {
+function CredentialsSummary({ credentialsConfigured }: Readonly<{ credentialsConfigured: boolean }>) {
   return (
     <>
       <h2 style={headingStyle}>Client Credentials</h2>
