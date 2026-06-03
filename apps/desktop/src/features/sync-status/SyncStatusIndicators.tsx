@@ -188,11 +188,11 @@ function loadingVisual(visual: IndicatorVisual, isLoading: boolean): IndicatorVi
   return isLoading ? { label: "Loading", tone: "unknown", pulse: true } : visual;
 }
 
-type SyncStatusIndicatorRowProps = {
+type SyncStatusIndicatorRowProps = Readonly<{
   failedBeforeStatus: boolean;
   isLoading: boolean;
   status: ReturnType<typeof useSyncStatus>["status"];
-};
+}>;
 
 function DriveStatusIndicator({ failedBeforeStatus, isLoading, status }: SyncStatusIndicatorRowProps) {
   const visual = assetVisual(status?.assets.state ?? null);
