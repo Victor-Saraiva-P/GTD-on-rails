@@ -31,7 +31,6 @@ public class GoogleCalendarApiEventGateway implements GoogleCalendarEventGateway
         try {
             eventClient.deleteEvent(request.googleCalendarId(), request.eventId());
         } catch (GoogleCalendarEventNotFoundException exception) {
-            return;
         } catch (IOException exception) {
             throw deleteException(request, exception);
         }
