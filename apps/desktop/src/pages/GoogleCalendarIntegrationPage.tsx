@@ -8,24 +8,24 @@ import { saveGoogleCredentials } from "../features/integrations/googleCalendarAp
 import { LeaderMenu } from "../features/keybinds/LeaderMenu";
 import { ApiRequestError } from "../lib/api/apiClient";
 
-type Props = {
+type Props = Readonly<{
   controller: GoogleCalendarIntegrationController;
-};
+}>;
 
-type CredentialsFormProps = {
+type CredentialsFormProps = Readonly<{
   credentialsConfigured: boolean;
   initialClientId: string;
   initialClientSecret: string;
   isOpen: boolean;
   onSave: (clientId: string, clientSecret: string) => Promise<void>;
   setIsOpen: Dispatch<SetStateAction<boolean>>;
-};
+}>;
 
-type KeybindsProps = {
+type KeybindsProps = Readonly<{
   controller: GoogleCalendarIntegrationController;
   isFormOpen: boolean;
   setIsFormOpen: Dispatch<SetStateAction<boolean>>;
-};
+}>;
 
 type IntegrationPanelProps = Props & KeybindsProps;
 
@@ -108,7 +108,7 @@ function CredentialInputs(props: CredentialInputsProps) {
   );
 }
 
-type CredentialInputsProps = {
+type CredentialInputsProps = Readonly<{
   clientId: string;
   clientSecret: string;
   closeForm: () => void;
@@ -116,20 +116,20 @@ type CredentialInputsProps = {
   setClientId: (value: string) => void;
   setClientSecret: (value: string) => void;
   submitForm: () => Promise<void>;
-};
+}>;
 
 function CredentialInput(props: CredentialInputProps) {
   return <input autoFocus={props.autoFocus} style={inputStyle} placeholder={props.placeholder} value={props.value} onChange={e => props.onChange(e.target.value)} onKeyDown={e => handleCredentialKey(e, props.submitForm, props.closeForm)} />;
 }
 
-type CredentialInputProps = {
+type CredentialInputProps = Readonly<{
   autoFocus?: boolean;
   closeForm: () => void;
   onChange: (value: string) => void;
   placeholder: string;
   submitForm: () => Promise<void>;
   value: string;
-};
+}>;
 
 function ConnectionStatus({ controller }: Props) {
   const canConnect = controller.status?.configurationStatus === "READY";
@@ -153,7 +153,7 @@ function CalendarsList({ controller }: Props) {
   );
 }
 
-function CalendarRow({ colorHex, name }: { colorHex: string; name: string }) {
+function CalendarRow({ colorHex, name }: Readonly<{ colorHex: string; name: string }>) {
   return (
     <li style={calendarRowStyle}>
       <div style={{ ...calendarColorStyle, backgroundColor: colorHex }}></div>
