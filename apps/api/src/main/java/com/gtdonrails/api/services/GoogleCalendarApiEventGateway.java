@@ -5,7 +5,6 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
 
-import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import com.google.api.client.util.DateTime;
 import com.google.api.services.calendar.model.Event;
 import com.google.api.services.calendar.model.EventDateTime;
@@ -16,11 +15,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class GoogleCalendarApiEventGateway implements GoogleCalendarEventGateway {
 
-    private static final int NOT_FOUND = 404;
-    // Google returns 410 when deleting an event that was already removed.
-    private static final int GONE = 410;
-
-    private final GoogleCalendarService googleCalendarService;
+    private final GoogleCalendarEventClient eventClient;
 
     @Override
     public void upsertEvent(GoogleCalendarEventRequest request) {
@@ -34,20 +29,12 @@ public class GoogleCalendarApiEventGateway implements GoogleCalendarEventGateway
     @Override
     public void deleteEvent(GoogleCalendarEventDeleteRequest request) {
         try {
-            googleCalendarService.getCalendarClient()
-                .events()
-                .delete(request.googleCalendarId(), request.eventId())
-                .execute();
-        } catch (GoogleJsonResponseException exception) {
-            if (!isAlreadyAbsent(exception)) throw deleteException(request, exception);
+            eventClient.deleteEvent(request.googleCalendarId(), request.eventId());
+        } catch (GoogleCalendarEventNotFoundException exception) {
+            return;
         } catch (IOException exception) {
             throw deleteException(request, exception);
         }
-    }
-
-    private boolean isAlreadyAbsent(GoogleJsonResponseException exception) {
-        int status = exception.getStatusCode();
-        return status == NOT_FOUND || status == GONE;
     }
 
     private void upsertEventOrThrow(GoogleCalendarEventRequest request) throws IOException {
@@ -61,29 +48,19 @@ public class GoogleCalendarApiEventGateway implements GoogleCalendarEventGateway
 
     private boolean eventExists(GoogleCalendarEventRequest request) throws IOException {
         try {
-            googleCalendarService.getCalendarClient()
-                .events()
-                .get(request.googleCalendarId(), request.eventId())
-                .execute();
+            eventClient.getEvent(request.googleCalendarId(), request.eventId());
             return true;
-        } catch (GoogleJsonResponseException exception) {
-            if (isAlreadyAbsent(exception)) return false;
-            throw exception;
+        } catch (GoogleCalendarEventNotFoundException exception) {
+            return false;
         }
     }
 
     private void updateEvent(GoogleCalendarEventRequest request, Event event) throws IOException {
-        googleCalendarService.getCalendarClient()
-            .events()
-            .update(request.googleCalendarId(), request.eventId(), event)
-            .execute();
+        eventClient.updateEvent(request.googleCalendarId(), request.eventId(), event);
     }
 
     private void insertEvent(GoogleCalendarEventRequest request, Event event) throws IOException {
-        googleCalendarService.getCalendarClient()
-            .events()
-            .insert(request.googleCalendarId(), event)
-            .execute();
+        eventClient.insertEvent(request.googleCalendarId(), event);
     }
 
     private Event eventFrom(GoogleCalendarEventRequest request) {
