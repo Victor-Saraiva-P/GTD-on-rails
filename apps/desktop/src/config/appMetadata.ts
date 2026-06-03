@@ -1,4 +1,4 @@
 export const appMetadata = {
   name: "GTD ON RAILS",
-  version: "1.1.4"
+  version: "1.2.0"
 } as const;
