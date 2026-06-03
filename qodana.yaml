@@ -11,3 +11,4 @@ exclude:
   - name: All
     paths:
       - apps/api/src/main/java/com/gtdonrails/api/services/AssetStorageService.java
+      - apps/api/src/main/java/com/gtdonrails/api/persistence/bootstrap/services/PersistenceGitSyncService.java

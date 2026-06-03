@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -55,6 +56,9 @@ class ItemServiceTests {
 
     private ItemService itemService;
 
+    @Mock
+    private GoogleCalendarEventQueueService googleCalendarEventQueueService;
+
     @BeforeEach
     void setUp() {
         itemService = new ItemService(
@@ -64,6 +68,7 @@ class ItemServiceTests {
             new ItemBodyNormalizer(),
             itemAssetService,
             persistenceGitSyncService,
+            googleCalendarEventQueueService,
             new AfterCommitExecutor());
     }
 
@@ -84,6 +89,34 @@ class ItemServiceTests {
     }
 
     @Test
+    void updateItemTitleQueuesCalendarEventWhenItemIsCalendar() {
+        UUID itemId = UUID.randomUUID();
+        Item item = new Item(new Title("Old title"), "Old body");
+        item.convertToCalendar(java.time.LocalDate.now(), null);
+
+        when(itemRepository.findByIdAndDeletedAtIsNull(itemId)).thenReturn(Optional.of(item));
+        stubSavedItemResponse(itemResponse("New title", "Old body"));
+
+        itemService.updateItemTitle(itemId, new UpdateItemTitleRequestDto("New title"));
+
+        verify(googleCalendarEventQueueService).requestUpsert(itemId);
+    }
+
+    @Test
+    void updateItemTitleQueuesCalendarEventWhenItemIsNextAction() {
+        UUID itemId = UUID.randomUUID();
+        Item item = new Item(new Title("Old title"), "Old body");
+        item.convertToNextAction(new java.math.BigDecimal("5.0"), java.time.Duration.ofMinutes(30), java.util.Set.of());
+
+        when(itemRepository.findByIdAndDeletedAtIsNull(itemId)).thenReturn(Optional.of(item));
+        stubSavedItemResponse(itemResponse("New title", "Old body"));
+
+        itemService.updateItemTitle(itemId, new UpdateItemTitleRequestDto("New title"));
+
+        verify(googleCalendarEventQueueService).requestUpsert(itemId);
+    }
+
+    @Test
     void patchItemBodyUpdatesOnlyBody() {
         UUID itemId = UUID.randomUUID();
         Item item = new Item(new Title("Old title"), "Old body");
@@ -99,6 +132,7 @@ class ItemServiceTests {
         assertEquals("New body", savedItem.getBody().text());
         assertEquals(expectedResponse, response);
         verify(itemAssetService).reconcileBodyAssetReferences(itemId, bodyValue("New body"));
+        verify(googleCalendarEventQueueService, never()).requestUpsert(itemId);
     }
 
     @Test
@@ -116,9 +150,10 @@ class ItemServiceTests {
     }
 
     @Test
-    void deleteItemSoftDeletesActiveItemAssets() {
+    void deleteItemSoftDeletesActiveItemAssetsAndSyncsCalendar() {
         UUID itemId = UUID.randomUUID();
         Item item = new Item(new Title("Title"), null);
+        item.convertToCalendar(java.time.LocalDate.now(), java.time.LocalTime.now());
 
         when(itemRepository.findByIdAndDeletedAtIsNull(itemId)).thenReturn(Optional.of(item));
 
@@ -127,12 +162,27 @@ class ItemServiceTests {
         assertTrue(item.isDeleted());
         verify(itemAssetService).softDeleteActiveItemAssets(itemId);
         verify(persistenceGitSyncService).requestSync("item deleted", PersistenceChangeType.DELETE_ITEM);
+        verify(googleCalendarEventQueueService).requestDelete(itemId);
     }
 
     @Test
-    void restoreItemRestoresReferencedBodyAssets() {
+    void deleteItemSoftDeletesActiveItemAssetsAndSyncsNextAction() {
         UUID itemId = UUID.randomUUID();
         Item item = new Item(new Title("Title"), null);
+        item.convertToNextAction(new java.math.BigDecimal("5.0"), java.time.Duration.ofMinutes(30), java.util.Set.of());
+
+        when(itemRepository.findByIdAndDeletedAtIsNull(itemId)).thenReturn(Optional.of(item));
+
+        itemService.deleteItem(itemId);
+
+        verify(googleCalendarEventQueueService).requestDelete(itemId);
+    }
+
+    @Test
+    void restoreItemRestoresReferencedBodyAssetsAndSyncsCalendar() {
+        UUID itemId = UUID.randomUUID();
+        Item item = new Item(new Title("Title"), null);
+        item.convertToCalendar(java.time.LocalDate.now(), java.time.LocalTime.now());
         item.softDelete();
 
         when(itemRepository.findById(itemId)).thenReturn(Optional.of(item));
@@ -142,6 +192,21 @@ class ItemServiceTests {
         assertFalse(item.isDeleted());
         verify(itemAssetService).reconcileBodyAssetReferences(itemId, item.getBody());
         verify(persistenceGitSyncService).requestSync("item restored", PersistenceChangeType.UPDATE_ITEM);
+        verify(googleCalendarEventQueueService).requestUpsert(itemId);
+    }
+
+    @Test
+    void restoreItemRestoresReferencedBodyAssetsAndSyncsNextAction() {
+        UUID itemId = UUID.randomUUID();
+        Item item = new Item(new Title("Title"), null);
+        item.convertToNextAction(new java.math.BigDecimal("5.0"), java.time.Duration.ofMinutes(30), java.util.Set.of());
+        item.softDelete();
+
+        when(itemRepository.findById(itemId)).thenReturn(Optional.of(item));
+
+        itemService.restoreItem(itemId);
+
+        verify(googleCalendarEventQueueService).requestUpsert(itemId);
     }
 
     private void stubSavedItemResponse(ItemResponseDto response) {

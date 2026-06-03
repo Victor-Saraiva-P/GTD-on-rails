@@ -4,6 +4,7 @@ import com.gtdonrails.api.dtos.assets.AssetSyncStatusDto;
 import com.gtdonrails.api.dtos.sync.SyncStatusDto;
 import com.gtdonrails.api.persistence.bootstrap.services.PersistenceGitSyncService;
 import com.gtdonrails.api.services.AssetSyncService;
+import com.gtdonrails.api.services.GoogleCalendarEventQueueService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,13 +15,16 @@ import org.springframework.web.bind.annotation.RestController;
 public class SyncController {
 
     private final AssetSyncService assetSyncService;
+    private final GoogleCalendarEventQueueService googleCalendarEventQueueService;
     private final PersistenceGitSyncService persistenceGitSyncService;
 
     public SyncController(
         AssetSyncService assetSyncService,
+        GoogleCalendarEventQueueService googleCalendarEventQueueService,
         PersistenceGitSyncService persistenceGitSyncService
     ) {
         this.assetSyncService = assetSyncService;
+        this.googleCalendarEventQueueService = googleCalendarEventQueueService;
         this.persistenceGitSyncService = persistenceGitSyncService;
     }
 
@@ -31,7 +35,10 @@ public class SyncController {
      */
     @GetMapping("/sync/status")
     public SyncStatusDto getStatus() {
-        return new SyncStatusDto(assetSyncService.status(), persistenceGitSyncService.status());
+        return new SyncStatusDto(
+            assetSyncService.status(),
+            googleCalendarEventQueueService.status(),
+            persistenceGitSyncService.status());
     }
 
     /**

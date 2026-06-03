@@ -8,7 +8,8 @@ public enum PersistenceChangeType {
     UPDATE_CONTEXT("feat(data): update context"),
     DELETE_CONTEXT("feat(data): delete context"),
     UPDATE_CONTEXT_ICON("feat(data): update context icon"),
-    DELETE_CONTEXT_ICON("feat(data): delete context icon");
+    DELETE_CONTEXT_ICON("feat(data): delete context icon"),
+    UPDATE_INTEGRATION_CREDENTIALS("feat(data): update integration credentials");
 
     private final String commitMessage;
 

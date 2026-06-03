@@ -5,6 +5,7 @@ import com.gtdonrails.api.persistence.bootstrap.model.PersistenceSyncStatus;
 
 public record SyncStatusDto(
     AssetSyncStatusDto assets,
+    GoogleCalendarSyncStatusDto googleCalendar,
     PersistenceSyncStatus persistence
 ) {
 }

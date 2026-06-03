@@ -15,6 +15,15 @@ function syncStatus(): SyncStatus {
       lastSuccessfulSyncAt: "2026-05-01T00:00:05Z",
       lastError: null
     },
+    googleCalendar: {
+      state: "SYNCED",
+      pending: false,
+      running: false,
+      lastStartedAt: null,
+      lastFinishedAt: null,
+      lastSuccessfulSyncAt: "2026-05-01T00:00:07Z",
+      lastError: null
+    },
     persistence: {
       state: "IDLE",
       lastStartedAt: null,

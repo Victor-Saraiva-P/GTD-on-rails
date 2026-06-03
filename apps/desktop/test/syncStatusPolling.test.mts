@@ -20,6 +20,15 @@ function syncStatus(assetState: SyncStatus["assets"]["state"], persistenceState:
       lastSuccessfulSyncAt: null,
       lastError: null
     },
+    googleCalendar: {
+      state: "SYNCED",
+      pending: false,
+      running: false,
+      lastStartedAt: null,
+      lastFinishedAt: null,
+      lastSuccessfulSyncAt: null,
+      lastError: null
+    },
     persistence: {
       state: persistenceState,
       lastStartedAt: null,
@@ -40,6 +49,9 @@ describe("sync status polling", () => {
   test("isSettledSyncStatus returns false while either sync is active", () => {
     assert.equal(isSettledSyncStatus(syncStatus("SYNCING", "IDLE")), false);
     assert.equal(isSettledSyncStatus(syncStatus("SYNCED", "SYNCING")), false);
+    const status = syncStatus("SYNCED", "IDLE");
+    status.googleCalendar.state = "PENDING";
+    assert.equal(isSettledSyncStatus(status), false);
   });
 
   test("shouldStopSyncStatusPolling keeps startup failures observable until deadline", () => {

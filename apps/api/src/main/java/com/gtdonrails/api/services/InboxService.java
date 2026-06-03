@@ -33,6 +33,7 @@ public class InboxService {
     private final StuffMapper stuffMapper;
     private final ItemTextNormalizer itemTextNormalizer;
     private final PersistenceGitSyncService persistenceGitSyncService;
+    private final GoogleCalendarEventQueueService googleCalendarEventQueueService;
     private final AfterCommitExecutor afterCommitExecutor;
 
     public InboxService(
@@ -41,6 +42,7 @@ public class InboxService {
         StuffMapper stuffMapper,
         ItemTextNormalizer itemTextNormalizer,
         PersistenceGitSyncService persistenceGitSyncService,
+        GoogleCalendarEventQueueService googleCalendarEventQueueService,
         AfterCommitExecutor afterCommitExecutor
     ) {
         this.itemRepository = itemRepository;
@@ -48,6 +50,7 @@ public class InboxService {
         this.stuffMapper = stuffMapper;
         this.itemTextNormalizer = itemTextNormalizer;
         this.persistenceGitSyncService = persistenceGitSyncService;
+        this.googleCalendarEventQueueService = googleCalendarEventQueueService;
         this.afterCommitExecutor = afterCommitExecutor;
     }
 
@@ -114,6 +117,7 @@ public class InboxService {
         NextAction nextAction = item.convertToNextAction(request.energy(), request.estimatedTime().toDuration(), contexts);
         nextAction.setDeadline(request.deadline());
         itemRepository.save(item);
+        requestGoogleCalendarEventSyncAfterCommit(id);
         requestPersistenceSyncAfterCommit("stuff converted to next action", PersistenceChangeType.UPDATE_ITEM);
     }
 
@@ -127,6 +131,7 @@ public class InboxService {
         Item item = findStuff(id);
         item.convertToCalendar(request.toScheduledDate(), request.toScheduledTime());
         itemRepository.save(item);
+        requestGoogleCalendarEventSyncAfterCommit(id);
         requestPersistenceSyncAfterCommit("stuff converted to calendar", PersistenceChangeType.UPDATE_ITEM);
     }
 
@@ -151,5 +156,9 @@ public class InboxService {
 
     private void requestPersistenceSyncAfterCommit(String reason, PersistenceChangeType changeType) {
         afterCommitExecutor.run(() -> persistenceGitSyncService.requestSync(reason, changeType));
+    }
+
+    private void requestGoogleCalendarEventSyncAfterCommit(UUID itemId) {
+        afterCommitExecutor.run(() -> googleCalendarEventQueueService.requestUpsert(itemId));
     }
 }

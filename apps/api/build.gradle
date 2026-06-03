@@ -7,7 +7,7 @@ plugins {
 }
 
 group = 'com.gtdonrails'
-version = '1.1.4'
+version = '1.2.0'
 
 java {
 	sourceCompatibility = JavaVersion.VERSION_21
@@ -29,6 +29,9 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.xerial:sqlite-jdbc'
 	implementation 'org.hibernate.orm:hibernate-community-dialects'
+
+	implementation 'com.google.api-client:google-api-client:2.8.0'
+	implementation 'com.google.apis:google-api-services-calendar:v3-rev20260517-2.0.0'
 
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'

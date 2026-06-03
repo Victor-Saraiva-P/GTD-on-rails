@@ -27,6 +27,7 @@ public class ItemService {
     private final ItemBodyNormalizer itemBodyNormalizer;
     private final ItemAssetService itemAssetService;
     private final PersistenceGitSyncService persistenceGitSyncService;
+    private final GoogleCalendarEventQueueService googleCalendarEventQueueService;
     private final AfterCommitExecutor afterCommitExecutor;
 
     public ItemService(
@@ -36,6 +37,7 @@ public class ItemService {
         ItemBodyNormalizer itemBodyNormalizer,
         ItemAssetService itemAssetService,
         PersistenceGitSyncService persistenceGitSyncService,
+        GoogleCalendarEventQueueService googleCalendarEventQueueService,
         AfterCommitExecutor afterCommitExecutor
     ) {
         this.itemRepository = itemRepository;
@@ -44,6 +46,7 @@ public class ItemService {
         this.itemBodyNormalizer = itemBodyNormalizer;
         this.itemAssetService = itemAssetService;
         this.persistenceGitSyncService = persistenceGitSyncService;
+        this.googleCalendarEventQueueService = googleCalendarEventQueueService;
         this.afterCommitExecutor = afterCommitExecutor;
     }
 
@@ -73,6 +76,7 @@ public class ItemService {
         Item item = findItem(id);
         item.setTitle(new Title(itemTextNormalizer.normalizeTitle(request.title())));
         ItemResponseDto response = itemMapper.toResponse(itemRepository.save(item));
+        requestCalendarEventUpsertAfterCommit(id, item);
         requestPersistenceSyncAfterCommit("item title updated", PersistenceChangeType.UPDATE_ITEM);
         return response;
     }
@@ -88,6 +92,7 @@ public class ItemService {
         itemAssetService.softDeleteActiveItemAssets(id);
         item.softDelete();
         itemRepository.save(item);
+        requestCalendarEventDeleteAfterCommit(id, item);
         requestPersistenceSyncAfterCommit("item deleted", PersistenceChangeType.DELETE_ITEM);
     }
 
@@ -103,6 +108,7 @@ public class ItemService {
         item.restore();
         itemAssetService.reconcileBodyAssetReferences(id, item.getBody());
         itemRepository.save(item);
+        requestCalendarEventUpsertAfterCommit(id, item);
         requestPersistenceSyncAfterCommit("item restored", PersistenceChangeType.UPDATE_ITEM);
     }
 
@@ -113,6 +119,16 @@ public class ItemService {
 
     private void requestPersistenceSyncAfterCommit(String reason, PersistenceChangeType changeType) {
         afterCommitExecutor.run(() -> persistenceGitSyncService.requestSync(reason, changeType));
+    }
+
+    private void requestCalendarEventUpsertAfterCommit(UUID itemId, Item item) {
+        if (item.getCalendar() == null && item.getNextAction() == null) return;
+        afterCommitExecutor.run(() -> googleCalendarEventQueueService.requestUpsert(itemId));
+    }
+
+    private void requestCalendarEventDeleteAfterCommit(UUID itemId, Item item) {
+        if (item.getCalendar() == null && item.getNextAction() == null) return;
+        afterCommitExecutor.run(() -> googleCalendarEventQueueService.requestDelete(itemId));
     }
 
 }

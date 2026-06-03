@@ -27,50 +27,58 @@ public class NextActionService {
     private final NextActionRepository nextActionRepository;
     private final ContextRepository contextRepository;
     private final NextActionMapper nextActionMapper;
+    private final GoogleCalendarEventQueueService googleCalendarEventQueueService;
+    private final AfterCommitExecutor afterCommitExecutor;
     private final Clock clock;
 
     public NextActionService(
         NextActionRepository nextActionRepository,
         ContextRepository contextRepository,
         NextActionMapper nextActionMapper,
+        GoogleCalendarEventQueueService googleCalendarEventQueueService,
+        AfterCommitExecutor afterCommitExecutor,
         Clock clock
     ) {
         this.nextActionRepository = nextActionRepository;
         this.contextRepository = contextRepository;
         this.nextActionMapper = nextActionMapper;
+        this.googleCalendarEventQueueService = googleCalendarEventQueueService;
+        this.afterCommitExecutor = afterCommitExecutor;
         this.clock = clock;
     }
 
     @Transactional
     public NextActionResponseDto patchNextAction(UUID id, PatchNextActionRequestDto request) {
         NextAction nextAction = findNextAction(id);
+        applyNextActionPatch(nextAction, request);
+        if (changesDeadline(request)) requestGoogleCalendarEventSyncAfterCommit(id);
+        return nextActionMapper.toResponse(nextActionRepository.save(nextAction));
+    }
 
-        if (request.energy() != null) {
-            nextAction.setEnergy(request.energy());
-        }
+    private void applyNextActionPatch(NextAction nextAction, PatchNextActionRequestDto request) {
+        if (request.energy() != null) nextAction.setEnergy(request.energy());
+        if (request.estimatedTime() != null) nextAction.setEstimatedTime(request.estimatedTime().toDuration());
+        applyDeadlinePatch(nextAction, request);
+        if (request.contextIds() != null) nextAction.replaceContexts(findContextsOrThrow(request.contextIds()));
+    }
 
-        if (request.estimatedTime() != null) {
-            nextAction.setEstimatedTime(request.estimatedTime().toDuration());
-        }
-
+    private void applyDeadlinePatch(NextAction nextAction, PatchNextActionRequestDto request) {
         if (Boolean.TRUE.equals(request.clearDeadline())) {
             nextAction.setDeadline(null);
-        } else if (request.deadline() != null) {
-            nextAction.setDeadline(request.deadline());
+            return;
         }
+        if (request.deadline() != null) nextAction.setDeadline(request.deadline());
+    }
 
-        if (request.contextIds() != null) {
-            Set<Context> contexts = findContextsOrThrow(request.contextIds());
-            nextAction.replaceContexts(contexts);
-        }
-
-        return nextActionMapper.toResponse(nextActionRepository.save(nextAction));
+    private boolean changesDeadline(PatchNextActionRequestDto request) {
+        return Boolean.TRUE.equals(request.clearDeadline()) || request.deadline() != null;
     }
 
     @Transactional
     public NextActionResponseDto markOnGoing(UUID id) {
         NextAction nextAction = findNextAction(id);
         nextAction.markOnGoing(clock);
+        requestGoogleCalendarEventSyncAfterCommit(id);
         return nextActionMapper.toResponse(nextActionRepository.save(nextAction));
     }
 
@@ -78,6 +86,7 @@ public class NextActionService {
     public NextActionResponseDto markDone(UUID id) {
         NextAction nextAction = findNextAction(id);
         nextAction.markDone(clock);
+        requestGoogleCalendarEventSyncAfterCommit(id);
         return nextActionMapper.toResponse(nextActionRepository.save(nextAction));
     }
 
@@ -85,7 +94,12 @@ public class NextActionService {
     public NextActionResponseDto resetNextActionStatus(UUID id) {
         NextAction nextAction = findNextAction(id);
         nextAction.resetStatus();
+        requestGoogleCalendarEventSyncAfterCommit(id);
         return nextActionMapper.toResponse(nextActionRepository.save(nextAction));
+    }
+
+    private void requestGoogleCalendarEventSyncAfterCommit(UUID itemId) {
+        afterCommitExecutor.run(() -> googleCalendarEventQueueService.requestUpsert(itemId));
     }
 
     @Transactional(readOnly = true)
