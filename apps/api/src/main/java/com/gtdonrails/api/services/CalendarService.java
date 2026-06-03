@@ -24,6 +24,7 @@ public class CalendarService {
     private final CalendarMapper calendarMapper;
     private final Clock clock;
     private final PersistenceGitSyncService persistenceGitSyncService;
+    private final GoogleCalendarEventQueueService googleCalendarEventQueueService;
     private final AfterCommitExecutor afterCommitExecutor;
 
     public CalendarService(
@@ -31,12 +32,14 @@ public class CalendarService {
         CalendarMapper calendarMapper,
         Clock clock,
         PersistenceGitSyncService persistenceGitSyncService,
+        GoogleCalendarEventQueueService googleCalendarEventQueueService,
         AfterCommitExecutor afterCommitExecutor
     ) {
         this.calendarRepository = calendarRepository;
         this.calendarMapper = calendarMapper;
         this.clock = clock;
         this.persistenceGitSyncService = persistenceGitSyncService;
+        this.googleCalendarEventQueueService = googleCalendarEventQueueService;
         this.afterCommitExecutor = afterCommitExecutor;
     }
 
@@ -121,7 +124,9 @@ public class CalendarService {
     public CalendarResponseDto patchCalendar(UUID id, PatchCalendarRequestDto request) {
         Calendar calendar = findCalendar(id);
         applyPatch(calendar, request);
-        CalendarResponseDto response = calendarMapper.toResponse(calendarRepository.save(calendar));
+        Calendar savedCalendar = calendarRepository.save(calendar);
+        CalendarResponseDto response = calendarMapper.toResponse(savedCalendar);
+        requestGoogleCalendarEventSyncAfterCommit(savedCalendar.getItemId());
         requestPersistenceSyncAfterCommit("calendar updated", PersistenceChangeType.UPDATE_ITEM);
         return response;
     }
@@ -184,7 +189,9 @@ public class CalendarService {
     }
 
     private CalendarResponseDto saveWithSync(Calendar calendar, String reason) {
-        CalendarResponseDto response = calendarMapper.toResponse(calendarRepository.save(calendar));
+        Calendar savedCalendar = calendarRepository.save(calendar);
+        CalendarResponseDto response = calendarMapper.toResponse(savedCalendar);
+        requestGoogleCalendarEventSyncAfterCommit(savedCalendar.getItemId());
         requestPersistenceSyncAfterCommit(reason, PersistenceChangeType.UPDATE_ITEM);
         return response;
     }
@@ -200,5 +207,9 @@ public class CalendarService {
 
     private void requestPersistenceSyncAfterCommit(String reason, PersistenceChangeType changeType) {
         afterCommitExecutor.run(() -> persistenceGitSyncService.requestSync(reason, changeType));
+    }
+
+    private void requestGoogleCalendarEventSyncAfterCommit(UUID itemId) {
+        afterCommitExecutor.run(() -> googleCalendarEventQueueService.requestUpsert(itemId));
     }
 }

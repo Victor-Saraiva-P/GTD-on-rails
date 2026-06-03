@@ -16,6 +16,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
+import com.gtdonrails.api.dtos.calendar.ConvertStuffToCalendarRequestDto;
 import com.gtdonrails.api.dtos.inbox.ConvertStuffToNextActionRequestDto;
 import com.gtdonrails.api.dtos.inbox.CreateStuffRequestDto;
 import com.gtdonrails.api.dtos.inbox.StuffResponseDto;
@@ -58,6 +59,9 @@ class InboxServiceTests {
     @Mock
     private PersistenceGitSyncService persistenceGitSyncService;
 
+    @Mock
+    private GoogleCalendarEventQueueService googleCalendarEventQueueService;
+
     @Captor
     private ArgumentCaptor<Item> itemCaptor;
 
@@ -71,6 +75,7 @@ class InboxServiceTests {
             stuffMapper,
             new ItemTextNormalizer(),
             persistenceGitSyncService,
+            googleCalendarEventQueueService,
             new AfterCommitExecutor());
     }
 
@@ -146,6 +151,7 @@ class InboxServiceTests {
         assertEquals(Duration.ofMinutes(90), stuff.getNextAction().getEstimatedTime());
         assertEquals(LocalDate.parse("2028-02-29"), stuff.getNextAction().getDeadline());
         assertEquals(context, stuff.getNextAction().getContexts().iterator().next());
+        verify(googleCalendarEventQueueService).requestUpsert(stuffId);
         verify(persistenceGitSyncService).requestSync("stuff converted to next action", PersistenceChangeType.UPDATE_ITEM);
     }
 
@@ -176,6 +182,18 @@ class InboxServiceTests {
 
         assertEquals("context not found", exception.getMessage());
         verify(itemRepository, never()).save(any(Item.class));
+    }
+
+    @Test
+    void convertStuffToCalendarQueuesGoogleCalendarEvent() {
+        UUID stuffId = UUID.randomUUID();
+        Item stuff = new Item(new Title("Pay rent"), null);
+        when(itemRepository.findByIdAndStatusAndDeletedAtIsNull(stuffId, ItemStatus.STUFF)).thenReturn(Optional.of(stuff));
+
+        inboxService.convertStuffToCalendar(stuffId, new ConvertStuffToCalendarRequestDto("2026-05-21", "09:30"));
+
+        verify(itemRepository).save(stuff);
+        verify(googleCalendarEventQueueService).requestUpsert(stuffId);
     }
 
     private ConvertStuffToNextActionRequestDto convertRequest(UUID contextId) {

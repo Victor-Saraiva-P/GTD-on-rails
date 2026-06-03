@@ -31,6 +31,8 @@ import { OnGoingNextActionDetailPage } from "./OnGoingNextActionDetailPage";
 import { OnGoingNextActionsPage } from "./OnGoingNextActionsPage";
 import { StuffDetailPage } from "./StuffDetailPage";
 import { useOnGoingNextActionsWorkspaceController } from "../features/next-actions/useOnGoingNextActionsWorkspaceController";
+import { useGoogleCalendarIntegrationController } from "../features/integrations/useGoogleCalendarIntegrationController";
+import { GoogleCalendarIntegrationPage } from "./GoogleCalendarIntegrationPage";
 
 const doneNextActionsConfig = {
   detailZone: "done-next-action-detail",
@@ -102,6 +104,14 @@ function buildNavigationBindings(
       leader: true,
       sequence: ["o"],
       runKeybind: () => setActiveScreen("ongoing-next-actions")
+    },
+    {
+      id: "navigation.open-google-calendar-integration",
+      key: "g",
+      description: "Google Calendar Integration",
+      leader: true,
+      sequence: ["I", "g"],
+      runKeybind: () => setActiveScreen("google-calendar-integration")
     }
   ] satisfies KeybindDefinition[];
 }
@@ -115,7 +125,8 @@ function useAppControllers() {
     inbox: useInboxWorkspaceController(),
     nextActions: useNextActionsWorkspaceController(),
     ongoingCalendars: useOnGoingCalendarsWorkspaceController(),
-    ongoingNextActions: useOnGoingNextActionsWorkspaceController()
+    ongoingNextActions: useOnGoingNextActionsWorkspaceController(),
+    googleCalendarIntegration: useGoogleCalendarIntegrationController()
   };
 }
 
@@ -132,6 +143,7 @@ function useReloadActiveScreen(activeScreen: ScreenId, controllers: AppControlle
     if (activeScreen === "ongoing-next-action-detail-page") controllers.ongoingNextActions.reload();
     if (activeScreen === "done-next-actions") controllers.doneNextActions.reload();
     if (activeScreen === "deleted-next-actions") controllers.deletedNextActions.reload();
+    if (activeScreen === "google-calendar-integration") controllers.googleCalendarIntegration.reload();
   }, [activeScreen]);
 }
 
@@ -183,6 +195,7 @@ function renderActiveScreen(activeScreen: ScreenId, controllers: AppControllers)
   if (activeScreen === "ongoing-next-action-detail-page") return <OnGoingNextActionDetailPage controller={controllers.ongoingNextActions} selectNextAction={controllers.nextActions.setSelectedId} />;
   if (activeScreen === "done-next-actions") return renderDoneNextActionsPage(controllers);
   if (activeScreen === "deleted-next-actions") return renderDeletedNextActionsPage(controllers);
+  if (activeScreen === "google-calendar-integration") return <GoogleCalendarIntegrationPage controller={controllers.googleCalendarIntegration} />;
 
   return <InboxPage controller={controllers.inbox} />;
 }

@@ -108,3 +108,17 @@
 ## Documentation
 
 - All documentation files (READMEs, Markdown files in `docs/`, inline code documentation, etc.) must be written exclusively in English.
+
+## Agent skills
+
+### Issue tracker
+
+Issues and PRDs are tracked in GitHub Issues for `Victor-Saraiva-P/GTD-on-rails`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Use the default five-label triage vocabulary. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+This repo uses a multi-context domain documentation layout with a root `CONTEXT-MAP.md`. See `docs/agents/domain.md`.

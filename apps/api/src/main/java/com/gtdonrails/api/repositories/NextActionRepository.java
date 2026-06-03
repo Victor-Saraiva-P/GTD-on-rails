@@ -2,6 +2,7 @@ package com.gtdonrails.api.repositories;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import com.gtdonrails.api.entities.NextAction;
@@ -16,6 +17,8 @@ import org.springframework.data.repository.query.Param;
 public interface NextActionRepository extends JpaRepository<NextAction, UUID> {
 
     List<NextAction> findAllByContexts_IdAndItem_DeletedAtIsNullOrderByItem_UpdatedAtDesc(UUID contextId);
+
+    Optional<NextAction> findByItemIdAndItem_DeletedAtIsNull(UUID itemId);
 
     Page<NextAction> findAllByContexts_IdAndItem_DeletedAtIsNullOrderByItem_UpdatedAtDesc(UUID contextId, Pageable pageable);
 

@@ -14,6 +14,8 @@ This page is the umbrella documentation for the next-action lists and related pa
 
 The next actions page is the list of available concrete actions. It supports [[Context]] filtering, ordering, status changes, editing, and deletion.
 
+Next actions with a deadline appear as all-day entries on the external Next Action agenda for the deadline date. Next actions without a deadline do not appear on an external agenda.
+
 | Shortcut | Scope | Action |
 | --- | --- | --- |
 | `d` | List or detail | Delete selected next action. |
@@ -57,6 +59,8 @@ The body is [[Body Content]] and supports the shared formatting shortcuts from [
 
 The on going next actions page is the list of actions currently pulled into active execution.
 
+On going next actions appear on the shared external On Going agenda using the time they were pulled into active execution.
+
 | Shortcut | Scope | Action |
 | --- | --- | --- |
 | `d` | List or detail | Delete selected on going action. |
@@ -95,6 +99,8 @@ The body is [[Body Content]] and supports the shared formatting shortcuts from [
 ## Completed Next Actions List
 
 The completed next actions page is the recovery and review list for actions marked done.
+
+Completed next actions appear on the shared external Done agenda using their actual execution window.
 
 | Shortcut | Scope | Action |
 | --- | --- | --- |
