@@ -84,7 +84,7 @@ class InboxServiceTests {
         Item stuff = new Item(new Title("Capture idea"), null);
         StuffResponseDto expectedResponse = stuffResponse("Capture idea");
 
-        when(itemRepository.findAllByStatusAndDeletedAtIsNullOrderByCreatedAtDesc(ItemStatus.STUFF))
+        when(itemRepository.findAllByStatusAndDeletedAtIsNullOrderByCreatedAtAsc(ItemStatus.STUFF))
             .thenReturn(List.of(stuff));
         when(stuffMapper.toResponse(stuff)).thenReturn(expectedResponse);
 

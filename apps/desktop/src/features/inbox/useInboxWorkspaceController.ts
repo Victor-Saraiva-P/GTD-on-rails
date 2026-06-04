@@ -48,7 +48,7 @@ function usePendingBodyEditState() {
 }
 
 function visibleStuffsWithDraft(draftStuff: Stuff | null, stuffs: Stuff[]): Stuff[] {
-  return draftStuff ? [draftStuff, ...stuffs] : stuffs;
+  return draftStuff ? [...stuffs, draftStuff] : stuffs;
 }
 
 type InboxSelection = ReturnType<typeof useInboxSelection>;

@@ -61,7 +61,7 @@ public class InboxService {
      */
     @Transactional(readOnly = true)
     public List<StuffResponseDto> listStuff() {
-        return itemRepository.findAllByStatusAndDeletedAtIsNullOrderByCreatedAtDesc(ItemStatus.STUFF)
+        return itemRepository.findAllByStatusAndDeletedAtIsNullOrderByCreatedAtAsc(ItemStatus.STUFF)
             .stream()
             .map(stuffMapper::toResponse)
             .toList();

@@ -96,15 +96,15 @@ class InboxControllerTests {
     }
 
     @Test
-    void listsStuffOrderedByCreatedAtDescending() throws Exception {
+    void listsStuffOrderedByCreatedAtAscending() throws Exception {
         Item olderItem = saveItemCreatedAt("Older item", Instant.parse("2026-01-01T10:00:00Z"));
         Item newerItem = saveItemCreatedAt("Newer item", Instant.parse("2026-01-01T10:01:00Z"));
 
         mockMvc.perform(get("/inbox"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$", hasSize(2)))
-            .andExpect(jsonPath("$[0].id").value(newerItem.getId().toString()))
-            .andExpect(jsonPath("$[1].id").value(olderItem.getId().toString()));
+            .andExpect(jsonPath("$[0].id").value(olderItem.getId().toString()))
+            .andExpect(jsonPath("$[1].id").value(newerItem.getId().toString()));
     }
 
     @Test

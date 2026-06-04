@@ -116,7 +116,7 @@ async function createInboxStuff(title: string, state: InboxLoadState, mutations:
 
   try {
     const createdStuff = await createStuffRequest(title);
-    state.setStuffs((currentStuffs) => [createdStuff, ...currentStuffs]);
+    state.setStuffs((currentStuffs) => [...currentStuffs, createdStuff]);
     completeInboxMutation(state, triggerSyncStatusPolling);
     return createdStuff;
   } finally {
