@@ -1,5 +1,5 @@
-import { expect, test } from "@playwright/test";
-import { createAndSelectInboxStuff, focusPanelAndSelectItem, openApp, processIntoCalendar, resetTestData, uniqueLabel } from "./support/app";
+import { expect, test, type APIRequestContext } from "@playwright/test";
+import { apiBaseUrl, createAndSelectInboxStuff, createStuffApi, focusPanelAndSelectItem, openApp, openCalendars, processIntoCalendar, resetTestData, uniqueLabel } from "./support/app";
 
 test.beforeEach(async ({ page, request }) => {
   await resetTestData(request);
@@ -19,6 +19,38 @@ test("pressing o on a due calendar opens its on going detail in body editing", a
   await expect(page.getByText(title).first()).toBeVisible();
   await expect(page.locator(".cm-content")).toBeVisible();
 });
+
+test("pressing o edits the promoted calendar when another calendar is already on going", async ({ page, request }) => {
+  const existingTitle = uniqueLabel("Existing on going calendar");
+  const promotedTitle = uniqueLabel("Promoted on going calendar");
+  await createCalendarApi(request, existingTitle);
+  await createCalendarApi(request, promotedTitle);
+  await openCalendars(page);
+  await focusPanelAndSelectItem(page, 0, existingTitle);
+  await page.keyboard.press("o");
+  await expect(page.locator(".list-pane__title", { hasText: "On Going Calendar Detail" })).toBeVisible();
+  await openApp(page);
+  await openCalendars(page);
+  await focusPanelAndSelectItem(page, 0, promotedTitle);
+
+  await page.keyboard.press("o");
+
+  await expect(page.getByRole("heading", { name: promotedTitle })).toBeVisible();
+  await expect(page.locator(".cm-content")).toBeVisible();
+});
+
+async function createCalendarApi(request: APIRequestContext, title: string): Promise<void> {
+  const stuff = await createStuffApi(request, title);
+  const response = await request.post(`${apiBaseUrl}/inbox/${stuff.id}/calendar`, { data: { scheduledDate: todayIsoDate() } });
+  expect(response.ok()).toBeTruthy();
+}
+
+function todayIsoDate(): string {
+  const today = new Date();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+  return `${today.getFullYear()}-${month}-${day}`;
+}
 
 test("pressing o on a weekly calendar opens its on going detail", async ({ page }) => {
   const title = uniqueLabel("Weekly calendar on going");
