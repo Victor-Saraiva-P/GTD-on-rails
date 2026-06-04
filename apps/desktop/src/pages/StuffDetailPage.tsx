@@ -29,16 +29,6 @@ function stuffDetailBinding(id: string, key: string, description: string, runKey
   return { description, id, key, leader, runKeybind, screen: "stuff-detail", zone: "stuff-detail" };
 }
 
-function canEditStuffBody(controller: InboxWorkspaceController): boolean {
-  return !controller.isLoading && !controller.isCreating && !controller.isDeleting && !controller.isUpdating && !controller.editingBodyId && Boolean(controller.selectedItem);
-}
-
-function editStuffBodyFromKeybind(controller: InboxWorkspaceController) {
-  if (canEditStuffBody(controller)) {
-    controller.startEditingSelectedStuffBody();
-  }
-}
-
 function backToInboxFromKeybind(controller: InboxWorkspaceController, setActiveScreen: (screen: ScreenId) => void) {
   if (!controller.editingBodyId) {
     controller.setActiveZone("inbox-list");
@@ -53,7 +43,6 @@ function buildStuffDetailBindings(
   openAssetCombo: () => void
 ) {
   return [
-    stuffDetailBinding("stuff-detail-page.edit-body", "Enter", "Edit selected body", () => editStuffBodyFromKeybind(controller)),
     stuffDetailBinding("stuff-detail-page.back-to-inbox", "Escape", "Back to inbox", () => backToInboxFromKeybind(controller, setActiveScreen)),
     stuffDetailBinding("stuff-detail-page.which-key", "k", "Show available keybinds", () => undefined, true),
     ...buildFormattingBindings("stuff-detail", openLinkCombo, openAssetCombo)

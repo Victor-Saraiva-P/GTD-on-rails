@@ -25,6 +25,7 @@ These shortcuts are available in the Calendars workspace when a modal dialog or 
 | `e` | Edit the selected calendar scheduled date and optional time. |
 | `Enter` | Edit the selected calendar title in Today and Weekly list panels. |
 | `Space Enter` | Open the selected calendar full detail page. |
+| `o` | Mark the selected Today Due or Weekly calendar as On Going and open its On Going calendar detail page. |
 | `H` | Move the Weekly view one week backward. |
 | `L` | Move the Weekly view one week forward. |
 | `t` | Return Weekly to the current week and focus today. |
@@ -67,3 +68,5 @@ These shortcuts are available in body/detail editing zones that register markdow
 No two actions may use the same shortcut sequence in the same screen, focus zone, and modifier scope.
 
 For example, `Space m a` must not be assigned to another action in a body/detail zone where it already inserts an asset.
+
+Detail zones protect Vim-compatible body interaction. They may register only `Escape`, `Ctrl+h`, `PageUp`, `PageDown`, and leader-prefixed shortcuts such as shared body formatting commands.

@@ -40,7 +40,6 @@ function buildCalendarDetailBindings(
   openAsset: () => void
 ): KeybindDefinition[] {
   return [
-    detailBinding("calendar-detail-page.edit-body", "Enter", "Edit selected body", () => controller.selectedItem && controller.startBodyEdit()),
     detailBinding("calendar-detail-page.back", "Escape", "Back to calendars", () => backToCalendars(controller, setActiveScreen)),
     detailBinding("calendar-detail-page.which-key", "k", "Show available keybinds", () => undefined, true),
     ...buildFormattingBindings("calendar-detail-page", openLink, openAsset, "calendar-detail")

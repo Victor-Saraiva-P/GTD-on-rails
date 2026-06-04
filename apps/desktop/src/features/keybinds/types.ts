@@ -11,6 +11,7 @@ export type ScreenId =
   | "stuff-detail"
   | "next-action-detail-page"
   | "ongoing-next-action-detail-page"
+  | "ongoing-calendar-detail-page"
   | "google-calendar-integration";
 
 export type FocusZoneId =

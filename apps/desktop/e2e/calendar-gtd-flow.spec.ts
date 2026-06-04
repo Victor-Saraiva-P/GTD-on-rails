@@ -25,6 +25,11 @@ test("calendar GTD flow: creates, schedules, manages state, and deletes", async 
   const { panel: panel1, item: dueCalendar } = await focusPanelAndSelectItem(page, 0, title);
   await page.keyboard.press("o");
   await expect(dueCalendar).not.toBeVisible();
+  await expect(page.locator(".list-pane__title", { hasText: "On Going Calendar Detail" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await page.keyboard.down("Control");
+  await page.keyboard.press("h");
+  await page.keyboard.up("Control");
 
   // 4. Verify in On Going page
   await page.keyboard.press("Space");
@@ -94,5 +99,4 @@ async function expectCalendarSubviewAfterKey(page: Page, key: string, title: str
   }
   await expect(page.locator(".inbox-pane .list-pane__title").nth(0)).toHaveText(title);
 }
-
 

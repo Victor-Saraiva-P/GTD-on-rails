@@ -113,6 +113,7 @@ function moveSelection(controller: EditableController, direction: "next" | "prev
 
 function openDetailScreen(selection: OnGoingItemSelection | null, setActiveScreen: (screen: ScreenId) => void) {
   if (selection?.type === "next-action") setActiveScreen("ongoing-next-action-detail-page");
+  if (selection?.type === "calendar") setActiveScreen("ongoing-calendar-detail-page");
 }
 
 async function markAsDone(props: ControllerProps, setActiveScreen: (screen: ScreenId) => void): Promise<void> {
@@ -135,7 +136,7 @@ function openRestoredNextAction(id: string, selectNextAction: (id: string | null
 }
 
 function zonesForBindings(): FocusZoneId[] {
-  return ["next-actions-list", "ongoing-calendars-list", "next-action-detail"];
+  return ["next-actions-list", "ongoing-calendars-list"];
 }
 
 function panelFocusBindings(setActivePanel: (panel: OnGoingPanelId) => void, controller: EditableController): KeybindDefinition[] {
@@ -181,8 +182,7 @@ function nextActionOnlyBindings(props: ControllerProps, openAttrs: () => void, i
 function detailBindings(props: ControllerProps, setActiveScreen: (screen: ScreenId) => void, openLink: () => void, openAsset: () => void): KeybindDefinition[] {
   const activeController = controllerForPanel(props);
   return [
-    onGoingBinding("ongoing.detail-edit-body", "Enter", "Edit selected body", "next-action-detail", () => canEdit(activeController) && activeController.startBodyEdit()),
-    onGoingBinding("ongoing.focus-active-panel", "h", "Focus active on going panel", "next-action-detail", () => activeController.setActiveZone(listZoneForOnGoingPanel(props.activePanel))),
+    { ...onGoingBinding("ongoing.focus-active-panel", "h", "Focus active on going panel", "next-action-detail", () => activeController.setActiveZone(listZoneForOnGoingPanel(props.activePanel))), ctrl: true },
     onGoingBinding("ongoing.open-next-action-detail", "Enter", "Open full detail", listZoneForOnGoingPanel(props.activePanel), () => openDetailScreen(activeSelection(props), setActiveScreen), true, ["Enter"]),
     onGoingBinding("ongoing.which-key-list", "k", "Show available keybinds", listZoneForOnGoingPanel(props.activePanel), () => undefined, true),
     onGoingBinding("ongoing.which-key-detail", "k", "Show available keybinds", "next-action-detail", () => undefined, true),
@@ -204,7 +204,7 @@ function useOnGoingBindings(props: ControllerProps, selectNextAction: (id: strin
 
 function useOnGoingZone(props: ControllerProps) {
   useEffect(() => {
-    const validZones = [...zonesForBindings()];
+    const validZones = [...zonesForBindings(), "next-action-detail"];
     if (!validZones.includes(props.controller.activeZone)) {
       props.controller.setActiveZone(listZoneForOnGoingPanel(props.activePanel));
     }

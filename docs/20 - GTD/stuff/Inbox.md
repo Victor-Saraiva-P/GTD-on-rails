@@ -19,17 +19,16 @@ The inbox page is the list for unprocessed stuff. Use it to capture new stuff, i
 | Shortcut | Scope | Action |
 | --- | --- | --- |
 | `a` | List | Add new stuff. |
-| `d` | List or detail | Delete selected stuff. |
-| `u` | List or detail | Undo last deletion. |
-| `Ctrl+r` | List or detail | Redo last action. |
-| `p` | List or detail | Process selected stuff. |
+| `d` | List | Delete selected stuff. |
+| `u` | List | Undo last deletion. |
+| `Ctrl+r` | List | Redo last action. |
+| `p` | List | Process selected stuff. |
 | `j` | List | Move selection down. |
 | `k` | List | Move selection up. |
 | `Enter` | List | Edit selected title. |
 | `l` | List | Edit selected body. |
-| `h` | Detail | Focus inbox list. |
-| `Enter` | Detail | Edit selected body. |
-| `Space Enter` | List or detail | Open full stuff detail. |
+| `Ctrl+h` | Detail | Focus inbox list. |
+| `Space Enter` | List | Open full stuff detail. |
 | `[` | List or detail | Open deleted stuff. |
 | `]` | List or detail | Open deleted stuff. |
 | `Space k` | List or detail | Show available keybindings. |
@@ -40,11 +39,10 @@ The inbox detail body is [[Body Content]] and supports the shared formatting sho
 
 The stuff detail page is the focused detail view for a selected inbox item.
 
-Focused detail pages start body editing automatically when opened. `Enter` starts editing again when the body is not already being edited.
+Focused detail pages start body editing automatically when opened.
 
 | Shortcut | Action |
 | --- | --- |
-| `Enter` | Edit selected body. |
 | `Escape` | Back to inbox when body editing is not active. |
 | `Space k` | Show available keybindings. |
 
