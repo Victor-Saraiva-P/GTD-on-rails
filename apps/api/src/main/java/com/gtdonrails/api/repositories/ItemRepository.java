@@ -11,7 +11,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ItemRepository extends JpaRepository<Item, UUID> {
 
-    List<Item> findAllByStatusAndDeletedAtIsNullOrderByCreatedAtDesc(ItemStatus status);
+    List<Item> findAllByStatusAndDeletedAtIsNullOrderByCreatedAtAsc(ItemStatus status);
 
     List<Item> findAllByStatusAndDeletedAtIsNotNullOrderByUpdatedAtDesc(ItemStatus status);
 
