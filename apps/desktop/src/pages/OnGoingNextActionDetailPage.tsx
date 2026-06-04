@@ -13,7 +13,6 @@ import type { OnGoingNextActionsWorkspaceController } from "../features/next-act
 
 type OnGoingNextActionDetailPageProps = {
   controller: OnGoingNextActionsWorkspaceController;
-  selectNextAction: (id: string | null) => void;
 };
 
 type DetailReadyProps = {
@@ -35,45 +34,23 @@ function ongoingDetailBinding(id: string, key: string, description: string, runK
   return { description, id, key, leader, runKeybind, screen: "ongoing-next-action-detail-page", zone: "next-action-detail" };
 }
 
-function canEditBody(controller: OnGoingNextActionsWorkspaceController): boolean {
-  return !controller.isLoading && !controller.isDeleting && !controller.isUpdating && !controller.editingBodyId && Boolean(controller.selectedItem);
-}
-
-function editBodyFromKeybind(controller: OnGoingNextActionsWorkspaceController) {
-  if (canEditBody(controller)) controller.startBodyEdit();
-}
-
-async function restoreAndOpenNextActions(
-  controller: OnGoingNextActionsWorkspaceController,
-  selectNextAction: (id: string | null) => void,
-  setActiveScreen: (screen: ScreenId) => void
-): Promise<void> {
-  const selectedId = controller.selectedItem?.id;
-  if (!selectedId) return;
-  await controller.restoreSelected();
-  selectNextAction(selectedId);
-  setActiveScreen("next-actions");
-}
-
 function backToOnGoingActions(controller: OnGoingNextActionsWorkspaceController, setActiveScreen: (screen: ScreenId) => void) {
   if (controller.editingBodyId) return;
   controller.setActiveZone("next-actions-list");
   setActiveScreen("ongoing-next-actions");
 }
 
-function buildDetailBindings(controller: OnGoingNextActionsWorkspaceController, setActiveScreen: (screen: ScreenId) => void, selectNextAction: (id: string | null) => void, openLink: () => void, openAsset: () => void) {
+function buildDetailBindings(controller: OnGoingNextActionsWorkspaceController, setActiveScreen: (screen: ScreenId) => void, openLink: () => void, openAsset: () => void) {
   return [
-    ongoingDetailBinding("ongoing-next-action-detail-page.edit-body", "Enter", "Edit selected body", () => editBodyFromKeybind(controller)),
     ongoingDetailBinding("ongoing-next-action-detail-page.back", "Escape", "Back to on going actions", () => backToOnGoingActions(controller, setActiveScreen)),
-    ongoingDetailBinding("ongoing-next-action-detail-page.restore", "r", "Reset status to next action", () => void restoreAndOpenNextActions(controller, selectNextAction, setActiveScreen)),
     ongoingDetailBinding("ongoing-next-action-detail-page.which-key", "k", "Show available keybinds", () => undefined, true),
     ...buildFormattingBindings("ongoing-next-action-detail-page", openLink, openAsset, "next-action-detail")
   ];
 }
 
-function useDetailBindings(controller: OnGoingNextActionsWorkspaceController, selectNextAction: (id: string | null) => void, openLink: () => void, openAsset: () => void) {
+function useDetailBindings(controller: OnGoingNextActionsWorkspaceController, openLink: () => void, openAsset: () => void) {
   const { setActiveScreen } = useActiveScreen();
-  const bindings = useMemo(() => buildDetailBindings(controller, setActiveScreen, selectNextAction, openLink, openAsset), [controller, setActiveScreen, selectNextAction, openLink, openAsset]);
+  const bindings = useMemo(() => buildDetailBindings(controller, setActiveScreen, openLink, openAsset), [controller, setActiveScreen, openLink, openAsset]);
   useRegisterKeybinds(bindings);
 }
 
@@ -111,7 +88,7 @@ function DetailView({ controller, setActiveScreen }: DetailReadyProps) {
  *
  * @example <OnGoingNextActionDetailPage controller={controller} />
  */
-export function OnGoingNextActionDetailPage({ controller, selectNextAction }: OnGoingNextActionDetailPageProps) {
+export function OnGoingNextActionDetailPage({ controller }: OnGoingNextActionDetailPageProps) {
   const [isLinkComboOpen, setIsLinkComboOpen] = useState(false);
   const [isAssetComboOpen, setIsAssetComboOpen] = useState(false);
   const openLinkCombo = useCallback(() => setIsLinkComboOpen(true), []);
@@ -119,7 +96,7 @@ export function OnGoingNextActionDetailPage({ controller, selectNextAction }: On
   const { setActiveScreen } = useActiveScreen();
   useKeybindScreen("ongoing-next-action-detail-page");
   useDetailZone(controller);
-  useDetailBindings(controller, selectNextAction, openLinkCombo, openAssetCombo);
+  useDetailBindings(controller, openLinkCombo, openAssetCombo);
 
   return (
     <ListWorkspace theme={onGoingNextActionDetailListTheme} currentLabel={onGoingNextActionDetailListTheme.label} modeLabel={controller.vimMode ?? undefined}>

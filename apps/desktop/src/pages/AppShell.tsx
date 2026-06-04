@@ -21,6 +21,7 @@ import { useNextActionsWorkspaceController } from "../features/next-actions/useN
 import { doneNextActionsListTheme, deletedNextActionsListTheme } from "../features/lists/listThemes";
 import { ArchivedNextActionsPage } from "./ArchivedNextActionsPage";
 import { CalendarDetailPage } from "./CalendarDetailPage";
+import { OnGoingCalendarDetailPage } from "./OnGoingCalendarDetailPage";
 import { CalendarPage } from "./CalendarPage";
 import { ContextsPage } from "./ContextsPage";
 import { DeletedInboxPage } from "./DeletedInboxPage";
@@ -141,6 +142,7 @@ function useReloadActiveScreen(activeScreen: ScreenId, controllers: AppControlle
     if (activeScreen === "ongoing-next-actions") controllers.ongoingNextActions.reload();
     if (activeScreen === "ongoing-next-actions") controllers.ongoingCalendars.reload();
     if (activeScreen === "ongoing-next-action-detail-page") controllers.ongoingNextActions.reload();
+    if (activeScreen === "ongoing-calendar-detail-page") controllers.ongoingCalendars.reload();
     if (activeScreen === "done-next-actions") controllers.doneNextActions.reload();
     if (activeScreen === "deleted-next-actions") controllers.deletedNextActions.reload();
     if (activeScreen === "google-calendar-integration") controllers.googleCalendarIntegration.reload();
@@ -185,14 +187,15 @@ function renderDeletedNextActionsPage(controllers: AppControllers) {
 
 function renderActiveScreen(activeScreen: ScreenId, controllers: AppControllers) {
   if (activeScreen === "contexts") return <ContextsPage />;
-  if (activeScreen === "calendars") return <CalendarPage controller={controllers.calendars} />;
+  if (activeScreen === "calendars") return <CalendarPage controller={controllers.calendars} selectOnGoingCalendar={controllers.ongoingCalendars.selectAfterReload} />;
   if (activeScreen === "calendar-detail-page") return <CalendarDetailPage controller={controllers.calendars} />;
   if (activeScreen === "stuff-detail") return <StuffDetailPage controller={controllers.inbox} />;
   if (activeScreen === "deleted-inbox") return <DeletedInboxPage controller={controllers.deletedInbox} />;
   if (activeScreen === "next-actions") return <NextActionsPage controller={controllers.nextActions} selectOnGoingAction={controllers.ongoingNextActions.setSelectedId} />;
   if (activeScreen === "ongoing-next-actions") return <OnGoingNextActionsPage controller={controllers.ongoingNextActions} calendarController={controllers.ongoingCalendars} selectNextAction={controllers.nextActions.setSelectedId} />;
   if (activeScreen === "next-action-detail-page") return <NextActionDetailPage controller={controllers.nextActions} />;
-  if (activeScreen === "ongoing-next-action-detail-page") return <OnGoingNextActionDetailPage controller={controllers.ongoingNextActions} selectNextAction={controllers.nextActions.setSelectedId} />;
+  if (activeScreen === "ongoing-next-action-detail-page") return <OnGoingNextActionDetailPage controller={controllers.ongoingNextActions} />;
+  if (activeScreen === "ongoing-calendar-detail-page") return <OnGoingCalendarDetailPage controller={controllers.ongoingCalendars} />;
   if (activeScreen === "done-next-actions") return renderDoneNextActionsPage(controllers);
   if (activeScreen === "deleted-next-actions") return renderDeletedNextActionsPage(controllers);
   if (activeScreen === "google-calendar-integration") return <GoogleCalendarIntegrationPage controller={controllers.googleCalendarIntegration} />;

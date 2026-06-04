@@ -29,16 +29,6 @@ function nextActionDetailBinding(id: string, key: string, description: string, r
   return { description, id, key, leader, runKeybind, screen: "next-action-detail-page", zone: "next-action-detail" };
 }
 
-function canEditBody(controller: NextActionsWorkspaceController): boolean {
-  return !controller.isLoading && !controller.isDeleting && !controller.isUpdating && !controller.editingBodyId && Boolean(controller.selectedItem);
-}
-
-function editBodyFromKeybind(controller: NextActionsWorkspaceController) {
-  if (canEditBody(controller)) {
-    controller.startBodyEdit();
-  }
-}
-
 function backToNextActionsFromKeybind(controller: NextActionsWorkspaceController, setActiveScreen: (screen: ScreenId) => void) {
   if (!controller.editingBodyId) {
     controller.setActiveZone("next-actions-list");
@@ -53,7 +43,6 @@ function buildDetailBindings(
   openAssetCombo: () => void
 ) {
   return [
-    nextActionDetailBinding("next-action-detail-page.edit-body", "Enter", "Edit selected body", () => editBodyFromKeybind(controller)),
     nextActionDetailBinding("next-action-detail-page.back", "Escape", "Back to next actions", () => backToNextActionsFromKeybind(controller, setActiveScreen)),
     nextActionDetailBinding("next-action-detail-page.which-key", "k", "Show available keybinds", () => undefined, true),
     ...buildFormattingBindings("next-action-detail-page", openLinkCombo, openAssetCombo, "next-action-detail")

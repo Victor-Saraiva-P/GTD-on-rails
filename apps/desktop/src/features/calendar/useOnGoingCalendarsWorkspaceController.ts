@@ -30,9 +30,10 @@ function moveCalendarSelection(selection: CalendarSelection, offset: number) {
 
 function useCalendarSelection(items: Calendar[]) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [pendingSelectedId, setPendingSelectedId] = useState<string | null>(null);
   const selected = selectedCalendar(items, selectedId);
   const index = selectedCalendarIndex(items, selected);
-  return { items, selectedId, selectedIndex: index, selectedItem: selected, setSelectedId };
+  return { items, pendingSelectedId, selectedId, selectedIndex: index, selectedItem: selected, setPendingSelectedId, setSelectedId };
 }
 
 function useCalendarEditState() {
@@ -53,7 +54,6 @@ function clearCalendarEditing(edit: CalendarEditState) {
 function pruneCalendarState(model: CalendarModel) {
   if (model.selection.items.length === 0) {
     model.selection.setSelectedId(null);
-    clearCalendarEditing(model.edit);
     return;
   }
   if (!model.selection.selectedItem) model.selection.setSelectedId(model.selection.items[0].id);
@@ -61,6 +61,15 @@ function pruneCalendarState(model: CalendarModel) {
 
 function useCalendarPruning(model: CalendarModel) {
   useEffect(() => pruneCalendarState(model), [model.selection.items, model.selection.selectedId]);
+}
+
+function usePendingCalendarSelection(model: CalendarModel) {
+  useEffect(() => {
+    const id = model.selection.pendingSelectedId;
+    if (!id || !model.selection.items.some((item) => item.id === id)) return;
+    model.selection.setSelectedId(id);
+    model.selection.setPendingSelectedId(null);
+  }, [model.selection.items, model.selection.pendingSelectedId]);
 }
 
 function startTitleEdit(model: CalendarModel) {
@@ -88,6 +97,12 @@ async function commitBody(model: CalendarModel, body: ItemBody) {
   clearCalendarEditing(model.edit);
 }
 
+async function autosaveBody(model: CalendarModel, body: ItemBody) {
+  const item = model.selection.selectedItem;
+  if (!item || model.edit.editingBodyId !== item.id || isSameBody(item.body, body)) return;
+  model.selection.setSelectedId((await model.query.updateBody(item, body)).id);
+}
+
 async function mutateSelected(model: CalendarModel, mutate: (id: string) => Promise<void>) {
   const item = model.selection.selectedItem;
   if (!item) return;
@@ -98,14 +113,14 @@ async function mutateSelected(model: CalendarModel, mutate: (id: string) => Prom
 
 function calendarEditActions(model: CalendarModel) {
   return {
-    autosaveBody: (body: ItemBody) => commitBody(model, body),
+    autosaveBody: (body: ItemBody) => autosaveBody(model, body),
     cancelBodyEdit: () => clearCalendarEditing(model.edit),
     cancelTitleEdit: () => clearCalendarEditing(model.edit),
     commitBody: (body: ItemBody) => commitBody(model, body),
     commitTitle: () => commitTitle(model),
     setEditingTitle: model.edit.setEditingTitle,
     setVimMode: model.edit.setVimMode,
-    startBodyEdit: () => model.edit.setEditingBodyId(model.selection.selectedItem?.id ?? null),
+    startBodyEdit: (id?: string) => model.edit.setEditingBodyId(id ?? model.selection.selectedItem?.id ?? null),
     startTitleEdit: () => startTitleEdit(model)
   };
 }
@@ -122,6 +137,10 @@ function calendarSelectionActions(model: CalendarModel) {
   return {
     selectNext: () => moveCalendarSelection(model.selection, 1),
     selectPrevious: () => moveCalendarSelection(model.selection, -1),
+    selectAfterReload: (id: string) => {
+      model.selection.setPendingSelectedId(id);
+      model.query.reload();
+    },
     setSelectedId: model.selection.setSelectedId
   };
 }
@@ -172,6 +191,7 @@ export function useOnGoingCalendarsWorkspaceController() {
   const zone = useActiveZone();
   const model = { edit, query, selection, zone };
   useCalendarPruning(model);
+  usePendingCalendarSelection(model);
   return buildCalendarController(model);
 }
 
