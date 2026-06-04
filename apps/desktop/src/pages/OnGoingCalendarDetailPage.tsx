@@ -39,7 +39,7 @@ function useDetailZone(controller: OnGoingCalendarsWorkspaceController) {
   const selectedId = controller.selectedItem?.id ?? null;
   useEffect(() => {
     controller.setActiveZone("next-action-detail");
-    if (!controller.editingBodyId && selectedId) controller.startBodyEdit(selectedId);
+    if (selectedId && controller.editingBodyId !== selectedId) controller.startBodyEdit(selectedId);
   }, [controller.setActiveZone, controller.editingBodyId, selectedId, controller.startBodyEdit]);
 }
 
