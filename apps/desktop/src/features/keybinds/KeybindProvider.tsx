@@ -44,7 +44,13 @@ type LeaderMenuState = {
   setLeaderPath: (path: string[]) => void;
 };
 
+type DirectSequenceState = {
+  directPathRef: MutableRefObject<string[]>;
+  setDirectPath: (path: string[]) => void;
+};
+
 type KeydownConfig = ScreenState &
+  DirectSequenceState &
   LeaderMenuState & {
     bindingsRef: MutableRefObject<RegisteredKeybind[]>;
   };
@@ -152,8 +158,23 @@ function collectLeaderBindings(bindings: KeybindDefinition[], leaderPath: string
 
 function findDirectBinding(config: KeydownConfig, event: KeyboardEvent): RegisteredKeybind | undefined {
   return matchingBindings(config).find(
-    (binding) => !binding.leader && binding.key === event.key && Boolean(binding.ctrl) === event.ctrlKey
+    (binding) => !binding.leader && leaderSequence(binding).length === 1 && binding.key === event.key && Boolean(binding.ctrl) === event.ctrlKey
   );
+}
+
+function findDirectSequenceBinding(bindings: RegisteredKeybind[], path: string[]): RegisteredKeybind | undefined {
+  return bindings.find((binding) => {
+    const sequence = leaderSequence(binding);
+    return !binding.leader && !binding.ctrl && sequence.length === path.length && sequenceStartsWith(sequence, path);
+  });
+}
+
+function hasDirectSequenceContinuation(bindings: RegisteredKeybind[], path: string[]): boolean {
+  return bindings.some((binding) => {
+    if (binding.leader || binding.ctrl) return false;
+    const sequence = leaderSequence(binding);
+    return sequence.length > path.length && sequenceStartsWith(sequence, path);
+  });
 }
 
 function handleLeaderKey(event: KeyboardEvent, config: KeydownConfig) {
@@ -220,13 +241,34 @@ function handleGlobalKeyDown(event: KeyboardEvent, config: KeydownConfig) {
   handleDirectKey(event, config);
 }
 
-function handleDirectKey(event: KeyboardEvent, config: KeydownConfig) {
-  const matchingBinding = findDirectBinding(config, event);
+function handleDirectSequence(event: KeyboardEvent, config: KeydownConfig): boolean {
+  const directBindings = matchingBindings(config).filter((binding) => !binding.leader);
+  const nextDirectPath = [...config.directPathRef.current, event.key];
 
-  if (!matchingBinding) {
-    return;
+  if (hasDirectSequenceContinuation(directBindings, nextDirectPath)) {
+    event.preventDefault();
+    event.stopPropagation();
+    config.setDirectPath(nextDirectPath);
+    return true;
   }
 
+  const sequenceBinding = findDirectSequenceBinding(directBindings, nextDirectPath);
+  if (!sequenceBinding) {
+    config.setDirectPath([]);
+    return false;
+  }
+
+  event.preventDefault();
+  event.stopPropagation();
+  config.setDirectPath([]);
+  sequenceBinding.runKeybind();
+  return true;
+}
+
+function handleDirectKey(event: KeyboardEvent, config: KeydownConfig) {
+  if (handleDirectSequence(event, config)) return;
+  const matchingBinding = findDirectBinding(config, event);
+  if (!matchingBinding) return;
   event.preventDefault();
   event.stopPropagation();
   matchingBinding.runKeybind();
@@ -254,6 +296,15 @@ function useLeaderMenuState(): LeaderMenuState {
   }, []);
 
   return { closeLeaderMenu, isLeaderMenuOpen, leaderPath, openLeaderMenu, setLeaderPath };
+}
+
+function useDirectSequenceState(): DirectSequenceState {
+  const directPathRef = useRef<string[]>([]);
+  const setDirectPath = useCallback((path: string[]) => {
+    directPathRef.current = path;
+  }, []);
+
+  return { directPathRef, setDirectPath };
 }
 
 function useRegisterBindings(bindingsRef: MutableRefObject<RegisteredKeybind[]>) {
@@ -293,10 +344,12 @@ function useKeydownListener(config: KeydownConfig) {
 function useKeybindConfig(
   screenState: ScreenState,
   leaderMenuState: LeaderMenuState,
+  directSequenceState: DirectSequenceState,
   bindingsRef: MutableRefObject<RegisteredKeybind[]>
 ): KeydownConfig {
-  return useMemo(() => ({ ...screenState, ...leaderMenuState, bindingsRef }), [
+  return useMemo(() => ({ ...screenState, ...leaderMenuState, ...directSequenceState, bindingsRef }), [
     bindingsRef,
+    directSequenceState,
     leaderMenuState,
     screenState
   ]);
@@ -326,8 +379,9 @@ function useKeybindContextValue(
 function useKeybindController(): KeybindContextValue {
   const screenState = useScreenState();
   const leaderMenuState = useLeaderMenuState();
+  const directSequenceState = useDirectSequenceState();
   const bindingsRef = useRef<RegisteredKeybind[]>([]);
-  const config = useKeybindConfig(screenState, leaderMenuState, bindingsRef);
+  const config = useKeybindConfig(screenState, leaderMenuState, directSequenceState, bindingsRef);
   const registerBindings = useRegisterBindings(bindingsRef);
   const getAvailableLeaderBindings = useAvailableLeaderBindings(config);
 

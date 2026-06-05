@@ -62,6 +62,12 @@ function selectContextByOffset(selection: ContextSelectionCursor, offset: number
   selection.setSelectedId(selection.visibleContexts[nextIndex].id);
 }
 
+function selectContextBoundary(selection: ContextSelectionCursor, boundary: "first" | "last") {
+  if (selection.visibleContexts.length === 0) return;
+  const index = boundary === "first" ? 0 : selection.visibleContexts.length - 1;
+  selection.setSelectedId(selection.visibleContexts[index].id);
+}
+
 type ContextSelectionCursor = {
   selectedIndex: number;
   setSelectedId: (id: string | null) => void;
@@ -74,7 +80,7 @@ function useContextSelection(contexts: ContextItem[], draftContext: ContextItem 
   const selectedItem = selectedContext(visibleContexts, selectedId);
   const selectedIndex = selectedContextIndex(visibleContexts, selectedItem);
   const selection = { selectedIndex, setSelectedId, visibleContexts };
-  return { ...selection, selectedId, selectedItem, selectNextContext: () => selectContextByOffset(selection, 1), selectPreviousContext: () => selectContextByOffset(selection, -1) };
+  return { ...selection, selectedId, selectedItem, selectFirstContext: () => selectContextBoundary(selection, "first"), selectLastContext: () => selectContextBoundary(selection, "last"), selectNextContext: () => selectContextByOffset(selection, 1), selectPreviousContext: () => selectContextByOffset(selection, -1) };
 }
 
 function relatedContextId(selectedItem: ContextItem | null): string | null {
@@ -281,6 +287,8 @@ function useContextsActions(model: ContextsModel) {
     undo: () => undoAction(model),
     redo: () => redoAction(model),
     openSelectedContextIconEditor: () => openSelectedContextIconEditor(model),
+    selectFirstContext: model.selection.selectFirstContext,
+    selectLastContext: model.selection.selectLastContext,
     selectNextContext: model.selection.selectNextContext,
     selectPreviousContext: model.selection.selectPreviousContext,
     startEditingSelectedContext: () => startEditingSelectedContextAction(model)
@@ -293,9 +301,10 @@ function contextsBinding(
   description: string,
   zone: FocusZoneId,
   runKeybind: () => void,
-  leader = false
+  leader = false,
+  sequence?: string[]
 ): KeybindDefinition {
-  return { description, id, key, leader, runKeybind, screen: "contexts", zone };
+  return { description, id, key, leader, runKeybind, screen: "contexts", sequence, zone };
 }
 
 function canChangeContext(model: ContextsModel): boolean {
@@ -324,6 +333,8 @@ function buildContextsBindings(model: ContextsModel, actions: ContextsActions) {
     contextsBinding("contexts.edit-name", "Enter", "Edit selected context", "context-list", () => canChangeSelectedContext(model) && actions.startEditingSelectedContext()),
     contextsBinding("contexts.edit-icon-list", "e", "Edit context icon", "context-list", () => canChangeSelectedContext(model) && actions.openSelectedContextIconEditor()),
     contextsBinding("contexts.edit-icon-detail", "e", "Edit context icon", "context-detail", () => canChangeSelectedContext(model) && actions.openSelectedContextIconEditor()),
+    contextsBinding("contexts.move-first", "g", "Move to first item", "context-list", () => !model.edit.editingId && actions.selectFirstContext(), false, ["g", "g"]),
+    contextsBinding("contexts.move-last", "G", "Move to last item", "context-list", () => !model.edit.editingId && actions.selectLastContext()),
     contextsBinding("contexts.move-down", "j", "Move down", "context-list", () => !model.edit.editingId && actions.selectNextContext()),
     contextsBinding("contexts.move-up", "k", "Move up", "context-list", () => !model.edit.editingId && actions.selectPreviousContext()),
     contextsBinding("contexts.focus-detail", "l", "Focus context detail", "context-list", () => focusContextDetail(model)),

@@ -43,6 +43,11 @@ function moveDeletedSelection(controller: DeletedInboxWorkspaceController, direc
   }
 }
 
+function selectDeletedBoundary(controller: DeletedInboxWorkspaceController, boundary: "first" | "last") {
+  if (controller.activeZone !== "deleted-inbox-list") return;
+  boundary === "first" ? controller.selectFirstStuff() : controller.selectLastStuff();
+}
+
 function focusDeletedList(controller: DeletedInboxWorkspaceController) {
   if (controller.stuffs.length > 0) {
     controller.setActiveZone("deleted-inbox-list");
@@ -63,6 +68,8 @@ function openInboxFromKeybind(controller: DeletedInboxWorkspaceController, setAc
 function buildDeletedListBindings(controller: DeletedInboxWorkspaceController, setActiveScreen: (screen: ScreenId) => void) {
   return [
     deletedBinding("deleted-inbox.recover", "r", "Recover selected stuff", "deleted-inbox-list", () => recoverStuffFromKeybind(controller)),
+    deletedBinding("deleted-inbox.move-first", "g", "Move to first item", "deleted-inbox-list", () => selectDeletedBoundary(controller, "first"), false, ["g", "g"]),
+    deletedBinding("deleted-inbox.move-last", "G", "Move to last item", "deleted-inbox-list", () => selectDeletedBoundary(controller, "last")),
     deletedBinding("deleted-inbox.move-down", "j", "Move down", "deleted-inbox-list", () => moveDeletedSelection(controller, "next")),
     deletedBinding("deleted-inbox.move-up", "k", "Move up", "deleted-inbox-list", () => moveDeletedSelection(controller, "previous")),
     deletedBinding("deleted-inbox.focus-detail", "l", "Focus stuff detail", "deleted-inbox-list", () => focusDeletedDetail(controller)),

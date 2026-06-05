@@ -62,6 +62,11 @@ function moveSelection(controller: NextActionsWorkspaceController, direction: "n
   }
 }
 
+function selectBoundary(controller: NextActionsWorkspaceController, boundary: "first" | "last") {
+  if (controller.editingId || controller.editingBodyId) return;
+  boundary === "first" ? controller.selectFirst() : controller.selectLast();
+}
+
 function switchNextActionsView(controller: NextActionsWorkspaceController, setActiveScreen: (screen: ScreenId) => void, screen: ScreenId) {
   if (!controller.editingId && !controller.editingBodyId) {
     setActiveScreen(screen);
@@ -124,6 +129,8 @@ function buildNextActionBindings(
     { ...nextActionBinding("next-actions.redo-list", "r", "Redo last action", "next-actions-list", () => void controller.redo()), ctrl: true },
     { ...nextActionBinding("next-actions.redo-detail", "r", "Redo last action", "next-action-detail", () => void controller.redo()), ctrl: true },
     nextActionBinding("next-actions.edit-title", "Enter", "Edit selected title", "next-actions-list", () => !isAttrsOpen && canEditSelected(controller) && controller.startTitleEdit()),
+    nextActionBinding("next-actions.move-first", "g", "Move to first item", "next-actions-list", () => selectBoundary(controller, "first"), false, ["g", "g"]),
+    nextActionBinding("next-actions.move-last", "G", "Move to last item", "next-actions-list", () => selectBoundary(controller, "last")),
     nextActionBinding("next-actions.move-down", "j", "Move down", "next-actions-list", () => moveSelection(controller, "next")),
     nextActionBinding("next-actions.move-up", "k", "Move up", "next-actions-list", () => moveSelection(controller, "previous")),
     nextActionBinding("next-actions.edit-body-list", "l", "Edit selected body", "next-actions-list", () => canEditSelected(controller) && controller.startBodyEdit()),

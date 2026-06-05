@@ -2,12 +2,12 @@ import { useUndoRedoHistory } from "../history/useUndoRedoHistory";
 import { useActiveZone } from "../keybinds/hooks";
 import type { NextAction } from "./types";
 import {
-  useNextActionsFilterState,
-  useNextActionSelection,
+  buildController,
   useNextActionEditState,
+  useNextActionSelection,
   useNextActionsActions,
-  useNextActionsPruning,
-  buildController
+  useNextActionsFilterState,
+  useNextActionsPruning
 } from "./useNextActionsWorkspaceController";
 import { useOnGoingNextActionsQuery } from "./useOnGoingNextActionsQuery";
 

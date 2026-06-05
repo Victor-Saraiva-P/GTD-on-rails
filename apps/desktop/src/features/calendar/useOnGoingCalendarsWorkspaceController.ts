@@ -3,6 +3,7 @@ import { useActiveZone } from "../keybinds/hooks";
 import type { ItemBody } from "../inbox/types";
 import { isSameBody } from "../inbox/types";
 import type { Calendar } from "./types";
+import { selectCalendarBoundary } from "./calendarWorkspaceState";
 import { useOnGoingCalendarsQuery } from "./useOnGoingCalendarsQuery";
 
 type CalendarSelection = ReturnType<typeof useCalendarSelection>;
@@ -135,6 +136,8 @@ function calendarMutationActions(model: CalendarModel) {
 
 function calendarSelectionActions(model: CalendarModel) {
   return {
+    selectFirst: () => selectCalendarBoundary(model.selection, "first"),
+    selectLast: () => selectCalendarBoundary(model.selection, "last"),
     selectNext: () => moveCalendarSelection(model.selection, 1),
     selectPrevious: () => moveCalendarSelection(model.selection, -1),
     selectAfterReload: (id: string) => {
