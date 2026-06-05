@@ -1,13 +1,13 @@
 import { useEffect, useRef } from "react";
 import type { KeyboardEvent } from "react";
 
-type ProcessingEnergyStepProps = {
+type ProcessingEnergyStepProps = Readonly<{
   digits: string;
   label?: string;
   onDigitsChange: (digits: string) => void;
   onEnergySelected: (energy: number | null) => void;
   onBack: () => void;
-};
+}>;
 
 export function ProcessingEnergyStep({ digits, label = "Energy level (0.0 - 10.0):", onDigitsChange, onEnergySelected, onBack }: ProcessingEnergyStepProps) {
   const inputRef = useRef<HTMLInputElement>(null);

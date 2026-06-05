@@ -1,13 +1,13 @@
 import { useEffect, useRef } from "react";
 import type { KeyboardEvent } from "react";
 
-type ProcessingTimeStepProps = {
+type ProcessingTimeStepProps = Readonly<{
   digits: string;
   label?: string;
   onDigitsChange: (digits: string) => void;
   onTimeSelected: (minutes: number | null) => void;
   onBack: () => void;
-};
+}>;
 
 export function ProcessingTimeStep({ digits, label = "Estimated time (h min):", onDigitsChange, onTimeSelected, onBack }: ProcessingTimeStepProps) {
   const inputRef = useRef<HTMLInputElement>(null);

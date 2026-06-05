@@ -145,12 +145,12 @@ function GitHubIcon() {
   );
 }
 
-type SyncIndicatorProps = {
+type SyncIndicatorProps = Readonly<{
   ariaLabel: string;
   title: string;
   visual: IndicatorVisual;
   icon: "calendar" | "drive" | "github";
-};
+}>;
 
 function syncIndicatorClassName(visual: IndicatorVisual): string {
   return `sync-status__item sync-status__item--${visual.tone}${visual.pulse ? " sync-status__item--pulse" : ""}${visual.spin ? " sync-status__item--spin" : ""}`;
@@ -162,7 +162,7 @@ function syncIndicatorStyle(visual: IndicatorVisual): CSSProperties {
   } as CSSProperties;
 }
 
-function SyncIndicatorIcon({ icon }: Pick<SyncIndicatorProps, "icon">) {
+function SyncIndicatorIcon({ icon }: Readonly<Pick<SyncIndicatorProps, "icon">>) {
   if (icon === "calendar") {
     return <img src={googleCalendarIcon} alt="" aria-hidden="true" className="sync-status__image" />;
   }

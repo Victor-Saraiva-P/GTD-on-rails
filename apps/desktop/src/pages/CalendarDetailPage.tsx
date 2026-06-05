@@ -10,9 +10,9 @@ import { useActiveScreen, useKeybindScreen, useRegisterKeybinds } from "../featu
 import type { KeybindDefinition, ScreenId } from "../features/keybinds/types";
 import { calendarsListTheme } from "../features/lists/listThemes";
 
-type CalendarDetailPageProps = {
+type CalendarDetailPageProps = Readonly<{
   controller: CalendarWorkspaceController;
-};
+}>;
 
 const LazyMarkdownAssetComboDialog = lazy(async () => {
   const module = await import("../features/inbox/MarkdownAssetComboDialog");
@@ -75,7 +75,7 @@ function CalendarDetailBody({ controller }: CalendarDetailPageProps) {
   return <CalendarDetailReady controller={controller} setActiveScreen={setActiveScreen} />;
 }
 
-function CalendarDetailReady({ controller, setActiveScreen }: CalendarDetailPageProps & { setActiveScreen: (screen: ScreenId) => void }) {
+function CalendarDetailReady({ controller, setActiveScreen }: CalendarDetailPageProps & Readonly<{ setActiveScreen: (screen: ScreenId) => void }>) {
   const item = controller.selectedItem;
   if (!item) return null;
   return (

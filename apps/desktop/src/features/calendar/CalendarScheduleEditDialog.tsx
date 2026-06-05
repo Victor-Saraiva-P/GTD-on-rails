@@ -7,11 +7,11 @@ import {
 } from "./calendarDateUtils";
 import type { Calendar, CalendarPatch } from "./types";
 
-type CalendarScheduleEditDialogProps = {
+type CalendarScheduleEditDialogProps = Readonly<{
   item: Calendar;
   onClose: () => void;
   onSave: (patch: CalendarPatch) => Promise<void> | void;
-};
+}>;
 
 type CalendarScheduleEditStep = "date" | "time";
 

@@ -11,9 +11,9 @@ import type { KeybindDefinition, ScreenId } from "../features/keybinds/types";
 import { nextActionDetailListTheme } from "../features/lists/listThemes";
 import type { NextActionsWorkspaceController } from "../features/next-actions/useNextActionsWorkspaceController";
 
-type NextActionDetailPageProps = {
+type NextActionDetailPageProps = Readonly<{
   controller: NextActionsWorkspaceController;
-};
+}>;
 
 const LazyMarkdownAssetComboDialog = lazy(async () => {
   const module = await import("../features/inbox/MarkdownAssetComboDialog");

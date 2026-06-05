@@ -10,7 +10,7 @@ import {
 } from "./processingFlow";
 import type { SegmentedCalendarDateState } from "./processingFlow";
 
-export type SegmentedDateStepProps = {
+export type SegmentedDateStepProps = Readonly<{
   date: string;
   label: string;
   mode: "required" | "optional";
@@ -18,7 +18,7 @@ export type SegmentedDateStepProps = {
   onBack: () => void;
   onDateChange: (date: string) => void;
   onDateSelected: (date: string | null) => void;
-};
+}>;
 
 /**
  * Captures a local date with segmented dd/mm/yyyy keyboard input.
@@ -110,18 +110,18 @@ function DateSegmentText({ active, value, width }: DateSegmentTextProps): ReactE
   return <span className={className}>{value.padEnd(width, "_")}</span>;
 }
 
-type DateControlProps = {
+type DateControlProps = Readonly<{
   dateState: SegmentedCalendarDateState;
   error: string;
   inputRef: RefObject<HTMLDivElement | null>;
   onKeyDown: (event: KeyboardEvent<HTMLDivElement>) => void;
-};
+}>;
 
-type DateSegmentTextProps = {
+type DateSegmentTextProps = Readonly<{
   active: boolean;
   value: string;
   width: number;
-};
+}>;
 
 type DateControlModel = {
   dateState: SegmentedCalendarDateState;

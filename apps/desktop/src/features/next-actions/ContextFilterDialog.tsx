@@ -2,7 +2,7 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { ContextNameWithIcon } from "../contexts/ContextNameWithIcon";
 import type { ContextItem } from "../contexts/types";
 
-type ContextFilterDialogProps = {
+type ContextFilterDialogProps = Readonly<{
   contexts: ContextItem[];
   currentContextId: string | null;
   isLoading: boolean;
@@ -10,7 +10,7 @@ type ContextFilterDialogProps = {
   onRetry: () => void;
   onSelect: (context: ContextItem | null) => void;
   onClose: () => void;
-};
+}>;
 
 function useEscapeClose(onClose: () => void) {
   useEffect(() => {
@@ -25,7 +25,7 @@ function useEscapeClose(onClose: () => void) {
   }, [onClose]);
 }
 
-function ContextOption(props: { active: boolean; children: ReactNode; onClick: () => void }) {
+function ContextOption(props: Readonly<{ active: boolean; children: ReactNode; onClick: () => void }>) {
   return (
     <button type="button" className={`context-filter__option${props.active ? " context-filter__option--active" : ""}`} onClick={props.onClick}>
       <span>{props.active ? "●" : "○"}</span>

@@ -1,8 +1,8 @@
 import type { ContextRelatedItem } from "./types";
 
-type ContextItemsListProps = {
+type ContextItemsListProps = Readonly<{
   items: ContextRelatedItem[];
-};
+}>;
 
 /**
  * Renders related context items in the shared tree-list visual language.

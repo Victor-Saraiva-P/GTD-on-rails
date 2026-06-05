@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { getCachedAssetObjectUrl, getCachedPdfFirstPagePreviewUrl } from "./assetFiles";
 
-type FilePreviewProps = {
+type FilePreviewProps = Readonly<{
   contentType?: string;
   displayName?: string;
   fallbackUrl?: string;
   relativePath: string;
-};
+}>;
 
 type PreviewState =
   | { status: "loading" }
@@ -52,7 +52,7 @@ async function cachedPreviewUrl(props: FilePreviewProps): Promise<CachedPreviewU
   return { assetUrl: assetUrl.url, pdfPreviewUrl: previewUrl?.url ?? null };
 }
 
-function PdfFilePreview({ assetUrl, displayName, previewUrl }: { assetUrl: string; displayName?: string; previewUrl: string | null }) {
+function PdfFilePreview({ assetUrl, displayName, previewUrl }: Readonly<{ assetUrl: string; displayName?: string; previewUrl: string | null }>) {
   return (
     <figure className="cm-pdf-preview">
       {previewUrl ? <img alt={displayName || "PDF first page"} className="cm-pdf-preview__image" src={previewUrl} /> : null}
@@ -61,7 +61,7 @@ function PdfFilePreview({ assetUrl, displayName, previewUrl }: { assetUrl: strin
   );
 }
 
-function AssetLink({ assetUrl, displayName }: { assetUrl: string; displayName?: string }) {
+function AssetLink({ assetUrl, displayName }: Readonly<{ assetUrl: string; displayName?: string }>) {
   return <a className="cm-markdown-link" href={assetUrl} rel="noreferrer" target="_blank">Open {displayName || "asset"}</a>;
 }
 

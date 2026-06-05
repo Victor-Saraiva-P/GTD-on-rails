@@ -1,10 +1,10 @@
 import { ContextItemsList } from "./ContextItemsList";
 import type { ContextItem, ContextRelatedItem } from "./types";
 
-type ContextItemsViewProps = {
+type ContextItemsViewProps = Readonly<{
   context: ContextItem;
   items: ContextRelatedItem[];
-};
+}>;
 
 /**
  * Shows the selected context summary alongside its related item list.

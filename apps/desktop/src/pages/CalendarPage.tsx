@@ -22,9 +22,9 @@ type CalendarPageProps = Readonly<{
   selectOnGoingCalendar: (id: string) => void;
 }>;
 
-type CalendarControllerProps = {
+type CalendarControllerProps = Readonly<{
   controller: CalendarWorkspaceController;
-};
+}>;
 
 const LazyMarkdownAssetComboDialog = lazy(async () => {
   const module = await import("../features/inbox/MarkdownAssetComboDialog");
@@ -260,7 +260,7 @@ function commitCalendarTitle(controller: CalendarWorkspaceController): void {
   void controller.commitTitle().catch((error: unknown) => console.error("Failed to update calendar title", error));
 }
 
-function CalendarPanelBody(props: CalendarControllerProps & { panel: CalendarPanel }) {
+function CalendarPanelBody(props: CalendarControllerProps & Readonly<{ panel: CalendarPanel }>) {
   if (props.controller.isLoading) return <p className="pane-state">Loading calendars...</p>;
   if (props.controller.errorMessage) return <RetryState message={props.controller.errorMessage} onRetry={props.controller.reload} />;
   
@@ -285,7 +285,7 @@ function emptyPanelMessage(panel: CalendarPanel): string {
   return "No due or late calendars.";
 }
 
-function CalendarPanelReady({ controller, items, panel }: CalendarControllerProps & { items: CalendarWorkspaceController["stuffs"], panel: CalendarPanel }) {
+function CalendarPanelReady({ controller, items, panel }: CalendarControllerProps & Readonly<{ items: CalendarWorkspaceController["stuffs"], panel: CalendarPanel }>) {
   return (
     <CalendarList
       items={items}
@@ -367,7 +367,7 @@ function DeletedCalendarPanel({ controller }: CalendarControllerProps) {
   );
 }
 
-function WeeklyCalendarPanel({ controller, day, index }: CalendarControllerProps & { day: CalendarPanel, index: number }) {
+function WeeklyCalendarPanel({ controller, day, index }: CalendarControllerProps & Readonly<{ day: CalendarPanel, index: number }>) {
   const dayName = day.charAt(0).toUpperCase() + day.slice(1);
   const monday = getMondayForOffset(controller.weekOffset);
   const columnDate = new Date(monday);
@@ -410,7 +410,7 @@ function weeklyMonthLabel(weekOffset: number): string {
   return monday.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
 }
 
-function WeeklyCalendarHeader({ weekOffset }: { weekOffset: number }) {
+function WeeklyCalendarHeader({ weekOffset }: Readonly<{ weekOffset: number }>) {
   return (
     <header className="weekly-calendar-header">
       {weeklyMonthLabel(weekOffset)}

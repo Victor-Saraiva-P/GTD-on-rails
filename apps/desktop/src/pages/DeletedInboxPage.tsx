@@ -11,9 +11,9 @@ import type { FocusZoneId, KeybindDefinition, ScreenId } from "../features/keybi
 import { LeaderMenu } from "../features/keybinds/LeaderMenu";
 import { deletedInboxListTheme } from "../features/lists/listThemes";
 
-type DeletedInboxPageProps = {
+type DeletedInboxPageProps = Readonly<{
   controller: DeletedInboxWorkspaceController;
-};
+}>;
 
 function deletedBinding(
   id: string,

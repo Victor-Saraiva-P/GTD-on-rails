@@ -31,7 +31,7 @@ import { openAssetWithDefaultApp, openExternalUrl } from "./openExternalResource
 
 export type MarkdownBodySaveState = "saved" | "unsaved" | "saving" | "error";
 
-export type ItemBodyMarkdownEditorProps = {
+export type ItemBodyMarkdownEditorProps = Readonly<{
   itemId: string;
   initialBody?: ItemBody | null;
   readOnly?: boolean;
@@ -39,7 +39,7 @@ export type ItemBodyMarkdownEditorProps = {
   onSave?: (body: ItemBody) => Promise<void>;
   onExitNormalMode?: (body: ItemBody) => Promise<void>;
   onVimModeChange?: (mode: "NORMAL" | "INSERT" | "VISUAL") => void;
-};
+}>;
 
 type AutosaveTracker = {
   hasUnsavedChanges: boolean;

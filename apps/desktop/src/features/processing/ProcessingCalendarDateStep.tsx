@@ -1,11 +1,11 @@
 import { SegmentedDateStep } from "./SegmentedDateStep";
 
-type ProcessingCalendarDateStepProps = {
+type ProcessingCalendarDateStepProps = Readonly<{
   date: string;
   onDateChange: (date: string) => void;
   onDateSelected: (date: string) => void;
   onBack: () => void;
-};
+}>;
 
 /**
  * Captures the scheduled date for calendar processing.

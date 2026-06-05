@@ -35,7 +35,7 @@ function leaderTitle(leaderPath: string[]): string {
   return leaderPath.length > 0 ? `Space ${leaderPath.join(" ")}` : "Space";
 }
 
-function LeaderMenuHeader({ leaderPath }: { leaderPath: string[] }) {
+function LeaderMenuHeader({ leaderPath }: Readonly<{ leaderPath: string[] }>) {
   return (
     <div className="leader-menu__header">
       <span className="leader-menu__badge">Space</span>
@@ -44,7 +44,7 @@ function LeaderMenuHeader({ leaderPath }: { leaderPath: string[] }) {
   );
 }
 
-function LeaderMenuItems({ bindings }: { bindings: KeybindDefinition[] }) {
+function LeaderMenuItems({ bindings }: Readonly<{ bindings: KeybindDefinition[] }>) {
   return (
     <div className="leader-menu__list" role="list">
       {bindings.map((binding) => (
@@ -57,7 +57,7 @@ function LeaderMenuItems({ bindings }: { bindings: KeybindDefinition[] }) {
   );
 }
 
-function LeaderMenuHint({ onClose }: { onClose: () => void }) {
+function LeaderMenuHint({ onClose }: Readonly<{ onClose: () => void }>) {
   return (
     <button type="button" className="leader-menu__hint" onClick={onClose}>
       Esc to close

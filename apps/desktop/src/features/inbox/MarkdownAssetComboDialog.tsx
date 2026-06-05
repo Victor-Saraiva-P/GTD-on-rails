@@ -15,10 +15,10 @@ const ACCEPTED_ASSET_MIME_TYPES = new Set([
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 ]);
 
-type MarkdownAssetComboDialogProps = {
+type MarkdownAssetComboDialogProps = Readonly<{
   itemId: string;
   onClose: () => void;
-};
+}>;
 
 type AssetUploadSource = MarkdownAssetClipboardSource | null;
 type AssetFileHandler = (source: AssetUploadSource) => Promise<void>;
@@ -66,7 +66,7 @@ function AssetDialog(props: AssetDialogProps) {
   );
 }
 
-function AssetHeader({ onClose }: { onClose: () => void }) {
+function AssetHeader({ onClose }: Readonly<{ onClose: () => void }>) {
   return <header className="asset-dialog__header"><h2>Asset</h2><button type="button" onClick={onClose}>Esc</button></header>;
 }
 
@@ -82,15 +82,15 @@ function AssetDropzone(props: AssetDialogProps) {
   );
 }
 
-function AssetFileInput(props: Pick<AssetDialogProps, "handleFile" | "inputRef">) {
+function AssetFileInput(props: Readonly<Pick<AssetDialogProps, "handleFile" | "inputRef">>) {
   return <input ref={props.inputRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.webp,.svg,application/pdf,image/*" className="asset-dropzone__input" onChange={(event) => handleFileInputChange(event, props.handleFile)} />;
 }
 
-function AssetActions(props: Pick<AssetDialogProps, "handleFile" | "inputRef">) {
+function AssetActions(props: Readonly<Pick<AssetDialogProps, "handleFile" | "inputRef">>) {
   return <div className="asset-dialog__actions"><button type="button" onClick={() => props.inputRef.current?.click()}>Choose file</button><button type="button" onClick={() => pasteClipboardAsset(props.handleFile)}>p Paste Asset</button></div>;
 }
 
-type AssetDialogProps = {
+type AssetDialogProps = Readonly<{
   dialogRef: RefObject<HTMLElement | null>;
   handleFile: AssetFileHandler;
   inputRef: RefObject<HTMLInputElement | null>;
@@ -98,7 +98,7 @@ type AssetDialogProps = {
   onClose: () => void;
   setIsDragActive: (active: boolean) => void;
   statusMessage: string | null;
-};
+}>;
 
 function handleFileInputChange(event: ChangeEvent<HTMLInputElement>, handleFile: AssetFileHandler) {
   void handleFile(fileAssetSource(event.target.files?.item(0) ?? null));

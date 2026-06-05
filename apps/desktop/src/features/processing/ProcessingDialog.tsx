@@ -11,12 +11,12 @@ import { buildCalendarPayload, previousProcessingStep, stepAfterInitialChoice } 
 import type { CalendarConversionPayload } from "../calendar/types";
 import type { ProcessingStep } from "./processingFlow";
 
-type ProcessingDialogProps = {
+type ProcessingDialogProps = Readonly<{
   item: Stuff;
   onClose: () => void;
   onProcess: (energy: number | null, estimatedTimeMinutes: number | null, contextIds: string[], deadline: string | null) => void;
   onProcessCalendar: (payload: CalendarConversionPayload) => void;
-};
+}>;
 
 /**
  * Shows the processing command wizard for the selected stuff.

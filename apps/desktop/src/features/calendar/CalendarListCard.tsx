@@ -3,7 +3,7 @@ import type { Calendar } from "./types";
 import { calendarItemIconText } from "../lists/listThemes";
 import { trimCalendarDisplayTime } from "./calendarDateUtils";
 
-type CalendarListCardProps = {
+type CalendarListCardProps = Readonly<{
   archiveStatus?: "deleted";
   item: Calendar;
   selected: boolean;
@@ -15,7 +15,7 @@ type CalendarListCardProps = {
   onCommitEditing: () => void;
   onCommitEditingAndContinue: () => void;
   onCancelEditing: () => void;
-};
+}>;
 
 function calendarGlyphClassName(status: string, archiveStatus?: "deleted"): string {
   if (archiveStatus === "deleted") return "tree-entry__glyph--calendar-deleted";
@@ -25,7 +25,7 @@ function calendarGlyphClassName(status: string, archiveStatus?: "deleted"): stri
   return "";
 }
 
-function CalendarGlyph({ archiveStatus, status }: { archiveStatus?: "deleted", status: string }) {
+function CalendarGlyph({ archiveStatus, status }: Readonly<{ archiveStatus?: "deleted", status: string }>) {
   const statusClassName = calendarGlyphClassName(status, archiveStatus);
   const className = `tree-entry__glyph tree-entry__glyph--stuff${statusClassName ? ` ${statusClassName}` : ""}`;
 
@@ -52,7 +52,7 @@ function handleEditKeyDown(
   }
 }
 
-function EditingCalendarCard(props: Omit<CalendarListCardProps, "editing" | "onSelect" | "onStartEditing">) {
+function EditingCalendarCard(props: Readonly<Omit<CalendarListCardProps, "editing" | "onSelect" | "onStartEditing">>) {
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     handleEditKeyDown(event, props.onCommitEditingAndContinue, props.onCancelEditing);
   };

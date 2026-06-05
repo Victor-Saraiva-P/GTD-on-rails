@@ -15,7 +15,7 @@ const LazyItemBodyMarkdownEditor = lazy(async () => {
   return { default: module.ItemBodyMarkdownEditor };
 });
 
-type InboxStuffDetailsProps = {
+type InboxStuffDetailsProps = Readonly<{
   item: Stuff;
   editing: boolean;
   onAutosaveEditing: (body: ItemBody) => Promise<void>;
@@ -25,13 +25,13 @@ type InboxStuffDetailsProps = {
   onVimModeChange?: (mode: "NORMAL" | "INSERT" | "VISUAL") => void;
   showCreatedMeta?: boolean;
   metaVariant?: "default" | "next-action" | "calendar";
-};
+}>;
 
 function initialMetaParts(item: Stuff, showCreatedMeta: boolean): ReactNode[] {
   return showCreatedMeta && item.createdAt ? [`created: ${formatStuffCreatedAt(item.createdAt).toLowerCase()}`] : [];
 }
 
-function InboxDetailHeader({ item, showCreatedMeta = true }: Pick<InboxStuffDetailsProps, "item" | "showCreatedMeta">) {
+function InboxDetailHeader({ item, showCreatedMeta = true }: Readonly<Pick<InboxStuffDetailsProps, "item" | "showCreatedMeta">>) {
   let metaParts = initialMetaParts(item, showCreatedMeta);
   
   if (item.energy !== undefined && item.energy !== null) {
@@ -56,11 +56,11 @@ function InboxDetailHeader({ item, showCreatedMeta = true }: Pick<InboxStuffDeta
   );
 }
 
-function ContextMetaList({ contexts }: { contexts: NonNullable<Stuff["contexts"]> }) {
+function ContextMetaList({ contexts }: Readonly<{ contexts: NonNullable<Stuff["contexts"]> }>) {
   return <span className="inbox-detail__context-list">contexts: {contexts.map((context) => <ContextNameWithIcon context={context} key={context.id} />)}</span>;
 }
 
-function MetaParts({ parts }: { parts: ReactNode[] }) {
+function MetaParts({ parts }: Readonly<{ parts: ReactNode[] }>) {
   return parts.map((part, index) => (
     <span className="inbox-detail__meta-part" key={index}>{index > 0 ? <span className="inbox-detail__meta-separator">|</span> : null}{part}</span>
   ));
@@ -85,12 +85,12 @@ function formatDeadlineDate(deadline?: string | null): string | null {
   return `${day}/${month}/${year}`;
 }
 
-function NextActionContextMeta({ item }: { item: Stuff }) {
+function NextActionContextMeta({ item }: Readonly<{ item: Stuff }>) {
   if (!item.contexts || item.contexts.length === 0) return null;
   return <>{item.contexts.map((context) => <span className="next-action-meta__item" key={context.id}><ContextNameWithIcon context={context} /></span>)}</>;
 }
 
-function NextActionMetaIcon({ src }: { src: string }) {
+function NextActionMetaIcon({ src }: Readonly<{ src: string }>) {
   const style: CSSProperties = {
     WebkitMask: `url("${src}") center / contain no-repeat`,
     mask: `url("${src}") center / contain no-repeat`
@@ -99,7 +99,7 @@ function NextActionMetaIcon({ src }: { src: string }) {
   return <span className="next-action-meta__icon" style={style} aria-hidden="true" />;
 }
 
-function NextActionDetailHeader({ item }: Pick<InboxStuffDetailsProps, "item">) {
+function NextActionDetailHeader({ item }: Readonly<Pick<InboxStuffDetailsProps, "item">>) {
   const estimatedMinutes = estimatedMinutesLabel(item);
   const nextAction = item as NextAction;
   const startedAt = formatScheduleDateTime(nextAction.schedule?.dateStart, nextAction.schedule?.timeStart);
@@ -128,7 +128,7 @@ function NextActionDetailHeader({ item }: Pick<InboxStuffDetailsProps, "item">) 
   );
 }
 
-function CalendarDetailHeader({ item }: Pick<InboxStuffDetailsProps, "item">) {
+function CalendarDetailHeader({ item }: Readonly<Pick<InboxStuffDetailsProps, "item">>) {
   const metadata = calendarDetailMetadata(item as Calendar);
 
   return (
@@ -141,7 +141,7 @@ function CalendarDetailHeader({ item }: Pick<InboxStuffDetailsProps, "item">) {
   );
 }
 
-function CalendarScheduleMetaRow({ label, value }: { label: string; value: string | null }) {
+function CalendarScheduleMetaRow({ label, value }: Readonly<{ label: string; value: string | null }>) {
   if (!value) return null;
   return (
     <div className="next-action-meta" aria-label={label}>
@@ -153,13 +153,13 @@ function CalendarScheduleMetaRow({ label, value }: { label: string; value: strin
   );
 }
 
-function DetailHeader({ item, metaVariant, showCreatedMeta }: Pick<InboxStuffDetailsProps, "item" | "metaVariant" | "showCreatedMeta">) {
+function DetailHeader({ item, metaVariant, showCreatedMeta }: Readonly<Pick<InboxStuffDetailsProps, "item" | "metaVariant" | "showCreatedMeta">>) {
   if (metaVariant === "calendar") return <CalendarDetailHeader item={item} />;
   if (metaVariant === "next-action") return <NextActionDetailHeader item={item} />;
   return <InboxDetailHeader item={item} showCreatedMeta={showCreatedMeta} />;
 }
 
-type EditingInboxStuffDetailsProps = Omit<InboxStuffDetailsProps, "editing" | "onCancelEditing">;
+type EditingInboxStuffDetailsProps = Readonly<Omit<InboxStuffDetailsProps, "editing" | "onCancelEditing">>;
 
 const ASSET_TOKEN_PATTERN = /(\[\[asset:([0-9a-fA-F-]{36})]]|\[asset:([0-9a-fA-F-]{36})]|⟦asset:([0-9a-fA-F-]{36})⟧)/g;
 
@@ -285,7 +285,7 @@ function entityAssetRelativePath(entity: ItemBody["blockEntities"][number]): str
   return entity.attrs?.relativePath ?? entity.attrs?.localPath ?? "";
 }
 
-function ReadOnlyInboxStuffDetails({ item, metaVariant, showCreatedMeta }: Pick<InboxStuffDetailsProps, "item" | "metaVariant" | "showCreatedMeta">) {
+function ReadOnlyInboxStuffDetails({ item, metaVariant, showCreatedMeta }: Readonly<Pick<InboxStuffDetailsProps, "item" | "metaVariant" | "showCreatedMeta">>) {
   const body = item.body;
 
   if (!body || !body.text) {

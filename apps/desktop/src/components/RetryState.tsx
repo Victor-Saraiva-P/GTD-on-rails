@@ -1,7 +1,7 @@
-type RetryStateProps = {
+type RetryStateProps = Readonly<{
   message: string;
   onRetry: () => void;
-};
+}>;
 
 /**
  * Shows a recoverable pane error with the retry action wired by the caller.

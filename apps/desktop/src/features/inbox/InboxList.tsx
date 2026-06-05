@@ -1,7 +1,7 @@
 import type { Stuff } from "./types";
 import { InboxListStuff } from "./InboxListStuff";
 
-type InboxListProps = {
+type InboxListProps = Readonly<{
   items: Stuff[];
   selectedId: string;
   editingId: string | null;
@@ -12,11 +12,11 @@ type InboxListProps = {
   onCommitEditing: () => void;
   onCommitEditingAndContinue: () => void;
   onCancelEditing: () => void;
-};
+}>;
 
-type InboxListItemProps = Omit<InboxListProps, "items"> & {
+type InboxListItemProps = Readonly<Omit<InboxListProps, "items"> & {
   item: Stuff;
-};
+}>;
 
 function InboxListItem({
   item,
