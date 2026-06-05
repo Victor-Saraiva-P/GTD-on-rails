@@ -181,12 +181,6 @@ body {
   display: block;
 }
 
-.sync-status__image {
-  width: 12px;
-  height: 12px;
-  display: block;
-}
-
 @keyframes sync-status-pulse {
   0%,
   100% {

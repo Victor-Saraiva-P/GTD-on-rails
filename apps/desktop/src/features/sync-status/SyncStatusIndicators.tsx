@@ -1,5 +1,4 @@
 import type { CSSProperties } from "react";
-import googleCalendarIcon from "../../assets/next-actions/google-calendar-icon.png";
 import { useSyncStatus } from "./SyncStatusProvider";
 import type {
   AssetSyncState,
@@ -145,6 +144,16 @@ function GitHubIcon() {
   );
 }
 
+function GoogleCalendarIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="sync-status__svg">
+      <path d="M6 4.5h12a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6.5a2 2 0 0 1 2-2Z" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.7" />
+      <path d="M8 3v4M16 3v4M4 9h16" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="1.7" />
+      <path d="M10 13.2 8.8 14v-1.6l1.2-.7h1.4V17M14 11.8h3.1M14 11.8l-.2 2.1c.4-.3.8-.4 1.3-.4 1.2 0 2 .8 2 1.9 0 1.2-.9 2-2.2 2-.8 0-1.5-.3-1.9-.9" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.35" />
+    </svg>
+  );
+}
+
 type SyncIndicatorProps = Readonly<{
   ariaLabel: string;
   title: string;
@@ -164,7 +173,7 @@ function syncIndicatorStyle(visual: IndicatorVisual): CSSProperties {
 
 function SyncIndicatorIcon({ icon }: Readonly<Pick<SyncIndicatorProps, "icon">>) {
   if (icon === "calendar") {
-    return <img src={googleCalendarIcon} alt="" aria-hidden="true" className="sync-status__image" />;
+    return <GoogleCalendarIcon />;
   }
 
   return icon === "drive" ? <GoogleDriveIcon /> : <GitHubIcon />;
