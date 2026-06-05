@@ -369,10 +369,10 @@ function ContextsListReady({ model, actions }: ContextsViewProps) {
   );
 }
 
-type ContextsViewProps = {
+type ContextsViewProps = Readonly<{
   actions: ContextsActions;
   model: ContextsModel;
-};
+}>;
 
 function ContextsListBody({ model, actions }: ContextsViewProps) {
   if (model.query.isLoading) {
@@ -386,7 +386,7 @@ function ContextsListBody({ model, actions }: ContextsViewProps) {
   return model.selection.visibleContexts.length === 0 ? <p className="pane-state">No contexts yet.</p> : <ContextsListReady model={model} actions={actions} />;
 }
 
-function RelatedItemsBody({ model }: Pick<ContextsViewProps, "model">) {
+function RelatedItemsBody({ model }: Readonly<Pick<ContextsViewProps, "model">>) {
   if (model.query.isLoading) {
     return <p className="pane-state">Loading related items...</p>;
   }
@@ -398,7 +398,7 @@ function RelatedItemsBody({ model }: Pick<ContextsViewProps, "model">) {
   return <LoadedRelatedItemsBody model={model} />;
 }
 
-function LoadedRelatedItemsBody({ model }: Pick<ContextsViewProps, "model">) {
+function LoadedRelatedItemsBody({ model }: Readonly<Pick<ContextsViewProps, "model">>) {
   const selectedItem = model.selection.selectedItem;
 
   if (!selectedItem) {
@@ -412,7 +412,7 @@ function LoadedRelatedItemsBody({ model }: Pick<ContextsViewProps, "model">) {
   return <RelatedItemsResult model={model} selectedItem={selectedItem} />;
 }
 
-function RelatedItemsResult({ model, selectedItem }: { model: ContextsModel; selectedItem: ContextItem }) {
+function RelatedItemsResult({ model, selectedItem }: Readonly<{ model: ContextsModel; selectedItem: ContextItem }>) {
   if (model.related.isLoading) {
     return <p className="pane-state">Loading related items...</p>;
   }
@@ -435,7 +435,7 @@ function ContextsListView(props: ContextsViewProps) {
   );
 }
 
-function RelatedItemsView({ model }: Pick<ContextsViewProps, "model">) {
+function RelatedItemsView({ model }: Readonly<Pick<ContextsViewProps, "model">>) {
   const count = model.related.items.length;
   const detailMeta = `${count} ${count === 1 ? "item" : "items"}`;
 

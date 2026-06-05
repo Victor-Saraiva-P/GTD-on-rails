@@ -21,14 +21,14 @@ import { ProcessingTimeStep } from "../features/processing/ProcessingTimeStep";
 import type { NextActionPatch } from "../features/next-actions/types";
 import type { NextActionsWorkspaceController } from "../features/next-actions/useNextActionsWorkspaceController";
 
-type NextActionsPageProps = {
+type NextActionsPageProps = Readonly<{
   controller: NextActionsWorkspaceController;
   selectOnGoingAction: (id: string | null) => void;
-};
+}>;
 
-type NextActionControllerProps = {
+type NextActionControllerProps = Readonly<{
   controller: NextActionsWorkspaceController;
-};
+}>;
 
 const LazyMarkdownAssetComboDialog = lazy(async () => {
   const module = await import("../features/inbox/MarkdownAssetComboDialog");
@@ -272,7 +272,7 @@ function currentTimeDigits(value: number | null): string {
   return `${Math.floor(value / 60)}${(value % 60).toString().padStart(2, "0")}`;
 }
 
-function EnergyAvailabilityDialog(props: { controller: NextActionsWorkspaceController; onClose: () => void }) {
+function EnergyAvailabilityDialog(props: Readonly<{ controller: NextActionsWorkspaceController; onClose: () => void }>) {
   const [digits, setDigits] = useState(() => currentEnergyDigits(props.controller.currentEnergy));
   const selectEnergy = (energy: number | null) => {
     props.controller.setCurrentEnergy(energy);
@@ -281,7 +281,7 @@ function EnergyAvailabilityDialog(props: { controller: NextActionsWorkspaceContr
   return <section className="processing-dialog" role="dialog" aria-modal="true" aria-label="Set available energy"><ProcessingEnergyStep digits={digits} label="Available energy (0.0 - 10.0):" onDigitsChange={setDigits} onEnergySelected={selectEnergy} onBack={props.onClose} /></section>;
 }
 
-function TimeAvailabilityDialog(props: { controller: NextActionsWorkspaceController; onClose: () => void }) {
+function TimeAvailabilityDialog(props: Readonly<{ controller: NextActionsWorkspaceController; onClose: () => void }>) {
   const [digits, setDigits] = useState(() => currentTimeDigits(props.controller.currentTimeMinutes));
   const selectTime = (minutes: number | null) => {
     props.controller.setCurrentTimeMinutes(minutes);

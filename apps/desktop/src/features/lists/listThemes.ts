@@ -47,6 +47,13 @@ export const onGoingNextActionDetailListTheme: ListTheme = {
   accentColorRgb: onGoingNextActionsListTheme.accentColorRgb
 };
 
+export const onGoingCalendarDetailListTheme: ListTheme = {
+  id: "ongoing-calendar-detail-page",
+  label: "On Going Calendar Detail",
+  accentColor: onGoingNextActionsListTheme.accentColor,
+  accentColorRgb: onGoingNextActionsListTheme.accentColorRgb
+};
+
 export const nextActionDetailListTheme: ListTheme = {
   id: "next-action-detail-page",
   label: "Next Action Detail",

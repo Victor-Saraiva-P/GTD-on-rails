@@ -11,9 +11,9 @@ import { useActiveScreen, useKeybindScreen, useRegisterKeybinds } from "../featu
 import type { KeybindDefinition, ScreenId } from "../features/keybinds/types";
 import { stuffDetailListTheme } from "../features/lists/listThemes";
 
-type StuffDetailPageProps = {
+type StuffDetailPageProps = Readonly<{
   controller: InboxWorkspaceController;
-};
+}>;
 
 const LazyMarkdownAssetComboDialog = lazy(async () => {
   const module = await import("../features/inbox/MarkdownAssetComboDialog");
@@ -27,16 +27,6 @@ const LazyMarkdownLinkComboDialog = lazy(async () => {
 
 function stuffDetailBinding(id: string, key: string, description: string, runKeybind: () => void, leader = false): KeybindDefinition {
   return { description, id, key, leader, runKeybind, screen: "stuff-detail", zone: "stuff-detail" };
-}
-
-function canEditStuffBody(controller: InboxWorkspaceController): boolean {
-  return !controller.isLoading && !controller.isCreating && !controller.isDeleting && !controller.isUpdating && !controller.editingBodyId && Boolean(controller.selectedItem);
-}
-
-function editStuffBodyFromKeybind(controller: InboxWorkspaceController) {
-  if (canEditStuffBody(controller)) {
-    controller.startEditingSelectedStuffBody();
-  }
 }
 
 function backToInboxFromKeybind(controller: InboxWorkspaceController, setActiveScreen: (screen: ScreenId) => void) {
@@ -53,7 +43,6 @@ function buildStuffDetailBindings(
   openAssetCombo: () => void
 ) {
   return [
-    stuffDetailBinding("stuff-detail-page.edit-body", "Enter", "Edit selected body", () => editStuffBodyFromKeybind(controller)),
     stuffDetailBinding("stuff-detail-page.back-to-inbox", "Escape", "Back to inbox", () => backToInboxFromKeybind(controller, setActiveScreen)),
     stuffDetailBinding("stuff-detail-page.which-key", "k", "Show available keybinds", () => undefined, true),
     ...buildFormattingBindings("stuff-detail", openLinkCombo, openAssetCombo)

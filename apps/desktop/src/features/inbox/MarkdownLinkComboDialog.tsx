@@ -3,9 +3,9 @@ import { TerminalComboDialog } from "../../components/TerminalComboDialog";
 import { readMarkdownLinkClipboardText } from "./markdownLinkClipboard";
 import { dispatchInsertMarkdownLink } from "./markdownLinks";
 
-type MarkdownLinkComboDialogProps = {
+type MarkdownLinkComboDialogProps = Readonly<{
   onClose: () => void;
-};
+}>;
 
 /**
  * Prompts for a URL and inserts it as a markdown link.

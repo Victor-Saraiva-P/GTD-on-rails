@@ -11,9 +11,9 @@ import type { KeybindDefinition, ScreenId } from "../features/keybinds/types";
 import { nextActionDetailListTheme } from "../features/lists/listThemes";
 import type { NextActionsWorkspaceController } from "../features/next-actions/useNextActionsWorkspaceController";
 
-type NextActionDetailPageProps = {
+type NextActionDetailPageProps = Readonly<{
   controller: NextActionsWorkspaceController;
-};
+}>;
 
 const LazyMarkdownAssetComboDialog = lazy(async () => {
   const module = await import("../features/inbox/MarkdownAssetComboDialog");
@@ -27,16 +27,6 @@ const LazyMarkdownLinkComboDialog = lazy(async () => {
 
 function nextActionDetailBinding(id: string, key: string, description: string, runKeybind: () => void, leader = false): KeybindDefinition {
   return { description, id, key, leader, runKeybind, screen: "next-action-detail-page", zone: "next-action-detail" };
-}
-
-function canEditBody(controller: NextActionsWorkspaceController): boolean {
-  return !controller.isLoading && !controller.isDeleting && !controller.isUpdating && !controller.editingBodyId && Boolean(controller.selectedItem);
-}
-
-function editBodyFromKeybind(controller: NextActionsWorkspaceController) {
-  if (canEditBody(controller)) {
-    controller.startBodyEdit();
-  }
 }
 
 function backToNextActionsFromKeybind(controller: NextActionsWorkspaceController, setActiveScreen: (screen: ScreenId) => void) {
@@ -53,7 +43,6 @@ function buildDetailBindings(
   openAssetCombo: () => void
 ) {
   return [
-    nextActionDetailBinding("next-action-detail-page.edit-body", "Enter", "Edit selected body", () => editBodyFromKeybind(controller)),
     nextActionDetailBinding("next-action-detail-page.back", "Escape", "Back to next actions", () => backToNextActionsFromKeybind(controller, setActiveScreen)),
     nextActionDetailBinding("next-action-detail-page.which-key", "k", "Show available keybinds", () => undefined, true),
     ...buildFormattingBindings("next-action-detail-page", openLinkCombo, openAssetCombo, "next-action-detail")

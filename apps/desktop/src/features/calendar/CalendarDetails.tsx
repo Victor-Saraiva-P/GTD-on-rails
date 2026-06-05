@@ -2,7 +2,7 @@ import { InboxStuffDetails } from "../inbox/InboxStuffDetails";
 import type { ItemBody } from "../inbox/types";
 import type { Calendar } from "./types";
 
-type CalendarDetailsProps = {
+type CalendarDetailsProps = Readonly<{
   item: Calendar;
   editing: boolean;
   onAutosaveEditing: (body: ItemBody) => Promise<void>;
@@ -10,7 +10,7 @@ type CalendarDetailsProps = {
   onExitEditingFromNormalMode: (body: ItemBody) => Promise<void>;
   onCancelEditing: () => void;
   onVimModeChange?: (mode: "NORMAL" | "INSERT" | "VISUAL") => void;
-};
+}>;
 
 /**
  * Renders calendar detail metadata and the shared rich item body.

@@ -2,12 +2,12 @@ import { useEffect, useRef } from "react";
 import type { KeyboardEvent } from "react";
 import { clockTimeDisplayValue, nextClockTimeDigits } from "./processingFlow";
 
-type ProcessingCalendarTimeStepProps = {
+type ProcessingCalendarTimeStepProps = Readonly<{
   digits: string;
   onDigitsChange: (digits: string) => void;
   onTimeSelected: () => void;
   onBack: () => void;
-};
+}>;
 
 /**
  * Captures optional HH:mm time for calendar processing.

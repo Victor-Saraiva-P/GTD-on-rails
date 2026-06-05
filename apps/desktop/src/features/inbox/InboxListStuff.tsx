@@ -1,7 +1,7 @@
 import type { KeyboardEvent } from "react";
 import type { Stuff } from "./types";
 
-type InboxListStuffProps = {
+type InboxListStuffProps = Readonly<{
   item: Stuff;
   selected: boolean;
   editing: boolean;
@@ -13,9 +13,9 @@ type InboxListStuffProps = {
   onCommitEditingAndContinue: () => void;
   onCancelEditing: () => void;
   glyph?: string;
-};
+}>;
 
-function InboxStuffGlyph({ glyph = "S" }: Pick<InboxListStuffProps, "glyph">) {
+function InboxStuffGlyph({ glyph = "S" }: Readonly<Pick<InboxListStuffProps, "glyph">>) {
   return (
     <span className="tree-entry__glyph tree-entry__glyph--stuff" aria-hidden="true">
       {glyph}
@@ -39,7 +39,7 @@ function handleEditKeyDown(
   }
 }
 
-function EditingInboxListStuff(props: Omit<InboxListStuffProps, "editing" | "onSelect" | "onStartEditing">) {
+function EditingInboxListStuff(props: Readonly<Omit<InboxListStuffProps, "editing" | "onSelect" | "onStartEditing">>) {
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     handleEditKeyDown(event, props.onCommitEditingAndContinue, props.onCancelEditing);
   };
@@ -60,12 +60,12 @@ function EditingInboxListStuff(props: Omit<InboxListStuffProps, "editing" | "onS
   );
 }
 
-type InboxStuffTitleInputProps = {
+type InboxStuffTitleInputProps = Readonly<{
   value: string;
   onChange: (value: string) => void;
   onBlur: () => void;
   onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
-};
+}>;
 
 function InboxStuffTitleInput({ value, onChange, onBlur, onKeyDown }: InboxStuffTitleInputProps) {
   return (

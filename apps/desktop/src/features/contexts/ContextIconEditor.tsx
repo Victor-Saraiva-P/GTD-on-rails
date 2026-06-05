@@ -11,13 +11,13 @@ import { buildApiUrlWithVersion } from "../../config/env.ts";
 import { hasPotentialClipboardImage, readClipboardImage } from "./contextIconClipboard";
 import type { ContextItem } from "./types";
 
-type ContextIconEditorProps = {
+type ContextIconEditorProps = Readonly<{
   context: ContextItem;
   isBusy: boolean;
   onClose: () => void;
   onUpload: (file: File) => Promise<void>;
   onDelete: () => Promise<void>;
-};
+}>;
 
 const ACCEPTED_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/svg+xml", "image/webp"]);
 const ACCEPTED_IMAGE_EXTENSIONS = new Set(["png", "jpg", "jpeg", "gif", "svg", "webp"]);
@@ -242,7 +242,7 @@ function deleteIcon(onDelete: () => Promise<void>, setErrorMessage: (message: st
   });
 }
 
-function ContextIconHeader({ context, isBusy, onClose }: Pick<ContextIconEditorProps, "context" | "isBusy" | "onClose">) {
+function ContextIconHeader({ context, isBusy, onClose }: Readonly<Pick<ContextIconEditorProps, "context" | "isBusy" | "onClose">>) {
   return (
     <header className="context-icon-dialog__header">
       <div>
@@ -256,7 +256,7 @@ function ContextIconHeader({ context, isBusy, onClose }: Pick<ContextIconEditorP
   );
 }
 
-function ContextIconPreview({ previewUrl }: { previewUrl: string | null }) {
+function ContextIconPreview({ previewUrl }: Readonly<{ previewUrl: string | null }>) {
   return (
     <div className="context-icon-preview" aria-hidden="true">
       {previewUrl ? <img src={previewUrl} alt="" className="context-icon-preview__image" /> : <span className="context-icon-preview__glyph">C</span>}
@@ -265,7 +265,7 @@ function ContextIconPreview({ previewUrl }: { previewUrl: string | null }) {
 }
 
 function ContextIconFileInput(
-  props: { inputRef: RefObject<HTMLInputElement | null>; handleFile: IconFileHandler }
+  props: Readonly<{ inputRef: RefObject<HTMLInputElement | null>; handleFile: IconFileHandler }>
 ) {
   return (
     <input
@@ -296,13 +296,13 @@ function ContextIconActions(props: ContextIconActionsProps) {
   );
 }
 
-type ContextIconActionsProps = {
+type ContextIconActionsProps = Readonly<{
   hasIcon: boolean;
   inputRef: RefObject<HTMLInputElement | null>;
   isBusy: boolean;
   onDelete: () => Promise<void>;
   setErrorMessage: (message: string | null) => void;
-};
+}>;
 
 function ContextIconDropzone(props: ContextIconDropzoneProps) {
   return (
@@ -316,13 +316,13 @@ function ContextIconDropzone(props: ContextIconDropzoneProps) {
   );
 }
 
-type ContextIconDropzoneProps = ContextIconActionsProps & {
+type ContextIconDropzoneProps = Readonly<ContextIconActionsProps & {
   errorMessage: string | null;
   handleFile: IconFileHandler;
   inputRef: RefObject<HTMLInputElement | null>;
   isDragActive: boolean;
   setIsDragActive: (active: boolean) => void;
-};
+}>;
 
 function ContextIconContent(props: ContextIconContentProps) {
   return (
@@ -333,9 +333,9 @@ function ContextIconContent(props: ContextIconContentProps) {
   );
 }
 
-type ContextIconContentProps = ContextIconDropzoneProps & {
+type ContextIconContentProps = Readonly<ContextIconDropzoneProps & {
   previewUrl: string | null;
-};
+}>;
 
 function ContextIconDialog(props: ContextIconDialogProps) {
   return (
@@ -362,11 +362,11 @@ function ContextIconDialogPanel(props: ContextIconDialogProps) {
   );
 }
 
-type ContextIconDialogProps = ContextIconContentProps & {
+type ContextIconDialogProps = Readonly<ContextIconContentProps & {
   context: ContextItem;
   dialogRef: RefObject<HTMLElement | null>;
   onClose: () => void;
-};
+}>;
 
 /**
  * Presents upload, paste, drag-drop, and delete controls for a context icon.

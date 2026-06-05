@@ -1,7 +1,7 @@
 import type { Calendar } from "./types";
 import { CalendarListCard } from "./CalendarListCard";
 
-type CalendarListProps = {
+type CalendarListProps = Readonly<{
   archiveStatus?: "deleted";
   editingId: string | null;
   editingTitle: string;
@@ -13,7 +13,7 @@ type CalendarListProps = {
   onSelect: (id: string) => void;
   onStartEditing: () => void;
   selectedId: string;
-};
+}>;
 
 /**
  * Renders calendars with the shared inbox row editing behavior.

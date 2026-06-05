@@ -1,7 +1,7 @@
 import { ContextsListItem } from "./ContextsListItem";
 import type { ContextItem } from "./types";
 
-type ContextsListProps = {
+type ContextsListProps = Readonly<{
   items: ContextItem[];
   selectedId: string;
   editingId: string | null;
@@ -11,11 +11,11 @@ type ContextsListProps = {
   onStartEditing: () => void;
   onCommitEditing: () => void;
   onCancelEditing: () => void;
-};
+}>;
 
-type ContextsListRowProps = Omit<ContextsListProps, "items"> & {
+type ContextsListRowProps = Readonly<Omit<ContextsListProps, "items"> & {
   item: ContextItem;
-};
+}>;
 
 function ContextsListRow({
   item,

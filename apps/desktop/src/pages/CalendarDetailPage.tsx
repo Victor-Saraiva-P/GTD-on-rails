@@ -10,9 +10,9 @@ import { useActiveScreen, useKeybindScreen, useRegisterKeybinds } from "../featu
 import type { KeybindDefinition, ScreenId } from "../features/keybinds/types";
 import { calendarsListTheme } from "../features/lists/listThemes";
 
-type CalendarDetailPageProps = {
+type CalendarDetailPageProps = Readonly<{
   controller: CalendarWorkspaceController;
-};
+}>;
 
 const LazyMarkdownAssetComboDialog = lazy(async () => {
   const module = await import("../features/inbox/MarkdownAssetComboDialog");
@@ -40,7 +40,6 @@ function buildCalendarDetailBindings(
   openAsset: () => void
 ): KeybindDefinition[] {
   return [
-    detailBinding("calendar-detail-page.edit-body", "Enter", "Edit selected body", () => controller.selectedItem && controller.startBodyEdit()),
     detailBinding("calendar-detail-page.back", "Escape", "Back to calendars", () => backToCalendars(controller, setActiveScreen)),
     detailBinding("calendar-detail-page.which-key", "k", "Show available keybinds", () => undefined, true),
     ...buildFormattingBindings("calendar-detail-page", openLink, openAsset, "calendar-detail")
@@ -76,7 +75,7 @@ function CalendarDetailBody({ controller }: CalendarDetailPageProps) {
   return <CalendarDetailReady controller={controller} setActiveScreen={setActiveScreen} />;
 }
 
-function CalendarDetailReady({ controller, setActiveScreen }: CalendarDetailPageProps & { setActiveScreen: (screen: ScreenId) => void }) {
+function CalendarDetailReady({ controller, setActiveScreen }: CalendarDetailPageProps & Readonly<{ setActiveScreen: (screen: ScreenId) => void }>) {
   const item = controller.selectedItem;
   if (!item) return null;
   return (

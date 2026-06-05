@@ -1,11 +1,11 @@
 import { SegmentedDateStep } from "../processing/SegmentedDateStep";
 
-type NextActionDeadlineStepProps = {
+type NextActionDeadlineStepProps = Readonly<{
   value: string;
   onBack: () => void;
   onDeadlineChange: (value: string) => void;
   onDeadlineSelected: (deadline: string | null) => void;
-};
+}>;
 
 /**
  * Captures an optional next-action deadline date.

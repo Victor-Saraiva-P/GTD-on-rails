@@ -24,17 +24,17 @@ import {
   type OnGoingPanelId
 } from "../features/ongoing/combinedOnGoingState";
 
-type OnGoingNextActionsPageProps = {
+type OnGoingNextActionsPageProps = Readonly<{
   calendarController: OnGoingCalendarsWorkspaceController;
   controller: OnGoingNextActionsWorkspaceController;
   selectNextAction: (id: string | null) => void;
-};
+}>;
 
-type ControllerProps = {
+type ControllerProps = Readonly<{
   calendarController: OnGoingCalendarsWorkspaceController;
   controller: OnGoingNextActionsWorkspaceController;
   activePanel: OnGoingPanelId;
-};
+}>;
 
 type EditableController = {
   activeZone: FocusZoneId;
@@ -113,6 +113,7 @@ function moveSelection(controller: EditableController, direction: "next" | "prev
 
 function openDetailScreen(selection: OnGoingItemSelection | null, setActiveScreen: (screen: ScreenId) => void) {
   if (selection?.type === "next-action") setActiveScreen("ongoing-next-action-detail-page");
+  if (selection?.type === "calendar") setActiveScreen("ongoing-calendar-detail-page");
 }
 
 async function markAsDone(props: ControllerProps, setActiveScreen: (screen: ScreenId) => void): Promise<void> {
@@ -135,7 +136,7 @@ function openRestoredNextAction(id: string, selectNextAction: (id: string | null
 }
 
 function zonesForBindings(): FocusZoneId[] {
-  return ["next-actions-list", "ongoing-calendars-list", "next-action-detail"];
+  return ["next-actions-list", "ongoing-calendars-list"];
 }
 
 function panelFocusBindings(setActivePanel: (panel: OnGoingPanelId) => void, controller: EditableController): KeybindDefinition[] {
@@ -181,8 +182,7 @@ function nextActionOnlyBindings(props: ControllerProps, openAttrs: () => void, i
 function detailBindings(props: ControllerProps, setActiveScreen: (screen: ScreenId) => void, openLink: () => void, openAsset: () => void): KeybindDefinition[] {
   const activeController = controllerForPanel(props);
   return [
-    onGoingBinding("ongoing.detail-edit-body", "Enter", "Edit selected body", "next-action-detail", () => canEdit(activeController) && activeController.startBodyEdit()),
-    onGoingBinding("ongoing.focus-active-panel", "h", "Focus active on going panel", "next-action-detail", () => activeController.setActiveZone(listZoneForOnGoingPanel(props.activePanel))),
+    { ...onGoingBinding("ongoing.focus-active-panel", "h", "Focus active on going panel", "next-action-detail", () => activeController.setActiveZone(listZoneForOnGoingPanel(props.activePanel))), ctrl: true },
     onGoingBinding("ongoing.open-next-action-detail", "Enter", "Open full detail", listZoneForOnGoingPanel(props.activePanel), () => openDetailScreen(activeSelection(props), setActiveScreen), true, ["Enter"]),
     onGoingBinding("ongoing.which-key-list", "k", "Show available keybinds", listZoneForOnGoingPanel(props.activePanel), () => undefined, true),
     onGoingBinding("ongoing.which-key-detail", "k", "Show available keybinds", "next-action-detail", () => undefined, true),
@@ -204,11 +204,19 @@ function useOnGoingBindings(props: ControllerProps, selectNextAction: (id: strin
 
 function useOnGoingZone(props: ControllerProps) {
   useEffect(() => {
-    const validZones = [...zonesForBindings()];
+    const validZones = [...zonesForBindings(), "next-action-detail"];
     if (!validZones.includes(props.controller.activeZone)) {
       props.controller.setActiveZone(listZoneForOnGoingPanel(props.activePanel));
     }
   }, [props.activePanel, props.controller.activeZone, props.controller.setActiveZone]);
+}
+
+function useOnGoingPanelFromZone(activePanel: OnGoingPanelId, setActivePanel: (panel: OnGoingPanelId) => void, activeZone: FocusZoneId) {
+  useEffect(() => {
+    const panel = activeZone === "ongoing-calendars-list" ? "calendars" : "next-actions";
+    if (activeZone !== "next-actions-list" && activeZone !== "ongoing-calendars-list") return;
+    if (panel !== activePanel) setActivePanel(panel);
+  }, [activePanel, activeZone, setActivePanel]);
 }
 
 function useActiveAssetPreload(props: ControllerProps) {
@@ -223,27 +231,27 @@ function commitTitle(controller: EditableController, label: string) {
   void controller.commitTitle().catch((error: unknown) => console.error(`Failed to update ${label} title`, error));
 }
 
-function OnGoingNextActionsPanel({ controller }: Pick<ControllerProps, "controller">) {
+function OnGoingNextActionsPanel({ activePanel, controller }: Readonly<Pick<ControllerProps, "activePanel" | "controller">>) {
   const count = controller.stuffs.length;
   return (
     <ListView title="On Going Next Actions" meta={`${count} ${count === 1 ? "item" : "items"}`} panelIndex={1} active={controller.activeZone === "next-actions-list"} bodyClassName="list-pane__body--flush" className="inbox-pane inbox-pane--list">
-      <OnGoingNextActionsBody controller={controller} />
+      <OnGoingNextActionsBody activePanel={activePanel} controller={controller} />
     </ListView>
   );
 }
 
-function OnGoingNextActionsBody({ controller }: Pick<ControllerProps, "controller">) {
+function OnGoingNextActionsBody({ activePanel, controller }: Readonly<Pick<ControllerProps, "activePanel" | "controller">>) {
   if (controller.isLoading) return <p className="pane-state">Loading on going next actions...</p>;
   if (controller.errorMessage) return <RetryState message={controller.errorMessage} onRetry={controller.reload} />;
   if (controller.stuffs.length === 0) return <p className="pane-state">No on going next actions.</p>;
-  return <NextActionsListReady controller={controller} />;
+  return <NextActionsListReady activePanel={activePanel} controller={controller} />;
 }
 
-function NextActionsListReady({ controller }: Pick<ControllerProps, "controller">) {
+function NextActionsListReady({ activePanel, controller }: Readonly<Pick<ControllerProps, "activePanel" | "controller">>) {
   return (
     <NextActionsList
       items={controller.stuffs}
-      selectedId={controller.selectedItem?.id ?? ""}
+      selectedId={activePanel === "next-actions" ? controller.selectedItem?.id ?? "" : ""}
       editingId={controller.editingId}
       editingTitle={controller.editingTitle}
       onSelect={controller.setSelectedId}
@@ -256,27 +264,27 @@ function NextActionsListReady({ controller }: Pick<ControllerProps, "controller"
   );
 }
 
-function OnGoingCalendarsPanel({ calendarController }: Pick<ControllerProps, "calendarController">) {
+function OnGoingCalendarsPanel({ activePanel, calendarController }: Readonly<Pick<ControllerProps, "activePanel" | "calendarController">>) {
   const count = calendarController.stuffs.length;
   return (
     <ListView title="On Going Calendars" meta={`${count} ${count === 1 ? "item" : "items"}`} panelIndex={2} active={calendarController.activeZone === "ongoing-calendars-list"} bodyClassName="list-pane__body--flush" className="inbox-pane inbox-pane--list">
-      <OnGoingCalendarsBody calendarController={calendarController} />
+      <OnGoingCalendarsBody activePanel={activePanel} calendarController={calendarController} />
     </ListView>
   );
 }
 
-function OnGoingCalendarsBody({ calendarController }: Pick<ControllerProps, "calendarController">) {
+function OnGoingCalendarsBody({ activePanel, calendarController }: Readonly<Pick<ControllerProps, "activePanel" | "calendarController">>) {
   if (calendarController.isLoading) return <p className="pane-state">Loading on going calendars...</p>;
   if (calendarController.errorMessage) return <RetryState message={calendarController.errorMessage} onRetry={calendarController.reload} />;
   if (calendarController.stuffs.length === 0) return <p className="pane-state">No on going calendars.</p>;
-  return <CalendarListReady calendarController={calendarController} />;
+  return <CalendarListReady activePanel={activePanel} calendarController={calendarController} />;
 }
 
-function CalendarListReady({ calendarController }: Pick<ControllerProps, "calendarController">) {
+function CalendarListReady({ activePanel, calendarController }: Readonly<Pick<ControllerProps, "activePanel" | "calendarController">>) {
   return (
     <CalendarList
       items={calendarController.stuffs}
-      selectedId={calendarController.selectedItem?.id ?? ""}
+      selectedId={activePanel === "calendars" ? calendarController.selectedItem?.id ?? "" : ""}
       editingId={calendarController.editingId}
       editingTitle={calendarController.editingTitle}
       onSelect={calendarController.setSelectedId}
@@ -332,8 +340,8 @@ async function exitBodyEditing(controller: EditableController, panel: OnGoingPan
 function OnGoingViews(props: ControllerProps) {
   return (
     <section className="ongoing-terminal-layout" aria-label="On going work">
-      <OnGoingNextActionsPanel controller={props.controller} />
-      <OnGoingCalendarsPanel calendarController={props.calendarController} />
+      <OnGoingNextActionsPanel activePanel={props.activePanel} controller={props.controller} />
+      <OnGoingCalendarsPanel activePanel={props.activePanel} calendarController={props.calendarController} />
       <OnGoingDetailView {...props} />
     </section>
   );
@@ -367,11 +375,12 @@ function useOnGoingDialogState() {
 function useOnGoingPageEffects(props: ControllerProps, selectNextAction: (id: string | null) => void, dialogs: OnGoingDialogState, setActivePanel: (panel: OnGoingPanelId) => void) {
   useKeybindScreen("ongoing-next-actions");
   useOnGoingZone(props);
+  useOnGoingPanelFromZone(props.activePanel, setActivePanel, props.controller.activeZone);
   useActiveAssetPreload(props);
   useOnGoingBindings(props, selectNextAction, dialogs.openAttrs, dialogs.openLink, dialogs.openAsset, dialogs.isAttrsOpen, setActivePanel);
 }
 
-function OnGoingWorkspace({ props, dialogState }: { props: ControllerProps; dialogState: OnGoingDialogState }) {
+function OnGoingWorkspace({ props, dialogState }: Readonly<{ props: ControllerProps; dialogState: OnGoingDialogState }>) {
   return (
     <ListWorkspace theme={onGoingNextActionsListTheme} currentClassName="list-workspace__current--next-actions" currentLabel={<OnGoingFooterLabel {...props} />} modeLabel={props.controller.vimMode ?? props.calendarController.vimMode ?? undefined}>
       <OnGoingViews {...props} />
@@ -389,7 +398,7 @@ function OnGoingWorkspace({ props, dialogState }: { props: ControllerProps; dial
   );
 }
 
-type OnGoingDialogsProps = {
+type OnGoingDialogsProps = Readonly<{
   isAssetOpen: boolean;
   isAttrsOpen: boolean;
   isLinkOpen: boolean;
@@ -397,7 +406,7 @@ type OnGoingDialogsProps = {
   setIsAssetOpen: (open: boolean) => void;
   setIsAttrsOpen: (open: boolean) => void;
   setIsLinkOpen: (open: boolean) => void;
-};
+}>;
 
 function OnGoingDialogs({ props, isAttrsOpen, isLinkOpen, isAssetOpen, setIsAttrsOpen, setIsLinkOpen, setIsAssetOpen }: OnGoingDialogsProps) {
   const selected = activeSelection(props);

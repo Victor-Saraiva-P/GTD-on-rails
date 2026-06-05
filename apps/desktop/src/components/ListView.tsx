@@ -1,6 +1,6 @@
 import type { PropsWithChildren, ReactNode } from "react";
 
-type ListViewProps = PropsWithChildren<{
+type ListViewProps = Readonly<PropsWithChildren<{
   title: string;
   viewIndex?: number;
   panelIndex?: number;
@@ -8,13 +8,13 @@ type ListViewProps = PropsWithChildren<{
   active?: boolean;
   bodyClassName?: string;
   className?: string;
-}>;
+}>>;
 
 function listViewClassName(active: boolean, className?: string): string {
   return `list-pane${active ? " list-pane--active" : ""}${className ? ` ${className}` : ""}`;
 }
 
-function ListViewTitle({ title, meta }: Pick<ListViewProps, "title" | "meta">) {
+function ListViewTitle({ title, meta }: Readonly<Pick<ListViewProps, "title" | "meta">>) {
   return (
     <div className="list-pane__heading">
       <span className="list-pane__line list-pane__line--left" aria-hidden="true" />
@@ -29,13 +29,13 @@ function ListViewTitle({ title, meta }: Pick<ListViewProps, "title" | "meta">) {
   );
 }
 
-function ListViewIndexLabel({ panelIndex, viewIndex }: Pick<ListViewProps, "panelIndex" | "viewIndex">) {
+function ListViewIndexLabel({ panelIndex, viewIndex }: Readonly<Pick<ListViewProps, "panelIndex" | "viewIndex">>) {
   if (panelIndex) return <span className="list-pane__view-index">[Panel {panelIndex}]</span>;
   if (viewIndex) return <span className="list-pane__view-index">[View {viewIndex}]</span>;
   return null;
 }
 
-function ListViewHeader({ title, meta, panelIndex, viewIndex }: Pick<ListViewProps, "title" | "meta" | "panelIndex" | "viewIndex">) {
+function ListViewHeader({ title, meta, panelIndex, viewIndex }: Readonly<Pick<ListViewProps, "title" | "meta" | "panelIndex" | "viewIndex">>) {
   return (
     <header className="list-pane__header">
       <ListViewTitle title={title} meta={meta} />
