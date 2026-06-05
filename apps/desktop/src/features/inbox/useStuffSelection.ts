@@ -22,6 +22,16 @@ function selectStuffByOffset(selection: SelectionCursor, offset: number) {
   selection.setSelectedId(selection.visibleStuffs[nextIndex].id);
 }
 
+function selectFirstStuff(selection: SelectionCursor) {
+  if (selection.visibleStuffs.length === 0) return;
+  selection.setSelectedId(selection.visibleStuffs[0].id);
+}
+
+function selectLastStuff(selection: SelectionCursor) {
+  if (selection.visibleStuffs.length === 0) return;
+  selection.setSelectedId(selection.visibleStuffs[selection.visibleStuffs.length - 1].id);
+}
+
 /**
  * Tracks selected stuff and bounded keyboard navigation for a visible stuff list.
  *
@@ -33,5 +43,5 @@ export function useStuffSelection(visibleStuffs: Stuff[]) {
   const selectedIndex = selectedStuffIndex(visibleStuffs, selectedItem);
   const selection = { selectedIndex, setSelectedId, visibleStuffs };
 
-  return { ...selection, selectedId, selectedItem, selectNextStuff: () => selectStuffByOffset(selection, 1), selectPreviousStuff: () => selectStuffByOffset(selection, -1) };
+  return { ...selection, selectedId, selectedItem, selectFirstStuff: () => selectFirstStuff(selection), selectLastStuff: () => selectLastStuff(selection), selectNextStuff: () => selectStuffByOffset(selection, 1), selectPreviousStuff: () => selectStuffByOffset(selection, -1) };
 }

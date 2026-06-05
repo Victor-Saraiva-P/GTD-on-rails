@@ -38,12 +38,22 @@ export function moveSelection(selection: SelectionCursor, offset: number) {
   selection.setSelectedId(selection.items[nextIndex].id);
 }
 
+function selectFirst(selection: SelectionCursor) {
+  if (selection.items.length === 0) return;
+  selection.setSelectedId(selection.items[0].id);
+}
+
+function selectLast(selection: SelectionCursor) {
+  if (selection.items.length === 0) return;
+  selection.setSelectedId(selection.items[selection.items.length - 1].id);
+}
+
 export function useNextActionSelection(items: NextAction[]) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = selectedItem(items, selectedId);
   const index = selectedIndex(items, selected);
   const selection = { items, selectedIndex: index, setSelectedId };
-  return { ...selection, selectedId, selectedItem: selected, selectNext: () => moveSelection(selection, 1), selectPrevious: () => moveSelection(selection, -1) };
+  return { ...selection, selectedId, selectedItem: selected, selectFirst: () => selectFirst(selection), selectLast: () => selectLast(selection), selectNext: () => moveSelection(selection, 1), selectPrevious: () => moveSelection(selection, -1) };
 }
 
 export function useNextActionEditState() {
@@ -204,6 +214,8 @@ export function useNextActionsActions(model: Model) {
     patchSelected: (patch: NextActionPatch) => patchSelected(model, patch),
     redo: () => redoAction(model),
     restoreSelected: () => restoreSelectedStatus(model),
+    selectFirst: model.selection.selectFirst,
+    selectLast: model.selection.selectLast,
     selectNext: model.selection.selectNext,
     selectPrevious: model.selection.selectPrevious,
     setContext: model.filter.setContext,

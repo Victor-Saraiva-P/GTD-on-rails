@@ -32,9 +32,10 @@ function archivedBinding(
   description: string,
   zone: FocusZoneId,
   runKeybind: () => void,
-  leader = false
+  leader = false,
+  sequence?: string[]
 ): KeybindDefinition {
-  return { description, id, key, leader, runKeybind, screen: props.screen, zone };
+  return { description, id, key, leader, runKeybind, screen: props.screen, sequence, zone };
 }
 
 function canRecover(controller: ArchivedNextActionsWorkspaceController): boolean {
@@ -61,6 +62,10 @@ function moveSelection(controller: ArchivedNextActionsWorkspaceController, direc
   direction === "next" ? controller.selectNext() : controller.selectPrevious();
 }
 
+function selectBoundary(controller: ArchivedNextActionsWorkspaceController, boundary: "first" | "last") {
+  boundary === "first" ? controller.selectFirst() : controller.selectLast();
+}
+
 function switchScreen(props: ArchivedNextActionsPageProps, screen: ScreenId, setActiveScreen: (screen: ScreenId) => void) {
   props.controller.resetWorkspace();
   setActiveScreen(screen);
@@ -69,6 +74,8 @@ function switchScreen(props: ArchivedNextActionsPageProps, screen: ScreenId, set
 function buildListBindings(props: ArchivedNextActionsPageProps, setActiveScreen: (screen: ScreenId) => void) {
   const bindings = [
     archivedBinding(props, `${props.screen}.recover-list`, "r", "Recover selected next action", props.listZone, () => recoverSelected(props.controller)),
+    archivedBinding(props, `${props.screen}.move-first`, "g", "Move to first item", props.listZone, () => selectBoundary(props.controller, "first"), false, ["g", "g"]),
+    archivedBinding(props, `${props.screen}.move-last`, "G", "Move to last item", props.listZone, () => selectBoundary(props.controller, "last")),
     archivedBinding(props, `${props.screen}.move-down`, "j", "Move down", props.listZone, () => moveSelection(props.controller, "next")),
     archivedBinding(props, `${props.screen}.move-up`, "k", "Move up", props.listZone, () => moveSelection(props.controller, "previous")),
     archivedBinding(props, `${props.screen}.focus-detail`, "l", "Focus next action detail", props.listZone, () => props.controller.setActiveZone(props.detailZone)),

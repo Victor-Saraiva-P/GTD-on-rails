@@ -12,6 +12,7 @@ import {
   calendarItemsForPanel,
   moveCalendarSelection,
   resolveWeeklyColumnShift,
+  selectCalendarBoundary,
   selectedCalendar,
   selectedCalendarIndex,
   type CalendarSubviewDirection,
@@ -38,7 +39,7 @@ function useCalendarSelection(items: Calendar[]) {
   const selectedItem = selectedCalendar(items, selectedId);
   const selectedIndex = selectedCalendarIndex(items, selectedItem);
   const cursor = { items, selectedIndex, setSelectedId };
-  return { items, selectedId, selectedIndex, selectedItem, setSelectedId, selectNext: () => moveCalendarSelection(cursor, 1), selectPrevious: () => moveCalendarSelection(cursor, -1) };
+  return { items, selectedId, selectedIndex, selectedItem, setSelectedId, selectFirst: () => selectCalendarBoundary(cursor, "first"), selectLast: () => selectCalendarBoundary(cursor, "last"), selectNext: () => moveCalendarSelection(cursor, 1), selectPrevious: () => moveCalendarSelection(cursor, -1) };
 }
 
 function useCalendarEditState() {
@@ -270,6 +271,8 @@ function useCalendarWorkspaceActions(model: CalendarModel) {
     resetWorkspace: () => resetCalendarWorkspace(model),
     restoreSelected: () => runSelectedCalendarMutation(model, model.query.restoreStatus),
     recoverDeleted: () => runSelectedCalendarMutation(model, model.query.recoverDeleted),
+    selectFirst: model.selection.selectFirst,
+    selectLast: model.selection.selectLast,
     selectNext: model.selection.selectNext,
     selectPrevious: model.selection.selectPrevious,
     startBodyEdit: () => startCalendarBodyEdit(model),

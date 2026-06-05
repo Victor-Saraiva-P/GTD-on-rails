@@ -36,13 +36,23 @@ function moveSelection(selection: SelectionCursor, offset: number) {
   selection.setSelectedId(selection.items[index].id);
 }
 
+function selectFirst(selection: SelectionCursor) {
+  if (selection.items.length === 0) return;
+  selection.setSelectedId(selection.items[0].id);
+}
+
+function selectLast(selection: SelectionCursor) {
+  if (selection.items.length === 0) return;
+  selection.setSelectedId(selection.items[selection.items.length - 1].id);
+}
+
 function useArchivedSelection(items: NextAction[]) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = selectedItem(items, selectedId);
   const index = selectedIndex(items, selected);
   const selection = { items, selectedIndex: index, setSelectedId };
 
-  return { ...selection, selectedId, selectedItem: selected, selectNext: () => moveSelection(selection, 1), selectPrevious: () => moveSelection(selection, -1) };
+  return { ...selection, selectedId, selectedItem: selected, selectFirst: () => selectFirst(selection), selectLast: () => selectLast(selection), selectNext: () => moveSelection(selection, 1), selectPrevious: () => moveSelection(selection, -1) };
 }
 
 function hasVisibleItem(model: ArchivedModel, id: string): boolean {
@@ -95,6 +105,8 @@ function useArchivedNextActionsActions(model: ArchivedModel) {
     deleteSelected: () => deleteSelected(model),
     recoverSelected: () => recoverSelected(model),
     resetWorkspace: () => resetWorkspace(model),
+    selectFirst: model.selection.selectFirst,
+    selectLast: model.selection.selectLast,
     selectNext: model.selection.selectNext,
     selectPrevious: model.selection.selectPrevious
   };
