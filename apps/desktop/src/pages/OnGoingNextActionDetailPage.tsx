@@ -11,14 +11,14 @@ import type { KeybindDefinition, ScreenId } from "../features/keybinds/types";
 import { onGoingNextActionDetailListTheme } from "../features/lists/listThemes";
 import type { OnGoingNextActionsWorkspaceController } from "../features/next-actions/useOnGoingNextActionsWorkspaceController";
 
-type OnGoingNextActionDetailPageProps = {
+type OnGoingNextActionDetailPageProps = Readonly<{
   controller: OnGoingNextActionsWorkspaceController;
-};
+}>;
 
-type DetailReadyProps = {
+type DetailReadyProps = Readonly<{
   controller: OnGoingNextActionsWorkspaceController;
   setActiveScreen: (screen: ScreenId) => void;
-};
+}>;
 
 const LazyMarkdownAssetComboDialog = lazy(async () => {
   const module = await import("../features/inbox/MarkdownAssetComboDialog");

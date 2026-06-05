@@ -11,8 +11,8 @@ import { useActiveScreen, useKeybindScreen, useRegisterKeybinds } from "../featu
 import type { KeybindDefinition, ScreenId } from "../features/keybinds/types";
 import { onGoingCalendarDetailListTheme } from "../features/lists/listThemes";
 
-type Props = { controller: OnGoingCalendarsWorkspaceController };
-type ReadyProps = Props & { setActiveScreen: (screen: ScreenId) => void };
+type Props = Readonly<{ controller: OnGoingCalendarsWorkspaceController }>;
+type ReadyProps = Props & Readonly<{ setActiveScreen: (screen: ScreenId) => void }>;
 
 const LazyMarkdownAssetComboDialog = lazy(async () => ({ default: (await import("../features/inbox/MarkdownAssetComboDialog")).MarkdownAssetComboDialog }));
 const LazyMarkdownLinkComboDialog = lazy(async () => ({ default: (await import("../features/inbox/MarkdownLinkComboDialog")).MarkdownLinkComboDialog }));
