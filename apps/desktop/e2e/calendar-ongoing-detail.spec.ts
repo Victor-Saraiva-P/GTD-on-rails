@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
-import { apiBaseUrl, createAndSelectInboxStuff, createStuffApi, focusPanelAndSelectItem, openApp, openCalendars, processIntoCalendar, resetTestData, uniqueLabel } from "./support/app";
+import { apiBaseUrl, convertStuffToNextActionApi, createAndSelectInboxStuff, createStuffApi, focusPanelAndSelectItem, openApp, openCalendars, processIntoCalendar, resetTestData, uniqueLabel } from "./support/app";
 
 test.beforeEach(async ({ page, request }) => {
   await resetTestData(request);
@@ -83,3 +83,30 @@ test("Space Enter on the on going calendar list opens calendar detail", async ({
   await expect(page.locator(".list-pane__title", { hasText: "On Going Calendar Detail" })).toBeVisible();
   await expect(page.getByText(title).first()).toBeVisible();
 });
+
+test("Escape from on going calendar detail returns to the calendar list focus", async ({ page, request }) => {
+  const nextActionTitle = uniqueLabel("Existing on going next action");
+  const title = uniqueLabel("Return to on going calendar");
+  await createOnGoingNextActionApi(request, nextActionTitle);
+  await createAndSelectInboxStuff(page, title);
+  await processIntoCalendar(page);
+  await focusPanelAndSelectItem(page, 0, title);
+  await page.keyboard.press("o");
+  await expect(page.locator(".cm-content")).toBeVisible();
+
+  await page.keyboard.press("Escape");
+
+  const calendarPanel = page.locator(".inbox-pane").nth(1);
+  await expect(page.locator(".list-pane__title", { hasText: "On Going Calendars" })).toBeVisible();
+  await expect(calendarPanel).toHaveClass(/list-pane--active/);
+  await expect(page.getByText("Panel: Calendars")).toBeVisible();
+  await expect(page.locator(".inbox-pane").nth(0).getByRole("button", { name: nextActionTitle, exact: false }).first()).not.toHaveClass(/tree-entry--active/);
+  await expect(calendarPanel.getByRole("button", { name: title, exact: false }).first()).toBeVisible();
+});
+
+async function createOnGoingNextActionApi(request: APIRequestContext, title: string): Promise<void> {
+  const stuff = await createStuffApi(request, title);
+  await convertStuffToNextActionApi(request, stuff.id);
+  const response = await request.post(`${apiBaseUrl}/next-actions/${stuff.id}/ongoing`);
+  expect(response.ok()).toBeTruthy();
+}

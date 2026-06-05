@@ -211,6 +211,14 @@ function useOnGoingZone(props: ControllerProps) {
   }, [props.activePanel, props.controller.activeZone, props.controller.setActiveZone]);
 }
 
+function useOnGoingPanelFromZone(activePanel: OnGoingPanelId, setActivePanel: (panel: OnGoingPanelId) => void, activeZone: FocusZoneId) {
+  useEffect(() => {
+    const panel = activeZone === "ongoing-calendars-list" ? "calendars" : "next-actions";
+    if (activeZone !== "next-actions-list" && activeZone !== "ongoing-calendars-list") return;
+    if (panel !== activePanel) setActivePanel(panel);
+  }, [activePanel, activeZone, setActivePanel]);
+}
+
 function useActiveAssetPreload(props: ControllerProps) {
   const activeController = controllerForPanel(props);
   useEffect(() => {
@@ -223,27 +231,27 @@ function commitTitle(controller: EditableController, label: string) {
   void controller.commitTitle().catch((error: unknown) => console.error(`Failed to update ${label} title`, error));
 }
 
-function OnGoingNextActionsPanel({ controller }: Pick<ControllerProps, "controller">) {
+function OnGoingNextActionsPanel({ activePanel, controller }: Pick<ControllerProps, "activePanel" | "controller">) {
   const count = controller.stuffs.length;
   return (
     <ListView title="On Going Next Actions" meta={`${count} ${count === 1 ? "item" : "items"}`} panelIndex={1} active={controller.activeZone === "next-actions-list"} bodyClassName="list-pane__body--flush" className="inbox-pane inbox-pane--list">
-      <OnGoingNextActionsBody controller={controller} />
+      <OnGoingNextActionsBody activePanel={activePanel} controller={controller} />
     </ListView>
   );
 }
 
-function OnGoingNextActionsBody({ controller }: Pick<ControllerProps, "controller">) {
+function OnGoingNextActionsBody({ activePanel, controller }: Pick<ControllerProps, "activePanel" | "controller">) {
   if (controller.isLoading) return <p className="pane-state">Loading on going next actions...</p>;
   if (controller.errorMessage) return <RetryState message={controller.errorMessage} onRetry={controller.reload} />;
   if (controller.stuffs.length === 0) return <p className="pane-state">No on going next actions.</p>;
-  return <NextActionsListReady controller={controller} />;
+  return <NextActionsListReady activePanel={activePanel} controller={controller} />;
 }
 
-function NextActionsListReady({ controller }: Pick<ControllerProps, "controller">) {
+function NextActionsListReady({ activePanel, controller }: Pick<ControllerProps, "activePanel" | "controller">) {
   return (
     <NextActionsList
       items={controller.stuffs}
-      selectedId={controller.selectedItem?.id ?? ""}
+      selectedId={activePanel === "next-actions" ? controller.selectedItem?.id ?? "" : ""}
       editingId={controller.editingId}
       editingTitle={controller.editingTitle}
       onSelect={controller.setSelectedId}
@@ -256,27 +264,27 @@ function NextActionsListReady({ controller }: Pick<ControllerProps, "controller"
   );
 }
 
-function OnGoingCalendarsPanel({ calendarController }: Pick<ControllerProps, "calendarController">) {
+function OnGoingCalendarsPanel({ activePanel, calendarController }: Pick<ControllerProps, "activePanel" | "calendarController">) {
   const count = calendarController.stuffs.length;
   return (
     <ListView title="On Going Calendars" meta={`${count} ${count === 1 ? "item" : "items"}`} panelIndex={2} active={calendarController.activeZone === "ongoing-calendars-list"} bodyClassName="list-pane__body--flush" className="inbox-pane inbox-pane--list">
-      <OnGoingCalendarsBody calendarController={calendarController} />
+      <OnGoingCalendarsBody activePanel={activePanel} calendarController={calendarController} />
     </ListView>
   );
 }
 
-function OnGoingCalendarsBody({ calendarController }: Pick<ControllerProps, "calendarController">) {
+function OnGoingCalendarsBody({ activePanel, calendarController }: Pick<ControllerProps, "activePanel" | "calendarController">) {
   if (calendarController.isLoading) return <p className="pane-state">Loading on going calendars...</p>;
   if (calendarController.errorMessage) return <RetryState message={calendarController.errorMessage} onRetry={calendarController.reload} />;
   if (calendarController.stuffs.length === 0) return <p className="pane-state">No on going calendars.</p>;
-  return <CalendarListReady calendarController={calendarController} />;
+  return <CalendarListReady activePanel={activePanel} calendarController={calendarController} />;
 }
 
-function CalendarListReady({ calendarController }: Pick<ControllerProps, "calendarController">) {
+function CalendarListReady({ activePanel, calendarController }: Pick<ControllerProps, "activePanel" | "calendarController">) {
   return (
     <CalendarList
       items={calendarController.stuffs}
-      selectedId={calendarController.selectedItem?.id ?? ""}
+      selectedId={activePanel === "calendars" ? calendarController.selectedItem?.id ?? "" : ""}
       editingId={calendarController.editingId}
       editingTitle={calendarController.editingTitle}
       onSelect={calendarController.setSelectedId}
@@ -332,8 +340,8 @@ async function exitBodyEditing(controller: EditableController, panel: OnGoingPan
 function OnGoingViews(props: ControllerProps) {
   return (
     <section className="ongoing-terminal-layout" aria-label="On going work">
-      <OnGoingNextActionsPanel controller={props.controller} />
-      <OnGoingCalendarsPanel calendarController={props.calendarController} />
+      <OnGoingNextActionsPanel activePanel={props.activePanel} controller={props.controller} />
+      <OnGoingCalendarsPanel activePanel={props.activePanel} calendarController={props.calendarController} />
       <OnGoingDetailView {...props} />
     </section>
   );
@@ -367,6 +375,7 @@ function useOnGoingDialogState() {
 function useOnGoingPageEffects(props: ControllerProps, selectNextAction: (id: string | null) => void, dialogs: OnGoingDialogState, setActivePanel: (panel: OnGoingPanelId) => void) {
   useKeybindScreen("ongoing-next-actions");
   useOnGoingZone(props);
+  useOnGoingPanelFromZone(props.activePanel, setActivePanel, props.controller.activeZone);
   useActiveAssetPreload(props);
   useOnGoingBindings(props, selectNextAction, dialogs.openAttrs, dialogs.openLink, dialogs.openAsset, dialogs.isAttrsOpen, setActivePanel);
 }
