@@ -16,9 +16,9 @@ import { scrollDetailPane } from "../features/keybinds/scrollDetailPane";
 import { inboxListTheme } from "../features/lists/listThemes";
 import { ProcessingDialog } from "../features/processing/ProcessingDialog";
 
-type InboxPageProps = {
+type InboxPageProps = Readonly<{
   controller: InboxWorkspaceController;
-};
+}>;
 
 const LazyMarkdownAssetComboDialog = lazy(async () => {
   const module = await import("../features/inbox/MarkdownAssetComboDialog");

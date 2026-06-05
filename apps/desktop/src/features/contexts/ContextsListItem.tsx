@@ -2,7 +2,7 @@ import { useRef, type KeyboardEvent, type MutableRefObject } from "react";
 import { buildApiUrlWithVersion } from "../../config/env.ts";
 import type { ContextItem } from "./types";
 
-type ContextsListItemProps = {
+type ContextsListItemProps = Readonly<{
   item: ContextItem;
   selected: boolean;
   editing: boolean;
@@ -12,9 +12,9 @@ type ContextsListItemProps = {
   onStartEditing: () => void;
   onCommitEditing: () => void;
   onCancelEditing: () => void;
-};
+}>;
 
-function ContextGlyph({ item }: Pick<ContextsListItemProps, "item">) {
+function ContextGlyph({ item }: Readonly<Pick<ContextsListItemProps, "item">>) {
   if (item.iconUrl) {
     return (
       <img
@@ -52,7 +52,7 @@ function handleContextInputKeyDown(
   }
 }
 
-function EditingContextsListItem(props: Omit<ContextsListItemProps, "editing" | "onSelect" | "onStartEditing">) {
+function EditingContextsListItem(props: Readonly<Omit<ContextsListItemProps, "editing" | "onSelect" | "onStartEditing">>) {
   const skipBlurCommitRef = useRef(false);
   const handleBlur = () => handleContextInputBlur(skipBlurCommitRef, props.onCommitEditing);
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -63,7 +63,7 @@ function EditingContextsListItem(props: Omit<ContextsListItemProps, "editing" | 
 }
 
 function EditingContextEntry(
-  props: Omit<ContextsListItemProps, "editing" | "onSelect" | "onStartEditing"> & ContextNameInputEvents
+  props: Readonly<Omit<ContextsListItemProps, "editing" | "onSelect" | "onStartEditing"> & ContextNameInputEvents>
 ) {
   return (
     <li className="tree-list__item">
@@ -86,10 +86,10 @@ type ContextNameInputEvents = {
   onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
 };
 
-type ContextNameInputProps = {
+type ContextNameInputProps = Readonly<{
   value: string;
   onChange: (value: string) => void;
-} & ContextNameInputEvents;
+} & ContextNameInputEvents>;
 
 function ContextNameInput({ value, onChange, onBlur, onKeyDown }: ContextNameInputProps) {
   return (

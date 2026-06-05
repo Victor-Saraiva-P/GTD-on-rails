@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { buildApiUrlWithVersion } from "../../config/env.ts";
 
-type ContextNameWithIconProps = {
+type ContextNameWithIconProps = Readonly<{
   context: {
     id: string;
     name: string;
     iconUrl?: string;
     iconRevision?: number;
   };
-};
+}>;
 
 function ContextIcon({ context }: ContextNameWithIconProps) {
   const [failedIcon, setFailedIcon] = useState(false);

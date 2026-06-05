@@ -3,12 +3,12 @@ import type { MutableRefObject } from "react";
 import { useContextsQuery } from "../contexts/useContextsQuery";
 import type { ContextItem } from "../contexts/types";
 
-type ProcessingContextStepProps = {
+type ProcessingContextStepProps = Readonly<{
   onContextsSelected: (contextIds: string[]) => void;
   onSelectedIdsChange?: (contextIds: string[]) => void;
   onBack: () => void;
   initialSelectedIds?: string[];
-};
+}>;
 
 function nextFocusedIndex(currentIndex: number, offset: number, contexts: ContextItem[]): number {
   if (contexts.length === 0) return 0;

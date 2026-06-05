@@ -1,19 +1,19 @@
 import type { PropsWithChildren, ReactNode } from "react";
 
-type ViewProps = PropsWithChildren<{
+type ViewProps = Readonly<PropsWithChildren<{
   iconSrc: string;
   label: string;
   status?: ReactNode;
   bodyClassName?: string;
   wrapLabel?: boolean;
   active?: boolean;
-}>;
+}>>;
 
 function viewClassName(active: boolean): string {
   return `pane${active ? " pane--active" : ""}`;
 }
 
-function ViewHeader({ iconSrc, label, status, wrapLabel = false }: Omit<ViewProps, "children">) {
+function ViewHeader({ iconSrc, label, status, wrapLabel = false }: Readonly<Omit<ViewProps, "children">>) {
   return (
     <header className={`pane__header${wrapLabel ? " pane__header--wrap" : ""}`}>
       <span className={`pane__tab${wrapLabel ? " pane__tab--wrap" : ""}`}>

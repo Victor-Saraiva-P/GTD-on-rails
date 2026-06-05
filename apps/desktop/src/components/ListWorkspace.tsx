@@ -3,12 +3,12 @@ import { appMetadata } from "../config/appMetadata";
 import type { ListTheme } from "../features/lists/listThemes";
 import { SyncStatusIndicators } from "../features/sync-status/SyncStatusIndicators";
 
-type ListWorkspaceProps = PropsWithChildren<{
+type ListWorkspaceProps = Readonly<PropsWithChildren<{
   theme: ListTheme;
   currentLabel: ReactNode;
   currentClassName?: string;
   modeLabel?: string | null;
-}>;
+}>>;
 
 function buildWorkspaceStyle(theme: ListTheme): CSSProperties {
   return {
@@ -17,7 +17,7 @@ function buildWorkspaceStyle(theme: ListTheme): CSSProperties {
   } as CSSProperties;
 }
 
-function ListWorkspaceFooter({ currentClassName, currentLabel, modeLabel }: Pick<ListWorkspaceProps, "currentClassName" | "currentLabel" | "modeLabel">) {
+function ListWorkspaceFooter({ currentClassName, currentLabel, modeLabel }: Readonly<Pick<ListWorkspaceProps, "currentClassName" | "currentLabel" | "modeLabel">>) {
   return (
     <footer className="list-workspace__footer" aria-label="Current list">
       <div className="list-workspace__brand">

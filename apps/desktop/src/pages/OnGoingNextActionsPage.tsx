@@ -380,7 +380,7 @@ function useOnGoingPageEffects(props: ControllerProps, selectNextAction: (id: st
   useOnGoingBindings(props, selectNextAction, dialogs.openAttrs, dialogs.openLink, dialogs.openAsset, dialogs.isAttrsOpen, setActivePanel);
 }
 
-function OnGoingWorkspace({ props, dialogState }: { props: ControllerProps; dialogState: OnGoingDialogState }) {
+function OnGoingWorkspace({ props, dialogState }: Readonly<{ props: ControllerProps; dialogState: OnGoingDialogState }>) {
   return (
     <ListWorkspace theme={onGoingNextActionsListTheme} currentClassName="list-workspace__current--next-actions" currentLabel={<OnGoingFooterLabel {...props} />} modeLabel={props.controller.vimMode ?? props.calendarController.vimMode ?? undefined}>
       <OnGoingViews {...props} />
@@ -398,7 +398,7 @@ function OnGoingWorkspace({ props, dialogState }: { props: ControllerProps; dial
   );
 }
 
-type OnGoingDialogsProps = {
+type OnGoingDialogsProps = Readonly<{
   isAssetOpen: boolean;
   isAttrsOpen: boolean;
   isLinkOpen: boolean;
@@ -406,7 +406,7 @@ type OnGoingDialogsProps = {
   setIsAssetOpen: (open: boolean) => void;
   setIsAttrsOpen: (open: boolean) => void;
   setIsLinkOpen: (open: boolean) => void;
-};
+}>;
 
 function OnGoingDialogs({ props, isAttrsOpen, isLinkOpen, isAssetOpen, setIsAttrsOpen, setIsLinkOpen, setIsAssetOpen }: OnGoingDialogsProps) {
   const selected = activeSelection(props);

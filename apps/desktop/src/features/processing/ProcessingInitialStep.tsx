@@ -1,11 +1,11 @@
 import { useEffect, useRef } from "react";
 import type { KeyboardEvent } from "react";
 
-type ProcessingInitialStepProps = {
+type ProcessingInitialStepProps = Readonly<{
   onNextAction: () => void;
   onCalendar: () => void;
   onCancel: () => void;
-};
+}>;
 
 export function ProcessingInitialStep({ onNextAction, onCalendar, onCancel }: ProcessingInitialStepProps) {
   const containerRef = useRef<HTMLDivElement>(null);

@@ -11,9 +11,9 @@ import { useActiveScreen, useKeybindScreen, useRegisterKeybinds } from "../featu
 import type { KeybindDefinition, ScreenId } from "../features/keybinds/types";
 import { stuffDetailListTheme } from "../features/lists/listThemes";
 
-type StuffDetailPageProps = {
+type StuffDetailPageProps = Readonly<{
   controller: InboxWorkspaceController;
-};
+}>;
 
 const LazyMarkdownAssetComboDialog = lazy(async () => {
   const module = await import("../features/inbox/MarkdownAssetComboDialog");

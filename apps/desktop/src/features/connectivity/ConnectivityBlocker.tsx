@@ -38,7 +38,7 @@ function useOfflineSyncPolling(isBlocked: boolean, triggerSyncStatusPolling: () 
   }, [isBlocked, triggerSyncStatusPolling]);
 }
 
-function SyncStatusLine({ row }: { row: ConnectivitySyncRow }) {
+function SyncStatusLine({ row }: Readonly<{ row: ConnectivitySyncRow }>) {
   return (
     <div className="connectivity-blocker__sync-row">
       <p className="boot-loader__line"><span className="boot-loader__status">[{row.label}]</span> state: {row.state}</p>

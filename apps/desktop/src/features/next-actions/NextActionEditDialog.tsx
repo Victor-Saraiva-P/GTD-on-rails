@@ -5,11 +5,11 @@ import { ProcessingTimeStep } from "../processing/ProcessingTimeStep";
 import { NextActionDeadlineStep } from "./NextActionDeadlineStep";
 import type { NextAction, NextActionPatch } from "./types";
 
-type NextActionEditDialogProps = {
+type NextActionEditDialogProps = Readonly<{
   item: NextAction;
   onSave: (patch: NextActionPatch) => Promise<void>;
   onClose: () => void;
-};
+}>;
 
 type NextActionEditStep = "initial" | "context" | "deadline" | "energy" | "time";
 
@@ -38,7 +38,7 @@ function initialTimeDigits(item: NextAction): string {
   return `${item.estimatedTime.hours}${minutes}`;
 }
 
-function NextActionEditInitialStep(props: { onSelect: (step: NextActionEditStep) => void; onCancel: () => void }) {
+function NextActionEditInitialStep(props: Readonly<{ onSelect: (step: NextActionEditStep) => void; onCancel: () => void }>) {
   const containerRef = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => containerRef.current?.focus(), []);
   useLayoutEffect(() => {
@@ -63,7 +63,7 @@ function handleInitialKey(event: CommandKeyEvent, onSelect: (step: NextActionEdi
   if (selectedStep) selectKey(event, () => onSelect(selectedStep));
 }
 
-function EditCommand({ shortcut, label }: { shortcut: string; label: string }) {
+function EditCommand({ shortcut, label }: Readonly<{ shortcut: string; label: string }>) {
   return <button className="processing-dialog__command" type="button"><kbd>{shortcut}</kbd><span>{label}</span></button>;
 }
 

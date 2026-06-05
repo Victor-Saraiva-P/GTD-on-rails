@@ -1,7 +1,7 @@
 import { InboxListStuff } from "../inbox/InboxListStuff";
 import type { NextAction } from "./types";
 
-type NextActionsListProps = {
+type NextActionsListProps = Readonly<{
   items: NextAction[];
   selectedId: string;
   editingId: string | null;
@@ -12,11 +12,11 @@ type NextActionsListProps = {
   onCommitEditing: () => void;
   onCommitEditingAndContinue: () => void;
   onCancelEditing: () => void;
-};
+}>;
 
-type NextActionRowProps = Omit<NextActionsListProps, "items"> & {
+type NextActionRowProps = Readonly<Omit<NextActionsListProps, "items"> & {
   item: NextAction;
-};
+}>;
 
 function NextActionRow({ item, selectedId, editingId, ...props }: NextActionRowProps) {
   return (

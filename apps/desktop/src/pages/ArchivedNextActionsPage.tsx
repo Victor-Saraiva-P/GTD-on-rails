@@ -11,7 +11,7 @@ import type { ListTheme } from "../features/lists/listThemes";
 import { NextActionsList } from "../features/next-actions/NextActionsList";
 import type { ArchivedNextActionsWorkspaceController } from "../features/next-actions/useArchivedNextActionsWorkspaceController";
 
-type ArchivedNextActionsPageProps = {
+type ArchivedNextActionsPageProps = Readonly<{
   controller: ArchivedNextActionsWorkspaceController;
   detailTitle: string;
   emptyMessage: string;
@@ -23,7 +23,7 @@ type ArchivedNextActionsPageProps = {
   previousScreen: ScreenId;
   nextScreen: ScreenId;
   theme: ListTheme;
-};
+}>;
 
 function archivedBinding(
   props: ArchivedNextActionsPageProps,
@@ -117,7 +117,7 @@ function useArchivedAssetPreload(controller: ArchivedNextActionsWorkspaceControl
   }, [controller.selectedIndex, controller.stuffs]);
 }
 
-function ArchivedListReady({ controller }: Pick<ArchivedNextActionsPageProps, "controller">) {
+function ArchivedListReady({ controller }: Readonly<Pick<ArchivedNextActionsPageProps, "controller">>) {
   return (
     <NextActionsList
       items={controller.stuffs}

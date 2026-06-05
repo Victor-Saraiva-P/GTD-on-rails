@@ -1,6 +1,6 @@
 import { useEffect, useRef, type FormEvent, type RefObject } from "react";
 
-export type TerminalComboDialogProps = {
+export type TerminalComboDialogProps = Readonly<{
   title: string;
   label: string;
   value: string;
@@ -12,9 +12,9 @@ export type TerminalComboDialogProps = {
   onChange: (value: string) => void;
   onConfirm: () => void;
   onCancel: () => void;
-};
+}>;
 
-function TerminalComboCommands(props: Pick<TerminalComboDialogProps, "confirmKey" | "confirmLabel" | "cancelLabel">) {
+function TerminalComboCommands(props: Readonly<Pick<TerminalComboDialogProps, "confirmKey" | "confirmLabel" | "cancelLabel">>) {
   return (
     <div className="terminal-combo__commands">
       <span>
