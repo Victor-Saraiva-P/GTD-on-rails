@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
-import { apiBaseUrl, convertStuffToNextActionApi, createAndSelectInboxStuff, createStuffApi, focusPanelAndSelectItem, openApp, openCalendars, processIntoCalendar, resetTestData, uniqueLabel } from "./support/app";
+import { apiBaseUrl, convertStuffToNextActionApi, createAndSelectInboxStuff, createStuffApi, focusApp, focusPanelAndSelectItem, openApp, openCalendars, processIntoCalendar, resetTestData, uniqueLabel } from "./support/app";
 
 test.beforeEach(async ({ page, request }) => {
   await resetTestData(request);
@@ -73,11 +73,11 @@ test("Space Enter on the on going calendar list opens calendar detail", async ({
   await focusPanelAndSelectItem(page, 0, title);
   await page.keyboard.press("o");
   await page.keyboard.press("Escape");
-  await page.keyboard.down("Control");
-  await page.keyboard.press("h");
-  await page.keyboard.up("Control");
+  await expect(page.getByText("Panel: Calendars")).toBeVisible();
 
+  await focusApp(page);
   await page.keyboard.press("Space");
+  await expect(page.locator(".leader-menu")).toBeVisible();
   await page.keyboard.press("Enter");
 
   await expect(page.locator(".list-pane__title", { hasText: "On Going Calendar Detail" })).toBeVisible();
