@@ -24,17 +24,17 @@ import {
   type OnGoingPanelId
 } from "../features/ongoing/combinedOnGoingState";
 
-type OnGoingNextActionsPageProps = {
+type OnGoingNextActionsPageProps = Readonly<{
   calendarController: OnGoingCalendarsWorkspaceController;
   controller: OnGoingNextActionsWorkspaceController;
   selectNextAction: (id: string | null) => void;
-};
+}>;
 
-type ControllerProps = {
+type ControllerProps = Readonly<{
   calendarController: OnGoingCalendarsWorkspaceController;
   controller: OnGoingNextActionsWorkspaceController;
   activePanel: OnGoingPanelId;
-};
+}>;
 
 type EditableController = {
   activeZone: FocusZoneId;
@@ -231,7 +231,7 @@ function commitTitle(controller: EditableController, label: string) {
   void controller.commitTitle().catch((error: unknown) => console.error(`Failed to update ${label} title`, error));
 }
 
-function OnGoingNextActionsPanel({ activePanel, controller }: Pick<ControllerProps, "activePanel" | "controller">) {
+function OnGoingNextActionsPanel({ activePanel, controller }: Readonly<Pick<ControllerProps, "activePanel" | "controller">>) {
   const count = controller.stuffs.length;
   return (
     <ListView title="On Going Next Actions" meta={`${count} ${count === 1 ? "item" : "items"}`} panelIndex={1} active={controller.activeZone === "next-actions-list"} bodyClassName="list-pane__body--flush" className="inbox-pane inbox-pane--list">
@@ -240,14 +240,14 @@ function OnGoingNextActionsPanel({ activePanel, controller }: Pick<ControllerPro
   );
 }
 
-function OnGoingNextActionsBody({ activePanel, controller }: Pick<ControllerProps, "activePanel" | "controller">) {
+function OnGoingNextActionsBody({ activePanel, controller }: Readonly<Pick<ControllerProps, "activePanel" | "controller">>) {
   if (controller.isLoading) return <p className="pane-state">Loading on going next actions...</p>;
   if (controller.errorMessage) return <RetryState message={controller.errorMessage} onRetry={controller.reload} />;
   if (controller.stuffs.length === 0) return <p className="pane-state">No on going next actions.</p>;
   return <NextActionsListReady activePanel={activePanel} controller={controller} />;
 }
 
-function NextActionsListReady({ activePanel, controller }: Pick<ControllerProps, "activePanel" | "controller">) {
+function NextActionsListReady({ activePanel, controller }: Readonly<Pick<ControllerProps, "activePanel" | "controller">>) {
   return (
     <NextActionsList
       items={controller.stuffs}
@@ -264,7 +264,7 @@ function NextActionsListReady({ activePanel, controller }: Pick<ControllerProps,
   );
 }
 
-function OnGoingCalendarsPanel({ activePanel, calendarController }: Pick<ControllerProps, "activePanel" | "calendarController">) {
+function OnGoingCalendarsPanel({ activePanel, calendarController }: Readonly<Pick<ControllerProps, "activePanel" | "calendarController">>) {
   const count = calendarController.stuffs.length;
   return (
     <ListView title="On Going Calendars" meta={`${count} ${count === 1 ? "item" : "items"}`} panelIndex={2} active={calendarController.activeZone === "ongoing-calendars-list"} bodyClassName="list-pane__body--flush" className="inbox-pane inbox-pane--list">
@@ -273,14 +273,14 @@ function OnGoingCalendarsPanel({ activePanel, calendarController }: Pick<Control
   );
 }
 
-function OnGoingCalendarsBody({ activePanel, calendarController }: Pick<ControllerProps, "activePanel" | "calendarController">) {
+function OnGoingCalendarsBody({ activePanel, calendarController }: Readonly<Pick<ControllerProps, "activePanel" | "calendarController">>) {
   if (calendarController.isLoading) return <p className="pane-state">Loading on going calendars...</p>;
   if (calendarController.errorMessage) return <RetryState message={calendarController.errorMessage} onRetry={calendarController.reload} />;
   if (calendarController.stuffs.length === 0) return <p className="pane-state">No on going calendars.</p>;
   return <CalendarListReady activePanel={activePanel} calendarController={calendarController} />;
 }
 
-function CalendarListReady({ activePanel, calendarController }: Pick<ControllerProps, "activePanel" | "calendarController">) {
+function CalendarListReady({ activePanel, calendarController }: Readonly<Pick<ControllerProps, "activePanel" | "calendarController">>) {
   return (
     <CalendarList
       items={calendarController.stuffs}

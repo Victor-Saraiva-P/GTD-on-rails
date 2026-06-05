@@ -17,10 +17,10 @@ import { scrollDetailPane } from "../features/keybinds/scrollDetailPane";
 import { calendarsListTheme, deletedCalendarsListTheme, doneCalendarsListTheme, type ListTheme } from "../features/lists/listThemes";
 import { getMondayForOffset } from "../features/calendar/calendarDateUtils";
 
-type CalendarPageProps = {
+type CalendarPageProps = Readonly<{
   controller: CalendarWorkspaceController;
   selectOnGoingCalendar: (id: string) => void;
-};
+}>;
 
 type CalendarControllerProps = {
   controller: CalendarWorkspaceController;
