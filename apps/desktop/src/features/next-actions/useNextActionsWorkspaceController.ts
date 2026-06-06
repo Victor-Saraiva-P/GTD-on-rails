@@ -6,13 +6,10 @@ import { isSameBody } from "../inbox/types";
 import type { ContextItem } from "../contexts/types";
 import type { NextAction, NextActionOrder, NextActionPatch } from "./types";
 import { DEFAULT_NEXT_ACTION_ORDER, nextOrder } from "./orderCycle";
+import { moveNextActionSelection, selectNextActionBoundary, selectedNextActionIndex, selectedNextActionItem, type NextActionSelectionCursor } from "./nextActionSelection";
 import { useNextActionsQuery } from "./useNextActionsQuery";
 
-export type SelectionCursor = {
-  items: NextAction[];
-  selectedIndex: number;
-  setSelectedId: (id: string | null) => void;
-};
+export type SelectionCursor = NextActionSelectionCursor;
 export type EditState = ReturnType<typeof useNextActionEditState>;
 export type Model = {
   edit: EditState;
@@ -24,36 +21,12 @@ export type Model = {
 };
 export type Actions = ReturnType<typeof useNextActionsActions>;
 
-export function selectedItem(items: NextAction[], selectedId: string | null): NextAction | null {
-  return items.find((item) => item.id === selectedId) ?? items[0] ?? null;
-}
-
-export function selectedIndex(items: NextAction[], item: NextAction | null): number {
-  return item ? items.findIndex((candidate) => candidate.id === item.id) : -1;
-}
-
-export function moveSelection(selection: SelectionCursor, offset: number) {
-  if (selection.items.length === 0) return;
-  const nextIndex = Math.min(Math.max(selection.selectedIndex + offset, 0), selection.items.length - 1);
-  selection.setSelectedId(selection.items[nextIndex].id);
-}
-
-function selectFirst(selection: SelectionCursor) {
-  if (selection.items.length === 0) return;
-  selection.setSelectedId(selection.items[0].id);
-}
-
-function selectLast(selection: SelectionCursor) {
-  if (selection.items.length === 0) return;
-  selection.setSelectedId(selection.items[selection.items.length - 1].id);
-}
-
 export function useNextActionSelection(items: NextAction[]) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const selected = selectedItem(items, selectedId);
-  const index = selectedIndex(items, selected);
+  const selected = selectedNextActionItem(items, selectedId);
+  const index = selectedNextActionIndex(items, selected);
   const selection = { items, selectedIndex: index, setSelectedId };
-  return { ...selection, selectedId, selectedItem: selected, selectFirst: () => selectFirst(selection), selectLast: () => selectLast(selection), selectNext: () => moveSelection(selection, 1), selectPrevious: () => moveSelection(selection, -1) };
+  return { ...selection, selectedId, selectedItem: selected, selectFirst: () => selectNextActionBoundary(selection, "first"), selectLast: () => selectNextActionBoundary(selection, "last"), selectNext: () => moveNextActionSelection(selection, 1), selectPrevious: () => moveNextActionSelection(selection, -1) };
 }
 
 export function useNextActionEditState() {
