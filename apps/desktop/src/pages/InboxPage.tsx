@@ -80,6 +80,18 @@ function moveInboxSelection(controller: InboxWorkspaceController, direction: "ne
   }
 }
 
+function selectFirstInboxItem(controller: InboxWorkspaceController) {
+  if (!controller.editingId && !controller.editingBodyId) {
+    controller.selectFirstStuff();
+  }
+}
+
+function selectLastInboxItem(controller: InboxWorkspaceController) {
+  if (!controller.editingId && !controller.editingBodyId) {
+    controller.selectLastStuff();
+  }
+}
+
 function editBodyFromListKeybind(controller: InboxWorkspaceController) {
   if (canEditSelectedStuff(controller)) {
     controller.startEditingSelectedStuffBody();
@@ -132,6 +144,8 @@ function buildInboxBindings(
     { ...inboxBinding("inbox.redo-list", "r", "Redo last action", "inbox-list", () => void controller.redo()), ctrl: true },
     { ...inboxBinding("inbox.redo-detail", "r", "Redo last action", "stuff-detail", () => void controller.redo()), ctrl: true },
     inboxBinding("inbox.edit-title", "Enter", "Edit selected title", "inbox-list", () => editTitleFromKeybind(controller)),
+    inboxBinding("inbox.move-first", "g", "Move to first item", "inbox-list", () => selectFirstInboxItem(controller), false, ["g", "g"]),
+    inboxBinding("inbox.move-last", "G", "Move to last item", "inbox-list", () => selectLastInboxItem(controller)),
     inboxBinding("inbox.move-down", "j", "Move down", "inbox-list", () => moveInboxSelection(controller, "next")),
     inboxBinding("inbox.move-up", "k", "Move up", "inbox-list", () => moveInboxSelection(controller, "previous")),
     inboxBinding("inbox.edit-body-from-list", "l", "Edit selected body", "inbox-list", () => editBodyFromListKeybind(controller)),

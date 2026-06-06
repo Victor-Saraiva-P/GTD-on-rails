@@ -66,12 +66,17 @@ test("pressing o on a weekly calendar opens its on going detail", async ({ page 
   await expect(page.getByText(title).first()).toBeVisible();
 });
 
-test("Space Enter on the on going calendar list opens calendar detail", async ({ page }) => {
-  const title = uniqueLabel("Open on going calendar");
+async function openSelectedCalendarAsOnGoingDetail(page: Page, title: string) {
   await createAndSelectInboxStuff(page, title);
   await processIntoCalendar(page);
   await focusPanelAndSelectItem(page, 0, title);
   await page.keyboard.press("o");
+  await expect(page.locator(".cm-content")).toBeVisible();
+}
+
+test("Space Enter on the on going calendar list opens calendar detail", async ({ page }) => {
+  const title = uniqueLabel("Open on going calendar");
+  await openSelectedCalendarAsOnGoingDetail(page, title);
   await page.keyboard.press("Escape");
   await expect(page.getByText("Panel: Calendars")).toBeVisible();
 
@@ -88,11 +93,7 @@ test("Escape from on going calendar detail returns to the calendar list focus", 
   const nextActionTitle = uniqueLabel("Existing on going next action");
   const title = uniqueLabel("Return to on going calendar");
   await createOnGoingNextActionApi(request, nextActionTitle);
-  await createAndSelectInboxStuff(page, title);
-  await processIntoCalendar(page);
-  await focusPanelAndSelectItem(page, 0, title);
-  await page.keyboard.press("o");
-  await expect(page.locator(".cm-content")).toBeVisible();
+  await openSelectedCalendarAsOnGoingDetail(page, title);
 
   await page.keyboard.press("Escape");
 

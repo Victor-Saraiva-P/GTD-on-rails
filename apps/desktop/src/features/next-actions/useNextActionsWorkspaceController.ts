@@ -6,13 +6,11 @@ import { isSameBody } from "../inbox/types";
 import type { ContextItem } from "../contexts/types";
 import type { NextAction, NextActionOrder, NextActionPatch } from "./types";
 import { DEFAULT_NEXT_ACTION_ORDER, nextOrder } from "./orderCycle";
+import { useNextActionSelection, type NextActionSelectionCursor } from "./nextActionSelection";
 import { useNextActionsQuery } from "./useNextActionsQuery";
+export { useNextActionSelection } from "./nextActionSelection";
 
-export type SelectionCursor = {
-  items: NextAction[];
-  selectedIndex: number;
-  setSelectedId: (id: string | null) => void;
-};
+export type SelectionCursor = NextActionSelectionCursor;
 export type EditState = ReturnType<typeof useNextActionEditState>;
 export type Model = {
   edit: EditState;
@@ -23,28 +21,6 @@ export type Model = {
   zone: ReturnType<typeof useActiveZone>;
 };
 export type Actions = ReturnType<typeof useNextActionsActions>;
-
-export function selectedItem(items: NextAction[], selectedId: string | null): NextAction | null {
-  return items.find((item) => item.id === selectedId) ?? items[0] ?? null;
-}
-
-export function selectedIndex(items: NextAction[], item: NextAction | null): number {
-  return item ? items.findIndex((candidate) => candidate.id === item.id) : -1;
-}
-
-export function moveSelection(selection: SelectionCursor, offset: number) {
-  if (selection.items.length === 0) return;
-  const nextIndex = Math.min(Math.max(selection.selectedIndex + offset, 0), selection.items.length - 1);
-  selection.setSelectedId(selection.items[nextIndex].id);
-}
-
-export function useNextActionSelection(items: NextAction[]) {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const selected = selectedItem(items, selectedId);
-  const index = selectedIndex(items, selected);
-  const selection = { items, selectedIndex: index, setSelectedId };
-  return { ...selection, selectedId, selectedItem: selected, selectNext: () => moveSelection(selection, 1), selectPrevious: () => moveSelection(selection, -1) };
-}
 
 export function useNextActionEditState() {
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -204,6 +180,8 @@ export function useNextActionsActions(model: Model) {
     patchSelected: (patch: NextActionPatch) => patchSelected(model, patch),
     redo: () => redoAction(model),
     restoreSelected: () => restoreSelectedStatus(model),
+    selectFirst: model.selection.selectFirst,
+    selectLast: model.selection.selectLast,
     selectNext: model.selection.selectNext,
     selectPrevious: model.selection.selectPrevious,
     setContext: model.filter.setContext,

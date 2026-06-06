@@ -360,6 +360,8 @@ function useInboxWorkspaceActions(model: InboxModel) {
     processSelectedStuffToCalendar: (payload: CalendarConversionPayload) => processSelectedStuffToCalendarAction(model, payload),
     undo: () => undoAction(model),
     redo: () => redoAction(model),
+    selectFirstStuff: model.selection.selectFirstStuff,
+    selectLastStuff: model.selection.selectLastStuff,
     selectNextStuff: model.selection.selectNextStuff,
     selectPreviousStuff: model.selection.selectPreviousStuff,
     startEditingSelectedStuff: () => startEditingSelectedStuffAction(model),

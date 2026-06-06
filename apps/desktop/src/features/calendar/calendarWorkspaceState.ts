@@ -125,6 +125,15 @@ export function moveCalendarSelection(
   cursor.setSelectedId(cursor.items[nextIndex].id);
 }
 
+export function selectCalendarBoundary(
+  cursor: CalendarSelectionCursor,
+  boundary: "first" | "last"
+): void {
+  if (cursor.items.length === 0) return;
+  const index = boundary === "first" ? 0 : cursor.items.length - 1;
+  cursor.setSelectedId(cursor.items[index].id);
+}
+
 export function defaultCalendarPanelForSubview(subview: CalendarSubview): CalendarPanel {
   if (subview === "weekly") return "mon";
   if (subview === "completed") return "completed";

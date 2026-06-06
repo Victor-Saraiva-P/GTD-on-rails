@@ -57,6 +57,11 @@ function moveCalendarSelection(controller: CalendarWorkspaceController, directio
   direction === "next" ? controller.selectNext() : controller.selectPrevious();
 }
 
+function selectCalendarBoundaryItem(controller: CalendarWorkspaceController, boundary: "first" | "last"): void {
+  if (controller.editingId || controller.editingBodyId) return;
+  boundary === "first" ? controller.selectFirst() : controller.selectLast();
+}
+
 function moveCalendarColumn(controller: CalendarWorkspaceController, direction: "left" | "right"): void {
   if (controller.editingId || controller.editingBodyId) return;
   direction === "left" ? controller.moveColumnLeft() : controller.moveColumnRight();
@@ -80,6 +85,8 @@ function buildPanelBindings(controller: CalendarWorkspaceController, setActiveSc
     return [
       calendarBinding("calendars.move-completed-down", "j", "Move down", "calendar-completed-panel", () => moveCalendarSelection(controller, "next")),
       calendarBinding("calendars.move-completed-up", "k", "Move up", "calendar-completed-panel", () => moveCalendarSelection(controller, "previous")),
+      calendarBinding("calendars.move-completed-first", "g", "Move to first item", "calendar-completed-panel", () => selectCalendarBoundaryItem(controller, "first"), false, ["g", "g"]),
+      calendarBinding("calendars.move-completed-last", "G", "Move to last item", "calendar-completed-panel", () => selectCalendarBoundaryItem(controller, "last")),
       calendarBinding("calendars.edit-completed-schedule", "e", "Edit selected schedule", "calendar-completed-panel", () => openCalendarScheduleDialog(controller, openScheduleEdit)),
       calendarBinding("calendars.open-completed-detail", "Enter", "Open full detail", "calendar-completed-panel", () => openCalendarDetailPage(controller, setActiveScreen), true, ["Enter"]),
       calendarBinding("calendars.delete-completed", "d", "Delete selected calendar", "calendar-completed-panel", () => runCalendarAction(canEditCalendar(controller), controller.deleteSelected, "Failed to delete calendar")),
@@ -92,6 +99,8 @@ function buildPanelBindings(controller: CalendarWorkspaceController, setActiveSc
     return [
       calendarBinding("calendars.move-deleted-down", "j", "Move down", "calendar-deleted-panel", () => moveCalendarSelection(controller, "next")),
       calendarBinding("calendars.move-deleted-up", "k", "Move up", "calendar-deleted-panel", () => moveCalendarSelection(controller, "previous")),
+      calendarBinding("calendars.move-deleted-first", "g", "Move to first item", "calendar-deleted-panel", () => selectCalendarBoundaryItem(controller, "first"), false, ["g", "g"]),
+      calendarBinding("calendars.move-deleted-last", "G", "Move to last item", "calendar-deleted-panel", () => selectCalendarBoundaryItem(controller, "last")),
       calendarBinding("calendars.edit-deleted-schedule", "e", "Edit selected schedule", "calendar-deleted-panel", () => openCalendarScheduleDialog(controller, openScheduleEdit)),
       calendarBinding("calendars.open-deleted-detail", "Enter", "Open full detail", "calendar-deleted-panel", () => openCalendarDetailPage(controller, setActiveScreen), true, ["Enter"]),
       calendarBinding("calendars.recover-deleted", "r", "Recover selected calendar", "calendar-deleted-panel", () => runCalendarAction(canEditCalendar(controller), controller.recoverDeleted, "Failed to recover calendar")),
@@ -116,6 +125,8 @@ function buildPanelBindings(controller: CalendarWorkspaceController, setActiveSc
       bindings.push(
         calendarBinding(`calendars.move-${day}-down`, "j", "Move down", zone, () => moveCalendarSelection(controller, "next")),
         calendarBinding(`calendars.move-${day}-up`, "k", "Move up", zone, () => moveCalendarSelection(controller, "previous")),
+        calendarBinding(`calendars.move-${day}-first`, "g", "Move to first item", zone, () => selectCalendarBoundaryItem(controller, "first"), false, ["g", "g"]),
+        calendarBinding(`calendars.move-${day}-last`, "G", "Move to last item", zone, () => selectCalendarBoundaryItem(controller, "last")),
         calendarBinding(`calendars.move-${day}-left`, "h", "Move to previous day", zone, () => moveCalendarColumn(controller, "left")),
         calendarBinding(`calendars.move-${day}-right`, "l", "Move to next day", zone, () => moveCalendarColumn(controller, "right")),
         calendarBinding(`calendars.move-${day}-previous-week`, "H", "Move to previous week", zone, controller.moveWeekPrevious),
@@ -154,6 +165,8 @@ function buildDuePanelBindings(controller: CalendarWorkspaceController, setActiv
     calendarBinding("calendars.focus-done-from-due", "2", "Focus completed today panel", "calendar-today-due-panel", () => focusCalendarPanel(controller, "done-today")),
     calendarBinding("calendars.move-due-down", "j", "Move down", "calendar-today-due-panel", () => moveCalendarSelection(controller, "next")),
     calendarBinding("calendars.move-due-up", "k", "Move up", "calendar-today-due-panel", () => moveCalendarSelection(controller, "previous")),
+    calendarBinding("calendars.move-due-first", "g", "Move to first item", "calendar-today-due-panel", () => selectCalendarBoundaryItem(controller, "first"), false, ["g", "g"]),
+    calendarBinding("calendars.move-due-last", "G", "Move to last item", "calendar-today-due-panel", () => selectCalendarBoundaryItem(controller, "last")),
     calendarBinding("calendars.edit-due-schedule", "e", "Edit selected schedule", "calendar-today-due-panel", () => openCalendarScheduleDialog(controller, openScheduleEdit)),
     calendarBinding("calendars.edit-title", "Enter", "Edit selected title", "calendar-today-due-panel", () => canEditCalendar(controller) && controller.startTitleEdit()),
     calendarBinding("calendars.edit-body", "l", "Edit selected body", "calendar-today-due-panel", () => canEditCalendar(controller) && controller.startBodyEdit()),
@@ -172,6 +185,8 @@ function buildDoneTodayPanelBindings(controller: CalendarWorkspaceController, se
     calendarBinding("calendars.focus-done", "2", "Focus completed today panel", "calendar-today-done-panel", () => focusCalendarPanel(controller, "done-today")),
     calendarBinding("calendars.move-done-down", "j", "Move down", "calendar-today-done-panel", () => moveCalendarSelection(controller, "next")),
     calendarBinding("calendars.move-done-up", "k", "Move up", "calendar-today-done-panel", () => moveCalendarSelection(controller, "previous")),
+    calendarBinding("calendars.move-done-first", "g", "Move to first item", "calendar-today-done-panel", () => selectCalendarBoundaryItem(controller, "first"), false, ["g", "g"]),
+    calendarBinding("calendars.move-done-last", "G", "Move to last item", "calendar-today-done-panel", () => selectCalendarBoundaryItem(controller, "last")),
     calendarBinding("calendars.edit-done-schedule", "e", "Edit selected schedule", "calendar-today-done-panel", () => openCalendarScheduleDialog(controller, openScheduleEdit)),
     calendarBinding("calendars.open-done-detail", "Enter", "Open full detail", "calendar-today-done-panel", () => openCalendarDetailPage(controller, setActiveScreen), true, ["Enter"]),
     calendarBinding("calendars.restore-done", "r", "Reset status for selected calendar", "calendar-today-done-panel", () => runCalendarAction(canEditCalendar(controller), controller.restoreSelected, "Failed to restore calendar")),

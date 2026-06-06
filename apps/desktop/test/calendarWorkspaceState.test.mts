@@ -10,6 +10,7 @@ import {
   calendarSelectionOffsetIndex,
   calendarSubviewTarget,
   resolveWeeklyColumnShift,
+  selectCalendarBoundary,
   selectedCalendar,
   selectedCalendarIndex,
   type CalendarPanel
@@ -43,6 +44,17 @@ describe("calendar workspace state", () => {
     assert.equal(selectedCalendarIndex(items, selected), 1);
     assert.equal(calendarSelectionOffsetIndex({ items, selectedIndex: 1 }, 1), 1);
     assert.equal(calendarSelectionOffsetIndex({ items, selectedIndex: 1 }, -1), 0);
+  });
+
+  test("selects first and last calendar boundaries", () => {
+    const items = [calendar("cal-1", "First"), calendar("cal-2", "Second")];
+    const selectedIds: (string | null)[] = [];
+    const cursor = { items, selectedIndex: 1, setSelectedId: (id: string | null) => selectedIds.push(id) };
+
+    selectCalendarBoundary(cursor, "first");
+    selectCalendarBoundary(cursor, "last");
+
+    assert.deepEqual(selectedIds, ["cal-1", "cal-2"]);
   });
 
   test("uses active panel to choose the selected calendar collection", () => {

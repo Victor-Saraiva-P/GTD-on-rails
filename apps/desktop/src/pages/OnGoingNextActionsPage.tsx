@@ -53,6 +53,8 @@ type EditableController = {
   markAsDone: () => Promise<void>;
   reload: () => void;
   restoreSelected: () => Promise<void>;
+  selectFirst: () => void;
+  selectLast: () => void;
   selectNext: () => void;
   selectPrevious: () => void;
   selectedIndex: number;
@@ -111,6 +113,11 @@ function moveSelection(controller: EditableController, direction: "next" | "prev
   direction === "next" ? controller.selectNext() : controller.selectPrevious();
 }
 
+function selectBoundary(controller: EditableController, boundary: "first" | "last") {
+  if (controller.editingId || controller.editingBodyId) return;
+  boundary === "first" ? controller.selectFirst() : controller.selectLast();
+}
+
 function openDetailScreen(selection: OnGoingItemSelection | null, setActiveScreen: (screen: ScreenId) => void) {
   if (selection?.type === "next-action") setActiveScreen("ongoing-next-action-detail-page");
   if (selection?.type === "calendar") setActiveScreen("ongoing-calendar-detail-page");
@@ -162,6 +169,8 @@ function bindingsForZone(props: ControllerProps, setActiveScreen: (screen: Scree
     onGoingBinding(`ongoing.delete.${zone}`, "d", deleteLabel, zone, () => runAsync(editable, activeController.deleteSelected, "Failed to delete on going item")),
     onGoingBinding(`ongoing.done.${zone}`, "x", doneLabel, zone, () => runAsync(editable, () => markAsDone(props, setActiveScreen), "Failed to mark on going item as done")),
     onGoingBinding(`ongoing.restore.${zone}`, "r", restoreLabel, zone, () => runAsync(editable, () => restoreSelected(props, selectNextAction, setActiveScreen), "Failed to restore on going item")),
+    onGoingBinding(`ongoing.move-first.${zone}`, "g", "Move to first item", zone, () => selectBoundary(activeController, "first"), false, ["g", "g"]),
+    onGoingBinding(`ongoing.move-last.${zone}`, "G", "Move to last item", zone, () => selectBoundary(activeController, "last")),
     onGoingBinding(`ongoing.move-down.${zone}`, "j", "Move down", zone, () => moveSelection(activeController, "next")),
     onGoingBinding(`ongoing.move-up.${zone}`, "k", "Move up", zone, () => moveSelection(activeController, "previous")),
     onGoingBinding(`ongoing.edit-body.${zone}`, "l", "Edit selected body", zone, () => editable && activeController.startBodyEdit())

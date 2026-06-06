@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useActiveZone } from "../keybinds/hooks";
 import type { FocusZoneId } from "../keybinds/types";
 import type { NextAction } from "./types";
+import { useNextActionSelection } from "./nextActionSelection";
 import { useArchivedNextActionsQuery } from "./useArchivedNextActionsQuery";
 
 type ArchivedNextActionsConfig = {
@@ -13,37 +14,8 @@ type ArchivedNextActionsConfig = {
   errorLabel: string;
 };
 
-type SelectionCursor = {
-  items: NextAction[];
-  selectedIndex: number;
-  setSelectedId: (id: string | null) => void;
-};
-
 type ArchivedModel = ReturnType<typeof useArchivedNextActionsModel>;
 type ArchivedActions = ReturnType<typeof useArchivedNextActionsActions>;
-
-function selectedItem(items: NextAction[], selectedId: string | null): NextAction | null {
-  return items.find((item) => item.id === selectedId) ?? items[0] ?? null;
-}
-
-function selectedIndex(items: NextAction[], item: NextAction | null): number {
-  return item ? items.findIndex((candidate) => candidate.id === item.id) : -1;
-}
-
-function moveSelection(selection: SelectionCursor, offset: number) {
-  if (selection.items.length === 0) return;
-  const index = Math.min(Math.max(selection.selectedIndex + offset, 0), selection.items.length - 1);
-  selection.setSelectedId(selection.items[index].id);
-}
-
-function useArchivedSelection(items: NextAction[]) {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const selected = selectedItem(items, selectedId);
-  const index = selectedIndex(items, selected);
-  const selection = { items, selectedIndex: index, setSelectedId };
-
-  return { ...selection, selectedId, selectedItem: selected, selectNext: () => moveSelection(selection, 1), selectPrevious: () => moveSelection(selection, -1) };
-}
 
 function hasVisibleItem(model: ArchivedModel, id: string): boolean {
   return model.selection.items.some((item) => item.id === id);
@@ -66,7 +38,7 @@ function useArchivedPruning(model: ArchivedModel) {
 
 function useArchivedNextActionsModel(config: ArchivedNextActionsConfig) {
   const query = useArchivedNextActionsQuery(config);
-  const selection = useArchivedSelection(query.items);
+  const selection = useNextActionSelection(query.items);
   const zone = useActiveZone();
   return { config, query, selection, zone };
 }
@@ -95,6 +67,8 @@ function useArchivedNextActionsActions(model: ArchivedModel) {
     deleteSelected: () => deleteSelected(model),
     recoverSelected: () => recoverSelected(model),
     resetWorkspace: () => resetWorkspace(model),
+    selectFirst: model.selection.selectFirst,
+    selectLast: model.selection.selectLast,
     selectNext: model.selection.selectNext,
     selectPrevious: model.selection.selectPrevious
   };

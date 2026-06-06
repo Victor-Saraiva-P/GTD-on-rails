@@ -61,6 +61,8 @@ function useDeletedInboxWorkspaceActions(model: DeletedModel) {
   return {
     resetWorkspace: () => resetWorkspaceAction(model),
     restoreSelectedStuff: () => restoreSelectedStuffAction(model),
+    selectFirstStuff: model.selection.selectFirstStuff,
+    selectLastStuff: model.selection.selectLastStuff,
     selectNextStuff: model.selection.selectNextStuff,
     selectPreviousStuff: model.selection.selectPreviousStuff
   };
