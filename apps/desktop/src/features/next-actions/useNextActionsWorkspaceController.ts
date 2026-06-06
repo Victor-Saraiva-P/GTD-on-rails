@@ -6,8 +6,9 @@ import { isSameBody } from "../inbox/types";
 import type { ContextItem } from "../contexts/types";
 import type { NextAction, NextActionOrder, NextActionPatch } from "./types";
 import { DEFAULT_NEXT_ACTION_ORDER, nextOrder } from "./orderCycle";
-import { moveNextActionSelection, selectNextActionBoundary, selectedNextActionIndex, selectedNextActionItem, type NextActionSelectionCursor } from "./nextActionSelection";
+import { useNextActionSelection, type NextActionSelectionCursor } from "./nextActionSelection";
 import { useNextActionsQuery } from "./useNextActionsQuery";
+export { useNextActionSelection } from "./nextActionSelection";
 
 export type SelectionCursor = NextActionSelectionCursor;
 export type EditState = ReturnType<typeof useNextActionEditState>;
@@ -20,14 +21,6 @@ export type Model = {
   zone: ReturnType<typeof useActiveZone>;
 };
 export type Actions = ReturnType<typeof useNextActionsActions>;
-
-export function useNextActionSelection(items: NextAction[]) {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const selected = selectedNextActionItem(items, selectedId);
-  const index = selectedNextActionIndex(items, selected);
-  const selection = { items, selectedIndex: index, setSelectedId };
-  return { ...selection, selectedId, selectedItem: selected, selectFirst: () => selectNextActionBoundary(selection, "first"), selectLast: () => selectNextActionBoundary(selection, "last"), selectNext: () => moveNextActionSelection(selection, 1), selectPrevious: () => moveNextActionSelection(selection, -1) };
-}
 
 export function useNextActionEditState() {
   const [editingId, setEditingId] = useState<string | null>(null);

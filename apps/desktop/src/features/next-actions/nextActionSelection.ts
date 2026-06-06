@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { NextAction } from "./types";
 
 export type NextActionSelectionCursor = {
@@ -24,4 +25,12 @@ export function selectNextActionBoundary(selection: NextActionSelectionCursor, b
   if (selection.items.length === 0) return;
   const index = boundary === "first" ? 0 : selection.items.length - 1;
   selection.setSelectedId(selection.items[index].id);
+}
+
+export function useNextActionSelection(items: NextAction[]) {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selected = selectedNextActionItem(items, selectedId);
+  const index = selectedNextActionIndex(items, selected);
+  const selection = { items, selectedIndex: index, setSelectedId };
+  return { ...selection, selectedId, selectedItem: selected, selectFirst: () => selectNextActionBoundary(selection, "first"), selectLast: () => selectNextActionBoundary(selection, "last"), selectNext: () => moveNextActionSelection(selection, 1), selectPrevious: () => moveNextActionSelection(selection, -1) };
 }

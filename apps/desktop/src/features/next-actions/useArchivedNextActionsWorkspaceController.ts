@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useActiveZone } from "../keybinds/hooks";
 import type { FocusZoneId } from "../keybinds/types";
 import type { NextAction } from "./types";
-import { moveNextActionSelection, selectNextActionBoundary, selectedNextActionIndex, selectedNextActionItem } from "./nextActionSelection";
+import { useNextActionSelection } from "./nextActionSelection";
 import { useArchivedNextActionsQuery } from "./useArchivedNextActionsQuery";
 
 type ArchivedNextActionsConfig = {
@@ -16,15 +16,6 @@ type ArchivedNextActionsConfig = {
 
 type ArchivedModel = ReturnType<typeof useArchivedNextActionsModel>;
 type ArchivedActions = ReturnType<typeof useArchivedNextActionsActions>;
-
-function useArchivedSelection(items: NextAction[]) {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const selected = selectedNextActionItem(items, selectedId);
-  const index = selectedNextActionIndex(items, selected);
-  const selection = { items, selectedIndex: index, setSelectedId };
-
-  return { ...selection, selectedId, selectedItem: selected, selectFirst: () => selectNextActionBoundary(selection, "first"), selectLast: () => selectNextActionBoundary(selection, "last"), selectNext: () => moveNextActionSelection(selection, 1), selectPrevious: () => moveNextActionSelection(selection, -1) };
-}
 
 function hasVisibleItem(model: ArchivedModel, id: string): boolean {
   return model.selection.items.some((item) => item.id === id);
@@ -47,7 +38,7 @@ function useArchivedPruning(model: ArchivedModel) {
 
 function useArchivedNextActionsModel(config: ArchivedNextActionsConfig) {
   const query = useArchivedNextActionsQuery(config);
-  const selection = useArchivedSelection(query.items);
+  const selection = useNextActionSelection(query.items);
   const zone = useActiveZone();
   return { config, query, selection, zone };
 }
