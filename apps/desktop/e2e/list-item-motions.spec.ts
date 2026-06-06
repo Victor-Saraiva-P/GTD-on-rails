@@ -16,7 +16,7 @@ function inboxItems(page: Page) {
   return page.locator(".tree-list--inbox .tree-entry");
 }
 
-test("gg selects the first inbox item", async ({ page, request }) => {
+async function openInboxWithMiddleItemSelected(page: Page, request: Parameters<typeof createStuffApi>[0]) {
   await resetTestData(request);
   await createInboxMotionItems(request);
   await openApp(page);
@@ -24,6 +24,10 @@ test("gg selects the first inbox item", async ({ page, request }) => {
   await expect(inboxItems(page)).toHaveCount(3);
   await inboxItems(page).nth(1).click();
   await expect(inboxItems(page).nth(1)).toHaveClass(/tree-entry--active/);
+}
+
+test("gg selects the first inbox item", async ({ page, request }) => {
+  await openInboxWithMiddleItemSelected(page, request);
   await page.keyboard.press("g");
   await page.keyboard.press("g");
 
@@ -31,13 +35,7 @@ test("gg selects the first inbox item", async ({ page, request }) => {
 });
 
 test("G selects the last inbox item", async ({ page, request }) => {
-  await resetTestData(request);
-  await createInboxMotionItems(request);
-  await openApp(page);
-
-  await expect(inboxItems(page)).toHaveCount(3);
-  await inboxItems(page).nth(1).click();
-  await expect(inboxItems(page).nth(1)).toHaveClass(/tree-entry--active/);
+  await openInboxWithMiddleItemSelected(page, request);
   await page.keyboard.press("G");
 
   await expect(inboxItems(page).last()).toHaveClass(/tree-entry--active/);

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useActiveZone } from "../keybinds/hooks";
 import type { FocusZoneId } from "../keybinds/types";
 import type { NextAction } from "./types";
+import { moveNextActionSelection, selectNextActionBoundary, selectedNextActionIndex, selectedNextActionItem } from "./nextActionSelection";
 import { useArchivedNextActionsQuery } from "./useArchivedNextActionsQuery";
 
 type ArchivedNextActionsConfig = {
@@ -13,46 +14,16 @@ type ArchivedNextActionsConfig = {
   errorLabel: string;
 };
 
-type SelectionCursor = {
-  items: NextAction[];
-  selectedIndex: number;
-  setSelectedId: (id: string | null) => void;
-};
-
 type ArchivedModel = ReturnType<typeof useArchivedNextActionsModel>;
 type ArchivedActions = ReturnType<typeof useArchivedNextActionsActions>;
 
-function selectedItem(items: NextAction[], selectedId: string | null): NextAction | null {
-  return items.find((item) => item.id === selectedId) ?? items[0] ?? null;
-}
-
-function selectedIndex(items: NextAction[], item: NextAction | null): number {
-  return item ? items.findIndex((candidate) => candidate.id === item.id) : -1;
-}
-
-function moveSelection(selection: SelectionCursor, offset: number) {
-  if (selection.items.length === 0) return;
-  const index = Math.min(Math.max(selection.selectedIndex + offset, 0), selection.items.length - 1);
-  selection.setSelectedId(selection.items[index].id);
-}
-
-function selectFirst(selection: SelectionCursor) {
-  if (selection.items.length === 0) return;
-  selection.setSelectedId(selection.items[0].id);
-}
-
-function selectLast(selection: SelectionCursor) {
-  if (selection.items.length === 0) return;
-  selection.setSelectedId(selection.items[selection.items.length - 1].id);
-}
-
 function useArchivedSelection(items: NextAction[]) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const selected = selectedItem(items, selectedId);
-  const index = selectedIndex(items, selected);
+  const selected = selectedNextActionItem(items, selectedId);
+  const index = selectedNextActionIndex(items, selected);
   const selection = { items, selectedIndex: index, setSelectedId };
 
-  return { ...selection, selectedId, selectedItem: selected, selectFirst: () => selectFirst(selection), selectLast: () => selectLast(selection), selectNext: () => moveSelection(selection, 1), selectPrevious: () => moveSelection(selection, -1) };
+  return { ...selection, selectedId, selectedItem: selected, selectFirst: () => selectNextActionBoundary(selection, "first"), selectLast: () => selectNextActionBoundary(selection, "last"), selectNext: () => moveNextActionSelection(selection, 1), selectPrevious: () => moveNextActionSelection(selection, -1) };
 }
 
 function hasVisibleItem(model: ArchivedModel, id: string): boolean {
