@@ -72,6 +72,7 @@ test("Space Enter on the on going calendar list opens calendar detail", async ({
   await processIntoCalendar(page);
   await focusPanelAndSelectItem(page, 0, title);
   await page.keyboard.press("o");
+  await expect(page.locator(".cm-content")).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.getByText("Panel: Calendars")).toBeVisible();
 
