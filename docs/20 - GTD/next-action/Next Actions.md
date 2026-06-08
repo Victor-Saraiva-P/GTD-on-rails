@@ -28,6 +28,8 @@ Next actions with a deadline appear as all-day entries on the external Next Acti
 | `O` | List or detail | Cycle ordering. |
 | `u` | List or detail | Undo last deletion. |
 | `Ctrl+r` | List or detail | Redo last action. |
+| `gg` | List | Move selection to the first item. |
+| `G` | List | Move selection to the last item. |
 | `j` | List | Move selection down. |
 | `k` | List | Move selection up. |
 | `Enter` | List | Edit selected title. |
@@ -68,6 +70,8 @@ On going next actions appear on the shared external On Going agenda using the ti
 | `u` | List | Undo last deletion. |
 | `r` | List | Restore selected item. |
 | `Ctrl+r` | List | Redo last action. |
+| `gg` | List | Move selection to the first item. |
+| `G` | List | Move selection to the last item. |
 | `j` | List | Move selection down. |
 | `k` | List | Move selection up. |
 | `Enter` | List | Edit selected title. |
@@ -101,6 +105,8 @@ Completed next actions appear on the shared external Done agenda using their act
 | --- | --- | --- |
 | `d` | List or detail | Delete selected completed next action. |
 | `r` | List or detail | Restore selected completed action as a next action. |
+| `gg` | List | Move selection to the first item. |
+| `G` | List | Move selection to the last item. |
 | `j` | List | Move selection down. |
 | `k` | List | Move selection up. |
 | `l` | List | Focus next action detail. |
@@ -116,6 +122,8 @@ The deleted next actions page is the recovery list for deleted next actions.
 | Shortcut | Scope | Action |
 | --- | --- | --- |
 | `r` | List or detail | Recover selected next action. |
+| `gg` | List | Move selection to the first item. |
+| `G` | List | Move selection to the last item. |
 | `j` | List | Move selection down. |
 | `k` | List | Move selection up. |
 | `l` | List | Focus next action detail. |

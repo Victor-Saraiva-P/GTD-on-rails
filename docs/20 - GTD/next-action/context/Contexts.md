@@ -10,6 +10,8 @@ The contexts page is the list of execution contexts and their related items.
 | `Ctrl+r` | List or detail | Redo last action. |
 | `Enter` | List | Edit selected context. |
 | `e` | List or detail | Edit context icon. |
+| `gg` | List | Move selection to the first item. |
+| `G` | List | Move selection to the last item. |
 | `j` | List | Move selection down. |
 | `k` | List | Move selection up. |
 | `l` | List | Focus context detail. |
