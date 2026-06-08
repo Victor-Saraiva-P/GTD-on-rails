@@ -1,27 +1,21 @@
-import { expect, test } from "@playwright/test";
-import { convertStuffToNextActionApi, createContextApi, createStuffApi, openApp, resetTestData, uniqueLabel } from "./support/app";
+import { expect, test, type Page } from "@playwright/test";
+import { createAndSelectInboxStuff, openApp, resetTestData, uniqueLabel } from "./support/app";
 
 test.beforeEach(async ({ page, request }) => {
   await resetTestData(request);
   await openApp(page);
 });
 
-test("edits selected next action contexts with keyboard flow", async ({ page, request }) => {
+test("edits selected next action contexts with keyboard flow", async ({ page }) => {
   const title = uniqueLabel("Next action edit");
   const firstContext = uniqueLabel("A edit context");
   const secondContext = uniqueLabel("B edit context");
-  const stuff = await createStuffApi(request, title);
-  await createContextApi(request, firstContext);
-  await createContextApi(request, secondContext);
-  await convertStuffToNextActionApi(request, stuff.id);
+  await createContextFromKeyboard(page, firstContext);
+  await createContextFromKeyboard(page, secondContext);
+  await createNextActionFromKeyboard(page, title);
 
-  await page.reload();
-  await page.locator("main").click();
-  await page.keyboard.press(" ");
-  await page.keyboard.press("n");
-  const nextAction = page.getByRole("button", { name: title }).first();
-  await expect(nextAction).toBeVisible();
-  await nextAction.click();
+  await openNextActions(page);
+  await selectNextAction(page, title);
   await page.keyboard.press("Shift+E");
 
   const dialog = page.getByRole("dialog", { name: "Edit next action" });
@@ -40,16 +34,12 @@ test("edits selected next action contexts with keyboard flow", async ({ page, re
   await expect(page.getByText(secondContext)).toBeVisible();
 });
 
-test("edits selected next action deadline with segmented keyboard flow", async ({ page, request }) => {
+test("edits selected next action deadline with segmented keyboard flow", async ({ page }) => {
   const title = uniqueLabel("Next action deadline");
-  const stuff = await createStuffApi(request, title);
-  await convertStuffToNextActionApi(request, stuff.id);
+  await createNextActionFromKeyboard(page, title);
 
-  await page.reload();
-  await page.locator("main").click();
-  await page.keyboard.press(" ");
-  await page.keyboard.press("n");
-  await page.getByRole("button", { name: title }).first().click();
+  await openNextActions(page);
+  await selectNextAction(page, title);
   await page.keyboard.press("Shift+E");
 
   const dialog = page.getByRole("dialog", { name: "Edit next action" });
@@ -64,3 +54,80 @@ test("edits selected next action deadline with segmented keyboard flow", async (
   expect(deadlineRequest.postDataJSON()).toEqual({ deadline: "2028-02-29" });
   await expect(dialog).not.toBeVisible();
 });
+
+test("sets selected next action deadline to today with keyboard flow", async ({ page }) => {
+  const title = uniqueLabel("Next action today deadline");
+  await createNextActionFromKeyboard(page, title);
+
+  await openNextActions(page);
+  await selectNextAction(page, title);
+  await page.keyboard.press("Shift+E");
+
+  const dialog = page.getByRole("dialog", { name: "Edit next action" });
+  await page.keyboard.press("d");
+  const dateControl = dialog.getByRole("textbox", { name: "Deadline:" });
+  await page.keyboard.type("29022028");
+  await page.keyboard.press("t");
+  await expect(dateControl).toHaveText(todayDisplayValue());
+  await expect(dialog.getByText("Energy")).not.toBeVisible();
+
+  const deadlineRequestPromise = page.waitForRequest((request) => request.url().includes("/next-actions/") && request.method() === "PATCH");
+  await page.keyboard.press("Enter");
+
+  const deadlineRequest = await deadlineRequestPromise;
+  expect(deadlineRequest.postDataJSON()).toEqual({ deadline: todayIsoValue() });
+  await expect(dialog).not.toBeVisible();
+});
+
+async function createContextFromKeyboard(page: Page, name: string): Promise<void> {
+  await page.keyboard.press(" ");
+  await page.keyboard.press("C");
+  await expect(page.locator(".list-pane__title", { hasText: "Contexts" }).first()).toBeVisible();
+  await page.keyboard.press("h");
+  await page.keyboard.press("a");
+  const input = page.locator("input.tree-entry__input");
+  await expect(input).toBeVisible();
+  await input.fill(name);
+  await input.press("Enter");
+  await expect(page.getByRole("button", { name })).toBeVisible();
+}
+
+async function createNextActionFromKeyboard(page: Page, title: string): Promise<void> {
+  await page.keyboard.press(" ");
+  await page.keyboard.press("i");
+  await createAndSelectInboxStuff(page, title);
+  await page.keyboard.press("p");
+  await page.keyboard.press("n");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Enter");
+  const response = page.waitForResponse((response) => response.url().endsWith("/next-action") && response.request().method() === "POST" && response.ok());
+  await page.keyboard.press("Enter");
+  await response;
+}
+
+async function openNextActions(page: Page): Promise<void> {
+  await page.keyboard.press(" ");
+  await page.keyboard.press("n");
+  await expect(page.locator(".list-pane__title", { hasText: "Next Actions" }).first()).toBeVisible();
+}
+
+async function selectNextAction(page: Page, title: string): Promise<void> {
+  const nextAction = page.getByRole("button", { name: title }).first();
+  await expect(nextAction).toBeVisible();
+  await nextAction.click();
+}
+
+function todayDisplayValue(): string {
+  const today = new Date();
+  return `${datePart(today.getDate(), 2)}/${datePart(today.getMonth() + 1, 2)}/${datePart(today.getFullYear(), 4)}`;
+}
+
+function todayIsoValue(): string {
+  const today = new Date();
+  return `${datePart(today.getFullYear(), 4)}-${datePart(today.getMonth() + 1, 2)}-${datePart(today.getDate(), 2)}`;
+}
+
+function datePart(value: number, width: number): string {
+  return value.toString().padStart(width, "0");
+}

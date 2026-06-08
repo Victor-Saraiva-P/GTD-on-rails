@@ -35,7 +35,7 @@ export function CalendarScheduleEditDialog(props: CalendarScheduleEditDialogProp
     <section className="processing-dialog" role="dialog" aria-modal="true" aria-label="Edit calendar schedule">
       <div className="processing-dialog__title">Edit calendar schedule</div>
       <div className="processing-dialog__content">
-        {step === "date" ? <ProcessingCalendarDateStep date={scheduledDate} onDateChange={setScheduledDate} onDateSelected={selectDate} onBack={props.onClose} /> : null}
+        {step === "date" ? <ProcessingCalendarDateStep date={scheduledDate} enableTodayShortcut onDateChange={setScheduledDate} onDateSelected={selectDate} onBack={props.onClose} /> : null}
         {step === "time" ? <ProcessingCalendarTimeStep digits={timeDigits} onDigitsChange={setTimeDigits} onTimeSelected={saveSchedule} onBack={() => setStep("date")} /> : null}
       </div>
     </section>

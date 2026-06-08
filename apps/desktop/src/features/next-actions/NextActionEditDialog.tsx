@@ -80,7 +80,7 @@ function renderTimeStep(digits: string, setDigits: (digits: string) => void, sav
 }
 
 function renderDeadlineStep(value: string, setValue: (value: string) => void, savePatch: (patch: NextActionPatch) => void, onBack: () => void) {
-  return <NextActionDeadlineStep value={value} onDeadlineChange={setValue} onDeadlineSelected={(deadline) => savePatch(deadlinePatch(deadline))} onBack={onBack} />;
+  return <NextActionDeadlineStep value={value} enableTodayShortcut onDeadlineChange={setValue} onDeadlineSelected={(deadline) => savePatch(deadlinePatch(deadline))} onBack={onBack} />;
 }
 
 function deadlinePatch(deadline: string | null): NextActionPatch {
