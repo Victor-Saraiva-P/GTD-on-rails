@@ -1,6 +1,7 @@
 import { SegmentedDateStep } from "../processing/SegmentedDateStep";
 
 type NextActionDeadlineStepProps = Readonly<{
+  enableTodayShortcut?: boolean;
   value: string;
   onBack: () => void;
   onDeadlineChange: (value: string) => void;
@@ -13,5 +14,5 @@ type NextActionDeadlineStepProps = Readonly<{
  * @example <NextActionDeadlineStep value="2026-06-01" ... />
  */
 export function NextActionDeadlineStep(props: NextActionDeadlineStepProps) {
-  return <SegmentedDateStep date={props.value} invalidMessage="Enter a valid deadline date." label="Deadline:" mode="optional" onBack={props.onBack} onDateChange={props.onDeadlineChange} onDateSelected={props.onDeadlineSelected} />;
+  return <SegmentedDateStep date={props.value} enableTodayShortcut={props.enableTodayShortcut} invalidMessage="Enter a valid deadline date." label="Deadline:" mode="optional" onBack={props.onBack} onDateChange={props.onDeadlineChange} onDateSelected={props.onDeadlineSelected} />;
 }

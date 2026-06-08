@@ -84,7 +84,7 @@ export function ProcessingDialog({ item, onClose, onProcess, onProcessCalendar }
           <ProcessingCalendarTimeStep digits={selectedCalendarTimeDigits} onDigitsChange={setSelectedCalendarTimeDigits} onTimeSelected={handleCalendarTimeSelected} onBack={handleBack} />
         )}
         {step === "set-deadline" && (
-          <NextActionDeadlineStep value={selectedDeadline} onDeadlineChange={setSelectedDeadline} onDeadlineSelected={handleDeadlineSelected} onBack={handleBack} />
+          <NextActionDeadlineStep value={selectedDeadline} enableTodayShortcut onDeadlineChange={setSelectedDeadline} onDeadlineSelected={handleDeadlineSelected} onBack={handleBack} />
         )}
         {step === "select-context" && (
           <ProcessingContextStep onContextsSelected={handleContextsSelected} onSelectedIdsChange={setSelectedContextIds} onBack={handleBack} initialSelectedIds={selectedContextIds} />
