@@ -18,6 +18,8 @@ Next actions with a deadline appear as all-day entries on the external Next Acti
 
 During Inbox processing into a next action, pressing `t` in the Deadline field fills the field with today's local date without advancing to the next step.
 
+When editing a next action with `E` then `d`, pressing `t` in the Deadline field fills the field with today's local date without saving until `Enter` is pressed.
+
 | Shortcut | Scope | Action |
 | --- | --- | --- |
 | `d` | List | Delete selected next action. |

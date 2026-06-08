@@ -38,6 +38,28 @@ test("edits calendar schedule with e and trims displayed seconds", async ({ page
   await expect(card).toContainText("21:30");
 });
 
+test("sets calendar scheduled date to today with keyboard flow", async ({ page }) => {
+  const title = await createCalendarFromKeyboard(page, "Today schedule edit", "");
+  await openCalendars(page);
+
+  const card = page.getByRole("button", { name: title, exact: false }).first();
+  await card.click();
+  await page.keyboard.press("e");
+
+  const dialog = page.getByRole("dialog", { name: "Edit calendar schedule" });
+  const dateControl = dialog.getByRole("textbox", { name: "Scheduled date:" });
+  await page.keyboard.type("29022028");
+  await page.keyboard.press("t");
+  await expect(dateControl).toHaveText(todayDisplayValue());
+  await expect(dialog.getByText("Scheduled time (optional):")).not.toBeVisible();
+
+  const patch = page.waitForRequest((request) => request.url().includes("/calendars/") && request.method() === "PATCH");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Enter");
+
+  expect((await patch).postDataJSON()).toMatchObject({ scheduledDate: todayIsoValue() });
+});
+
 test("long calendar titles truncate but keep time visible", async ({ page }) => {
   await page.setViewportSize({ width: 740, height: 680 });
   const longPrefix = "Long calendar title ".repeat(8);
@@ -101,4 +123,18 @@ async function createCalendarFromKeyboard(page: Page, prefix: string, timeDigits
   await page.keyboard.press("Enter");
   await response;
   return title;
+}
+
+function todayDisplayValue(): string {
+  const today = new Date();
+  return `${datePart(today.getDate(), 2)}/${datePart(today.getMonth() + 1, 2)}/${datePart(today.getFullYear(), 4)}`;
+}
+
+function todayIsoValue(): string {
+  const today = new Date();
+  return `${datePart(today.getFullYear(), 4)}-${datePart(today.getMonth() + 1, 2)}-${datePart(today.getDate(), 2)}`;
+}
+
+function datePart(value: number, width: number): string {
+  return value.toString().padStart(width, "0");
 }

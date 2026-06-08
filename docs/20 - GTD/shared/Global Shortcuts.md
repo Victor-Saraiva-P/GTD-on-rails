@@ -40,6 +40,8 @@ These shortcuts are available in the Calendars workspace when a modal dialog or 
 | `t` | Return Weekly to the current week and focus today. |
 | `h` / `l` | Move Weekly focus to the previous or next day. |
 
+In the calendar schedule edit dialog opened with `e`, pressing `t` in the Scheduled date field fills the field with today's local date without saving until `Enter` is pressed.
+
 ## Shared Body Formatting
 
 These shortcuts are available in body/detail editing zones that register markdown formatting bindings in the [[Body Content]].
