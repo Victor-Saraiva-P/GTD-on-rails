@@ -12,6 +12,7 @@ import type { SegmentedCalendarDateState } from "./processingFlow";
 
 export type SegmentedDateStepProps = Readonly<{
   date: string;
+  enableTodayShortcut?: boolean;
   label: string;
   mode: "required" | "optional";
   invalidMessage: string;
@@ -46,9 +47,10 @@ function useSegmentedDateControl(props: SegmentedDateStepProps): DateControlMode
   }, []);
 
   const applyDigit = (digit: string) => applyDateDigit(dateState, digit, setError, setDateState, props.onDateChange);
+  const applyToday = () => applyTodayDate(setError, setDateState, props.onDateChange);
   const confirmDate = () => confirmDateValue(dateState, setError, props);
   const moveFocus = (direction: "h" | "l") => moveDateFocus(dateState, direction, setError, setDateState);
-  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => handleDateKeyDown(event, { applyDigit, confirmDate, moveFocus, onBack: props.onBack });
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => handleDateKeyDown(event, { applyDigit, applyToday, confirmDate, enableTodayShortcut: Boolean(props.enableTodayShortcut), moveFocus, onBack: props.onBack });
   return { dateState, error, inputRef, handleKeyDown };
 }
 
@@ -58,12 +60,21 @@ function handleDateKeyDown(event: KeyboardEvent<HTMLDivElement>, actions: DateCo
   if (event.key === "Escape") return actions.onBack();
   if (event.key === "Enter") return actions.confirmDate();
   if (event.key === "Backspace") return;
+  if (actions.enableTodayShortcut && event.key === "t") return actions.applyToday();
   if (event.key === "h" || event.key === "l") return actions.moveFocus(event.key);
   if (/^\d$/.test(event.key)) actions.applyDigit(event.key);
 }
 
 function applyDateDigit(state: SegmentedCalendarDateState, digit: string, setError: SetStringState, setState: SetDateState, onDateChange: (date: string) => void): void {
   const nextState = nextSegmentedCalendarDateDigit(state, digit);
+  const isoDate = segmentedCalendarDateIsoValue(nextState);
+  setError("");
+  setState(nextState);
+  if (isoDate) onDateChange(isoDate);
+}
+
+function applyTodayDate(setError: SetStringState, setState: SetDateState, onDateChange: (date: string) => void): void {
+  const nextState = initialSegmentedCalendarDateState();
   const isoDate = segmentedCalendarDateIsoValue(nextState);
   setError("");
   setState(nextState);
@@ -132,7 +143,9 @@ type DateControlModel = {
 
 type DateControlActions = {
   applyDigit: (digit: string) => void;
+  applyToday: () => void;
   confirmDate: () => void;
+  enableTodayShortcut: boolean;
   moveFocus: (direction: "h" | "l") => void;
   onBack: () => void;
 };

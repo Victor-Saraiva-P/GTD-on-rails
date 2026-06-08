@@ -16,6 +16,8 @@ The next actions page is the list of available concrete actions. It supports [[C
 
 Next actions with a deadline appear as all-day entries on the external Next Action agenda for the deadline date. Next actions without a deadline do not appear on an external agenda.
 
+During Inbox processing into a next action, pressing `t` in the Deadline field fills the field with today's local date without advancing to the next step.
+
 | Shortcut | Scope | Action |
 | --- | --- | --- |
 | `d` | List | Delete selected next action. |

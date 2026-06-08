@@ -70,6 +70,31 @@ test("enters next action deadline before contexts", async ({ page }) => {
   expect(payload.deadline).toEqual("2028-02-29");
 });
 
+test("sets processing next action deadline to today with keyboard", async ({ page }) => {
+  const title = uniqueLabel("Processing today deadline");
+  await createAndSelectInboxStuff(page, title);
+
+  await page.keyboard.press("p");
+  await page.keyboard.press("n");
+
+  const dialog = page.getByRole("dialog", { name: "Processing" });
+  const dateControl = dialog.getByRole("textbox", { name: "Deadline:" });
+  await page.keyboard.type("29022028");
+  await page.keyboard.press("t");
+  await expect(dateControl).toHaveText(todayDisplayValue());
+  await expect(dialog.getByText("Context")).not.toBeVisible();
+
+  const nextActionRequestPromise = page.waitForRequest((request) => request.url().endsWith("/next-action") && request.method() === "POST");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Enter");
+
+  const nextActionRequest = await nextActionRequestPromise;
+  const payload = nextActionRequest.postDataJSON() as NextActionProcessingRequestPayload;
+  expect(payload.deadline).toEqual(todayIsoValue());
+});
+
 test("enters calendar date with segmented keyboard input", async ({ page }) => {
   const title = uniqueLabel("Processing calendar");
   await createAndSelectInboxStuff(page, title);
@@ -123,6 +148,11 @@ test("enters calendar date with segmented keyboard input", async ({ page }) => {
 function todayDisplayValue(): string {
   const today = new Date();
   return `${datePart(today.getDate(), 2)}/${datePart(today.getMonth() + 1, 2)}/${datePart(today.getFullYear(), 4)}`;
+}
+
+function todayIsoValue(): string {
+  const today = new Date();
+  return `${datePart(today.getFullYear(), 4)}-${datePart(today.getMonth() + 1, 2)}-${datePart(today.getDate(), 2)}`;
 }
 
 function datePart(value: number, width: number): string {
