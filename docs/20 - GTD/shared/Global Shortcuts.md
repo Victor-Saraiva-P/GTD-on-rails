@@ -16,6 +16,15 @@ These shortcuts are registered globally by the desktop shell.
 
 Calendars use `[` and `]` inside the page to cycle through Today, Weekly, Completed, and Deleted subviews.
 
+## Master Lists
+
+These shortcuts are available in master-list focus zones for Inbox, Deleted Inbox, Next Actions, Ongoing Next Actions, Done Next Actions, Deleted Next Actions, and Contexts. They do not apply to Calendar panels.
+
+| Shortcut | Action |
+| --- | --- |
+| `gg` | Move selection to the first item. |
+| `G` | Move selection to the last item. |
+
 ## Calendars
 
 These shortcuts are available in the Calendars workspace when a modal dialog or body/title edit is not active.
