@@ -63,7 +63,7 @@ function EditingCalendarCard(props: Readonly<Omit<CalendarListCardProps, "editin
     <li className="tree-list__item">
       <div className="tree-entry tree-entry--active calendar-item-entry">
         <CalendarGlyph archiveStatus={props.archiveStatus} status={props.item.status} />
-        <InlineTitleInput debugPhasePrefix="calendar-title" initialValue={props.editingTitle} onBlur={props.onCommitEditing} onEditKeyDown={handleKeyDown} onValueChange={props.onEditingTitleChange} />
+        <InlineTitleInput initialValue={props.editingTitle} onBlur={props.onCommitEditing} onEditKeyDown={handleKeyDown} onValueChange={props.onEditingTitleChange} />
         {displayTime ? (
           <span className="calendar-entry__time">
             <span aria-hidden="true">⏱</span>

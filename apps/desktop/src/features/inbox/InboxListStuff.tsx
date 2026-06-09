@@ -70,7 +70,7 @@ type InboxStuffTitleInputProps = Readonly<{
 
 function InboxStuffTitleInput({ initialValue, onChange, onBlur, onKeyDown }: InboxStuffTitleInputProps) {
   return (
-    <InlineTitleInput debugPhasePrefix="title" initialValue={initialValue} onBlur={onBlur} onEditKeyDown={onKeyDown} onValueChange={onChange} />
+    <InlineTitleInput initialValue={initialValue} onBlur={onBlur} onEditKeyDown={onKeyDown} onValueChange={onChange} />
   );
 }
 

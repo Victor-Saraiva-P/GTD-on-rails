@@ -94,7 +94,7 @@ type ContextNameInputProps = Readonly<{
 
 function ContextNameInput({ initialValue, onChange, onBlur, onKeyDown }: ContextNameInputProps) {
   return (
-    <InlineTitleInput debugPhasePrefix="context-title" initialValue={initialValue} onBlur={onBlur} onEditKeyDown={onKeyDown} onValueChange={onChange} />
+    <InlineTitleInput initialValue={initialValue} onBlur={onBlur} onEditKeyDown={onKeyDown} onValueChange={onChange} />
   );
 }
 

@@ -1,8 +1,6 @@
 import { type ChangeEvent, type FormEvent, type KeyboardEvent, type ReactElement, useRef } from "react";
-import { logInlineTitleUndoDebug } from "../features/keybinds/inlineTitleUndoDebug";
 
 type InlineTitleInputProps = Readonly<{
-  debugPhasePrefix: string;
   initialValue: string;
   onBlur: () => void;
   onEditKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
@@ -65,38 +63,17 @@ function isRedoKey(event: KeyboardEvent<HTMLInputElement>): boolean {
   return event.ctrlKey && (event.key.toLowerCase() === "y" || (event.shiftKey && event.key.toLowerCase() === "z"));
 }
 
-function logTitleKeyDown(event: KeyboardEvent<HTMLInputElement>, phase: string): void {
-  logInlineTitleUndoDebug({
-    ctrlKey: event.ctrlKey,
-    defaultPrevented: event.defaultPrevented,
-    key: event.key,
-    phase,
-    selectionEnd: event.currentTarget.selectionEnd,
-    selectionStart: event.currentTarget.selectionStart,
-    shiftKey: event.shiftKey,
-    value: event.currentTarget.value
-  });
-}
-
-function handleTitleInput(event: FormEvent<HTMLInputElement>, props: InlineTitleInputProps, history: TitleInputHistory): void {
+function handleTitleInput(event: FormEvent<HTMLInputElement>, history: TitleInputHistory): void {
   const nativeEvent = event.nativeEvent as NativeInputEvent;
   recordGroupedTitleInputValue(history, event.currentTarget.value, nativeEvent.inputType);
-  logInlineTitleUndoDebug({ inputType: nativeEvent.inputType, phase: `${props.debugPhasePrefix}-input`, value: event.currentTarget.value });
 }
 
 function handleTitleChange(event: ChangeEvent<HTMLInputElement>, props: InlineTitleInputProps): void {
-  logInlineTitleUndoDebug({ phase: `${props.debugPhasePrefix}-change`, value: event.target.value });
   props.onValueChange(event.target.value);
 }
 
 function handleTitleBlur(event: FormEvent<HTMLInputElement>, props: InlineTitleInputProps): void {
-  logInlineTitleUndoDebug({ phase: `${props.debugPhasePrefix}-blur`, value: event.currentTarget.value });
   props.onBlur();
-}
-
-function handleTitleBeforeInput(event: FormEvent<HTMLInputElement>, props: InlineTitleInputProps): void {
-  const nativeEvent = event.nativeEvent as NativeInputEvent;
-  logInlineTitleUndoDebug({ inputType: nativeEvent.inputType, phase: `${props.debugPhasePrefix}-beforeinput`, value: event.currentTarget.value });
 }
 
 /**
@@ -111,8 +88,7 @@ export function InlineTitleInput(props: InlineTitleInputProps): ReactElement {
     <input
       defaultValue={props.initialValue}
       className="tree-entry__input"
-      onBeforeInput={(event) => handleTitleBeforeInput(event, props)}
-      onInput={(event) => handleTitleInput(event, props, historyRef.current)}
+      onInput={(event) => handleTitleInput(event, historyRef.current)}
       onChange={(event) => handleTitleChange(event, props)}
       onBlur={(event) => handleTitleBlur(event, props)}
       onKeyDown={(event) => handleTitleKeyDown(event, props, historyRef.current)}
@@ -126,7 +102,6 @@ function handleTitleKeyDown(
   props: InlineTitleInputProps,
   history: TitleInputHistory
 ): void {
-  logTitleKeyDown(event, `${props.debugPhasePrefix}-keydown`);
   const nextValue = isUndoKey(event) ? undoTitleInput(event.currentTarget, history) : redoValueForKey(event, history);
   if (nextValue === null) {
     props.onEditKeyDown(event);
