@@ -1,5 +1,5 @@
 import type { KeyboardEvent } from "react";
-import { logInlineTitleUndoDebug } from "../keybinds/inlineTitleUndoDebug";
+import { InlineTitleInput } from "../../components/InlineTitleInput";
 import type { Calendar } from "./types";
 import { calendarItemIconText } from "../lists/listThemes";
 import { trimCalendarDisplayTime } from "./calendarDateUtils";
@@ -63,25 +63,7 @@ function EditingCalendarCard(props: Readonly<Omit<CalendarListCardProps, "editin
     <li className="tree-list__item">
       <div className="tree-entry tree-entry--active calendar-item-entry">
         <CalendarGlyph archiveStatus={props.archiveStatus} status={props.item.status} />
-        <input
-          defaultValue={props.editingTitle}
-          className="tree-entry__input"
-          onBeforeInput={(event) => logInlineTitleUndoDebug({ inputType: event.nativeEvent.inputType, phase: "calendar-title-beforeinput", value: event.currentTarget.value })}
-          onChange={(event) => {
-            logInlineTitleUndoDebug({ phase: "calendar-title-change", value: event.target.value });
-            props.onEditingTitleChange(event.target.value);
-          }}
-          onInput={(event) => logInlineTitleUndoDebug({ phase: "calendar-title-input", value: event.currentTarget.value })}
-          onBlur={(event) => {
-            logInlineTitleUndoDebug({ phase: "calendar-title-blur", value: event.currentTarget.value });
-            props.onCommitEditing();
-          }}
-          onKeyDown={(event) => {
-            logInlineTitleUndoDebug({ ctrlKey: event.ctrlKey, defaultPrevented: event.defaultPrevented, key: event.key, phase: "calendar-title-keydown", selectionEnd: event.currentTarget.selectionEnd, selectionStart: event.currentTarget.selectionStart, shiftKey: event.shiftKey, value: event.currentTarget.value });
-            handleKeyDown(event);
-          }}
-          autoFocus
-        />
+        <InlineTitleInput debugPhasePrefix="calendar-title" initialValue={props.editingTitle} onBlur={props.onCommitEditing} onEditKeyDown={handleKeyDown} onValueChange={props.onEditingTitleChange} />
         {displayTime ? (
           <span className="calendar-entry__time">
             <span aria-hidden="true">⏱</span>
