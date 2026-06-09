@@ -18,17 +18,27 @@ async function startInboxTitleEdit(page: Page, title: string): Promise<Locator> 
 
 async function expectUndoRedoCycle(page: Page, title: string, editSuffix: string): Promise<void> {
   const titleInput = page.locator("input.tree-entry__input");
-  await page.keyboard.press("Control+Z");
+  await page.keyboard.down("Control");
+  await page.keyboard.press("z");
+  await page.keyboard.up("Control");
   await expect(titleInput).toHaveValue(title);
-  await page.keyboard.press("Control+Y");
+  await page.keyboard.down("Control");
+  await page.keyboard.press("y");
+  await page.keyboard.up("Control");
   await expect(titleInput).toHaveValue(`${title}${editSuffix}`);
 }
 
 async function expectShiftRedoCycle(page: Page, title: string, editSuffix: string): Promise<void> {
   const titleInput = page.locator("input.tree-entry__input");
-  await page.keyboard.press("Control+Z");
+  await page.keyboard.down("Control");
+  await page.keyboard.press("z");
+  await page.keyboard.up("Control");
   await expect(titleInput).toHaveValue(title);
-  await page.keyboard.press("Control+Shift+Z");
+  await page.keyboard.down("Control");
+  await page.keyboard.down("Shift");
+  await page.keyboard.press("z");
+  await page.keyboard.up("Shift");
+  await page.keyboard.up("Control");
   await expect(titleInput).toHaveValue(`${title}${editSuffix}`);
 }
 

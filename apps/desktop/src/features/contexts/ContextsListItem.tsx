@@ -71,7 +71,7 @@ function EditingContextEntry(
         <span className="tree-entry__marker">{props.selected ? "●" : "○"}</span>
         <ContextGlyph item={props.item} />
         <ContextNameInput
-          value={props.editingName}
+          initialValue={props.editingName}
           onChange={props.onEditingNameChange}
           onBlur={props.onBlur}
           onKeyDown={props.onKeyDown}
@@ -87,14 +87,14 @@ type ContextNameInputEvents = {
 };
 
 type ContextNameInputProps = Readonly<{
-  value: string;
+  initialValue: string;
   onChange: (value: string) => void;
 } & ContextNameInputEvents>;
 
-function ContextNameInput({ value, onChange, onBlur, onKeyDown }: ContextNameInputProps) {
+function ContextNameInput({ initialValue, onChange, onBlur, onKeyDown }: ContextNameInputProps) {
   return (
     <input
-      value={value}
+      defaultValue={initialValue}
       className="tree-entry__input"
       onChange={(event) => onChange(event.target.value)}
       onBlur={onBlur}
