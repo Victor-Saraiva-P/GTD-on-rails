@@ -1,7 +1,7 @@
 {
   "name": "@gtd-on-rails/api",
   "private": true,
-  "version": "1.2.0",
+  "version": "1.2.1",
   "scripts": {
     "dev": "./gradlew bootRun --args='--spring.profiles.active=dev'",
     "build": "./gradlew build",
