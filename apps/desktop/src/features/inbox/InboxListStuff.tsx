@@ -50,7 +50,7 @@ function EditingInboxListStuff(props: Readonly<Omit<InboxListStuffProps, "editin
         <span className="tree-entry__marker">{props.selected ? "●" : "○"}</span>
         <InboxStuffGlyph glyph={props.glyph} />
         <InboxStuffTitleInput
-          value={props.editingTitle}
+          initialValue={props.editingTitle}
           onChange={props.onEditingTitleChange}
           onBlur={props.onCommitEditing}
           onKeyDown={handleKeyDown}
@@ -61,16 +61,16 @@ function EditingInboxListStuff(props: Readonly<Omit<InboxListStuffProps, "editin
 }
 
 type InboxStuffTitleInputProps = Readonly<{
-  value: string;
+  initialValue: string;
   onChange: (value: string) => void;
   onBlur: () => void;
   onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
 }>;
 
-function InboxStuffTitleInput({ value, onChange, onBlur, onKeyDown }: InboxStuffTitleInputProps) {
+function InboxStuffTitleInput({ initialValue, onChange, onBlur, onKeyDown }: InboxStuffTitleInputProps) {
   return (
     <input
-      value={value}
+      defaultValue={initialValue}
       className="tree-entry__input"
       onChange={(event) => onChange(event.target.value)}
       onBlur={onBlur}
