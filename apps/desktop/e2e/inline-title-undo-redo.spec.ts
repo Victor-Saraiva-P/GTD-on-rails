@@ -16,29 +16,33 @@ async function startInboxTitleEdit(page: Page, title: string): Promise<Locator> 
   return titleInput;
 }
 
+async function pressCtrlKey(page: Page, key: string): Promise<void> {
+  await page.keyboard.down("Control");
+  await page.keyboard.press(key);
+  await page.keyboard.up("Control");
+}
+
+async function pressCtrlShiftKey(page: Page, key: string): Promise<void> {
+  await page.keyboard.down("Control");
+  await page.keyboard.down("Shift");
+  await page.keyboard.press(key);
+  await page.keyboard.up("Shift");
+  await page.keyboard.up("Control");
+}
+
 async function expectUndoRedoCycle(page: Page, title: string, editSuffix: string): Promise<void> {
   const titleInput = page.locator("input.tree-entry__input");
-  await page.keyboard.down("Control");
-  await page.keyboard.press("z");
-  await page.keyboard.up("Control");
+  await pressCtrlKey(page, "z");
   await expect(titleInput).toHaveValue(title);
-  await page.keyboard.down("Control");
-  await page.keyboard.press("y");
-  await page.keyboard.up("Control");
+  await pressCtrlKey(page, "y");
   await expect(titleInput).toHaveValue(`${title}${editSuffix}`);
 }
 
 async function expectShiftRedoCycle(page: Page, title: string, editSuffix: string): Promise<void> {
   const titleInput = page.locator("input.tree-entry__input");
-  await page.keyboard.down("Control");
-  await page.keyboard.press("z");
-  await page.keyboard.up("Control");
+  await pressCtrlKey(page, "z");
   await expect(titleInput).toHaveValue(title);
-  await page.keyboard.down("Control");
-  await page.keyboard.down("Shift");
-  await page.keyboard.press("z");
-  await page.keyboard.up("Shift");
-  await page.keyboard.up("Control");
+  await pressCtrlShiftKey(page, "z");
   await expect(titleInput).toHaveValue(`${title}${editSuffix}`);
 }
 
