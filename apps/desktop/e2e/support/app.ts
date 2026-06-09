@@ -10,6 +10,20 @@ export function uniqueLabel(prefix: string): string {
   return `${prefix} ${Date.now()}`;
 }
 
+export function todayDisplayValue(): string {
+  const today = new Date();
+  return `${datePart(today.getDate(), 2)}/${datePart(today.getMonth() + 1, 2)}/${datePart(today.getFullYear(), 4)}`;
+}
+
+export function todayIsoValue(): string {
+  const today = new Date();
+  return `${datePart(today.getFullYear(), 4)}-${datePart(today.getMonth() + 1, 2)}-${datePart(today.getDate(), 2)}`;
+}
+
+function datePart(value: number, width: number): string {
+  return value.toString().padStart(width, "0");
+}
+
 export async function focusApp(page: Page): Promise<void> {
   await page.locator("main").click();
 }
