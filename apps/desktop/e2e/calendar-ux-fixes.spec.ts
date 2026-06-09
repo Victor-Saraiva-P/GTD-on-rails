@@ -1,10 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
 import {
   createAndSelectInboxStuff,
-  createInboxStuffFromKeyboard,
   openApp,
   openCalendars,
   resetTestData,
+  todayDisplayValue,
+  todayIsoValue,
   uniqueLabel
 } from "./support/app";
 
@@ -123,18 +124,4 @@ async function createCalendarFromKeyboard(page: Page, prefix: string, timeDigits
   await page.keyboard.press("Enter");
   await response;
   return title;
-}
-
-function todayDisplayValue(): string {
-  const today = new Date();
-  return `${datePart(today.getDate(), 2)}/${datePart(today.getMonth() + 1, 2)}/${datePart(today.getFullYear(), 4)}`;
-}
-
-function todayIsoValue(): string {
-  const today = new Date();
-  return `${datePart(today.getFullYear(), 4)}-${datePart(today.getMonth() + 1, 2)}-${datePart(today.getDate(), 2)}`;
-}
-
-function datePart(value: number, width: number): string {
-  return value.toString().padStart(width, "0");
 }

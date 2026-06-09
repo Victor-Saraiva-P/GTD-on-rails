@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { createAndSelectInboxStuff, openApp, resetTestData, uniqueLabel } from "./support/app";
+import { createAndSelectInboxStuff, openApp, resetTestData, todayDisplayValue, todayIsoValue, uniqueLabel } from "./support/app";
 
 test.beforeEach(async ({ page, request }) => {
   await resetTestData(request);
@@ -14,9 +14,7 @@ test("edits selected next action contexts with keyboard flow", async ({ page }) 
   await createContextFromKeyboard(page, secondContext);
   await createNextActionFromKeyboard(page, title);
 
-  await openNextActions(page);
-  await selectNextAction(page, title);
-  await page.keyboard.press("Shift+E");
+  await openSelectedNextActionEditDialog(page, title);
 
   const dialog = page.getByRole("dialog", { name: "Edit next action" });
   await expect(dialog).toBeVisible();
@@ -38,9 +36,7 @@ test("edits selected next action deadline with segmented keyboard flow", async (
   const title = uniqueLabel("Next action deadline");
   await createNextActionFromKeyboard(page, title);
 
-  await openNextActions(page);
-  await selectNextAction(page, title);
-  await page.keyboard.press("Shift+E");
+  await openSelectedNextActionEditDialog(page, title);
 
   const dialog = page.getByRole("dialog", { name: "Edit next action" });
   await page.keyboard.press("d");
@@ -59,9 +55,7 @@ test("sets selected next action deadline to today with keyboard flow", async ({ 
   const title = uniqueLabel("Next action today deadline");
   await createNextActionFromKeyboard(page, title);
 
-  await openNextActions(page);
-  await selectNextAction(page, title);
-  await page.keyboard.press("Shift+E");
+  await openSelectedNextActionEditDialog(page, title);
 
   const dialog = page.getByRole("dialog", { name: "Edit next action" });
   await page.keyboard.press("d");
@@ -118,16 +112,8 @@ async function selectNextAction(page: Page, title: string): Promise<void> {
   await nextAction.click();
 }
 
-function todayDisplayValue(): string {
-  const today = new Date();
-  return `${datePart(today.getDate(), 2)}/${datePart(today.getMonth() + 1, 2)}/${datePart(today.getFullYear(), 4)}`;
-}
-
-function todayIsoValue(): string {
-  const today = new Date();
-  return `${datePart(today.getFullYear(), 4)}-${datePart(today.getMonth() + 1, 2)}-${datePart(today.getDate(), 2)}`;
-}
-
-function datePart(value: number, width: number): string {
-  return value.toString().padStart(width, "0");
+async function openSelectedNextActionEditDialog(page: Page, title: string): Promise<void> {
+  await openNextActions(page);
+  await selectNextAction(page, title);
+  await page.keyboard.press("Shift+E");
 }
