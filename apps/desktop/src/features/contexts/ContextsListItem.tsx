@@ -1,5 +1,6 @@
 import { useRef, type KeyboardEvent, type MutableRefObject } from "react";
 import { buildApiUrlWithVersion } from "../../config/env.ts";
+import { logInlineTitleUndoDebug } from "../keybinds/inlineTitleUndoDebug";
 import type { ContextItem } from "./types";
 
 type ContextsListItemProps = Readonly<{
@@ -96,9 +97,20 @@ function ContextNameInput({ initialValue, onChange, onBlur, onKeyDown }: Context
     <input
       defaultValue={initialValue}
       className="tree-entry__input"
-      onChange={(event) => onChange(event.target.value)}
-      onBlur={onBlur}
-      onKeyDown={onKeyDown}
+      onBeforeInput={(event) => logInlineTitleUndoDebug({ inputType: event.nativeEvent.inputType, phase: "context-title-beforeinput", value: event.currentTarget.value })}
+      onChange={(event) => {
+        logInlineTitleUndoDebug({ phase: "context-title-change", value: event.target.value });
+        onChange(event.target.value);
+      }}
+      onInput={(event) => logInlineTitleUndoDebug({ phase: "context-title-input", value: event.currentTarget.value })}
+      onBlur={(event) => {
+        logInlineTitleUndoDebug({ phase: "context-title-blur", value: event.currentTarget.value });
+        onBlur();
+      }}
+      onKeyDown={(event) => {
+        logInlineTitleUndoDebug({ ctrlKey: event.ctrlKey, defaultPrevented: event.defaultPrevented, key: event.key, phase: "context-title-keydown", selectionEnd: event.currentTarget.selectionEnd, selectionStart: event.currentTarget.selectionStart, shiftKey: event.shiftKey, value: event.currentTarget.value });
+        onKeyDown(event);
+      }}
       autoFocus
     />
   );

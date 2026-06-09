@@ -1,4 +1,5 @@
 import type { KeyboardEvent } from "react";
+import { logInlineTitleUndoDebug } from "../keybinds/inlineTitleUndoDebug";
 import type { Stuff } from "./types";
 
 type InboxListStuffProps = Readonly<{
@@ -72,9 +73,20 @@ function InboxStuffTitleInput({ initialValue, onChange, onBlur, onKeyDown }: Inb
     <input
       defaultValue={initialValue}
       className="tree-entry__input"
-      onChange={(event) => onChange(event.target.value)}
-      onBlur={onBlur}
-      onKeyDown={onKeyDown}
+      onBeforeInput={(event) => logInlineTitleUndoDebug({ inputType: event.nativeEvent.inputType, phase: "title-beforeinput", value: event.currentTarget.value })}
+      onChange={(event) => {
+        logInlineTitleUndoDebug({ phase: "title-change", value: event.target.value });
+        onChange(event.target.value);
+      }}
+      onInput={(event) => logInlineTitleUndoDebug({ phase: "title-input", value: event.currentTarget.value })}
+      onBlur={(event) => {
+        logInlineTitleUndoDebug({ phase: "title-blur", value: event.currentTarget.value });
+        onBlur();
+      }}
+      onKeyDown={(event) => {
+        logInlineTitleUndoDebug({ ctrlKey: event.ctrlKey, defaultPrevented: event.defaultPrevented, key: event.key, phase: "title-keydown", selectionEnd: event.currentTarget.selectionEnd, selectionStart: event.currentTarget.selectionStart, shiftKey: event.shiftKey, value: event.currentTarget.value });
+        onKeyDown(event);
+      }}
       autoFocus
     />
   );

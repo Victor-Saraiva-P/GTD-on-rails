@@ -10,6 +10,7 @@ import {
   useState
 } from "react";
 import type { FocusZoneId, KeybindDefinition, ScreenId } from "./types";
+import { logInlineTitleUndoDebug } from "./inlineTitleUndoDebug";
 
 type RegisteredKeybind = KeybindDefinition & {
   registrationId: symbol;
@@ -81,6 +82,15 @@ function isTypingTarget(target: EventTarget | null): boolean {
     target instanceof HTMLTextAreaElement ||
     target instanceof HTMLSelectElement
   );
+}
+
+function isUndoRedoDebugKey(event: KeyboardEvent): boolean {
+  return event.ctrlKey && (event.key === "z" || event.key === "Z" || event.key === "y" || event.key === "Y");
+}
+
+function debugTargetName(target: EventTarget | null): string {
+  if (!(target instanceof HTMLElement)) return "unknown";
+  return target.tagName.toLowerCase();
 }
 
 function hasActiveModalKeybindScope(): boolean {
@@ -210,12 +220,33 @@ function handleLeaderMatch(
 }
 
 function handleGlobalKeyDown(event: KeyboardEvent, config: KeydownConfig) {
+  if (isUndoRedoDebugKey(event)) {
+    logInlineTitleUndoDebug({
+      ctrlKey: event.ctrlKey,
+      defaultPrevented: event.defaultPrevented,
+      key: event.key,
+      phase: "global-keydown-enter",
+      shiftKey: event.shiftKey,
+      target: debugTargetName(event.target)
+    });
+  }
+
   if (hasActiveModalKeybindScope()) {
     if (config.isLeaderMenuOpen) config.closeLeaderMenu();
     return;
   }
 
   if (isTypingTarget(event.target) || event.metaKey || event.altKey) {
+    if (isUndoRedoDebugKey(event)) {
+      logInlineTitleUndoDebug({
+        ctrlKey: event.ctrlKey,
+        defaultPrevented: event.defaultPrevented,
+        key: event.key,
+        phase: "global-keydown-skip-typing-target",
+        shiftKey: event.shiftKey,
+        target: debugTargetName(event.target)
+      });
+    }
     return;
   }
 
