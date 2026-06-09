@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { createContextApi, createAndSelectInboxStuff, createInboxStuffFromKeyboard, openApp, resetTestData, uniqueLabel } from "./support/app";
+import { createContextApi, createAndSelectInboxStuff, openApp, resetTestData, todayDisplayValue, todayIsoValue, uniqueLabel } from "./support/app";
 
 test.beforeEach(async ({ page, request }) => {
   await resetTestData(request);
@@ -60,10 +60,7 @@ test("enters next action deadline before contexts", async ({ page }) => {
   await expect(dateControl).toHaveText("29/02/2028");
 
   const nextActionRequestPromise = page.waitForRequest((request) => request.url().endsWith("/next-action") && request.method() === "POST");
-  await page.keyboard.press("Enter");
-  await page.keyboard.press("Enter");
-  await page.keyboard.press("Enter");
-  await page.keyboard.press("Enter");
+  await confirmNextActionProcessing(page);
 
   const nextActionRequest = await nextActionRequestPromise;
   const payload = nextActionRequest.postDataJSON() as NextActionProcessingRequestPayload;
@@ -85,10 +82,7 @@ test("sets processing next action deadline to today with keyboard", async ({ pag
   await expect(dialog.getByText("Context")).not.toBeVisible();
 
   const nextActionRequestPromise = page.waitForRequest((request) => request.url().endsWith("/next-action") && request.method() === "POST");
-  await page.keyboard.press("Enter");
-  await page.keyboard.press("Enter");
-  await page.keyboard.press("Enter");
-  await page.keyboard.press("Enter");
+  await confirmNextActionProcessing(page);
 
   const nextActionRequest = await nextActionRequestPromise;
   const payload = nextActionRequest.postDataJSON() as NextActionProcessingRequestPayload;
@@ -143,20 +137,11 @@ test("enters calendar date with segmented keyboard input", async ({ page }) => {
   const payload = calendarRequest.postDataJSON() as CalendarProcessingRequestPayload;
   expect(payload).toEqual({ scheduledDate: "2028-02-29", scheduledTime: null });
 });
-
-
-function todayDisplayValue(): string {
-  const today = new Date();
-  return `${datePart(today.getDate(), 2)}/${datePart(today.getMonth() + 1, 2)}/${datePart(today.getFullYear(), 4)}`;
-}
-
-function todayIsoValue(): string {
-  const today = new Date();
-  return `${datePart(today.getFullYear(), 4)}-${datePart(today.getMonth() + 1, 2)}-${datePart(today.getDate(), 2)}`;
-}
-
-function datePart(value: number, width: number): string {
-  return value.toString().padStart(width, "0");
+async function confirmNextActionProcessing(page: Page): Promise<void> {
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Enter");
 }
 
 type CalendarProcessingRequestPayload = {

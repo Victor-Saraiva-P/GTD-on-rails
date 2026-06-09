@@ -1,4 +1,5 @@
 import type { KeyboardEvent } from "react";
+import { InlineTitleInput } from "../../components/InlineTitleInput";
 import type { Calendar } from "./types";
 import { calendarItemIconText } from "../lists/listThemes";
 import { trimCalendarDisplayTime } from "./calendarDateUtils";
@@ -62,14 +63,7 @@ function EditingCalendarCard(props: Readonly<Omit<CalendarListCardProps, "editin
     <li className="tree-list__item">
       <div className="tree-entry tree-entry--active calendar-item-entry">
         <CalendarGlyph archiveStatus={props.archiveStatus} status={props.item.status} />
-        <input
-          value={props.editingTitle}
-          className="tree-entry__input"
-          onChange={(event) => props.onEditingTitleChange(event.target.value)}
-          onBlur={props.onCommitEditing}
-          onKeyDown={handleKeyDown}
-          autoFocus
-        />
+        <InlineTitleInput initialValue={props.editingTitle} onBlur={props.onCommitEditing} onEditKeyDown={handleKeyDown} onValueChange={props.onEditingTitleChange} />
         {displayTime ? (
           <span className="calendar-entry__time">
             <span aria-hidden="true">⏱</span>
