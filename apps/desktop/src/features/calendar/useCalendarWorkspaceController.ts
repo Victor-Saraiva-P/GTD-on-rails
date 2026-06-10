@@ -8,6 +8,10 @@ import {
   resolveWeeklyOffset
 } from "./calendarDateUtils";
 import {
+  clearCalendarTitleEdit,
+  useCalendarTitleEditState
+} from "./calendarTitleEditState";
+import {
   calendarSubviewTarget,
   calendarItemsForPanel,
   moveCalendarSelection,
@@ -43,18 +47,10 @@ function useCalendarSelection(items: Calendar[]) {
 }
 
 function useCalendarEditState() {
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editingTitle, setEditingTitle] = useState("");
-  const [editingTitleError, setEditingTitleError] = useState<string | null>(null);
+  const titleEdit = useCalendarTitleEditState();
   const [editingBodyId, setEditingBodyId] = useState<string | null>(null);
   const [vimMode, setVimMode] = useState<"NORMAL" | "INSERT" | "VISUAL" | null>(null);
-  return { editingBodyId, editingId, editingTitle, editingTitleError, setEditingBodyId, setEditingId, setEditingTitle, setEditingTitleError, setVimMode, vimMode };
-}
-
-function clearCalendarTitleEdit(edit: CalendarEditState): void {
-  edit.setEditingId(null);
-  edit.setEditingTitle("");
-  edit.setEditingTitleError(null);
+  return { ...titleEdit, editingBodyId, setEditingBodyId, setVimMode, vimMode };
 }
 
 function clearCalendarBodyEdit(edit: CalendarEditState): void {

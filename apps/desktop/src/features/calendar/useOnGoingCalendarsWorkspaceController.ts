@@ -3,6 +3,7 @@ import { useActiveZone } from "../keybinds/hooks";
 import type { ItemBody } from "../inbox/types";
 import { isSameBody } from "../inbox/types";
 import type { Calendar } from "./types";
+import { useCalendarTitleEditState } from "./calendarTitleEditState";
 import { selectCalendarBoundary } from "./calendarWorkspaceState";
 import { useOnGoingCalendarsQuery } from "./useOnGoingCalendarsQuery";
 
@@ -38,12 +39,10 @@ function useCalendarSelection(items: Calendar[]) {
 }
 
 function useCalendarEditState() {
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editingTitle, setEditingTitle] = useState("");
-  const [editingTitleError, setEditingTitleError] = useState<string | null>(null);
+  const titleEdit = useCalendarTitleEditState();
   const [editingBodyId, setEditingBodyId] = useState<string | null>(null);
   const [vimMode, setVimMode] = useState<"NORMAL" | "INSERT" | "VISUAL" | null>(null);
-  return { editingBodyId, editingId, editingTitle, editingTitleError, setEditingBodyId, setEditingId, setEditingTitle, setEditingTitleError, setVimMode, vimMode };
+  return { ...titleEdit, editingBodyId, setEditingBodyId, setVimMode, vimMode };
 }
 
 function clearCalendarEditing(edit: CalendarEditState) {

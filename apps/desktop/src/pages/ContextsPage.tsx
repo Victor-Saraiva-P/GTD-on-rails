@@ -33,7 +33,7 @@ function useDraftContextState() {
 
 function useContextEditState() {
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editingName, setEditingNameState] = useState("");
+  const [editingName, setEditingName] = useState("");
   const [editingTitleError, setEditingTitleError] = useState<string | null>(null);
   return {
     editingId,
@@ -41,7 +41,7 @@ function useContextEditState() {
     editingTitleError,
     setEditingId,
     setEditingName: (value: string) => {
-      setEditingNameState(value);
+      setEditingName(value);
       setEditingTitleError(null);
     },
     setEditingTitleError
