@@ -4,6 +4,7 @@ import type { Stuff } from "./types";
 
 type InboxListStuffProps = Readonly<{
   item: Stuff;
+  editingTitleError: string | null;
   selected: boolean;
   editing: boolean;
   editingTitle: string;
@@ -26,8 +27,7 @@ function InboxStuffGlyph({ glyph = "S" }: Readonly<Pick<InboxListStuffProps, "gl
 
 function handleEditKeyDown(
   event: KeyboardEvent<HTMLInputElement>,
-  onCommitEditingAndContinue: () => void,
-  onCancelEditing: () => void
+  onCommitEditingAndContinue: () => void
 ) {
   if (event.key === "Enter") {
     event.preventDefault();
@@ -36,13 +36,13 @@ function handleEditKeyDown(
 
   if (event.key === "Escape") {
     event.preventDefault();
-    onCancelEditing();
+    onCommitEditingAndContinue();
   }
 }
 
 function EditingInboxListStuff(props: Readonly<Omit<InboxListStuffProps, "editing" | "onSelect" | "onStartEditing">>) {
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    handleEditKeyDown(event, props.onCommitEditingAndContinue, props.onCancelEditing);
+    handleEditKeyDown(event, props.onCommitEditingAndContinue);
   };
 
   return (
@@ -50,12 +50,15 @@ function EditingInboxListStuff(props: Readonly<Omit<InboxListStuffProps, "editin
       <div className="tree-entry tree-entry--active">
         <span className="tree-entry__marker">{props.selected ? "●" : "○"}</span>
         <InboxStuffGlyph glyph={props.glyph} />
-        <InboxStuffTitleInput
-          initialValue={props.editingTitle}
-          onChange={props.onEditingTitleChange}
-          onBlur={props.onCommitEditing}
-          onKeyDown={handleKeyDown}
-        />
+        <div className="tree-entry__edit">
+          <InboxStuffTitleInput
+            initialValue={props.editingTitle}
+            onChange={props.onEditingTitleChange}
+            onBlur={props.onCommitEditing}
+            onKeyDown={handleKeyDown}
+          />
+          {props.editingTitleError ? <p className="tree-entry__error">{props.editingTitleError}</p> : null}
+        </div>
       </div>
     </li>
   );

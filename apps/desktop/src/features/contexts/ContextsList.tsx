@@ -3,6 +3,7 @@ import type { ContextItem } from "./types";
 
 type ContextsListProps = Readonly<{
   items: ContextItem[];
+  editingTitleError: string | null;
   selectedId: string;
   editingId: string | null;
   editingName: string;
@@ -21,11 +22,13 @@ function ContextsListRow({
   item,
   selectedId,
   editingId,
+  editingTitleError,
   ...props
 }: ContextsListRowProps) {
   return (
     <ContextsListItem
       item={item}
+      editingTitleError={item.id === editingId ? editingTitleError : null}
       selected={item.id === selectedId}
       editing={item.id === editingId}
       {...props}

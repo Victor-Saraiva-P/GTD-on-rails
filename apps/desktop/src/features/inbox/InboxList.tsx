@@ -3,6 +3,7 @@ import { InboxListStuff } from "./InboxListStuff";
 
 type InboxListProps = Readonly<{
   items: Stuff[];
+  editingTitleError: string | null;
   selectedId: string;
   editingId: string | null;
   editingTitle: string;
@@ -22,11 +23,13 @@ function InboxListItem({
   item,
   selectedId,
   editingId,
+  editingTitleError,
   ...props
 }: InboxListItemProps) {
   return (
     <InboxListStuff
       item={item}
+      editingTitleError={item.id === editingId ? editingTitleError : null}
       selected={item.id === selectedId}
       editing={item.id === editingId}
       {...props}

@@ -223,6 +223,20 @@
   cursor: text;
 }
 
+.tree-entry__edit {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.tree-entry__error {
+  margin: 0;
+  color: #ff9d84;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  line-height: 1.2;
+}
+
 .detail-card {
   display: grid;
   gap: 14px;

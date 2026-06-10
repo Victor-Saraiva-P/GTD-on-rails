@@ -119,6 +119,7 @@ function DeletedListReady({ controller }: DeletedInboxPageProps) {
   return (
     <InboxList
       items={controller.stuffs}
+      editingTitleError={null}
       selectedId={controller.selectedItem?.id ?? ""}
       editingId={null}
       editingTitle=""

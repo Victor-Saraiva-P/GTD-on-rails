@@ -9,7 +9,7 @@ async function closeBodyEditor(page: Page): Promise<void> {
 }
 
 async function startInboxTitleEdit(page: Page, title: string): Promise<Locator> {
-  await page.getByRole("button", { name: title }).click();
+  await page.getByRole("button", { name: title }).first().click();
   await page.keyboard.press("Enter");
   const titleInput = page.locator("input.tree-entry__input");
   await expect(titleInput).toBeFocused();

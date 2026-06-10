@@ -199,6 +199,7 @@ function NextActionsListReady({ controller }: NextActionControllerProps) {
   return (
     <NextActionsList
       items={controller.stuffs}
+      editingTitleError={controller.editingTitleError}
       selectedId={controller.selectedItem?.id ?? ""}
       editingId={controller.editingId}
       editingTitle={controller.editingTitle}

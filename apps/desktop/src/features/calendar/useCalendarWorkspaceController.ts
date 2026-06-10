@@ -45,14 +45,16 @@ function useCalendarSelection(items: Calendar[]) {
 function useCalendarEditState() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
+  const [editingTitleError, setEditingTitleError] = useState<string | null>(null);
   const [editingBodyId, setEditingBodyId] = useState<string | null>(null);
   const [vimMode, setVimMode] = useState<"NORMAL" | "INSERT" | "VISUAL" | null>(null);
-  return { editingBodyId, editingId, editingTitle, setEditingBodyId, setEditingId, setEditingTitle, setVimMode, vimMode };
+  return { editingBodyId, editingId, editingTitle, editingTitleError, setEditingBodyId, setEditingId, setEditingTitle, setEditingTitleError, setVimMode, vimMode };
 }
 
 function clearCalendarTitleEdit(edit: CalendarEditState): void {
   edit.setEditingId(null);
   edit.setEditingTitle("");
+  edit.setEditingTitleError(null);
 }
 
 function clearCalendarBodyEdit(edit: CalendarEditState): void {
@@ -113,6 +115,7 @@ function startCalendarTitleEdit(model: CalendarModel): void {
   if (!item) return;
   model.edit.setEditingId(item.id);
   model.edit.setEditingTitle(item.title);
+  model.edit.setEditingTitleError(null);
 }
 
 async function commitCalendarTitleEdit(model: CalendarModel): Promise<void> {
@@ -120,9 +123,19 @@ async function commitCalendarTitleEdit(model: CalendarModel): Promise<void> {
   if (!item || model.edit.editingId !== item.id) return;
   const title = model.edit.editingTitle.trim();
   if (!title) { clearCalendarTitleEdit(model.edit); return; }
-  const updated = title === item.title ? item : await model.query.updateTitle(item, title);
-  model.selection.setSelectedId(updated.id);
-  clearCalendarTitleEdit(model.edit);
+  try {
+    const updated = title === item.title ? item : await model.query.updateTitle(item, title);
+    model.selection.setSelectedId(updated.id);
+    clearCalendarTitleEdit(model.edit);
+  } catch (error: unknown) {
+    model.edit.setEditingTitleError(calendarTitleErrorMessage(error));
+    throw error;
+  }
+}
+
+function calendarTitleErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return "Failed to save title.";
 }
 
 function startCalendarBodyEdit(model: CalendarModel): void {
@@ -300,6 +313,7 @@ function buildCalendarController(model: CalendarModel, actions: CalendarActions)
     editingBodyId: model.edit.editingBodyId,
     editingId: model.edit.editingId,
     editingTitle: model.edit.editingTitle,
+    editingTitleError: model.edit.editingTitleError,
     errorMessage: model.query.errorMessage,
     isDeleting: model.query.isDeleting,
     isLoading: model.query.isLoading,
@@ -308,7 +322,10 @@ function buildCalendarController(model: CalendarModel, actions: CalendarActions)
     selectedItem: model.selection.selectedItem,
     setActiveSubview: model.view.setActiveSubview,
     setActiveZone: model.zone.setActiveZone,
-    setEditingTitle: model.edit.setEditingTitle,
+    setEditingTitle: (value: string) => {
+      model.edit.setEditingTitle(value);
+      model.edit.setEditingTitleError(null);
+    },
     setSelectedId: model.selection.setSelectedId,
     setVimMode: model.edit.setVimMode,
     stuffs: model.selection.items,
