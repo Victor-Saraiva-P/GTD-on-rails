@@ -7,6 +7,7 @@ import { trimCalendarDisplayTime } from "./calendarDateUtils";
 type CalendarListCardProps = Readonly<{
   archiveStatus?: "deleted";
   item: Calendar;
+  editingTitleError: string | null;
   selected: boolean;
   editing: boolean;
   editingTitle: string;
@@ -39,8 +40,7 @@ function CalendarGlyph({ archiveStatus, status }: Readonly<{ archiveStatus?: "de
 
 function handleEditKeyDown(
   event: KeyboardEvent<HTMLInputElement>,
-  onCommitEditingAndContinue: () => void,
-  onCancelEditing: () => void
+  onCommitEditingAndContinue: () => void
 ) {
   if (event.key === "Enter") {
     event.preventDefault();
@@ -49,13 +49,13 @@ function handleEditKeyDown(
 
   if (event.key === "Escape") {
     event.preventDefault();
-    onCancelEditing();
+    onCommitEditingAndContinue();
   }
 }
 
 function EditingCalendarCard(props: Readonly<Omit<CalendarListCardProps, "editing" | "onSelect" | "onStartEditing">>) {
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    handleEditKeyDown(event, props.onCommitEditingAndContinue, props.onCancelEditing);
+    handleEditKeyDown(event, props.onCommitEditingAndContinue);
   };
   const displayTime = trimCalendarDisplayTime(props.item.scheduledTime);
 
@@ -63,7 +63,10 @@ function EditingCalendarCard(props: Readonly<Omit<CalendarListCardProps, "editin
     <li className="tree-list__item">
       <div className="tree-entry tree-entry--active calendar-item-entry">
         <CalendarGlyph archiveStatus={props.archiveStatus} status={props.item.status} />
-        <InlineTitleInput initialValue={props.editingTitle} onBlur={props.onCommitEditing} onEditKeyDown={handleKeyDown} onValueChange={props.onEditingTitleChange} />
+        <div className="tree-entry__edit">
+          <InlineTitleInput initialValue={props.editingTitle} onBlur={props.onCommitEditing} onEditKeyDown={handleKeyDown} onValueChange={props.onEditingTitleChange} />
+          {props.editingTitleError ? <p className="tree-entry__error">{props.editingTitleError}</p> : null}
+        </div>
         {displayTime ? (
           <span className="calendar-entry__time">
             <span aria-hidden="true">⏱</span>

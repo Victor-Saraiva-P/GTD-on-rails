@@ -305,6 +305,7 @@ function CalendarPanelReady({ controller, items, panel }: CalendarControllerProp
     <CalendarList
       items={items}
       archiveStatus={panel === "deleted" ? "deleted" : undefined}
+      editingTitleError={controller.editingTitleError}
       selectedId={controller.selectedItem?.id ?? ""}
       editingId={controller.editingId}
       editingTitle={controller.editingTitle}

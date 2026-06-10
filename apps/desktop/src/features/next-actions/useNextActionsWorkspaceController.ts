@@ -25,9 +25,10 @@ export type Actions = ReturnType<typeof useNextActionsActions>;
 export function useNextActionEditState() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
+  const [editingTitleError, setEditingTitleError] = useState<string | null>(null);
   const [editingBodyId, setEditingBodyId] = useState<string | null>(null);
   const [vimMode, setVimMode] = useState<"NORMAL" | "INSERT" | "VISUAL" | null>(null);
-  return { editingBodyId, editingId, editingTitle, setEditingBodyId, setEditingId, setEditingTitle, setVimMode, vimMode };
+  return { editingBodyId, editingId, editingTitle, editingTitleError, setEditingBodyId, setEditingId, setEditingTitle, setEditingTitleError, setVimMode, vimMode };
 }
 
 export function useNextActionsFilterState() {
@@ -55,6 +56,7 @@ export function useNextActionsModel() {
 export function clearTitleEdit(edit: EditState) {
   edit.setEditingId(null);
   edit.setEditingTitle("");
+  edit.setEditingTitleError(null);
 }
 
 export function clearBodyEdit(edit: EditState) {
@@ -93,6 +95,7 @@ export function startTitleEdit(model: Model) {
   if (!item) return;
   model.edit.setEditingId(item.id);
   model.edit.setEditingTitle(item.title);
+  model.edit.setEditingTitleError(null);
 }
 
 export async function commitTitleEdit(model: Model) {
@@ -100,9 +103,19 @@ export async function commitTitleEdit(model: Model) {
   if (!item || model.edit.editingId !== item.id) return;
   const title = model.edit.editingTitle.trim();
   if (!title) { clearTitleEdit(model.edit); return; }
-  const updated = title === item.title ? item : await model.query.updateTitle(item, title);
-  model.selection.setSelectedId(updated.id);
-  clearTitleEdit(model.edit);
+  try {
+    const updated = title === item.title ? item : await model.query.updateTitle(item, title);
+    model.selection.setSelectedId(updated.id);
+    clearTitleEdit(model.edit);
+  } catch (error: unknown) {
+    model.edit.setEditingTitleError(nextActionTitleErrorMessage(error));
+    throw error;
+  }
+}
+
+function nextActionTitleErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return "Failed to save title.";
 }
 
 export async function commitBodyEdit(model: Model, body: ItemBody) {
@@ -216,6 +229,7 @@ export function buildController(model: Model, actions: Actions) {
     editingBodyId: model.edit.editingBodyId,
     editingId: model.edit.editingId,
     editingTitle: model.edit.editingTitle,
+    editingTitleError: model.edit.editingTitleError,
     errorMessage: model.query.errorMessage,
     isDeleting: model.query.isDeleting,
     isLoading: model.query.isLoading,
@@ -225,7 +239,10 @@ export function buildController(model: Model, actions: Actions) {
     selectedIndex: model.selection.selectedIndex,
     selectedItem: model.selection.selectedItem,
     setActiveZone: model.zone.setActiveZone,
-    setEditingTitle: model.edit.setEditingTitle,
+    setEditingTitle: (value: string) => {
+      model.edit.setEditingTitle(value);
+      model.edit.setEditingTitleError(null);
+    },
     setSelectedId: model.selection.setSelectedId,
     setVimMode: model.edit.setVimMode,
     stuffs: model.selection.items,

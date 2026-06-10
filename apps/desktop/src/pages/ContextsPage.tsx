@@ -34,7 +34,18 @@ function useDraftContextState() {
 function useContextEditState() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
-  return { editingId, editingName, setEditingId, setEditingName };
+  const [editingTitleError, setEditingTitleError] = useState<string | null>(null);
+  return {
+    editingId,
+    editingName,
+    editingTitleError,
+    setEditingId,
+    setEditingName: (value: string) => {
+      setEditingName(value);
+      setEditingTitleError(null);
+    },
+    setEditingTitleError
+  };
 }
 
 function useContextIconEditorState() {
@@ -102,6 +113,7 @@ function useContextsModel() {
 function clearContextEdit(model: ContextsModel) {
   model.edit.setEditingId(null);
   model.edit.setEditingName("");
+  model.edit.setEditingTitleError(null);
 }
 
 function hasVisibleContext(model: ContextsModel, id: string): boolean {
@@ -166,6 +178,7 @@ function createNewContextAction(model: ContextsModel) {
   model.selection.setSelectedId(nextDraft.id);
   model.edit.setEditingId(nextDraft.id);
   model.edit.setEditingName("");
+  model.edit.setEditingTitleError(null);
   model.zone.setActiveZone("context-list");
 }
 
@@ -210,6 +223,7 @@ function startEditingSelectedContextAction(model: ContextsModel) {
   if (selectedItem) {
     model.edit.setEditingId(selectedItem.id);
     model.edit.setEditingName(selectedItem.id === DRAFT_CONTEXT_ID ? "" : selectedItem.name);
+    model.edit.setEditingTitleError(null);
   }
 }
 
@@ -271,10 +285,20 @@ async function commitEditingSelectedContextAction(model: ContextsModel) {
   const normalizedName = model.edit.editingName.trim();
 
   if (normalizedName) {
-    await commitNormalizedContextName(model, selectedItem, normalizedName);
+    try {
+      await commitNormalizedContextName(model, selectedItem, normalizedName);
+    } catch (error: unknown) {
+      model.edit.setEditingTitleError(contextTitleErrorMessage(error));
+      throw error;
+    }
   } else {
     discardContextEdit(model, selectedItem);
   }
+}
+
+function contextTitleErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return "Failed to save title.";
 }
 
 function useContextsActions(model: ContextsModel) {
@@ -368,6 +392,7 @@ function ContextsListReady({ model, actions }: ContextsViewProps) {
   return (
     <ContextsList
       items={model.selection.visibleContexts}
+      editingTitleError={model.edit.editingTitleError}
       selectedId={model.selection.selectedItem?.id ?? ""}
       editingId={model.edit.editingId}
       editingName={model.edit.editingName}
