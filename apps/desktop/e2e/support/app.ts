@@ -50,9 +50,9 @@ export async function createStuffApi(request: APIRequestContext, title: string):
   return response.json() as Promise<CreatedResource>;
 }
 
-export async function convertStuffToNextActionApi(request: APIRequestContext, stuffId: string): Promise<void> {
+export async function convertStuffToNextActionApi(request: APIRequestContext, stuffId: string, contextIds: string[] = [], energy = 1.0): Promise<void> {
   const response = await request.post(`${apiBaseUrl}/inbox/${stuffId}/next-action`, {
-    data: { contextIds: [], energy: 1.0, estimatedTime: { hours: 0, minutes: 5 } }
+    data: { contextIds, energy, estimatedTime: { hours: 0, minutes: 5 } }
   });
   expect(response.ok()).toBeTruthy();
 }

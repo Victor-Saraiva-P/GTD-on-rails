@@ -12,7 +12,7 @@ This page is the umbrella documentation for the next-action lists and related pa
 
 ## Next Actions List
 
-The next actions page is the list of available concrete actions. It supports [[Context]] filtering, ordering, status changes, editing, and deletion.
+The next actions page is the list of available concrete actions. It supports current availability filtering, ordering, status changes, editing, and deletion.
 
 Next actions with a deadline appear as all-day entries on the external Next Action agenda for the deadline date. Next actions without a deadline do not appear on an external agenda.
 
@@ -24,9 +24,8 @@ When editing a next action with `E` then `d`, pressing `t` in the Deadline field
 | --- | --- | --- |
 | `d` | List | Delete selected next action. |
 | `x` | List | Mark selected next action as done. |
-| `c` | List or detail | Filter by context. |
-| `t` | List or detail | Set available time. |
-| `e` | List or detail | Set available energy. |
+| `c` | List | Set current availability. |
+| `C` | List | Clear current availability. |
 | `E` | List or detail | Edit next action attributes. |
 | `o` | List | Mark selected next action as on going and open its detail. |
 | `O` | List or detail | Cycle ordering. |

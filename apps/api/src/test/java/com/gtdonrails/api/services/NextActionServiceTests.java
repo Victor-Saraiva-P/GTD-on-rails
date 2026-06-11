@@ -202,10 +202,10 @@ class NextActionServiceTests {
 
     @Test
     void getsOrderedByEnergy() {
-        when(nextActionRepository.findRunnableInContextOrderByEnergyDesc(NextActionStatus.NEXT_ACTION, contextId))
+        when(nextActionRepository.findRunnableInContextsOrderByEnergyDesc(NextActionStatus.NEXT_ACTION, List.of(contextId)))
             .thenReturn(List.of(nextAction));
 
-        List<NextActionResponseDto> result = nextActionService.getOrderedByEnergy(contextId);
+        List<NextActionResponseDto> result = nextActionService.getOrderedByEnergy(List.of(contextId));
 
         assertThat(result).hasSize(1);
         assertThat(result.getFirst().energy()).isEqualTo(new BigDecimal("5.0"));
@@ -216,7 +216,7 @@ class NextActionServiceTests {
         when(nextActionRepository.findAllByStatusAndItem_DeletedAtIsNullOrderByEnergyDesc(NextActionStatus.NEXT_ACTION))
             .thenReturn(List.of(nextAction));
 
-        List<NextActionResponseDto> result = nextActionService.getOrderedByEnergy(null);
+        List<NextActionResponseDto> result = nextActionService.getOrderedByEnergy(List.of());
 
         assertThat(result).hasSize(1);
         assertThat(result.getFirst().energy()).isEqualTo(new BigDecimal("5.0"));
@@ -224,10 +224,10 @@ class NextActionServiceTests {
 
     @Test
     void getsOrderedByTime() {
-        when(nextActionRepository.findRunnableInContextOrderByEstimatedTimeDesc(NextActionStatus.NEXT_ACTION, contextId))
+        when(nextActionRepository.findRunnableInContextsOrderByEstimatedTimeDesc(NextActionStatus.NEXT_ACTION, List.of(contextId)))
             .thenReturn(List.of(nextAction));
 
-        List<NextActionResponseDto> result = nextActionService.getOrderedByTime(contextId);
+        List<NextActionResponseDto> result = nextActionService.getOrderedByTime(List.of(contextId));
 
         assertThat(result).hasSize(1);
         assertThat(result.getFirst().estimatedTime()).isEqualTo(Duration.ofMinutes(30));
@@ -238,7 +238,7 @@ class NextActionServiceTests {
         when(nextActionRepository.findAllByStatusAndItem_DeletedAtIsNullOrderByEstimatedTimeDesc(NextActionStatus.NEXT_ACTION))
             .thenReturn(List.of(nextAction));
 
-        List<NextActionResponseDto> result = nextActionService.getOrderedByTime(null);
+        List<NextActionResponseDto> result = nextActionService.getOrderedByTime(List.of());
 
         assertThat(result).hasSize(1);
         assertThat(result.getFirst().estimatedTime()).isEqualTo(Duration.ofMinutes(30));
@@ -251,7 +251,7 @@ class NextActionServiceTests {
         when(nextActionRepository.findAllByStatusAndItem_DeletedAtIsNull(NextActionStatus.NEXT_ACTION))
             .thenReturn(List.of(later, dueSoon));
 
-        List<NextActionResponseDto> result = nextActionService.getOrderedByPriority(null, 15, new BigDecimal("3.0"));
+        List<NextActionResponseDto> result = nextActionService.getOrderedByPriority(List.of(), 15, new BigDecimal("3.0"));
 
         assertThat(result.getFirst().title()).isEqualTo("Soon");
     }

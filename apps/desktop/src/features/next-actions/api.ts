@@ -5,7 +5,7 @@ import type { NextAction, NextActionOrder, NextActionPatch, NextActionResponse }
 import { normalizeNextActionBody, parseEstimatedTime } from "./types.ts";
 
 type NextActionsFetchParams = {
-  contextId: string | null;
+  contextIds: string[];
   currentEnergy: number | null;
   currentTimeMinutes: number | null;
   orderBy: NextActionOrder;
@@ -18,11 +18,11 @@ type NextActionsPageResponse = {
 /**
  * Loads next actions, optionally filtered by context and always ordered.
  *
- * @example await fetchNextActions({ contextId: null, orderBy: "energy" })
+ * @example await fetchNextActions({ contextIds: [], orderBy: "energy" })
  */
 export async function fetchNextActions(params: NextActionsFetchParams): Promise<NextAction[]> {
   const searchParams = new URLSearchParams({ orderBy: params.orderBy });
-  if (params.contextId) searchParams.set("contextId", params.contextId);
+  params.contextIds.forEach((contextId) => searchParams.append("contextIds", contextId));
   if (params.currentEnergy != null) searchParams.set("currentEnergy", params.currentEnergy.toFixed(1));
   if (params.currentTimeMinutes != null) searchParams.set("currentTimeMinutes", String(params.currentTimeMinutes));
   const response = await apiJson<NextActionResponse[]>(`/next-actions?${searchParams.toString()}`);

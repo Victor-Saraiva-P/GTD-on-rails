@@ -150,7 +150,7 @@ class NextActionControllerTests {
         Item item3 = itemRepository.save(new Item(new Title("Task 3"), null));
         nextActionRepository.save(new NextAction(item3, new BigDecimal("9.0"), Duration.ofMinutes(45), Set.of(office)));
 
-        mockMvc.perform(get("/next-actions?contextId={contextId}&orderBy=energy", context.getId()))
+        mockMvc.perform(get("/next-actions?contextIds={contextId}&orderBy=energy", context.getId()))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$", hasSize(2)))
             .andExpect(jsonPath("$[0].energy").value(8.0))
@@ -187,7 +187,7 @@ class NextActionControllerTests {
         Item item3 = itemRepository.save(new Item(new Title("Task 3"), null));
         nextActionRepository.save(new NextAction(item3, new BigDecimal("9.0"), Duration.ofMinutes(45), Set.of(office)));
 
-        mockMvc.perform(get("/next-actions?contextId={contextId}&orderBy=time", context.getId()))
+        mockMvc.perform(get("/next-actions?contextIds={contextId}&orderBy=time", context.getId()))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$", hasSize(2)))
             .andExpect(jsonPath("$[0].estimatedTime").value("PT30M"))
