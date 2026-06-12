@@ -27,11 +27,11 @@ public interface NextActionRepository extends JpaRepository<NextAction, UUID> {
         from NextAction nextAction left join nextAction.contexts context
         where nextAction.status = :status
         and nextAction.item.deletedAt is null
-        and (context.id = :contextId or nextAction.contexts is empty)
+        and (context.id in :contextIds or nextAction.contexts is empty)
         """)
-    List<NextAction> findRunnableInContext(
+    List<NextAction> findRunnableInContexts(
         @Param("status") NextActionStatus status,
-        @Param("contextId") UUID contextId);
+        @Param("contextIds") List<UUID> contextIds);
 
     List<NextAction> findAllByStatusAndItem_DeletedAtIsNull(NextActionStatus status);
 
@@ -40,24 +40,24 @@ public interface NextActionRepository extends JpaRepository<NextAction, UUID> {
         from NextAction nextAction left join nextAction.contexts context
         where nextAction.status = :status
         and nextAction.item.deletedAt is null
-        and (context.id = :contextId or nextAction.contexts is empty)
+        and (context.id in :contextIds or nextAction.contexts is empty)
         order by nextAction.energy desc
         """)
-    List<NextAction> findRunnableInContextOrderByEnergyDesc(
+    List<NextAction> findRunnableInContextsOrderByEnergyDesc(
         @Param("status") NextActionStatus status,
-        @Param("contextId") UUID contextId);
+        @Param("contextIds") List<UUID> contextIds);
 
     @Query("""
         select distinct nextAction
         from NextAction nextAction left join nextAction.contexts context
         where nextAction.status = :status
         and nextAction.item.deletedAt is null
-        and (context.id = :contextId or nextAction.contexts is empty)
+        and (context.id in :contextIds or nextAction.contexts is empty)
         order by nextAction.estimatedTime desc
         """)
-    List<NextAction> findRunnableInContextOrderByEstimatedTimeDesc(
+    List<NextAction> findRunnableInContextsOrderByEstimatedTimeDesc(
         @Param("status") NextActionStatus status,
-        @Param("contextId") UUID contextId);
+        @Param("contextIds") List<UUID> contextIds);
 
     List<NextAction> findAllByStatusAndItem_DeletedAtIsNullOrderByEnergyDesc(NextActionStatus status);
 

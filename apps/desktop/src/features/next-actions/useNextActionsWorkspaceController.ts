@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useUndoRedoHistory } from "../history/useUndoRedoHistory";
 import { useActiveZone } from "../keybinds/hooks";
 import type { ItemBody } from "../inbox/types";
@@ -32,17 +32,20 @@ export function useNextActionEditState() {
 }
 
 export function useNextActionsFilterState() {
-  const [context, setContext] = useState<ContextItem | null>(null);
+  const [contexts, setContexts] = useState<ContextItem[]>([]);
   const [currentEnergy, setCurrentEnergy] = useState<number | null>(null);
   const [currentTimeMinutes, setCurrentTimeMinutes] = useState<number | null>(null);
   const [orderBy, setOrderBy] = useState<NextActionOrder>(DEFAULT_NEXT_ACTION_ORDER);
-  return { context, currentEnergy, currentTimeMinutes, orderBy, setContext, setCurrentEnergy, setCurrentTimeMinutes, setOrderBy };
+  const [shouldSelectFirst, setShouldSelectFirst] = useState(false);
+  const [selectFirstPreviousItems, setSelectFirstPreviousItems] = useState<NextAction[] | null>(null);
+  return { contexts, currentEnergy, currentTimeMinutes, orderBy, selectFirstPreviousItems, setContexts, setCurrentEnergy, setCurrentTimeMinutes, setOrderBy, setSelectFirstPreviousItems, setShouldSelectFirst, shouldSelectFirst };
 }
 
 export function useNextActionsModel() {
   const filter = useNextActionsFilterState();
+  const contextIds = useMemo(() => filter.contexts.map((context) => context.id), [filter.contexts]);
   const query = useNextActionsQuery(
-    filter.context?.id ?? null,
+    contextIds,
     filter.currentTimeMinutes,
     filter.currentEnergy,
     filter.orderBy);
@@ -74,6 +77,13 @@ export function hasVisibleItem(model: Model, id: string): boolean {
 }
 
 export function pruneNextActionsState(model: Model) {
+  if (model.filter.shouldSelectFirst && model.selection.items !== model.filter.selectFirstPreviousItems) {
+    model.selection.setSelectedId(model.selection.items[0]?.id ?? null);
+    model.filter.setShouldSelectFirst(false);
+    model.filter.setSelectFirstPreviousItems(null);
+    clearEditing(model.edit);
+    return;
+  }
   if (model.selection.items.length === 0) {
     model.selection.setSelectedId(null);
     clearEditing(model.edit);
@@ -87,7 +97,7 @@ export function pruneNextActionsState(model: Model) {
 }
 
 export function useNextActionsPruning(model: Model) {
-  useEffect(() => pruneNextActionsState(model), [model.edit.editingBodyId, model.edit.editingId, model.selection.items, model.selection.selectedId]);
+  useEffect(() => pruneNextActionsState(model), [model.edit.editingBodyId, model.edit.editingId, model.filter.selectFirstPreviousItems, model.filter.shouldSelectFirst, model.selection.items, model.selection.selectedId]);
 }
 
 export function startTitleEdit(model: Model) {
@@ -197,14 +207,23 @@ export function useNextActionsActions(model: Model) {
     selectLast: model.selection.selectLast,
     selectNext: model.selection.selectNext,
     selectPrevious: model.selection.selectPrevious,
-    setContext: model.filter.setContext,
+    applyCurrentAvailability: (contexts: ContextItem[], energy: number | null, timeMinutes: number | null) => applyCurrentAvailability(model, contexts, energy, timeMinutes),
     setCurrentEnergy: model.filter.setCurrentEnergy,
     setCurrentTimeMinutes: model.filter.setCurrentTimeMinutes,
+    resetCurrentAvailability: () => applyCurrentAvailability(model, [], null, null),
     startBodyEdit: () => startBodyEdit(model),
     startTitleEdit: () => startTitleEdit(model),
     toggleOrder: () => model.filter.setOrderBy(nextOrder),
     undo: () => undoAction(model)
   };
+}
+
+export function applyCurrentAvailability(model: Model, contexts: ContextItem[], energy: number | null, timeMinutes: number | null) {
+  model.filter.setContexts(contexts);
+  model.filter.setCurrentEnergy(energy);
+  model.filter.setCurrentTimeMinutes(timeMinutes);
+  model.filter.setSelectFirstPreviousItems(model.selection.items);
+  model.filter.setShouldSelectFirst(true);
 }
 
 export function startBodyEdit(model: Model) {
@@ -223,7 +242,7 @@ export function buildController(model: Model, actions: Actions) {
   return {
     ...actions,
     activeZone: model.zone.activeZone,
-    context: model.filter.context,
+    contexts: model.filter.contexts,
     currentEnergy: model.filter.currentEnergy,
     currentTimeMinutes: model.filter.currentTimeMinutes,
     editingBodyId: model.edit.editingBodyId,

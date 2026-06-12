@@ -57,19 +57,19 @@ public class NextActionController {
 
     @GetMapping
     public List<NextActionResponseDto> getNextActions(
-        @RequestParam(required = false) UUID contextId,
+        @RequestParam(required = false) List<UUID> contextIds,
         @RequestParam(required = false) @Min(0) Integer currentTimeMinutes,
         @RequestParam(required = false)
         @DecimalMin("0.0") @DecimalMax("10.0") BigDecimal currentEnergy,
         @RequestParam String orderBy
     ) {
         if ("priority".equalsIgnoreCase(orderBy)) {
-            return nextActionService.getOrderedByPriority(contextId, currentTimeMinutes, currentEnergy);
+            return nextActionService.getOrderedByPriority(contextIds, currentTimeMinutes, currentEnergy);
         }
         if ("time".equalsIgnoreCase(orderBy)) {
-            return nextActionService.getOrderedByTime(contextId);
+            return nextActionService.getOrderedByTime(contextIds);
         } else if ("energy".equalsIgnoreCase(orderBy)) {
-            return nextActionService.getOrderedByEnergy(contextId);
+            return nextActionService.getOrderedByEnergy(contextIds);
         } else {
             throw new IllegalArgumentException("Invalid orderBy parameter. Expected 'energy', 'time', or 'priority'.");
         }

@@ -23,18 +23,18 @@ describe("next actions API", () => {
       return new Response(JSON.stringify([]), { status: 200 });
     });
 
-    const items = await fetchNextActions({ contextId: null, currentEnergy: null, currentTimeMinutes: null, orderBy: "energy" });
+    const items = await fetchNextActions({ contextIds: [], currentEnergy: null, currentTimeMinutes: null, orderBy: "energy" });
 
     assert.deepEqual(items, []);
   });
 
   test("fetchNextActions includes context when filter is selected", async () => {
     globalThis.fetch = mock.fn(async (input) => {
-      assert.ok(input.toString().endsWith("/next-actions?orderBy=time&contextId=ctx-1"));
+      assert.ok(input.toString().endsWith("/next-actions?orderBy=time&contextIds=ctx-1&contextIds=ctx-2"));
       return new Response(JSON.stringify([]), { status: 200 });
     });
 
-    await fetchNextActions({ contextId: "ctx-1", currentEnergy: null, currentTimeMinutes: null, orderBy: "time" });
+    await fetchNextActions({ contextIds: ["ctx-1", "ctx-2"], currentEnergy: null, currentTimeMinutes: null, orderBy: "time" });
   });
 
   test("fetchNextActions includes availability when priority sorting", async () => {
@@ -43,7 +43,7 @@ describe("next actions API", () => {
       return new Response(JSON.stringify([]), { status: 200 });
     });
 
-    await fetchNextActions({ contextId: null, currentEnergy: 3, currentTimeMinutes: 45, orderBy: "priority" });
+    await fetchNextActions({ contextIds: [], currentEnergy: 3, currentTimeMinutes: 45, orderBy: "priority" });
   });
 
   test("patchNextActionAttributes sends next action metadata", async () => {

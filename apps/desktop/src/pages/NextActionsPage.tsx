@@ -13,11 +13,10 @@ import { useActiveScreen, useKeybindScreen, useRegisterKeybinds } from "../featu
 import type { FocusZoneId, KeybindDefinition, ScreenId } from "../features/keybinds/types";
 import { scrollDetailPane } from "../features/keybinds/scrollDetailPane";
 import { nextActionsListTheme } from "../features/lists/listThemes";
-import { ContextFilterDialog } from "../features/next-actions/ContextFilterDialog";
+import { CurrentAvailabilityDialog } from "../features/next-actions/CurrentAvailabilityDialog";
 import { NextActionEditDialog } from "../features/next-actions/NextActionEditDialog";
 import { NextActionsList } from "../features/next-actions/NextActionsList";
-import { ProcessingEnergyStep } from "../features/processing/ProcessingEnergyStep";
-import { ProcessingTimeStep } from "../features/processing/ProcessingTimeStep";
+import type { ContextItem } from "../features/contexts/types";
 import type { NextActionPatch } from "../features/next-actions/types";
 import type { NextActionsWorkspaceController } from "../features/next-actions/useNextActionsWorkspaceController";
 
@@ -95,9 +94,7 @@ function buildNextActionBindings(
   controller: NextActionsWorkspaceController,
   setActiveScreen: (screen: ScreenId) => void,
   selectOnGoingAction: (id: string | null) => void,
-  openContext: () => void,
-  openEnergy: () => void,
-  openTime: () => void,
+  openCurrentAvailability: () => void,
   openAttrs: () => void,
   openLink: () => void,
   openAsset: () => void,
@@ -112,12 +109,8 @@ function buildNextActionBindings(
     nextActionBinding("next-actions.delete-detail", "d", "Delete selected next action", "next-action-detail", () => runAsync(canEditSelected(controller), controller.deleteSelected, "Failed to delete next action")),
     nextActionBinding("next-actions.done-list", "x", "Mark as done", "next-actions-list", () => runAsync(canEditSelected(controller), controller.markAsDone, "Failed to mark as done")),
     nextActionBinding("next-actions.done-detail", "x", "Mark as done", "next-action-detail", () => runAsync(canEditSelected(controller), controller.markAsDone, "Failed to mark as done")),
-    nextActionBinding("next-actions.context-list", "c", "Filter by context", "next-actions-list", openContext),
-    nextActionBinding("next-actions.context-detail", "c", "Filter by context", "next-action-detail", openContext),
-    nextActionBinding("next-actions.energy-list", "e", "Set available energy", "next-actions-list", openEnergy),
-    nextActionBinding("next-actions.energy-detail", "e", "Set available energy", "next-action-detail", openEnergy),
-    nextActionBinding("next-actions.time-list", "t", "Set available time", "next-actions-list", openTime),
-    nextActionBinding("next-actions.time-detail", "t", "Set available time", "next-action-detail", openTime),
+    nextActionBinding("next-actions.current-availability-list", "c", "Set current availability", "next-actions-list", openCurrentAvailability),
+    nextActionBinding("next-actions.clear-current-availability-list", "C", "Clear current availability", "next-actions-list", controller.resetCurrentAvailability),
     nextActionBinding("next-actions.attrs-list", "E", "Edit next action attributes", "next-actions-list", () => canEditSelected(controller) && openAttrs()),
     nextActionBinding("next-actions.attrs-detail", "E", "Edit next action attributes", "next-action-detail", () => canEditSelected(controller) && openAttrs()),
     nextActionBinding("next-actions.ongoing-list", "o", "Mark as on going", "next-actions-list", () => runAsync(canEditSelected(controller), () => markAsOnGoingAndOpenDetail(controller, selectOnGoingAction, setActiveScreen), "Failed to mark as on going")),
@@ -148,9 +141,9 @@ function buildNextActionBindings(
   ];
 }
 
-function useNextActionBindings(controller: NextActionsWorkspaceController, selectOnGoingAction: (id: string | null) => void, openContext: () => void, openEnergy: () => void, openTime: () => void, openAttrs: () => void, openLink: () => void, openAsset: () => void, isAttrsOpen: boolean) {
+function useNextActionBindings(controller: NextActionsWorkspaceController, selectOnGoingAction: (id: string | null) => void, openCurrentAvailability: () => void, openAttrs: () => void, openLink: () => void, openAsset: () => void, isAttrsOpen: boolean) {
   const { setActiveScreen } = useActiveScreen();
-  const bindings = useMemo(() => buildNextActionBindings(controller, setActiveScreen, selectOnGoingAction, openContext, openEnergy, openTime, openAttrs, openLink, openAsset, isAttrsOpen), [controller, setActiveScreen, selectOnGoingAction, openContext, openEnergy, openTime, openAttrs, openLink, openAsset, isAttrsOpen]);
+  const bindings = useMemo(() => buildNextActionBindings(controller, setActiveScreen, selectOnGoingAction, openCurrentAvailability, openAttrs, openLink, openAsset, isAttrsOpen), [controller, setActiveScreen, selectOnGoingAction, openCurrentAvailability, openAttrs, openLink, openAsset, isAttrsOpen]);
   useRegisterKeybinds(bindings);
 }
 
@@ -179,7 +172,8 @@ function orderLabel(controller: NextActionsWorkspaceController): string {
 }
 
 function ContextFilterLabel({ controller }: NextActionControllerProps) {
-  return controller.context ? <ContextNameWithIcon context={controller.context} /> : <>all contexts</>;
+  if (controller.contexts.length === 0) return <>all contexts</>;
+  return <>{controller.contexts.map((context) => <ContextNameWithIcon key={context.id} context={context} />)}</>;
 }
 
 function availabilityLabel(controller: NextActionsWorkspaceController): string {
@@ -271,33 +265,6 @@ function NextActionViews({ controller }: NextActionControllerProps) {
   );
 }
 
-function currentEnergyDigits(value: number | null): string {
-  return value == null ? "" : Math.round(value * 10).toString();
-}
-
-function currentTimeDigits(value: number | null): string {
-  if (value == null) return "";
-  return `${Math.floor(value / 60)}${(value % 60).toString().padStart(2, "0")}`;
-}
-
-function EnergyAvailabilityDialog(props: Readonly<{ controller: NextActionsWorkspaceController; onClose: () => void }>) {
-  const [digits, setDigits] = useState(() => currentEnergyDigits(props.controller.currentEnergy));
-  const selectEnergy = (energy: number | null) => {
-    props.controller.setCurrentEnergy(energy);
-    props.onClose();
-  };
-  return <section className="processing-dialog" role="dialog" aria-modal="true" aria-label="Set available energy"><ProcessingEnergyStep digits={digits} label="Available energy (0.0 - 10.0):" onDigitsChange={setDigits} onEnergySelected={selectEnergy} onBack={props.onClose} /></section>;
-}
-
-function TimeAvailabilityDialog(props: Readonly<{ controller: NextActionsWorkspaceController; onClose: () => void }>) {
-  const [digits, setDigits] = useState(() => currentTimeDigits(props.controller.currentTimeMinutes));
-  const selectTime = (minutes: number | null) => {
-    props.controller.setCurrentTimeMinutes(minutes);
-    props.onClose();
-  };
-  return <section className="processing-dialog" role="dialog" aria-modal="true" aria-label="Set available time"><ProcessingTimeStep digits={digits} label="Available time (h min):" onDigitsChange={setDigits} onTimeSelected={selectTime} onBack={props.onClose} /></section>;
-}
-
 /**
  * Renders next actions with context filtering, ordering, and editing keybindings.
  *
@@ -305,23 +272,19 @@ function TimeAvailabilityDialog(props: Readonly<{ controller: NextActionsWorkspa
  */
 export function NextActionsPage({ controller, selectOnGoingAction }: NextActionsPageProps) {
   const contextsQuery = useContextsQuery();
-  const [isContextOpen, setIsContextOpen] = useState(false);
+  const [isCurrentAvailabilityOpen, setIsCurrentAvailabilityOpen] = useState(false);
   const [isAttrsOpen, setIsAttrsOpen] = useState(false);
-  const [isEnergyOpen, setIsEnergyOpen] = useState(false);
-  const [isTimeOpen, setIsTimeOpen] = useState(false);
   const [isLinkOpen, setIsLinkOpen] = useState(false);
   const [isAssetOpen, setIsAssetOpen] = useState(false);
-  const isPickerOpen = isAttrsOpen || isContextOpen || isEnergyOpen || isTimeOpen;
-  const openContext = useCallback(() => !isPickerOpen && setIsContextOpen(true), [isPickerOpen]);
-  const openEnergy = useCallback(() => !isPickerOpen && setIsEnergyOpen(true), [isPickerOpen]);
-  const openTime = useCallback(() => !isPickerOpen && setIsTimeOpen(true), [isPickerOpen]);
+  const isPickerOpen = isAttrsOpen || isCurrentAvailabilityOpen;
+  const openCurrentAvailability = useCallback(() => !isPickerOpen && setIsCurrentAvailabilityOpen(true), [isPickerOpen]);
   const openAttrs = useCallback(() => !isPickerOpen && setIsAttrsOpen(true), [isPickerOpen]);
   const openLink = useCallback(() => setIsLinkOpen(true), []);
   const openAsset = useCallback(() => setIsAssetOpen(true), []);
   useKeybindScreen("next-actions");
   useNextActionZone(controller);
   useNextActionAssetPreload(controller);
-  useNextActionBindings(controller, selectOnGoingAction, openContext, openEnergy, openTime, openAttrs, openLink, openAsset, isAttrsOpen);
+  useNextActionBindings(controller, selectOnGoingAction, openCurrentAvailability, openAttrs, openLink, openAsset, isAttrsOpen);
 
   return (
     <ListWorkspace theme={nextActionsListTheme} currentClassName="list-workspace__current--next-actions" currentLabel={<NextActionsFooterLabel controller={controller} />} modeLabel={controller.vimMode ?? undefined}>
@@ -331,9 +294,7 @@ export function NextActionsPage({ controller, selectOnGoingAction }: NextActions
         {isLinkOpen ? <LazyMarkdownLinkComboDialog onClose={() => setIsLinkOpen(false)} /> : null}
         {isAssetOpen && controller.selectedItem ? <LazyMarkdownAssetComboDialog itemId={controller.selectedItem.id} onClose={() => setIsAssetOpen(false)} /> : null}
       </Suspense>
-      {isContextOpen ? <ContextFilterDialog contexts={contextsQuery.contexts} currentContextId={controller.context?.id ?? null} isLoading={contextsQuery.isLoading} errorMessage={contextsQuery.errorMessage} onRetry={contextsQuery.reload} onSelect={(context) => { controller.setContext(context); setIsContextOpen(false); }} onClose={() => setIsContextOpen(false)} /> : null}
-      {isEnergyOpen ? <EnergyAvailabilityDialog controller={controller} onClose={() => setIsEnergyOpen(false)} /> : null}
-      {isTimeOpen ? <TimeAvailabilityDialog controller={controller} onClose={() => setIsTimeOpen(false)} /> : null}
+      {isCurrentAvailabilityOpen ? <CurrentAvailabilityDialog contextIds={controller.contexts.map((context) => context.id)} energy={controller.currentEnergy} timeMinutes={controller.currentTimeMinutes} onApply={(contextIds, energy, timeMinutes) => applyCurrentAvailability(controller, contextsQuery.contexts, contextIds, energy, timeMinutes, () => setIsCurrentAvailabilityOpen(false))} onClose={() => setIsCurrentAvailabilityOpen(false)} /> : null}
       {isAttrsOpen && controller.selectedItem ? <NextActionEditDialog item={controller.selectedItem} onSave={(patch) => saveAttributes(controller, patch, () => setIsAttrsOpen(false))} onClose={() => setIsAttrsOpen(false)} /> : null}
     </ListWorkspace>
   );
@@ -352,5 +313,10 @@ function NextActionsFooterLabel({ controller }: NextActionControllerProps) {
 
 async function saveAttributes(controller: NextActionsWorkspaceController, patch: NextActionPatch, close: () => void) {
   await controller.patchSelected(patch);
+  close();
+}
+
+function applyCurrentAvailability(controller: NextActionsWorkspaceController, contexts: ContextItem[], contextIds: string[], energy: number | null, timeMinutes: number | null, close: () => void) {
+  controller.applyCurrentAvailability(contexts.filter((context) => contextIds.includes(context.id)), energy, timeMinutes);
   close();
 }
