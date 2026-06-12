@@ -18,6 +18,16 @@ type CurrentAvailabilityDraft = {
   energyValue: string;
   timeValue: string;
 };
+type CurrentAvailabilityRenderModel = {
+  apply: (minutes: number | null) => void;
+  back: () => void;
+  draft: CurrentAvailabilityDraft;
+  setContextIds: (contextIds: string[]) => void;
+  setEnergy: (energy: number | null) => void;
+  setEnergyValue: (value: string) => void;
+  setStep: (step: CurrentAvailabilityStep) => void;
+  setTimeValue: (value: string) => void;
+};
 
 function energyDigits(value: number | null): string {
   return value == null ? "" : Math.round(value * 10).toString();
@@ -49,29 +59,20 @@ export function CurrentAvailabilityDialog(props: CurrentAvailabilityDialogProps)
     setStep(nextBackStep(step));
   };
   const apply = (minutes: number | null) => props.onApply(contextIds, energy, minutes);
+  const model = { apply, back, draft, setContextIds, setEnergy, setEnergyValue, setStep, setTimeValue };
 
   return (
-    <section className="processing-dialog processing-dialog--next-actions" role="dialog" aria-modal="true" aria-label="Current Availability">
+    <dialog className="processing-dialog processing-dialog--next-actions" aria-label="Current Availability" open>
       <div className="processing-dialog__title">Current Availability</div>
       <div className="processing-dialog__content">
-        {renderCurrentAvailabilityStep(step, draft, setContextIds, setEnergy, setEnergyValue, setTimeValue, setStep, apply, back)}
+        {renderCurrentAvailabilityStep(step, model)}
       </div>
-    </section>
+    </dialog>
   );
 }
 
-function renderCurrentAvailabilityStep(
-  step: CurrentAvailabilityStep,
-  draft: CurrentAvailabilityDraft,
-  setContextIds: (contextIds: string[]) => void,
-  setEnergy: (energy: number | null) => void,
-  setEnergyValue: (value: string) => void,
-  setTimeValue: (value: string) => void,
-  setStep: (step: CurrentAvailabilityStep) => void,
-  apply: (minutes: number | null) => void,
-  back: () => void
-) {
-  if (step === "context") return <ProcessingContextStep initialSelectedIds={draft.contextIds} onSelectedIdsChange={setContextIds} onContextsSelected={(nextIds) => { setContextIds(nextIds); setStep("energy"); }} onBack={back} />;
-  if (step === "energy") return <ProcessingEnergyStep digits={draft.energyValue} label="Available energy (0.0 - 10.0):" onDigitsChange={setEnergyValue} onEnergySelected={(nextEnergy) => { setEnergy(nextEnergy); setStep("time"); }} onBack={back} />;
-  return <ProcessingTimeStep digits={draft.timeValue} label="Available time (h min):" onDigitsChange={setTimeValue} onTimeSelected={apply} onBack={back} />;
+function renderCurrentAvailabilityStep(step: CurrentAvailabilityStep, model: CurrentAvailabilityRenderModel) {
+  if (step === "context") return <ProcessingContextStep initialSelectedIds={model.draft.contextIds} onSelectedIdsChange={model.setContextIds} onContextsSelected={(nextIds) => { model.setContextIds(nextIds); model.setStep("energy"); }} onBack={model.back} />;
+  if (step === "energy") return <ProcessingEnergyStep digits={model.draft.energyValue} label="Available energy (0.0 - 10.0):" onDigitsChange={model.setEnergyValue} onEnergySelected={(nextEnergy) => { model.setEnergy(nextEnergy); model.setStep("time"); }} onBack={model.back} />;
+  return <ProcessingTimeStep digits={model.draft.timeValue} label="Available time (h min):" onDigitsChange={model.setTimeValue} onTimeSelected={model.apply} onBack={model.back} />;
 }
