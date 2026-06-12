@@ -80,8 +80,8 @@ test("clears current availability and selects the first visible next action", as
   const other = await createContextApi(request, otherName);
   const homeTitle = uniqueLabel("Home reset action");
   const firstTitle = uniqueLabel("First reset action");
-  await createNextAction(request, homeTitle, [home.id], 1.0);
-  await createNextAction(request, firstTitle, [other.id], 9.0);
+  await createNextAction(request, homeTitle, [home.id], 1);
+  await createNextAction(request, firstTitle, [other.id], 9);
 
   await openNextActions(page);
   await applyNamedContextAvailability(page, homeName);
@@ -93,7 +93,7 @@ test("clears current availability and selects the first visible next action", as
   await expect(page.locator('ol[aria-label="Next actions"] .tree-entry').first()).toHaveClass(/tree-entry--active/);
 });
 
-async function createNextAction(request: APIRequestContext, title: string, contextIds: string[], energy = 1.0): Promise<void> {
+async function createNextAction(request: APIRequestContext, title: string, contextIds: string[], energy = 1): Promise<void> {
   const stuff = await createStuffApi(request, title);
   await convertStuffToNextActionApi(request, stuff.id, contextIds, energy);
 }
