@@ -128,6 +128,7 @@ function ArchivedListReady({ controller }: Readonly<Pick<ArchivedNextActionsPage
   return (
     <NextActionsList
       items={controller.stuffs}
+      editingTitleError={null}
       selectedId={controller.selectedItem?.id ?? ""}
       editingId={null}
       editingTitle=""

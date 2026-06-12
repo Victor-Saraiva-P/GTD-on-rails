@@ -104,6 +104,11 @@ function handleTitleKeyDown(
 ): void {
   const nextValue = isUndoKey(event) ? undoTitleInput(event.currentTarget, history) : redoValueForKey(event, history);
   if (nextValue === null) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
     props.onEditKeyDown(event);
     return;
   }

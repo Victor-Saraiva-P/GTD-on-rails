@@ -31,8 +31,9 @@ function useDraftStuffState() {
 function useTitleEditState() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
+  const [editingTitleError, setEditingTitleError] = useState<string | null>(null);
 
-  return { editingId, editingTitle, setEditingId, setEditingTitle };
+  return { editingId, editingTitle, editingTitleError, setEditingId, setEditingTitle, setEditingTitleError };
 }
 
 function useBodyEditState() {
@@ -60,6 +61,7 @@ function useInboxSelection(stuffs: Stuff[], draftStuff: Stuff | null) {
 function clearTitleEdit(model: InboxModel) {
   model.titleEdit.setEditingId(null);
   model.titleEdit.setEditingTitle("");
+  model.titleEdit.setEditingTitleError(null);
 }
 
 function clearBodyEdit(model: InboxModel) {
@@ -146,6 +148,7 @@ function createNewStuffAction(model: InboxModel) {
   model.selection.setSelectedId(nextDraft.id);
   model.titleEdit.setEditingId(nextDraft.id);
   model.titleEdit.setEditingTitle("");
+  model.titleEdit.setEditingTitleError(null);
   clearBodyEdit(model);
   model.pending.setPendingBodyEditId(nextDraft.id);
   model.zone.setActiveZone("inbox-list");
@@ -197,6 +200,7 @@ function startEditingSelectedStuffAction(model: InboxModel) {
 
   model.titleEdit.setEditingId(selectedItem.id);
   model.titleEdit.setEditingTitle(selectedItem.id === DRAFT_STUFF_ID ? "" : selectedItem.title);
+  model.titleEdit.setEditingTitleError(null);
   model.pending.setPendingBodyEditId(selectedItem.id === DRAFT_STUFF_ID ? selectedItem.id : null);
 }
 
@@ -262,7 +266,17 @@ async function commitEditingSelectedStuffAction(model: InboxModel) {
     return;
   }
 
-  await commitNormalizedTitle(model, selectedItem, normalizedTitle, shouldContinueToBody);
+  try {
+    await commitNormalizedTitle(model, selectedItem, normalizedTitle, shouldContinueToBody);
+  } catch (error: unknown) {
+    model.titleEdit.setEditingTitleError(titleEditErrorMessage(error));
+    throw error;
+  }
+}
+
+function titleEditErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return "Failed to save title.";
 }
 
 async function commitNormalizedTitle(
@@ -384,7 +398,7 @@ function useInboxWorkspaceModel() {
 }
 
 function controllerEditState(model: InboxModel) {
-  return { editingBodyId: model.bodyEdit.editingBodyId, editingId: model.titleEdit.editingId, editingTitle: model.titleEdit.editingTitle };
+  return { editingBodyId: model.bodyEdit.editingBodyId, editingId: model.titleEdit.editingId, editingTitle: model.titleEdit.editingTitle, editingTitleError: model.titleEdit.editingTitleError };
 }
 
 function controllerQueryState(query: InboxQuery) {
@@ -404,7 +418,10 @@ function buildInboxWorkspaceController(model: InboxModel, actions: InboxActions)
     activeZone: model.zone.activeZone,
     vimMode: model.bodyEdit.vimMode,
     setActiveZone: model.zone.setActiveZone,
-    setEditingTitle: model.titleEdit.setEditingTitle,
+    setEditingTitle: (value: string) => {
+      model.titleEdit.setEditingTitle(value);
+      model.titleEdit.setEditingTitleError(null);
+    },
     setVimMode: model.bodyEdit.setVimMode,
     setPendingBodyEditId: model.pending.setPendingBodyEditId,
     setSelectedId: model.selection.setSelectedId

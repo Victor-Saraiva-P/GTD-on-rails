@@ -260,6 +260,7 @@ function NextActionsListReady({ activePanel, controller }: Readonly<Pick<Control
   return (
     <NextActionsList
       items={controller.stuffs}
+      editingTitleError={controller.editingTitleError}
       selectedId={activePanel === "next-actions" ? controller.selectedItem?.id ?? "" : ""}
       editingId={controller.editingId}
       editingTitle={controller.editingTitle}
@@ -293,6 +294,7 @@ function CalendarListReady({ activePanel, calendarController }: Readonly<Pick<Co
   return (
     <CalendarList
       items={calendarController.stuffs}
+      editingTitleError={calendarController.editingTitleError}
       selectedId={activePanel === "calendars" ? calendarController.selectedItem?.id ?? "" : ""}
       editingId={calendarController.editingId}
       editingTitle={calendarController.editingTitle}

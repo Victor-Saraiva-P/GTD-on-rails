@@ -3,6 +3,7 @@ import { CalendarListCard } from "./CalendarListCard";
 
 type CalendarListProps = Readonly<{
   archiveStatus?: "deleted";
+  editingTitleError: string | null;
   editingId: string | null;
   editingTitle: string;
   items: Calendar[];

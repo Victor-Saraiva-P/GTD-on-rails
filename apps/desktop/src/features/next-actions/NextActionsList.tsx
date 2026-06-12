@@ -3,6 +3,7 @@ import type { NextAction } from "./types";
 
 type NextActionsListProps = Readonly<{
   items: NextAction[];
+  editingTitleError: string | null;
   selectedId: string;
   editingId: string | null;
   editingTitle: string;
@@ -18,11 +19,12 @@ type NextActionRowProps = Readonly<Omit<NextActionsListProps, "items"> & {
   item: NextAction;
 }>;
 
-function NextActionRow({ item, selectedId, editingId, ...props }: NextActionRowProps) {
+function NextActionRow({ item, selectedId, editingId, editingTitleError, ...props }: NextActionRowProps) {
   return (
     <InboxListStuff
       glyph="N"
       item={item}
+      editingTitleError={item.id === editingId ? editingTitleError : null}
       selected={item.id === selectedId}
       editing={item.id === editingId}
       {...props}

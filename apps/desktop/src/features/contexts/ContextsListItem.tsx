@@ -5,6 +5,7 @@ import type { ContextItem } from "./types";
 
 type ContextsListItemProps = Readonly<{
   item: ContextItem;
+  editingTitleError: string | null;
   selected: boolean;
   editing: boolean;
   editingName: string;
@@ -37,8 +38,7 @@ function ContextGlyph({ item }: Readonly<Pick<ContextsListItemProps, "item">>) {
 function handleContextInputKeyDown(
   event: KeyboardEvent<HTMLInputElement>,
   skipBlurCommitRef: MutableRefObject<boolean>,
-  onCommitEditing: () => void,
-  onCancelEditing: () => void
+  onCommitEditing: () => void
 ) {
   if (event.key === "Enter") {
     event.preventDefault();
@@ -48,8 +48,7 @@ function handleContextInputKeyDown(
 
   if (event.key === "Escape") {
     event.preventDefault();
-    skipBlurCommitRef.current = true;
-    onCancelEditing();
+    onCommitEditing();
   }
 }
 
@@ -57,7 +56,7 @@ function EditingContextsListItem(props: Readonly<Omit<ContextsListItemProps, "ed
   const skipBlurCommitRef = useRef(false);
   const handleBlur = () => handleContextInputBlur(skipBlurCommitRef, props.onCommitEditing);
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    handleContextInputKeyDown(event, skipBlurCommitRef, props.onCommitEditing, props.onCancelEditing);
+    handleContextInputKeyDown(event, skipBlurCommitRef, props.onCommitEditing);
   };
 
   return <EditingContextEntry {...props} onBlur={handleBlur} onKeyDown={handleKeyDown} />;
@@ -71,12 +70,15 @@ function EditingContextEntry(
       <div className="tree-entry tree-entry--active context-tree-entry">
         <span className="tree-entry__marker">{props.selected ? "●" : "○"}</span>
         <ContextGlyph item={props.item} />
-        <ContextNameInput
-          initialValue={props.editingName}
-          onChange={props.onEditingNameChange}
-          onBlur={props.onBlur}
-          onKeyDown={props.onKeyDown}
-        />
+        <div className="tree-entry__edit">
+          <ContextNameInput
+            initialValue={props.editingName}
+            onChange={props.onEditingNameChange}
+            onBlur={props.onBlur}
+            onKeyDown={props.onKeyDown}
+          />
+          {props.editingTitleError ? <p className="tree-entry__error">{props.editingTitleError}</p> : null}
+        </div>
       </div>
     </li>
   );

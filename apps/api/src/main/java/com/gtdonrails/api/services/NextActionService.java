@@ -112,10 +112,10 @@ public class NextActionService {
     }
 
     @Transactional(readOnly = true)
-    public List<NextActionResponseDto> getOrderedByEnergy(UUID contextId) {
-        List<NextAction> nextActions = contextId == null
+    public List<NextActionResponseDto> getOrderedByEnergy(List<UUID> contextIds) {
+        List<NextAction> nextActions = noContextFilter(contextIds)
             ? nextActionRepository.findAllByStatusAndItem_DeletedAtIsNullOrderByEnergyDesc(NextActionStatus.NEXT_ACTION)
-            : nextActionRepository.findRunnableInContextOrderByEnergyDesc(NextActionStatus.NEXT_ACTION, contextId);
+            : nextActionRepository.findRunnableInContextsOrderByEnergyDesc(NextActionStatus.NEXT_ACTION, contextIds);
 
         return nextActions
             .stream()
@@ -124,10 +124,10 @@ public class NextActionService {
     }
 
     @Transactional(readOnly = true)
-    public List<NextActionResponseDto> getOrderedByTime(UUID contextId) {
-        List<NextAction> nextActions = contextId == null
+    public List<NextActionResponseDto> getOrderedByTime(List<UUID> contextIds) {
+        List<NextAction> nextActions = noContextFilter(contextIds)
             ? nextActionRepository.findAllByStatusAndItem_DeletedAtIsNullOrderByEstimatedTimeDesc(NextActionStatus.NEXT_ACTION)
-            : nextActionRepository.findRunnableInContextOrderByEstimatedTimeDesc(NextActionStatus.NEXT_ACTION, contextId);
+            : nextActionRepository.findRunnableInContextsOrderByEstimatedTimeDesc(NextActionStatus.NEXT_ACTION, contextIds);
 
         return nextActions
             .stream()
@@ -137,7 +137,7 @@ public class NextActionService {
 
     @Transactional(readOnly = true)
     public List<NextActionResponseDto> getOrderedByPriority(
-        UUID contextId,
+        List<UUID> contextIds,
         Integer currentTimeMinutes,
         BigDecimal currentEnergy
     ) {
@@ -145,7 +145,7 @@ public class NextActionService {
             java.time.LocalDate.now(clock),
             currentTimeMinutes,
             currentEnergy);
-        return unorderedRunnableNextActions(contextId)
+        return unorderedRunnableNextActions(contextIds)
             .stream()
             .sorted(Comparator.comparingDouble(score::calculate).reversed())
             .map(nextActionMapper::toResponse)
@@ -172,11 +172,15 @@ public class NextActionService {
         return nextActionRepository.findById(id).orElseThrow(() -> new ItemNotFoundException("NextAction " + id + " not found"));
     }
 
-    private List<NextAction> unorderedRunnableNextActions(UUID contextId) {
-        if (contextId == null) {
+    private List<NextAction> unorderedRunnableNextActions(List<UUID> contextIds) {
+        if (noContextFilter(contextIds)) {
             return nextActionRepository.findAllByStatusAndItem_DeletedAtIsNull(NextActionStatus.NEXT_ACTION);
         }
-        return nextActionRepository.findRunnableInContext(NextActionStatus.NEXT_ACTION, contextId);
+        return nextActionRepository.findRunnableInContexts(NextActionStatus.NEXT_ACTION, contextIds);
+    }
+
+    private boolean noContextFilter(List<UUID> contextIds) {
+        return contextIds == null || contextIds.isEmpty();
     }
 
     private Set<Context> findContextsOrThrow(List<UUID> contextIds) {
