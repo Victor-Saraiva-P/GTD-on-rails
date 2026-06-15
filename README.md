@@ -1,6 +1,6 @@
 # GTD on Rails
 
-[![Release](https://img.shields.io/github/v/release/Victor-Saraiva-P/GTD-on-rails)](https://github.com/Victor-Saraiva-P/GTD-on-rails/releases)
+[![Version](https://img.shields.io/badge/version-1.3.0-blue)](./VERSION)
 [![CI](https://github.com/Victor-Saraiva-P/GTD-on-rails/actions/workflows/ci.yml/badge.svg)](https://github.com/Victor-Saraiva-P/GTD-on-rails/actions/workflows/ci.yml)
 [![CD](https://github.com/Victor-Saraiva-P/GTD-on-rails/actions/workflows/release.yml/badge.svg)](https://github.com/Victor-Saraiva-P/GTD-on-rails/actions/workflows/release.yml)
 [![Desktop](https://img.shields.io/badge/platform-linux%20desktop-333333)](#architecture)
