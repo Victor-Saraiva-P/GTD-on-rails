@@ -84,6 +84,16 @@ public class AssetStorageService {
         writeLocalAssetFile(sourcePath, resolveValidatedAssetPath(relativePath));
     }
 
+    /**
+     * Copies a bundled item attachment under the configured asset directory.
+     *
+     * <p>Example: {@code assetStorageService.copyBundledItemAsset("items/id/a/file.pdf", input, "file.pdf")}.</p>
+     */
+    public void copyBundledItemAsset(String relativePath, InputStream inputStream, String fileName) {
+        validateBundledItemAssetFile(inputStream, fileName);
+        writeAssetStream(inputStream, resolveValidatedAssetPath(relativePath));
+    }
+
     private void writeAssetFile(MultipartFile file, Path destination) {
         try {
             Files.createDirectories(destination.getParent());
@@ -101,6 +111,15 @@ public class AssetStorageService {
             Files.copy(sourcePath, destination, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException exception) {
             throw new IllegalStateException("Failed to copy local item asset", exception);
+        }
+    }
+
+    private void writeAssetStream(InputStream inputStream, Path destination) {
+        try (InputStream source = inputStream) {
+            Files.createDirectories(destination.getParent());
+            Files.copy(source, destination, StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException exception) {
+            throw new IllegalStateException("Failed to copy bundled item asset", exception);
         }
     }
 
@@ -266,6 +285,13 @@ public class AssetStorageService {
         }
         validateLocalItemAssetSize(sourcePath);
         validateItemAssetExtension(sourcePath.getFileName().toString());
+    }
+
+    private void validateBundledItemAssetFile(InputStream inputStream, String fileName) {
+        if (inputStream == null) {
+            throw new IllegalArgumentException("item asset input stream value 'null' is invalid; expected readable stream");
+        }
+        validateItemAssetExtension(fileName);
     }
 
     private void validateLocalItemAssetSize(Path sourcePath) {
