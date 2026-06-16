@@ -10,7 +10,8 @@ GTD on Rails is a local-first personal GTD system for capturing information, pro
 
 It is also a portfolio-grade full-stack desktop app: Tauri 2 and React 19 on the frontend, a Spring Boot backend sidecar, SQLite local persistence, Git-backed DB sync, Google Drive asset sync, and Google Calendar mirroring.
 
-> Screenshot placeholder: main workspace showing a next-actions list, selected item detail, keyboard focus state, and sync indicators in the footer.
+![Next Actions workspace with selected detail and PDF preview](docs/assets/screenshots/main-next-actions.png)
+> Main workspace showing a next-actions list, selected item detail, keyboard focus state, and sync indicators in the footer.
 
 ## Project Status
 
@@ -33,9 +34,32 @@ The name is about the philosophy of the project: the app keeps GTD decisions on 
 - Local-first sync: SQLite structured data syncs through a private Git repository, while file assets sync through Google Drive via `rclone`.
 - External agenda mirror: Google Calendar reflects deadlines, On Going work, and Done items while local GTD items remain the source of truth.
 
-> Screenshot placeholder: inbox processing flow showing captured stuff being converted into a next action with context, energy, time, and deadline choices.
+## Screenshots
 
-> Screenshot placeholder: detail view showing markdown body content with links, an image or PDF preview, and an attached file asset.
+### Processing Workflow
+
+<table>
+  <tr>
+    <td><img src="docs/assets/screenshots/processing-choice.png" alt="Processing wizard action type choice"></td>
+    <td><img src="docs/assets/screenshots/processing-deadline.png" alt="Processing wizard deadline step"></td>
+  </tr>
+  <tr>
+    <td><img src="docs/assets/screenshots/processing-contexts.png" alt="Processing wizard contexts step"></td>
+    <td><img src="docs/assets/screenshots/processing-energy.png" alt="Processing wizard energy step"></td>
+  </tr>
+</table>
+
+> Inbox processing flow showing captured stuff being converted into a next action with deadline, contexts, and energy choices.
+
+### Rich Supporting Material
+
+![Next Action detail with PDF preview](docs/assets/screenshots/pdf-detail.png)
+> Detail view showing markdown body content with a link and an attached PDF preview.
+
+### External Agenda Mirror
+
+![Google Calendar week view mirrored from GTD on Rails](docs/assets/screenshots/google-calendar-mirror.png)
+> Google Calendar week view mirroring GTD deadlines, calendar items, On Going work, and Done items from local data.
 
 ## Architecture
 
@@ -59,7 +83,8 @@ Git persistence sync + Google Drive asset sync
 - Assets: item attachments live as local files with SQLite metadata and sync through Google Drive via `rclone bisync`.
 - External agenda mirror: Google Calendar receives derived calendar events; the local GTD system remains the source of truth.
 
-> Screenshot placeholder: sync/status area showing Git persistence sync, Google Drive asset sync, Google Calendar sync, and local sidecar health.
+![Synchronization status indicators](docs/assets/screenshots/sync-status.png)
+> Sync/status area showing Git persistence sync, Google Drive asset sync, Google Calendar sync, and local sidecar health.
 
 ## Engineering Highlights
 
