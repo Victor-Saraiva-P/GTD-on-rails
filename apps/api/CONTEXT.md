@@ -43,3 +43,15 @@ _Avoid_: Planned schedule, appointment time
 **Done**:
 An item state for work that has been completed. Done items are represented on the shared done external agenda using their actual schedule window.
 _Avoid_: Completed task, finished todo
+
+**Recurring Calendar Template**:
+A non-executable GTD calendar pattern that owns recurrence details and spawns normal calendar items for each occurrence. It is not pulled on going or marked done itself.
+_Avoid_: Recurring calendar, calendar recurrence, template calendar
+
+**Recurring Calendar Occurrence**:
+A normal calendar item spawned from a recurring calendar template for one intended date and time. It keeps a stable relationship to its template so template changes can update the right calendar items unless the occurrence has been personalized.
+_Avoid_: Spawned calendar, recurrence instance, generated calendar
+
+**Personalized Occurrence**:
+A recurring calendar occurrence that the user has edited directly, making it independent from future template content and schedule changes. Lifecycle changes such as deleting, recovering, moving on going, or marking done do not make an occurrence personalized.
+_Avoid_: Manual override, detached instance, customized calendar
