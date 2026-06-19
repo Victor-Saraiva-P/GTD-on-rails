@@ -4,8 +4,8 @@ import { clearAssetObjectUrlCache } from "../features/inbox/assetFiles";
 import { useCalendarWorkspaceController, type CalendarWorkspaceController } from "../features/calendar/useCalendarWorkspaceController";
 import { useDeletedInboxWorkspaceController } from "../features/inbox/useDeletedInboxWorkspaceController";
 import { useInboxWorkspaceController, type InboxWorkspaceController } from "../features/inbox/useInboxWorkspaceController";
-import { useActiveScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
-import type { KeybindDefinition, ScreenId } from "../features/keybinds/types";
+import { useActiveScreen, useActiveZone, useRegisterKeybinds } from "../features/keybinds/hooks";
+import type { FocusZoneId, KeybindDefinition, ScreenId } from "../features/keybinds/types";
 import {
   deleteNextAction,
   fetchDeletedNextActions,
@@ -56,6 +56,7 @@ type AppControllers = ReturnType<typeof useAppControllers>;
 
 function buildNavigationBindings(
   setActiveScreen: (screen: ScreenId) => void,
+  setActiveZone: (zone: FocusZoneId) => void,
   inboxController: InboxWorkspaceController,
   calendarController: CalendarWorkspaceController
 ) {
@@ -96,7 +97,10 @@ function buildNavigationBindings(
       description: "Open next actions",
       leader: true,
       sequence: ["n"],
-      runKeybind: () => setActiveScreen("next-actions")
+      runKeybind: () => {
+        setActiveZone("next-actions-list");
+        setActiveScreen("next-actions");
+      }
     },
     {
       id: "navigation.open-ongoing-next-actions",
@@ -104,7 +108,10 @@ function buildNavigationBindings(
       description: "Open ongoing next actions",
       leader: true,
       sequence: ["o"],
-      runKeybind: () => setActiveScreen("ongoing-next-actions")
+      runKeybind: () => {
+        setActiveZone("next-actions-list");
+        setActiveScreen("ongoing-next-actions");
+      }
     },
     {
       id: "navigation.open-google-calendar-integration",
@@ -210,10 +217,11 @@ function renderActiveScreen(activeScreen: ScreenId, controllers: AppControllers)
  */
 export function AppShell() {
   const { activeScreen, setActiveScreen } = useActiveScreen();
+  const { setActiveZone } = useActiveZone();
   const controllers = useAppControllers();
   const navigationBindings = useMemo(
-    () => buildNavigationBindings(setActiveScreen, controllers.inbox, controllers.calendars),
-    [setActiveScreen, controllers.inbox, controllers.calendars]
+    () => buildNavigationBindings(setActiveScreen, setActiveZone, controllers.inbox, controllers.calendars),
+    [setActiveScreen, setActiveZone, controllers.inbox, controllers.calendars]
   );
 
   useReloadActiveScreen(activeScreen, controllers);

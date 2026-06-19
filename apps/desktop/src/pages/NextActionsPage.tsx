@@ -149,6 +149,10 @@ function useNextActionBindings(controller: NextActionsWorkspaceController, selec
 
 function useNextActionZone(controller: NextActionsWorkspaceController) {
   useEffect(() => {
+    controller.setActiveZone("next-actions-list");
+  }, [controller.setActiveZone]);
+
+  useEffect(() => {
     if (controller.activeZone !== "next-actions-list" && controller.activeZone !== "next-action-detail") {
       controller.setActiveZone(controller.editingBodyId ? "next-action-detail" : "next-actions-list");
     }
