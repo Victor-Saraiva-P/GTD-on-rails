@@ -57,6 +57,40 @@ test("Space n from on going detail returns to next actions list focus", async ({
   await expect(page.getByRole("button", { name: remainingTitle, exact: false }).first()).toBeVisible();
 });
 
+test("Space n after leaving next action detail returns to list mode", async ({ page, request }) => {
+  const editedTitle = uniqueLabel("Edited detail next action");
+  const ongoingTitle = uniqueLabel("Existing ongoing action");
+  await resetTestData(request);
+  await createNextActionApi(request, editedTitle);
+  await createOnGoingNextActionApi(request, ongoingTitle);
+  await openApp(page);
+  await openNextActions(page);
+  await page.getByRole("button", { name: editedTitle, exact: false }).first().click();
+  await openFocusedDetail(page, "Next Action Detail");
+
+  await openOnGoing(page);
+  await openNextActions(page);
+
+  await expect(page.locator(".inbox-pane--list")).toHaveClass(/list-pane--active/);
+  await expect(page.locator(".cm-content")).not.toBeVisible();
+});
+
+test("Space o from on going detail returns to on going list mode", async ({ page, request }) => {
+  const title = uniqueLabel("Edited ongoing action");
+  await resetTestData(request);
+  await createOnGoingNextActionApi(request, title);
+  await openApp(page);
+  await openOnGoing(page);
+  await page.getByRole("button", { name: title, exact: false }).first().click();
+  await openFocusedDetail(page, "On Going Action Detail");
+
+  await openOnGoing(page);
+
+  await expect(page.getByText("Panel: Next Actions")).toBeVisible();
+  await expect(page.locator(".inbox-pane").nth(0)).toHaveClass(/list-pane--active/);
+  await expect(page.locator(".cm-content")).not.toBeVisible();
+});
+
 test("Space o from on going calendar panel focuses next actions panel", async ({ page, request }) => {
   const actionTitle = uniqueLabel("Panel one action");
   const calendarTitle = uniqueLabel("Panel two calendar");
@@ -103,4 +137,11 @@ async function openNextActions(page: Page): Promise<void> {
 async function openOnGoing(page: Page): Promise<void> {
   await page.keyboard.press("Space");
   await page.keyboard.press("o");
+}
+
+async function openFocusedDetail(page: Page, title: string): Promise<void> {
+  await page.keyboard.press("Space");
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".list-pane__title", { hasText: title })).toBeVisible();
+  await expect(page.locator(".cm-content")).toBeVisible();
 }

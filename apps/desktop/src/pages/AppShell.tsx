@@ -4,8 +4,8 @@ import { clearAssetObjectUrlCache } from "../features/inbox/assetFiles";
 import { useCalendarWorkspaceController, type CalendarWorkspaceController } from "../features/calendar/useCalendarWorkspaceController";
 import { useDeletedInboxWorkspaceController } from "../features/inbox/useDeletedInboxWorkspaceController";
 import { useInboxWorkspaceController, type InboxWorkspaceController } from "../features/inbox/useInboxWorkspaceController";
-import { useActiveScreen, useActiveZone, useRegisterKeybinds } from "../features/keybinds/hooks";
-import type { FocusZoneId, KeybindDefinition, ScreenId } from "../features/keybinds/types";
+import { useActiveScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
+import type { KeybindDefinition, ScreenId } from "../features/keybinds/types";
 import {
   deleteNextAction,
   fetchDeletedNextActions,
@@ -34,6 +34,9 @@ import { StuffDetailPage } from "./StuffDetailPage";
 import { useOnGoingNextActionsWorkspaceController } from "../features/next-actions/useOnGoingNextActionsWorkspaceController";
 import { useGoogleCalendarIntegrationController } from "../features/integrations/useGoogleCalendarIntegrationController";
 import { GoogleCalendarIntegrationPage } from "./GoogleCalendarIntegrationPage";
+import type { NextActionsWorkspaceController } from "../features/next-actions/useNextActionsWorkspaceController";
+import type { OnGoingNextActionsWorkspaceController } from "../features/next-actions/useOnGoingNextActionsWorkspaceController";
+import type { OnGoingCalendarsWorkspaceController } from "../features/calendar/useOnGoingCalendarsWorkspaceController";
 
 const doneNextActionsConfig = {
   detailZone: "done-next-action-detail",
@@ -54,11 +57,28 @@ const deletedNextActionsConfig = {
 
 type AppControllers = ReturnType<typeof useAppControllers>;
 
+function openNextActionsWorkspace(controller: NextActionsWorkspaceController, setActiveScreen: (screen: ScreenId) => void) {
+  controller.resetWorkspace();
+  setActiveScreen("next-actions");
+}
+
+function openOnGoingWorkspace(
+  nextActionsController: OnGoingNextActionsWorkspaceController,
+  calendarController: OnGoingCalendarsWorkspaceController,
+  setActiveScreen: (screen: ScreenId) => void
+) {
+  calendarController.resetWorkspace();
+  nextActionsController.resetWorkspace();
+  setActiveScreen("ongoing-next-actions");
+}
+
 function buildNavigationBindings(
   setActiveScreen: (screen: ScreenId) => void,
-  setActiveZone: (zone: FocusZoneId) => void,
   inboxController: InboxWorkspaceController,
-  calendarController: CalendarWorkspaceController
+  calendarController: CalendarWorkspaceController,
+  nextActionsController: NextActionsWorkspaceController,
+  onGoingNextActionsController: OnGoingNextActionsWorkspaceController,
+  onGoingCalendarController: OnGoingCalendarsWorkspaceController
 ) {
   return [
     {
@@ -97,10 +117,7 @@ function buildNavigationBindings(
       description: "Open next actions",
       leader: true,
       sequence: ["n"],
-      runKeybind: () => {
-        setActiveZone("next-actions-list");
-        setActiveScreen("next-actions");
-      }
+      runKeybind: () => openNextActionsWorkspace(nextActionsController, setActiveScreen)
     },
     {
       id: "navigation.open-ongoing-next-actions",
@@ -108,10 +125,7 @@ function buildNavigationBindings(
       description: "Open ongoing next actions",
       leader: true,
       sequence: ["o"],
-      runKeybind: () => {
-        setActiveZone("next-actions-list");
-        setActiveScreen("ongoing-next-actions");
-      }
+      runKeybind: () => openOnGoingWorkspace(onGoingNextActionsController, onGoingCalendarController, setActiveScreen)
     },
     {
       id: "navigation.open-google-calendar-integration",
@@ -217,11 +231,10 @@ function renderActiveScreen(activeScreen: ScreenId, controllers: AppControllers)
  */
 export function AppShell() {
   const { activeScreen, setActiveScreen } = useActiveScreen();
-  const { setActiveZone } = useActiveZone();
   const controllers = useAppControllers();
   const navigationBindings = useMemo(
-    () => buildNavigationBindings(setActiveScreen, setActiveZone, controllers.inbox, controllers.calendars),
-    [setActiveScreen, setActiveZone, controllers.inbox, controllers.calendars]
+    () => buildNavigationBindings(setActiveScreen, controllers.inbox, controllers.calendars, controllers.nextActions, controllers.ongoingNextActions, controllers.ongoingCalendars),
+    [setActiveScreen, controllers.inbox, controllers.calendars, controllers.nextActions, controllers.ongoingNextActions, controllers.ongoingCalendars]
   );
 
   useReloadActiveScreen(activeScreen, controllers);
