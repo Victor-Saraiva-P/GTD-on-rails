@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { createContextApi, createAndSelectInboxStuff, openApp, resetTestData, todayDisplayValue, todayIsoValue, uniqueLabel } from "./support/app";
+import { createContextApi, createAndSelectInboxStuff, openApp, openCalendars, resetTestData, todayDisplayValue, todayIsoValue, uniqueLabel } from "./support/app";
 
 test.beforeEach(async ({ page, request }) => {
   await resetTestData(request);
@@ -137,6 +137,40 @@ test("enters calendar date with segmented keyboard input", async ({ page }) => {
   const payload = calendarRequest.postDataJSON() as CalendarProcessingRequestPayload;
   expect(payload).toEqual({ scheduledDate: "2028-02-29", scheduledTime: null });
 });
+
+test("processes stuff into a recurring calendar template with keyboard", async ({ page }) => {
+  const title = uniqueLabel("Processing recurring calendar");
+  await createAndSelectInboxStuff(page, title);
+
+  await page.keyboard.press("p");
+  await page.keyboard.press("Shift+C");
+
+  const dialog = page.getByRole("dialog", { name: "Processing" });
+  await expect(dialog.getByRole("textbox", { name: "Start date:" })).toHaveText(todayDisplayValue());
+  await page.keyboard.press("Enter");
+  await expect(dialog.getByText("Repeat every:")).toBeVisible();
+  await page.keyboard.press("d");
+  await expect(dialog.getByText("Scheduled time (optional):")).toBeVisible();
+  await page.keyboard.press("Enter");
+  await expect(dialog.getByRole("textbox", { name: "End date (optional):" })).toHaveText("__/__/____");
+
+  const templateRequestPromise = page.waitForRequest((request) => request.url().endsWith("/recurring-calendar-template") && request.method() === "POST");
+  const templateResponsePromise = page.waitForResponse((response) => response.url().endsWith("/recurring-calendar-template") && response.request().method() === "POST" && response.ok());
+  await page.keyboard.press("Enter");
+  const templateRequest = await templateRequestPromise;
+  await templateResponsePromise;
+
+  const payload = templateRequest.postDataJSON() as RecurringCalendarTemplateProcessingRequestPayload;
+  expect(payload).toEqual({ startDate: todayIsoValue(), scheduledTime: null, intervalValue: 1, recurrenceUnit: "day", weeklyWeekdays: [], endDate: null });
+  await expect(dialog).not.toBeVisible();
+  await openCalendars(page);
+  await expect(page.locator(".inbox-pane").nth(0).getByRole("button", { name: title, exact: false }).first()).toBeVisible();
+  await page.keyboard.press("]");
+  await page.keyboard.press("]");
+  await expect(page.locator(".inbox-pane .list-pane__title").nth(0)).toHaveText("Recurring");
+  await expect(page.getByText(title)).toBeVisible();
+});
+
 async function confirmNextActionProcessing(page: Page): Promise<void> {
   await page.keyboard.press("Enter");
   await page.keyboard.press("Enter");
@@ -151,4 +185,13 @@ type CalendarProcessingRequestPayload = {
 
 type NextActionProcessingRequestPayload = {
   deadline: string | null;
+};
+
+type RecurringCalendarTemplateProcessingRequestPayload = {
+  startDate: string;
+  scheduledTime: string | null;
+  intervalValue: number;
+  recurrenceUnit: string;
+  weeklyWeekdays: string[];
+  endDate: string | null;
 };

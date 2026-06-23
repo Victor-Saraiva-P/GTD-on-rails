@@ -63,11 +63,13 @@ describe("calendar workspace state", () => {
 
     assert.equal(calendarItemsForPanel(due, done, [], [], [], "due")[0].id, "due");
     assert.equal(calendarItemsForPanel(due, done, [], [], [], "done-today" satisfies CalendarPanel)[0].id, "done");
+    assert.deepEqual(calendarItemsForPanel(due, done, [], [], [], "recurring" satisfies CalendarPanel), []);
   });
 
   test("cycles calendar subviews forward with their default panels", () => {
     assert.deepEqual(calendarSubviewTarget("today", "next"), { panel: "mon", subview: "weekly" });
-    assert.deepEqual(calendarSubviewTarget("weekly", "next"), { panel: "completed", subview: "completed" });
+    assert.deepEqual(calendarSubviewTarget("weekly", "next"), { panel: "recurring", subview: "recurring" });
+    assert.deepEqual(calendarSubviewTarget("recurring", "next"), { panel: "completed", subview: "completed" });
     assert.deepEqual(calendarSubviewTarget("completed", "next"), { panel: "deleted", subview: "deleted" });
     assert.deepEqual(calendarSubviewTarget("deleted", "next"), { panel: "due", subview: "today" });
   });
@@ -75,7 +77,8 @@ describe("calendar workspace state", () => {
   test("cycles calendar subviews backward with their default panels", () => {
     assert.deepEqual(calendarSubviewTarget("today", "previous"), { panel: "deleted", subview: "deleted" });
     assert.deepEqual(calendarSubviewTarget("deleted", "previous"), { panel: "completed", subview: "completed" });
-    assert.deepEqual(calendarSubviewTarget("completed", "previous"), { panel: "mon", subview: "weekly" });
+    assert.deepEqual(calendarSubviewTarget("completed", "previous"), { panel: "recurring", subview: "recurring" });
+    assert.deepEqual(calendarSubviewTarget("recurring", "previous"), { panel: "mon", subview: "weekly" });
     assert.deepEqual(calendarSubviewTarget("weekly", "previous"), { panel: "due", subview: "today" });
   });
 });

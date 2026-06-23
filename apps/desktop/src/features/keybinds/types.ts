@@ -22,6 +22,7 @@ export type FocusZoneId =
   | "calendar-today-due-panel"
   | "calendar-today-done-panel"
   | "calendar-detail"
+  | "calendar-recurring-panel"
   | "calendar-completed-panel"
   | "calendar-deleted-panel"
   | "calendar-mon-panel"

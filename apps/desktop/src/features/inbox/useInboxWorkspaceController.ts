@@ -4,6 +4,7 @@ import { useActiveZone } from "../keybinds/hooks";
 import { useInboxStuffsQuery } from "./useInboxStuffsQuery";
 import { useStuffSelection } from "./useStuffSelection";
 import type { CalendarConversionPayload } from "../calendar/types";
+import type { RecurringCalendarTemplateConversionPayload } from "../recurring-calendar-templates/types";
 import type { Stuff, ItemBody } from "./types";
 
 const DRAFT_STUFF_ID = "__draft_stuff__";
@@ -361,6 +362,19 @@ async function processSelectedStuffToCalendarAction(model: InboxModel, payload: 
   model.zone.setActiveZone("inbox-list");
 }
 
+async function processSelectedStuffToRecurringCalendarTemplateAction(model: InboxModel, payload: RecurringCalendarTemplateConversionPayload) {
+  const selectedItem = model.selection.selectedItem;
+
+  if (!selectedItem) {
+    return;
+  }
+
+  await model.query.processStuffToRecurringCalendarTemplate(selectedItem, payload);
+  model.selection.setSelectedId(model.query.stuffs[0]?.id ?? null);
+  clearAllEditing(model);
+  model.zone.setActiveZone("inbox-list");
+}
+
 function useInboxWorkspaceActions(model: InboxModel) {
   return {
     autosaveEditingSelectedStuffBody: (body: ItemBody) => autosaveEditingSelectedStuffBodyAction(model, body),
@@ -372,6 +386,7 @@ function useInboxWorkspaceActions(model: InboxModel) {
     deleteSelectedStuff: () => deleteSelectedStuffAction(model),
     processSelectedStuff: (energy: number | null, estimatedTimeMinutes: number | null, contextIds: string[], deadline: string | null) => processSelectedStuffAction(model, energy, estimatedTimeMinutes, contextIds, deadline),
     processSelectedStuffToCalendar: (payload: CalendarConversionPayload) => processSelectedStuffToCalendarAction(model, payload),
+    processSelectedStuffToRecurringCalendarTemplate: (payload: RecurringCalendarTemplateConversionPayload) => processSelectedStuffToRecurringCalendarTemplateAction(model, payload),
     undo: () => undoAction(model),
     redo: () => redoAction(model),
     selectFirstStuff: model.selection.selectFirstStuff,

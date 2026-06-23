@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useSyncStatus } from "../sync-status/SyncStatusProvider";
 import type { ItemBody } from "../inbox/types";
+import { fetchRecurringCalendarTemplates } from "../recurring-calendar-templates/api";
+import type { RecurringCalendarTemplate } from "../recurring-calendar-templates/types";
 import {
   deleteCalendar,
   fetchDoneTodayCalendars,
@@ -35,6 +37,7 @@ function useCalendarDataState() {
   const [completedCalendars, setCompletedCalendars] = useState<Calendar[]>([]);
   const [deletedCalendars, setDeletedCalendars] = useState<Calendar[]>([]);
   const [weeklyCalendars, setWeeklyCalendars] = useState<Calendar[]>([]);
+  const [recurringCalendarTemplates, setRecurringCalendarTemplates] = useState<RecurringCalendarTemplate[]>([]);
   const [weekOffset, setWeekOffset] = useState(0);
   
   const [isLoading, setIsLoading] = useState(true);
@@ -42,9 +45,9 @@ function useCalendarDataState() {
   const [reloadToken, setReloadToken] = useState(0);
   
   return {
-    dueCalendars, doneTodayCalendars, completedCalendars, deletedCalendars, weeklyCalendars,
+    dueCalendars, doneTodayCalendars, completedCalendars, deletedCalendars, recurringCalendarTemplates, weeklyCalendars,
     errorMessage, isLoading, reloadToken, weekOffset,
-    setDueCalendars, setDoneTodayCalendars, setCompletedCalendars, setDeletedCalendars, setWeeklyCalendars,
+    setDueCalendars, setDoneTodayCalendars, setCompletedCalendars, setDeletedCalendars, setRecurringCalendarTemplates, setWeeklyCalendars,
     setErrorMessage, setIsLoading, setReloadToken, setWeekOffset
   };
 }
@@ -81,6 +84,9 @@ async function loadCalendarData(
       const monday = getMondayForOffset(state.weekOffset);
       const week = await fetchWeekCalendars(formatCalendarDate(monday));
       if (!cancelled()) state.setWeeklyCalendars(week);
+    } else if (subview === "recurring") {
+      const templates = await fetchRecurringCalendarTemplates();
+      if (!cancelled()) state.setRecurringCalendarTemplates(templates);
     }
   } catch (error) {
     if (!cancelled()) state.setErrorMessage(calendarLoadErrorMessage(error));
@@ -258,6 +264,7 @@ export function useCalendarQuery(subview: CalendarSubview) {
     completedCalendars: state.completedCalendars,
     deletedCalendars: state.deletedCalendars,
     weeklyCalendars: state.weeklyCalendars,
+    recurringCalendarTemplates: state.recurringCalendarTemplates,
     errorMessage: state.errorMessage,
     isDeleting: mutations.isDeleting,
     isLoading: state.isLoading,

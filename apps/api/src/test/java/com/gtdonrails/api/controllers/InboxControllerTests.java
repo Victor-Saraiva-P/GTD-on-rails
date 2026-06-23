@@ -16,8 +16,12 @@ import java.time.Instant;
 import com.gtdonrails.api.entities.AuditableEntity;
 import com.gtdonrails.api.entities.Context;
 import com.gtdonrails.api.entities.Item;
+import com.gtdonrails.api.persistence.bootstrap.services.PersistenceGitSyncService;
+import com.gtdonrails.api.repositories.CalendarRepository;
 import com.gtdonrails.api.repositories.ContextRepository;
 import com.gtdonrails.api.repositories.ItemRepository;
+import com.gtdonrails.api.repositories.RecurringCalendarTemplateRepository;
+import com.gtdonrails.api.services.GoogleCalendarEventQueueService;
 import com.gtdonrails.api.types.Title;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
@@ -26,6 +30,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
@@ -42,13 +47,27 @@ class InboxControllerTests {
     private ItemRepository itemRepository;
 
     @Autowired
+    private CalendarRepository calendarRepository;
+
+    @Autowired
+    private RecurringCalendarTemplateRepository recurringCalendarTemplateRepository;
+
+    @Autowired
     private ContextRepository contextRepository;
+
+    @MockitoBean
+    private GoogleCalendarEventQueueService googleCalendarEventQueueService;
+
+    @MockitoBean
+    private PersistenceGitSyncService persistenceGitSyncService;
 
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).build();
+        calendarRepository.deleteAll();
+        recurringCalendarTemplateRepository.deleteAll();
         itemRepository.deleteAll();
         contextRepository.deleteAll();
     }
@@ -205,6 +224,33 @@ class InboxControllerTests {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"scheduledDate\":\"2026-05-21\",\"scheduledTime\":\"09:30\"}"))
             .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/inbox/{id}", stuff.getId()))
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void convertsStuffToRecurringCalendarTemplateAndRemovesItFromInbox() throws Exception {
+        Item stuff = itemRepository.save(new Item(new Title("Take out trash"), null));
+
+        mockMvc.perform(post("/inbox/{id}/recurring-calendar-template", stuff.getId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "startDate": "2026-05-21",
+                      "scheduledTime": "09:30",
+                      "intervalValue": 1,
+                      "recurrenceUnit": "day",
+                      "weeklyWeekdays": [],
+                      "endDate": "2026-05-23"
+                    }
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(stuff.getId().toString()))
+            .andExpect(jsonPath("$.title").value("Take out trash"))
+            .andExpect(jsonPath("$.startDate").value("2026-05-21"))
+            .andExpect(jsonPath("$.scheduledTime").value("09:30:00"))
+            .andExpect(jsonPath("$.recurrenceUnit").value("day"));
 
         mockMvc.perform(get("/inbox/{id}", stuff.getId()))
             .andExpect(status().isNotFound());

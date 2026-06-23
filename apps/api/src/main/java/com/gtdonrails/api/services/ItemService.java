@@ -61,6 +61,7 @@ public class ItemService {
         ItemBody body = itemBodyNormalizer.normalizeBody(request.body());
         itemAssetService.reconcileBodyAssetReferences(id, body);
         item.setBody(body);
+        markPersonalizedOccurrence(item);
         ItemResponseDto response = itemMapper.toResponse(itemRepository.save(item));
         requestPersistenceSyncAfterCommit("item body updated", PersistenceChangeType.UPDATE_ITEM);
         return response;
@@ -75,6 +76,7 @@ public class ItemService {
     public ItemResponseDto updateItemTitle(UUID id, UpdateItemTitleRequestDto request) {
         Item item = findItem(id);
         item.setTitle(new Title(itemTextNormalizer.normalizeTitle(request.title())));
+        markPersonalizedOccurrence(item);
         ItemResponseDto response = itemMapper.toResponse(itemRepository.save(item));
         requestCalendarEventUpsertAfterCommit(id, item);
         requestPersistenceSyncAfterCommit("item title updated", PersistenceChangeType.UPDATE_ITEM);
@@ -115,6 +117,11 @@ public class ItemService {
     private Item findItem(UUID id) {
         return itemRepository.findByIdAndDeletedAtIsNull(id)
             .orElseThrow(() -> new ItemNotFoundException("item not found"));
+    }
+
+    private void markPersonalizedOccurrence(Item item) {
+        if (item.getCalendar() == null) return;
+        item.getCalendar().markPersonalizedOccurrence();
     }
 
     private void requestPersistenceSyncAfterCommit(String reason, PersistenceChangeType changeType) {

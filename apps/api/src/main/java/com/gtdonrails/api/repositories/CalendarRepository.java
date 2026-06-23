@@ -8,6 +8,9 @@ import java.util.UUID;
 import com.gtdonrails.api.entities.Calendar;
 import com.gtdonrails.api.enums.CalendarStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface CalendarRepository extends JpaRepository<Calendar, UUID> {
 
@@ -30,4 +33,19 @@ public interface CalendarRepository extends JpaRepository<Calendar, UUID> {
     List<Calendar> findAllByStatusAndItem_DeletedAtIsNullOrderByItem_UpdatedAtAsc(CalendarStatus status);
 
     List<Calendar> findAllByItem_DeletedAtIsNotNullOrderByItem_UpdatedAtDesc();
+
+    List<Calendar> findAllByRecurringCalendarTemplate_ItemId(UUID templateId);
+
+    List<Calendar> findAllByRecurringCalendarTemplate_ItemIdOrderByOriginalScheduledDateAsc(UUID templateId);
+
+    @Modifying
+    @Query("""
+        update Calendar calendar
+        set calendar.recurringCalendarTemplate = null,
+            calendar.originalScheduledDate = null,
+            calendar.originalScheduledTime = null,
+            calendar.personalizedOccurrence = false
+        where calendar.recurringCalendarTemplate.itemId = :templateId
+        """)
+    void makeOccurrencesIndependentForTemplate(@Param("templateId") UUID templateId);
 }

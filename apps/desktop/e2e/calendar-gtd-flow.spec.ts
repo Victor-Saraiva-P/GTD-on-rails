@@ -60,6 +60,8 @@ test("calendar GTD flow: creates, schedules, manages state, and deletes", async 
   await page.keyboard.press("]");
   await expect(page.getByText("Mon").first()).toBeVisible();
   await page.keyboard.press("]");
+  await expect(page.getByText("Recurring").first()).toBeVisible();
+  await page.keyboard.press("]");
   await expect(page.getByText("Completed").first()).toBeVisible();
 
   const completedCalendar = page.locator(".inbox-pane").nth(0).getByRole("button", { name: title, exact: false }).first();
@@ -82,11 +84,13 @@ test("calendar GTD flow: creates, schedules, manages state, and deletes", async 
 
 async function verifyCalendarSubviewShortcuts(page: Page): Promise<void> {
   await expectCalendarSubviewAfterKey(page, "]", "Mon");
+  await expectCalendarSubviewAfterKey(page, "]", "Recurring");
   await expectCalendarSubviewAfterKey(page, "]", "Completed");
   await expectCalendarSubviewAfterKey(page, "]", "Deleted");
   await expectCalendarSubviewAfterKey(page, "]", "Calendar");
   await expectCalendarSubviewAfterKey(page, "[", "Deleted");
   await expectCalendarSubviewAfterKey(page, "[", "Completed");
+  await expectCalendarSubviewAfterKey(page, "[", "Recurring");
   await expectCalendarSubviewAfterKey(page, "[", "Mon");
   await expectCalendarSubviewAfterKey(page, "[", "Calendar");
 }
@@ -99,4 +103,3 @@ async function expectCalendarSubviewAfterKey(page: Page, key: string, title: str
   }
   await expect(page.locator(".inbox-pane .list-pane__title").nth(0)).toHaveText(title);
 }
-

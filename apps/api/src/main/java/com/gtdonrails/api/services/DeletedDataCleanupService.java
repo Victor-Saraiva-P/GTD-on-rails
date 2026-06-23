@@ -15,6 +15,7 @@ import com.gtdonrails.api.entities.MaintenanceRun;
 import com.gtdonrails.api.enums.NextActionStatus;
 import com.gtdonrails.api.repositories.ContextRepository;
 import com.gtdonrails.api.repositories.ContextIconAssetRepository;
+import com.gtdonrails.api.repositories.CalendarRepository;
 import com.gtdonrails.api.repositories.ItemAssetRepository;
 import com.gtdonrails.api.repositories.ItemRepository;
 import com.gtdonrails.api.repositories.MaintenanceRunRepository;
@@ -37,6 +38,7 @@ public class DeletedDataCleanupService {
     private final ItemAssetRepository itemAssetRepository;
     private final ContextIconAssetRepository contextIconAssetRepository;
     private final ContextRepository contextRepository;
+    private final CalendarRepository calendarRepository;
     private final AssetStorageService assetStorageService;
     private final Clock clock;
 
@@ -48,6 +50,7 @@ public class DeletedDataCleanupService {
         ItemAssetRepository itemAssetRepository,
         ContextIconAssetRepository contextIconAssetRepository,
         ContextRepository contextRepository,
+        CalendarRepository calendarRepository,
         AssetStorageService assetStorageService,
         Clock clock
     ) {
@@ -58,6 +61,7 @@ public class DeletedDataCleanupService {
         this.itemAssetRepository = itemAssetRepository;
         this.contextIconAssetRepository = contextIconAssetRepository;
         this.contextRepository = contextRepository;
+        this.calendarRepository = calendarRepository;
         this.assetStorageService = assetStorageService;
         this.clock = clock;
     }
@@ -146,6 +150,7 @@ public class DeletedDataCleanupService {
 
     private void purgeItem(Item item) {
         itemAssetRepository.findAllByItemId(item.getId()).forEach(this::deleteItemAssetFile);
+        calendarRepository.makeOccurrencesIndependentForTemplate(item.getId());
         nextActionRepository.deleteContextLinks(item.getId());
         itemRepository.delete(item);
     }

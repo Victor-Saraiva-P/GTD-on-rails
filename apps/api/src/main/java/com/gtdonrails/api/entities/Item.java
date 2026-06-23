@@ -5,10 +5,12 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.HashSet;
+import java.time.DayOfWeek;
 import java.util.Set;
 import java.util.UUID;
 
 import com.gtdonrails.api.enums.ItemStatus;
+import com.gtdonrails.api.enums.RecurringCalendarIntervalUnit;
 import com.gtdonrails.api.normalizers.ItemBodyNormalizer;
 import com.gtdonrails.api.persistence.converters.ItemBodyConverter;
 import com.gtdonrails.api.persistence.converters.TitleConverter;
@@ -58,6 +60,9 @@ public class Item extends AuditableEntity {
     @OneToOne(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true)
     private Calendar calendar;
 
+    @OneToOne(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true)
+    private RecurringCalendarTemplate recurringCalendarTemplate;
+
     @OneToMany(mappedBy = "item", cascade = CascadeType.REMOVE, orphanRemoval = true)
     private final Set<ItemAsset> assets = new HashSet<>();
 
@@ -105,13 +110,20 @@ public class Item extends AuditableEntity {
         }
     }
 
+    void setRecurringCalendarTemplate(RecurringCalendarTemplate recurringCalendarTemplate) {
+        this.recurringCalendarTemplate = recurringCalendarTemplate;
+        if (recurringCalendarTemplate != null && recurringCalendarTemplate.getItem() != this) {
+            recurringCalendarTemplate.setItem(this);
+        }
+    }
+
     /**
      * Explicitly classifies this item as inbox stuff.
      *
      * <p>Example: {@code item.markAsStuff()}.</p>
      */
     public void markAsStuff() {
-        if (nextAction != null || calendar != null) {
+        if (nextAction != null || calendar != null || recurringCalendarTemplate != null) {
             throw new IllegalStateException("item subtype value is invalid; expected no subtype when marking as STUFF");
         }
 
@@ -142,6 +154,26 @@ public class Item extends AuditableEntity {
         return createdCalendar;
     }
 
+    /**
+     * Converts this inbox stuff item into a Recurring Calendar Template.
+     *
+     * <p>Example: {@code item.convertToRecurringCalendarTemplate(date, null, 1, DAY, Set.of(), null)}.</p>
+     */
+    public RecurringCalendarTemplate convertToRecurringCalendarTemplate(
+        LocalDate startDate,
+        LocalTime scheduledTime,
+        int intervalValue,
+        RecurringCalendarIntervalUnit recurrenceUnit,
+        java.util.List<DayOfWeek> weeklyWeekdays,
+        LocalDate endDate
+    ) {
+        requireActiveStuffBeforeRecurringCalendarTemplateConversion();
+        RecurringCalendarTemplate template = new RecurringCalendarTemplate(
+            this, startDate, scheduledTime, intervalValue, recurrenceUnit, weeklyWeekdays, endDate);
+        status = ItemStatus.RECURRING_CALENDAR_TEMPLATE;
+        return template;
+    }
+
     @PrePersist
     void prePersist() {
         initializeAuditTimestamps();
@@ -161,6 +193,13 @@ public class Item extends AuditableEntity {
 
     private void requireActiveStuffBeforeCalendarConversion() {
         if (status != ItemStatus.STUFF || nextAction != null || calendar != null || isDeleted()) {
+            throw new IllegalStateException(
+                "item value '" + status + "' is invalid; expected active STUFF without subtype");
+        }
+    }
+
+    private void requireActiveStuffBeforeRecurringCalendarTemplateConversion() {
+        if (status != ItemStatus.STUFF || nextAction != null || calendar != null || recurringCalendarTemplate != null || isDeleted()) {
             throw new IllegalStateException(
                 "item value '" + status + "' is invalid; expected active STUFF without subtype");
         }

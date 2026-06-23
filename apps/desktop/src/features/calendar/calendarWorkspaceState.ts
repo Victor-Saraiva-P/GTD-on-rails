@@ -1,7 +1,7 @@
 import type { Calendar } from "./types";
 
-export type CalendarSubview = "today" | "weekly" | "completed" | "deleted";
-export type CalendarPanel = "due" | "done-today" | "completed" | "deleted" | "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
+export type CalendarSubview = "today" | "weekly" | "recurring" | "completed" | "deleted";
+export type CalendarPanel = "due" | "done-today" | "recurring" | "completed" | "deleted" | "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 export type CalendarSubviewDirection = "next" | "previous";
 export type WeeklyDayPanel = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 export type ColumnShiftDirection = "left" | "right";
@@ -34,7 +34,7 @@ export function resolveWeeklyColumnShift(
   return { kind: "boundary", panel: weeklyDayOrder[nextIndex < 0 ? 6 : 0], weekOffsetDelta: offset };
 }
 
-const calendarSubviewOrder: CalendarSubview[] = ["today", "weekly", "completed", "deleted"];
+const calendarSubviewOrder: CalendarSubview[] = ["today", "weekly", "recurring", "completed", "deleted"];
 
 export type CalendarSelectionCursor = {
   items: Calendar[];
@@ -52,6 +52,7 @@ export function calendarItemsForPanel(
 ): Calendar[] {
   switch (activePanel) {
     case "done-today": return doneTodayCalendars;
+    case "recurring": return [];
     case "completed": return completedCalendars;
     case "deleted": return deletedCalendars;
     case "mon": return weeklyCalendars.filter(c => new Date(c.scheduledDate + "T00:00:00").getDay() === 1);
@@ -136,6 +137,7 @@ export function selectCalendarBoundary(
 
 export function defaultCalendarPanelForSubview(subview: CalendarSubview): CalendarPanel {
   if (subview === "weekly") return "mon";
+  if (subview === "recurring") return "recurring";
   if (subview === "completed") return "completed";
   if (subview === "deleted") return "deleted";
   return "due";

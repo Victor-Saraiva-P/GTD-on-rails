@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useActiveZone } from "../keybinds/hooks";
 import { useUndoRedoHistory } from "../history/useUndoRedoHistory";
+import type { FocusZoneId } from "../keybinds/types";
 import type { ItemBody } from "../inbox/types";
 import { isSameBody } from "../inbox/types";
 import {
@@ -207,8 +208,9 @@ async function redoCalendarAction(model: CalendarModel) {
   }
 }
 
-function calendarListZoneForPanel(panel: CalendarPanel): any {
+function calendarListZoneForPanel(panel: CalendarPanel): FocusZoneId {
   if (panel === "done-today") return "calendar-today-done-panel";
+  if (panel === "recurring") return "calendar-recurring-panel";
   if (panel === "completed") return "calendar-completed-panel";
   if (panel === "deleted") return "calendar-deleted-panel";
   if (panel === "mon") return "calendar-mon-panel";
@@ -305,6 +307,7 @@ function buildCalendarController(model: CalendarModel, actions: CalendarActions)
     doneTodayCalendars: model.query.doneTodayCalendars,
     completedCalendars: model.query.completedCalendars,
     deletedCalendars: model.query.deletedCalendars,
+    recurringCalendarTemplates: model.query.recurringCalendarTemplates,
     weeklyCalendars: model.query.weeklyCalendars,
     editingBodyId: model.edit.editingBodyId,
     editingId: model.edit.editingId,

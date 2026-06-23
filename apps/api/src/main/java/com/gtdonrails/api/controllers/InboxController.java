@@ -8,7 +8,10 @@ import com.gtdonrails.api.dtos.calendar.ConvertStuffToCalendarRequestDto;
 import com.gtdonrails.api.dtos.inbox.ConvertStuffToNextActionRequestDto;
 import com.gtdonrails.api.dtos.inbox.CreateStuffRequestDto;
 import com.gtdonrails.api.dtos.inbox.StuffResponseDto;
+import com.gtdonrails.api.dtos.recurring.ConvertStuffToRecurringCalendarTemplateRequestDto;
+import com.gtdonrails.api.dtos.recurring.RecurringCalendarTemplateResponseDto;
 import com.gtdonrails.api.services.InboxService;
+import com.gtdonrails.api.services.RecurringCalendarTemplateService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,9 +26,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class InboxController {
 
     private final InboxService inboxService;
+    private final RecurringCalendarTemplateService recurringCalendarTemplateService;
 
-    public InboxController(InboxService inboxService) {
+    public InboxController(
+        InboxService inboxService,
+        RecurringCalendarTemplateService recurringCalendarTemplateService
+    ) {
         this.inboxService = inboxService;
+        this.recurringCalendarTemplateService = recurringCalendarTemplateService;
     }
 
     /**
@@ -95,5 +103,18 @@ public class InboxController {
     ) {
         inboxService.convertStuffToCalendar(id, request);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Handles conversion from inbox stuff into a Recurring Calendar Template.
+     *
+     * <p>Example: {@code POST /inbox/018f13b2-a7f3-7c44-8f1a-9f31f65a7fd2/recurring-calendar-template}.</p>
+     */
+    @PostMapping("/{id}/recurring-calendar-template")
+    public RecurringCalendarTemplateResponseDto convertStuffToRecurringCalendarTemplate(
+        @PathVariable UUID id,
+        @Valid @RequestBody ConvertStuffToRecurringCalendarTemplateRequestDto request
+    ) {
+        return recurringCalendarTemplateService.convertStuffToRecurringCalendarTemplate(id, request);
     }
 }

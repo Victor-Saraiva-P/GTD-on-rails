@@ -12,8 +12,10 @@ import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.MapsId;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.PrePersist;
@@ -54,6 +56,19 @@ public class Calendar extends AuditableEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
     private CalendarStatus status = CalendarStatus.CALENDAR;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "recurring_template_item_id")
+    private RecurringCalendarTemplate recurringCalendarTemplate;
+
+    @Column(name = "original_scheduled_date")
+    private LocalDate originalScheduledDate;
+
+    @Column(name = "original_scheduled_time")
+    private LocalTime originalScheduledTime;
+
+    @Column(name = "personalized_occurrence", nullable = false)
+    private boolean personalizedOccurrence = false;
 
     public Calendar() {
     }
@@ -123,6 +138,41 @@ public class Calendar extends AuditableEntity {
     public void resetStatus() {
         schedule.clear();
         status = CalendarStatus.CALENDAR;
+    }
+
+    /**
+     * Records this calendar as a template-owned occurrence.
+     *
+     * <p>Example: {@code calendar.markRecurringOccurrence(template, date, time)}.</p>
+     */
+    public void markRecurringOccurrence(RecurringCalendarTemplate template, LocalDate originalDate, LocalTime originalTime) {
+        if (template == null) {
+            throw new IllegalArgumentException("template value 'null' is invalid; expected RecurringCalendarTemplate");
+        }
+        recurringCalendarTemplate = template;
+        originalScheduledDate = originalDate;
+        originalScheduledTime = originalTime;
+        personalizedOccurrence = false;
+    }
+
+    /**
+     * Reports whether this calendar is the intended template occurrence.
+     *
+     * <p>Example: {@code calendar.matchesRecurringOccurrence(template, date, time)}.</p>
+     */
+    public boolean matchesRecurringOccurrence(RecurringCalendarTemplate template, LocalDate date, LocalTime time) {
+        if (recurringCalendarTemplate == null || !recurringCalendarTemplate.equals(template)) return false;
+        return originalScheduledDate.equals(date) && java.util.Objects.equals(originalScheduledTime, time);
+    }
+
+    /**
+     * Marks direct user edits as personalized while preserving occurrence identity.
+     *
+     * <p>Example: {@code calendar.markPersonalizedOccurrence()}.</p>
+     */
+    public void markPersonalizedOccurrence() {
+        if (recurringCalendarTemplate == null) return;
+        personalizedOccurrence = true;
     }
 
     @PrePersist

@@ -10,6 +10,7 @@ const zoneLabels: Record<FocusZoneId, string> = {
   "calendar-today-due-panel": "Due calendar panel",
   "calendar-today-done-panel": "Completed today calendar panel",
   "calendar-detail": "Calendar detail",
+  "calendar-recurring-panel": "Recurring calendar template panel",
   "calendar-completed-panel": "Completed calendar panel",
   "calendar-deleted-panel": "Deleted calendar panel",
   "calendar-mon-panel": "Monday calendar panel",

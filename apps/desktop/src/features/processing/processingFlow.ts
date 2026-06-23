@@ -1,4 +1,5 @@
 import type { CalendarConversionPayload } from "../calendar/types";
+import type { RecurrenceUnit, RecurringCalendarTemplateConversionPayload } from "../recurring-calendar-templates/types";
 
 export type ProcessingStep =
   | "initial"
@@ -7,9 +8,13 @@ export type ProcessingStep =
   | "set-energy"
   | "set-time"
   | "set-calendar-date"
-  | "set-calendar-time";
+  | "set-calendar-time"
+  | "set-recurring-start-date"
+  | "set-recurring-interval"
+  | "set-recurring-time"
+  | "set-recurring-end-date";
 
-export type ProcessingInitialChoice = "next-action" | "calendar";
+export type ProcessingInitialChoice = "next-action" | "calendar" | "recurring-calendar";
 export type SegmentedCalendarDateSegment = "day" | "month" | "year";
 
 export type SegmentedCalendarDateState = {
@@ -21,6 +26,7 @@ export type SegmentedCalendarDateState = {
 };
 
 export function stepAfterInitialChoice(choice: ProcessingInitialChoice): ProcessingStep {
+  if (choice === "recurring-calendar") return "set-recurring-start-date";
   return choice === "calendar" ? "set-calendar-date" : "set-deadline";
 }
 
@@ -29,6 +35,9 @@ export function previousProcessingStep(step: ProcessingStep): ProcessingStep {
   if (step === "set-energy") return "select-context";
   if (step === "select-context") return "set-deadline";
   if (step === "set-calendar-time") return "set-calendar-date";
+  if (step === "set-recurring-end-date") return "set-recurring-time";
+  if (step === "set-recurring-time") return "set-recurring-interval";
+  if (step === "set-recurring-interval") return "set-recurring-start-date";
   return "initial";
 }
 
@@ -106,6 +115,17 @@ export function buildCalendarPayload(scheduledDate: string, timeDigits: string):
     scheduledDate,
     scheduledTime: clockTimeDisplayValue(timeDigits) || null
   };
+}
+
+export function buildRecurringCalendarTemplatePayload(
+  startDate: string,
+  timeDigits: string,
+  intervalValue: number,
+  recurrenceUnit: RecurrenceUnit,
+  weeklyWeekdays: string[],
+  endDate: string | null
+): RecurringCalendarTemplateConversionPayload {
+  return { startDate, scheduledTime: clockTimeDisplayValue(timeDigits) || null, intervalValue, recurrenceUnit, weeklyWeekdays, endDate };
 }
 
 function isValidClockTimeDigits(digits: string): boolean {

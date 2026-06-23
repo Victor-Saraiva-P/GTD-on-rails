@@ -5,6 +5,7 @@ import { RetryState } from "../components/RetryState";
 import { InboxList } from "../features/inbox/InboxList";
 import { InboxStuffDetails } from "../features/inbox/InboxStuffDetails";
 import type { CalendarConversionPayload } from "../features/calendar/types";
+import type { RecurringCalendarTemplateConversionPayload } from "../features/recurring-calendar-templates/types";
 import { prefetchNearbyInboxAssets } from "../features/inbox/inboxAssetPrefetch";
 import { buildFormattingBindings } from "../features/inbox/formattingKeybinds";
 import type { InboxWorkspaceController } from "../features/inbox/useInboxWorkspaceController";
@@ -314,6 +315,10 @@ export function InboxPage({ controller }: InboxPageProps) {
     void controller.processSelectedStuffToCalendar(payload);
     setIsProcessingOpen(false);
   };
+  const processSelectedRecurringCalendarItem = (payload: RecurringCalendarTemplateConversionPayload) => {
+    void controller.processSelectedStuffToRecurringCalendarTemplate(payload);
+    setIsProcessingOpen(false);
+  };
   useKeybindScreen("inbox");
   useInboxZone(controller);
   useInboxAssetPreload(controller);
@@ -327,7 +332,7 @@ export function InboxPage({ controller }: InboxPageProps) {
         {isLinkComboOpen ? <LazyMarkdownLinkComboDialog onClose={() => setIsLinkComboOpen(false)} /> : null}
         {isAssetComboOpen && controller.selectedItem ? <LazyMarkdownAssetComboDialog itemId={controller.selectedItem.id} onClose={() => setIsAssetComboOpen(false)} /> : null}
       </Suspense>
-      {isProcessingOpen && controller.selectedItem ? <ProcessingDialog item={controller.selectedItem} onClose={() => setIsProcessingOpen(false)} onProcess={processSelectedItem} onProcessCalendar={processSelectedCalendarItem} /> : null}
+      {isProcessingOpen && controller.selectedItem ? <ProcessingDialog item={controller.selectedItem} onClose={() => setIsProcessingOpen(false)} onProcess={processSelectedItem} onProcessCalendar={processSelectedCalendarItem} onProcessRecurringCalendar={processSelectedRecurringCalendarItem} /> : null}
     </ListWorkspace>
   );
 }

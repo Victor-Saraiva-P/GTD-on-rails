@@ -22,6 +22,8 @@ import com.gtdonrails.api.entities.Item;
 import com.gtdonrails.api.entities.ItemAsset;
 import com.gtdonrails.api.entities.MaintenanceRun;
 import com.gtdonrails.api.entities.NextAction;
+import com.gtdonrails.api.enums.RecurringCalendarIntervalUnit;
+import com.gtdonrails.api.repositories.CalendarRepository;
 import com.gtdonrails.api.enums.NextActionStatus;
 import com.gtdonrails.api.repositories.ContextIconAssetRepository;
 import com.gtdonrails.api.repositories.ContextRepository;
@@ -63,6 +65,9 @@ class DeletedDataCleanupServiceTests {
     private ContextRepository contextRepository;
 
     @Mock
+    private CalendarRepository calendarRepository;
+
+    @Mock
     private AssetStorageService assetStorageService;
 
     private DeletedDataCleanupService cleanupService;
@@ -71,7 +76,8 @@ class DeletedDataCleanupServiceTests {
     void setUp() {
         cleanupService = new DeletedDataCleanupService(
             cleanupProperties(), maintenanceRunRepository, itemRepository, nextActionRepository,
-            itemAssetRepository, contextIconAssetRepository, contextRepository, assetStorageService, fixedClock());
+            itemAssetRepository, contextIconAssetRepository, contextRepository, calendarRepository,
+            assetStorageService, fixedClock());
     }
 
     @Test
@@ -145,6 +151,19 @@ class DeletedDataCleanupServiceTests {
     }
 
     @Test
+    void purgesExpiredDeletedRecurringTemplateAfterMakingOccurrencesIndependent() {
+        Item item = recurringTemplateItem(UUID.randomUUID());
+        stubCleanupDue();
+        stubEmptyPurgeQueries();
+        when(itemRepository.findAllByDeletedAtLessThanEqual(cutoffInstant())).thenReturn(List.of(item));
+
+        cleanupService.runIfDue();
+
+        verify(calendarRepository).makeOccurrencesIndependentForTemplate(item.getId());
+        verify(itemRepository).delete(item);
+    }
+
+    @Test
     void purgesExpiredDoneNextActionByDateEnd() {
         Item item = item(UUID.randomUUID());
         NextAction nextAction = nextAction(item);
@@ -197,6 +216,14 @@ class DeletedDataCleanupServiceTests {
         ReflectionTestUtils.setField(nextAction, "itemId", item.getId());
         nextAction.markDone(fixedClock());
         return nextAction;
+    }
+
+    private Item recurringTemplateItem(UUID id) {
+        Item item = item(id);
+        item.convertToRecurringCalendarTemplate(
+            LocalDate.parse("2026-05-21"), null, 1,
+            RecurringCalendarIntervalUnit.DAY, List.of(), null);
+        return item;
     }
 
     private CleanupProperties cleanupProperties() {

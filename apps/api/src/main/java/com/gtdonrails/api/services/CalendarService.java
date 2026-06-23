@@ -186,6 +186,9 @@ public class CalendarService {
         if (request.hasScheduledTime()) {
             calendar.setScheduledTime(request.toScheduledTime());
         }
+        if (request.hasScheduledDate() || request.hasScheduledTime()) {
+            calendar.markPersonalizedOccurrence();
+        }
     }
 
     private CalendarResponseDto saveWithSync(Calendar calendar, String reason) {

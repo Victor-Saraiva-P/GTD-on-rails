@@ -3,6 +3,7 @@ import test, { describe } from "node:test";
 
 import {
   buildCalendarPayload,
+  buildRecurringCalendarTemplatePayload,
   clockTimeDisplayValue,
   initialSegmentedCalendarDateState,
   isSegmentedCalendarDateValid,
@@ -21,6 +22,7 @@ describe("processing flow", () => {
   test("initial keyboard choices branch to next actions or calendar", () => {
     assert.equal(stepAfterInitialChoice("next-action"), "set-deadline");
     assert.equal(stepAfterInitialChoice("calendar"), "set-calendar-date");
+    assert.equal(stepAfterInitialChoice("recurring-calendar"), "set-recurring-start-date");
   });
 
   test("escape goes back after the initial step", () => {
@@ -30,6 +32,10 @@ describe("processing flow", () => {
     assert.equal(previousProcessingStep("set-time"), "set-energy");
     assert.equal(previousProcessingStep("set-calendar-date"), "initial");
     assert.equal(previousProcessingStep("set-calendar-time"), "set-calendar-date");
+    assert.equal(previousProcessingStep("set-recurring-start-date"), "initial");
+    assert.equal(previousProcessingStep("set-recurring-interval"), "set-recurring-start-date");
+    assert.equal(previousProcessingStep("set-recurring-time"), "set-recurring-interval");
+    assert.equal(previousProcessingStep("set-recurring-end-date"), "set-recurring-time");
   });
 
   test("calendar time keyboard input preserves valid HH:mm digits", () => {
@@ -113,6 +119,17 @@ describe("processing flow", () => {
     assert.deepEqual(buildCalendarPayload("2026-05-21", ""), {
       scheduledDate: "2026-05-21",
       scheduledTime: null
+    });
+  });
+
+  test("recurring template payload is built from confirmed wizard choices", () => {
+    assert.deepEqual(buildRecurringCalendarTemplatePayload("2026-05-21", "0930", 2, "week", ["MONDAY"], "2026-06-21"), {
+      startDate: "2026-05-21",
+      scheduledTime: "09:30",
+      intervalValue: 2,
+      recurrenceUnit: "week",
+      weeklyWeekdays: ["MONDAY"],
+      endDate: "2026-06-21"
     });
   });
 });

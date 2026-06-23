@@ -5,7 +5,7 @@ import { RetryState } from "../components/RetryState";
 import { CalendarDetails } from "../features/calendar/CalendarDetails";
 import { CalendarList } from "../features/calendar/CalendarList";
 import { CalendarScheduleEditDialog } from "../features/calendar/CalendarScheduleEditDialog";
-import type { CalendarPanel } from "../features/calendar/calendarWorkspaceState";
+import type { CalendarPanel, WeeklyDayPanel } from "../features/calendar/calendarWorkspaceState";
 import type { CalendarWorkspaceController } from "../features/calendar/useCalendarWorkspaceController";
 import { buildFormattingBindings } from "../features/inbox/formattingKeybinds";
 import { prefetchNearbyInboxAssets } from "../features/inbox/inboxAssetPrefetch";
@@ -16,6 +16,7 @@ import type { FocusZoneId, KeybindDefinition, ScreenId } from "../features/keybi
 import { scrollDetailPane } from "../features/keybinds/scrollDetailPane";
 import { calendarsListTheme, deletedCalendarsListTheme, doneCalendarsListTheme, type ListTheme } from "../features/lists/listThemes";
 import { getMondayForOffset } from "../features/calendar/calendarDateUtils";
+import { RecurringCalendarTemplateList } from "../features/recurring-calendar-templates/RecurringCalendarTemplateList";
 
 type CalendarPageProps = Readonly<{
   controller: CalendarWorkspaceController;
@@ -108,9 +109,12 @@ function buildPanelBindings(controller: CalendarWorkspaceController, setActiveSc
       { ...calendarBinding("calendars.redo-deleted", "r", "Redo last action", "calendar-deleted-panel", controller.redo), ctrl: true }
     ];
   }
+  if (controller.activeSubview === "recurring") {
+    return recurringCalendarBindings(controller);
+  }
   if (controller.activeSubview === "weekly") {
     const bindings: KeybindDefinition[] = [];
-    const days: CalendarPanel[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+    const days: WeeklyDayPanel[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
     const zones: FocusZoneId[] = ["calendar-mon-panel", "calendar-tue-panel", "calendar-wed-panel", "calendar-thu-panel", "calendar-fri-panel", "calendar-sat-panel", "calendar-sun-panel"];
     
     days.forEach((day, i) => {
@@ -146,6 +150,12 @@ function buildPanelBindings(controller: CalendarWorkspaceController, setActiveSc
   return [
     ...buildDuePanelBindings(controller, setActiveScreen, openScheduleEdit, selectOnGoingCalendar),
     ...buildDoneTodayPanelBindings(controller, setActiveScreen, openScheduleEdit)
+  ];
+}
+
+function recurringCalendarBindings(controller: CalendarWorkspaceController): KeybindDefinition[] {
+  return [
+    calendarBinding("calendars.reload-recurring", "r", "Reload recurring templates", "calendar-recurring-panel", controller.reload)
   ];
 }
 
@@ -217,7 +227,7 @@ function buildSubviewBindings(controller: CalendarWorkspaceController): KeybindD
 function calendarSubviewKeybindZones(): FocusZoneId[] {
   return [
     "calendar-today-due-panel", "calendar-today-done-panel", "calendar-detail",
-    "calendar-completed-panel", "calendar-deleted-panel", "calendar-mon-panel",
+    "calendar-recurring-panel", "calendar-completed-panel", "calendar-deleted-panel", "calendar-mon-panel",
     "calendar-tue-panel", "calendar-wed-panel", "calendar-thu-panel",
     "calendar-fri-panel", "calendar-sat-panel", "calendar-sun-panel"
   ];
@@ -225,6 +235,7 @@ function calendarSubviewKeybindZones(): FocusZoneId[] {
 
 function activePanelZone(panel: CalendarPanel): FocusZoneId {
   if (panel === "done-today") return "calendar-today-done-panel";
+  if (panel === "recurring") return "calendar-recurring-panel";
   if (panel === "completed") return "calendar-completed-panel";
   if (panel === "deleted") return "calendar-deleted-panel";
   if (panel === "mon") return "calendar-mon-panel";
@@ -249,12 +260,13 @@ function useCalendarBindings(controller: CalendarWorkspaceController, openLink: 
 
 function useCalendarZone(controller: CalendarWorkspaceController): void {
   useEffect(() => {
-    let valid = ["calendar-today-due-panel", "calendar-today-done-panel", "calendar-detail"];
+    let valid: FocusZoneId[] = ["calendar-today-due-panel", "calendar-today-done-panel", "calendar-detail"];
     if (controller.activeSubview === "completed") valid = ["calendar-completed-panel", "calendar-detail"];
     if (controller.activeSubview === "deleted") valid = ["calendar-deleted-panel", "calendar-detail"];
+    if (controller.activeSubview === "recurring") valid = ["calendar-recurring-panel"];
     if (controller.activeSubview === "weekly") valid = ["calendar-mon-panel", "calendar-tue-panel", "calendar-wed-panel", "calendar-thu-panel", "calendar-fri-panel", "calendar-sat-panel", "calendar-sun-panel"];
     
-    if (!valid.includes(controller.activeZone)) controller.setActiveZone(valid[0] as any);
+    if (!valid.includes(controller.activeZone)) controller.setActiveZone(valid[0]);
   }, [controller.activeZone, controller.activeSubview, controller.setActiveZone]);
 }
 
@@ -383,7 +395,24 @@ function DeletedCalendarPanel({ controller }: CalendarControllerProps) {
   );
 }
 
-function WeeklyCalendarPanel({ controller, day, index }: CalendarControllerProps & Readonly<{ day: CalendarPanel, index: number }>) {
+function RecurringCalendarPanel({ controller }: CalendarControllerProps) {
+  const count = controller.recurringCalendarTemplates.length;
+  const meta = `${count} ${count === 1 ? "template" : "templates"}`;
+  return (
+    <ListView title="Recurring" meta={meta} panelIndex={1} active={controller.activeZone === "calendar-recurring-panel"} bodyClassName="list-pane__body--flush" className="inbox-pane inbox-pane--list">
+      <RecurringCalendarPanelBody controller={controller} />
+    </ListView>
+  );
+}
+
+function RecurringCalendarPanelBody({ controller }: CalendarControllerProps) {
+  if (controller.isLoading) return <p className="pane-state">Loading recurring calendar templates...</p>;
+  if (controller.errorMessage) return <RetryState message={controller.errorMessage} onRetry={controller.reload} />;
+  if (controller.recurringCalendarTemplates.length === 0) return <p className="pane-state">No recurring calendar templates.</p>;
+  return <RecurringCalendarTemplateList templates={controller.recurringCalendarTemplates} />;
+}
+
+function WeeklyCalendarPanel({ controller, day, index }: CalendarControllerProps & Readonly<{ day: WeeklyDayPanel, index: number }>) {
   const dayName = day.charAt(0).toUpperCase() + day.slice(1);
   const monday = getMondayForOffset(controller.weekOffset);
   const columnDate = new Date(monday);
@@ -457,6 +486,12 @@ function CalendarViews({ controller }: CalendarControllerProps) {
       <section className="inbox-terminal-layout" aria-label="Calendars">
         <DeletedCalendarPanel controller={controller} />
         <CalendarDetailView controller={controller} />
+      </section>
+    );
+  } else if (controller.activeSubview === "recurring") {
+    return (
+      <section className="inbox-terminal-layout" aria-label="Recurring Calendar Templates">
+        <RecurringCalendarPanel controller={controller} />
       </section>
     );
   } else if (controller.activeSubview === "weekly") {
