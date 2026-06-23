@@ -5,7 +5,7 @@ import { RetryState } from "../components/RetryState";
 import { CalendarDetails } from "../features/calendar/CalendarDetails";
 import { CalendarList } from "../features/calendar/CalendarList";
 import { CalendarScheduleEditDialog } from "../features/calendar/CalendarScheduleEditDialog";
-import type { CalendarPanel, WeeklyDayPanel } from "../features/calendar/calendarWorkspaceState";
+import { calendarSubviewFocusZones, type CalendarPanel, type WeeklyDayPanel } from "../features/calendar/calendarWorkspaceState";
 import type { CalendarWorkspaceController } from "../features/calendar/useCalendarWorkspaceController";
 import { buildFormattingBindings } from "../features/inbox/formattingKeybinds";
 import { prefetchNearbyInboxAssets } from "../features/inbox/inboxAssetPrefetch";
@@ -17,6 +17,7 @@ import { scrollDetailPane } from "../features/keybinds/scrollDetailPane";
 import { calendarsListTheme, deletedCalendarsListTheme, doneCalendarsListTheme, type ListTheme } from "../features/lists/listThemes";
 import { getMondayForOffset } from "../features/calendar/calendarDateUtils";
 import { RecurringCalendarTemplateList } from "../features/recurring-calendar-templates/RecurringCalendarTemplateList";
+import { RecurringCalendarTemplateDetails } from "../features/recurring-calendar-templates/RecurringCalendarTemplateDetails";
 
 type CalendarPageProps = Readonly<{
   controller: CalendarWorkspaceController;
@@ -43,6 +44,10 @@ function calendarBinding(id: string, key: string, description: string, zone: Foc
 
 function canEditCalendar(controller: CalendarWorkspaceController): boolean {
   return !controller.isLoading && !controller.isDeleting && !controller.isUpdating && Boolean(controller.selectedItem) && !controller.editingId && !controller.editingBodyId;
+}
+
+function canEditRecurringTemplate(controller: CalendarWorkspaceController): boolean {
+  return !controller.isLoading && !controller.isUpdating && Boolean(controller.selectedRecurringTemplate) && !controller.recurringEditingBodyId;
 }
 
 function runCalendarAction(canRun: boolean, action: () => Promise<void>, message: string): void {
@@ -155,6 +160,11 @@ function buildPanelBindings(controller: CalendarWorkspaceController, setActiveSc
 
 function recurringCalendarBindings(controller: CalendarWorkspaceController): KeybindDefinition[] {
   return [
+    calendarBinding("calendars.move-recurring-down", "j", "Move down", "calendar-recurring-panel", controller.selectNextRecurringTemplate),
+    calendarBinding("calendars.move-recurring-up", "k", "Move up", "calendar-recurring-panel", controller.selectPreviousRecurringTemplate),
+    calendarBinding("calendars.move-recurring-first", "g", "Move to first template", "calendar-recurring-panel", controller.selectFirstRecurringTemplate, false, ["g", "g"]),
+    calendarBinding("calendars.move-recurring-last", "G", "Move to last template", "calendar-recurring-panel", controller.selectLastRecurringTemplate),
+    calendarBinding("calendars.edit-recurring-body", "l", "Edit recurring body", "calendar-recurring-panel", () => canEditRecurringTemplate(controller) && controller.startRecurringTemplateBodyEdit()),
     calendarBinding("calendars.reload-recurring", "r", "Reload recurring templates", "calendar-recurring-panel", controller.reload)
   ];
 }
@@ -260,11 +270,7 @@ function useCalendarBindings(controller: CalendarWorkspaceController, openLink: 
 
 function useCalendarZone(controller: CalendarWorkspaceController): void {
   useEffect(() => {
-    let valid: FocusZoneId[] = ["calendar-today-due-panel", "calendar-today-done-panel", "calendar-detail"];
-    if (controller.activeSubview === "completed") valid = ["calendar-completed-panel", "calendar-detail"];
-    if (controller.activeSubview === "deleted") valid = ["calendar-deleted-panel", "calendar-detail"];
-    if (controller.activeSubview === "recurring") valid = ["calendar-recurring-panel"];
-    if (controller.activeSubview === "weekly") valid = ["calendar-mon-panel", "calendar-tue-panel", "calendar-wed-panel", "calendar-thu-panel", "calendar-fri-panel", "calendar-sat-panel", "calendar-sun-panel"];
+    const valid = calendarSubviewFocusZones(controller.activeSubview);
     
     if (!valid.includes(controller.activeZone)) controller.setActiveZone(valid[0]);
   }, [controller.activeZone, controller.activeSubview, controller.setActiveZone]);
@@ -409,7 +415,53 @@ function RecurringCalendarPanelBody({ controller }: CalendarControllerProps) {
   if (controller.isLoading) return <p className="pane-state">Loading recurring calendar templates...</p>;
   if (controller.errorMessage) return <RetryState message={controller.errorMessage} onRetry={controller.reload} />;
   if (controller.recurringCalendarTemplates.length === 0) return <p className="pane-state">No recurring calendar templates.</p>;
-  return <RecurringCalendarTemplateList templates={controller.recurringCalendarTemplates} />;
+  return (
+    <RecurringCalendarTemplateList
+      onSelect={controller.setSelectedRecurringTemplateId}
+      selectedId={controller.selectedRecurringTemplate?.id ?? ""}
+      templates={controller.recurringCalendarTemplates}
+    />
+  );
+}
+
+function RecurringCalendarDetailView({ controller }: CalendarControllerProps) {
+  return (
+    <ListView title="Recurring Detail" viewIndex={2} active={controller.activeZone === "calendar-detail"} bodyClassName="list-pane__body--detail" className="inbox-pane inbox-pane--detail">
+      <RecurringCalendarDetailBody controller={controller} />
+    </ListView>
+  );
+}
+
+function RecurringCalendarDetailBody({ controller }: CalendarControllerProps) {
+  if (controller.isLoading) return <p className="pane-state">Loading recurring calendar details...</p>;
+  if (controller.errorMessage) return <p className="pane-state">Recurring calendar details are unavailable while loading fails.</p>;
+  if (!controller.selectedRecurringTemplate) return <p className="pane-state">Select a recurring calendar template to inspect its details.</p>;
+  return <RecurringCalendarDetailReady controller={controller} />;
+}
+
+function RecurringCalendarDetailReady({ controller }: CalendarControllerProps) {
+  const template = controller.selectedRecurringTemplate;
+  if (!template) return null;
+  return (
+    <RecurringCalendarTemplateDetails
+      template={template}
+      editing={controller.recurringEditingBodyId === template.id}
+      onAutosaveEditing={(body) => controller.autosaveRecurringTemplateBody(body)}
+      onCommitEditing={(body) => controller.commitRecurringTemplateBody(body)}
+      onExitEditingFromNormalMode={(body) => exitRecurringTemplateBodyEditing(controller, body)}
+      onCancelEditing={controller.cancelRecurringTemplateBodyEdit}
+      onVimModeChange={controller.setVimMode}
+    />
+  );
+}
+
+async function exitRecurringTemplateBodyEditing(controller: CalendarWorkspaceController, body: ItemBody): Promise<void> {
+  await controller.commitRecurringTemplateBody(body);
+  controller.setActiveZone("calendar-recurring-panel");
+}
+
+function selectedCalendarBodyItemId(controller: CalendarWorkspaceController): string | null {
+  return controller.selectedItem?.id ?? controller.selectedRecurringTemplate?.id ?? null;
 }
 
 function WeeklyCalendarPanel({ controller, day, index }: CalendarControllerProps & Readonly<{ day: WeeklyDayPanel, index: number }>) {
@@ -492,6 +544,7 @@ function CalendarViews({ controller }: CalendarControllerProps) {
     return (
       <section className="inbox-terminal-layout" aria-label="Recurring Calendar Templates">
         <RecurringCalendarPanel controller={controller} />
+        <RecurringCalendarDetailView controller={controller} />
       </section>
     );
   } else if (controller.activeSubview === "weekly") {
@@ -525,6 +578,7 @@ export function CalendarPage({ controller, selectOnGoingCalendar }: CalendarPage
   const openLink = useCallback(() => setIsLinkOpen(true), []);
   const openAsset = useCallback(() => setIsAssetOpen(true), []);
   const openScheduleEdit = useCallback(() => setIsScheduleEditOpen(true), []);
+  const bodyItemId = selectedCalendarBodyItemId(controller);
   useKeybindScreen("calendars");
   useCalendarZone(controller);
   useCalendarAssetPreload(controller);
@@ -536,7 +590,7 @@ export function CalendarPage({ controller, selectOnGoingCalendar }: CalendarPage
       <LeaderMenu />
       <Suspense fallback={null}>
         {isLinkOpen ? <LazyMarkdownLinkComboDialog onClose={() => setIsLinkOpen(false)} /> : null}
-        {isAssetOpen && controller.selectedItem ? <LazyMarkdownAssetComboDialog itemId={controller.selectedItem.id} onClose={() => setIsAssetOpen(false)} /> : null}
+        {isAssetOpen && bodyItemId ? <LazyMarkdownAssetComboDialog itemId={bodyItemId} onClose={() => setIsAssetOpen(false)} /> : null}
         {isScheduleEditOpen && controller.selectedItem ? <CalendarScheduleEditDialog item={controller.selectedItem} onClose={() => setIsScheduleEditOpen(false)} onSave={controller.updateSchedule} /> : null}
       </Suspense>
     </ListWorkspace>

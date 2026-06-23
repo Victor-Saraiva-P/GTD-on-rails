@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSyncStatus } from "../sync-status/SyncStatusProvider";
 import type { ItemBody } from "../inbox/types";
-import { fetchRecurringCalendarTemplates } from "../recurring-calendar-templates/api";
+import { fetchRecurringCalendarTemplates, updateRecurringCalendarTemplateBody } from "../recurring-calendar-templates/api";
 import type { RecurringCalendarTemplate } from "../recurring-calendar-templates/types";
 import {
   deleteCalendar,
@@ -124,6 +124,10 @@ function appendDoneTodayCalendar(state: CalendarDataState, updated: Calendar): v
   state.setDoneTodayCalendars((items) => calendarTodayDoneListAfterDone(items, updated, today));
 }
 
+function replaceRecurringCalendarTemplate(state: CalendarDataState, updated: RecurringCalendarTemplate): void {
+  state.setRecurringCalendarTemplates((items) => items.map((item) => item.id === updated.id ? updated : item));
+}
+
 async function mutateCalendarStatus(
   id: string,
   state: CalendarDataState,
@@ -215,6 +219,17 @@ async function updateCalendarItemBody(
   }
 }
 
+async function updateRecurringTemplateBody(
+  template: RecurringCalendarTemplate,
+  body: ItemBody,
+  state: CalendarDataState
+): Promise<RecurringCalendarTemplate> {
+  const updated = await updateRecurringCalendarTemplateBody(template, body);
+  replaceRecurringCalendarTemplate(state, updated);
+  state.setErrorMessage(null);
+  return updated;
+}
+
 async function updateCalendarItemTitle(
   item: Calendar,
   title: string,
@@ -245,6 +260,7 @@ function useCalendarMutations(
     markAsOnGoing: (id: string) => mutateCalendarStatus(id, state, mutations, triggerSyncStatusPolling, markCalendarOnGoing),
     restoreStatus: (id: string) => mutateCalendarStatus(id, state, mutations, triggerSyncStatusPolling, resetCalendarStatus),
     recoverDeleted: (id: string) => mutateCalendarStatus(id, state, mutations, triggerSyncStatusPolling, recoverDeletedCalendar),
+    updateRecurringTemplateBody: (template: RecurringCalendarTemplate, body: ItemBody) => updateRecurringTemplateBody(template, body, state),
     updateBody: (item: Calendar, body: ItemBody) => updateCalendarItemBody(item, body, state, mutations, triggerSyncStatusPolling),
     updateSchedule: (item: Calendar, patch: CalendarPatch) => updateCalendarItemSchedule(item, patch, state, mutations, triggerSyncStatusPolling),
     updateTitle: (item: Calendar, title: string) => updateCalendarItemTitle(item, title, state, mutations, triggerSyncStatusPolling)

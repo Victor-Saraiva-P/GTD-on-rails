@@ -28,6 +28,13 @@ import {
 } from "./calendarWorkspaceState";
 import type { Calendar, CalendarPatch } from "./types";
 import { useCalendarQuery } from "./useCalendarQuery";
+import {
+  moveRecurringCalendarTemplateSelection,
+  selectRecurringCalendarTemplateBoundary,
+  selectedRecurringCalendarTemplate,
+  selectedRecurringCalendarTemplateIndex
+} from "../recurring-calendar-templates/recurringCalendarTemplateSelection";
+import type { RecurringCalendarTemplate } from "../recurring-calendar-templates/types";
 
 type CalendarEditState = ReturnType<typeof useCalendarEditState>;
 type CalendarModel = ReturnType<typeof useCalendarWorkspaceModel>;
@@ -47,15 +54,35 @@ function useCalendarSelection(items: Calendar[]) {
   return { items, selectedId, selectedIndex, selectedItem, setSelectedId, selectFirst: () => selectCalendarBoundary(cursor, "first"), selectLast: () => selectCalendarBoundary(cursor, "last"), selectNext: () => moveCalendarSelection(cursor, 1), selectPrevious: () => moveCalendarSelection(cursor, -1) };
 }
 
+function useRecurringCalendarTemplateSelection(templates: RecurringCalendarTemplate[]) {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selectedItem = selectedRecurringCalendarTemplate(templates, selectedId);
+  const selectedIndex = selectedRecurringCalendarTemplateIndex(templates, selectedItem);
+  const cursor = { templates, selectedIndex, setSelectedId };
+  return {
+    selectedId, selectedIndex, selectedItem, setSelectedId,
+    selectFirst: () => selectRecurringCalendarTemplateBoundary(cursor, "first"),
+    selectLast: () => selectRecurringCalendarTemplateBoundary(cursor, "last"),
+    selectNext: () => moveRecurringCalendarTemplateSelection(cursor, 1),
+    selectPrevious: () => moveRecurringCalendarTemplateSelection(cursor, -1)
+  };
+}
+
 function useCalendarEditState() {
   const titleEdit = useCalendarTitleEditState();
   const [editingBodyId, setEditingBodyId] = useState<string | null>(null);
+  const [recurringEditingBodyId, setRecurringEditingBodyId] = useState<string | null>(null);
   const [vimMode, setVimMode] = useState<"NORMAL" | "INSERT" | "VISUAL" | null>(null);
-  return { ...titleEdit, editingBodyId, setEditingBodyId, setVimMode, vimMode };
+  return { ...titleEdit, editingBodyId, recurringEditingBodyId, setEditingBodyId, setRecurringEditingBodyId, setVimMode, vimMode };
 }
 
 function clearCalendarBodyEdit(edit: CalendarEditState): void {
   edit.setEditingBodyId(null);
+  edit.setVimMode(null);
+}
+
+function clearRecurringTemplateBodyEdit(edit: CalendarEditState): void {
+  edit.setRecurringEditingBodyId(null);
   edit.setVimMode(null);
 }
 
@@ -85,8 +112,22 @@ function pruneCalendarSelection(model: CalendarModel): void {
   }
 }
 
+function pruneRecurringCalendarTemplateSelection(model: CalendarModel): void {
+  const templates = model.query.recurringCalendarTemplates;
+  if (templates.length === 0) {
+    model.recurringSelection.setSelectedId(null);
+    clearRecurringTemplateBodyEdit(model.edit);
+    return;
+  }
+  const visible = templates.some((template) => template.id === model.recurringSelection.selectedId);
+  if (!visible) model.recurringSelection.setSelectedId(templates[0].id);
+  const editing = model.edit.recurringEditingBodyId;
+  if (editing && !templates.some((template) => template.id === editing)) clearRecurringTemplateBodyEdit(model.edit);
+}
+
 function useCalendarPruning(model: CalendarModel): void {
   useEffect(() => pruneCalendarState(model), [model.edit.editingBodyId, model.edit.editingId, model.selection.items, model.selection.selectedId]);
+  useEffect(() => pruneRecurringCalendarTemplateSelection(model), [model.edit.recurringEditingBodyId, model.query.recurringCalendarTemplates, model.recurringSelection.selectedId]);
 }
 
 function useCalendarWorkspaceModel() {
@@ -101,10 +142,11 @@ function useCalendarWorkspaceModel() {
     view.activePanel
   );
   const selection = useCalendarSelection(items);
+  const recurringSelection = useRecurringCalendarTemplateSelection(query.recurringCalendarTemplates);
   const edit = useCalendarEditState();
   const zone = useActiveZone();
   const history = useUndoRedoHistory<Calendar>();
-  return { edit, query, selection, view, zone, history };
+  return { edit, query, recurringSelection, selection, view, zone, history };
 }
 
 function startCalendarTitleEdit(model: CalendarModel): void {
@@ -141,6 +183,13 @@ function startCalendarBodyEdit(model: CalendarModel): void {
   model.edit.setEditingBodyId(model.selection.selectedItem.id);
 }
 
+function startRecurringTemplateBodyEdit(model: CalendarModel): void {
+  const template = model.recurringSelection.selectedItem;
+  if (!template) return;
+  model.zone.setActiveZone("calendar-detail");
+  model.edit.setRecurringEditingBodyId(template.id);
+}
+
 
 async function commitCalendarBodyEdit(model: CalendarModel, body: ItemBody): Promise<void> {
   const item = model.selection.selectedItem;
@@ -153,6 +202,19 @@ async function autosaveCalendarBodyEdit(model: CalendarModel, body: ItemBody): P
   const item = model.selection.selectedItem;
   if (!item || model.edit.editingBodyId !== item.id || isSameBody(item.body, body)) return;
   model.selection.setSelectedId((await model.query.updateBody(item, body)).id);
+}
+
+async function commitRecurringTemplateBodyEdit(model: CalendarModel, body: ItemBody): Promise<void> {
+  const template = model.recurringSelection.selectedItem;
+  if (!template || model.edit.recurringEditingBodyId !== template.id) return;
+  if (!isSameBody(template.body, body)) model.recurringSelection.setSelectedId((await model.query.updateRecurringTemplateBody(template, body)).id);
+  clearRecurringTemplateBodyEdit(model.edit);
+}
+
+async function autosaveRecurringTemplateBodyEdit(model: CalendarModel, body: ItemBody): Promise<void> {
+  const template = model.recurringSelection.selectedItem;
+  if (!template || model.edit.recurringEditingBodyId !== template.id || isSameBody(template.body, body)) return;
+  model.recurringSelection.setSelectedId((await model.query.updateRecurringTemplateBody(template, body)).id);
 }
 
 async function updateSelectedCalendarSchedule(model: CalendarModel, patch: CalendarPatch): Promise<void> {
@@ -266,9 +328,12 @@ function focusTodayCalendarWeek(model: CalendarModel): void {
 function useCalendarWorkspaceActions(model: CalendarModel) {
   return {
     autosaveBody: (body: ItemBody) => autosaveCalendarBodyEdit(model, body),
+    autosaveRecurringTemplateBody: (body: ItemBody) => autosaveRecurringTemplateBodyEdit(model, body),
     cancelBodyEdit: () => clearCalendarBodyEdit(model.edit),
+    cancelRecurringTemplateBodyEdit: () => clearRecurringTemplateBodyEdit(model.edit),
     cancelTitleEdit: () => clearCalendarTitleEdit(model.edit),
     commitBody: (body: ItemBody) => commitCalendarBodyEdit(model, body),
+    commitRecurringTemplateBody: (body: ItemBody) => commitRecurringTemplateBodyEdit(model, body),
     commitTitle: () => commitCalendarTitleEdit(model),
     deleteSelected: () => deleteSelectedCalendarAction(model),
     focusPanel: (panel: CalendarPanel) => focusCalendarPanel(model, panel),
@@ -283,10 +348,15 @@ function useCalendarWorkspaceActions(model: CalendarModel) {
     restoreSelected: () => runSelectedCalendarMutation(model, model.query.restoreStatus),
     recoverDeleted: () => runSelectedCalendarMutation(model, model.query.recoverDeleted),
     selectFirst: model.selection.selectFirst,
+    selectFirstRecurringTemplate: model.recurringSelection.selectFirst,
     selectLast: model.selection.selectLast,
+    selectLastRecurringTemplate: model.recurringSelection.selectLast,
     selectNext: model.selection.selectNext,
+    selectNextRecurringTemplate: model.recurringSelection.selectNext,
     selectPrevious: model.selection.selectPrevious,
+    selectPreviousRecurringTemplate: model.recurringSelection.selectPrevious,
     startBodyEdit: () => startCalendarBodyEdit(model),
+    startRecurringTemplateBodyEdit: () => startRecurringTemplateBodyEdit(model),
     startTitleEdit: () => startCalendarTitleEdit(model),
     focusTodayWeek: () => focusTodayCalendarWeek(model),
     switchToNextSubview: () => switchCalendarSubview(model, "next"),
@@ -308,6 +378,7 @@ function buildCalendarController(model: CalendarModel, actions: CalendarActions)
     completedCalendars: model.query.completedCalendars,
     deletedCalendars: model.query.deletedCalendars,
     recurringCalendarTemplates: model.query.recurringCalendarTemplates,
+    recurringEditingBodyId: model.edit.recurringEditingBodyId,
     weeklyCalendars: model.query.weeklyCalendars,
     editingBodyId: model.edit.editingBodyId,
     editingId: model.edit.editingId,
@@ -319,6 +390,9 @@ function buildCalendarController(model: CalendarModel, actions: CalendarActions)
     isUpdating: model.query.isUpdating,
     selectedIndex: model.selection.selectedIndex,
     selectedItem: model.selection.selectedItem,
+    selectedRecurringTemplate: model.recurringSelection.selectedItem,
+    selectedRecurringTemplateIndex: model.recurringSelection.selectedIndex,
+    setSelectedRecurringTemplateId: model.recurringSelection.setSelectedId,
     setActiveSubview: model.view.setActiveSubview,
     setActiveZone: model.zone.setActiveZone,
     setEditingTitle: (value: string) => {

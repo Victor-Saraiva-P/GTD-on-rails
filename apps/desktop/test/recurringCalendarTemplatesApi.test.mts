@@ -6,7 +6,8 @@ import {
   fetchRecurringCalendarTemplates,
   patchRecurringCalendarTemplate,
   processStuffToRecurringCalendarTemplate,
-  restoreRecurringCalendarTemplate
+  restoreRecurringCalendarTemplate,
+  updateRecurringCalendarTemplateBody
 } from "../src/features/recurring-calendar-templates/api.ts";
 import type { RecurringCalendarTemplateConversionPayload, RecurringCalendarTemplateUpdate } from "../src/features/recurring-calendar-templates/types.ts";
 import type { Stuff } from "../src/features/inbox/types.ts";
@@ -67,6 +68,21 @@ describe("recurring calendar template API", () => {
     const updated = await patchRecurringCalendarTemplate("template-1", payload);
 
     assert.equal(updated.title, "Take out trash");
+  });
+
+  test("updateRecurringCalendarTemplateBody patches shared item body", async () => {
+    const template = { ...response, body: { text: "old", inlineMarks: [], lineBlocks: [], blockEntities: [] } };
+    const body = { text: "new", inlineMarks: [], lineBlocks: [], blockEntities: [] };
+    globalThis.fetch = mock.fn(async (input, init) => {
+      assert.ok(input.toString().endsWith("/items/template-1/body"));
+      assert.equal(init?.method, "PATCH");
+      assert.equal(init?.body, JSON.stringify({ body }));
+      return new Response(JSON.stringify({ ...template, body }), { status: 200 });
+    });
+
+    const updated = await updateRecurringCalendarTemplateBody(template, body);
+
+    assert.deepEqual(updated.body, body);
   });
 
   test("delete and restore use template endpoints", async () => {

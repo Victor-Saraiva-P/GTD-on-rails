@@ -6,6 +6,7 @@ import {
   calendarItemsForPanel,
   calendarListWithoutItem,
   calendarListWithReplacement,
+  calendarSubviewFocusZones,
   calendarTodayDoneListAfterDone,
   calendarSelectionOffsetIndex,
   calendarSubviewTarget,
@@ -80,6 +81,10 @@ describe("calendar workspace state", () => {
     assert.deepEqual(calendarSubviewTarget("completed", "previous"), { panel: "recurring", subview: "recurring" });
     assert.deepEqual(calendarSubviewTarget("recurring", "previous"), { panel: "mon", subview: "weekly" });
     assert.deepEqual(calendarSubviewTarget("weekly", "previous"), { panel: "due", subview: "today" });
+  });
+
+  test("allows recurring subview to focus its detail pane", () => {
+    assert.deepEqual(calendarSubviewFocusZones("recurring"), ["calendar-recurring-panel", "calendar-detail"]);
   });
 });
 

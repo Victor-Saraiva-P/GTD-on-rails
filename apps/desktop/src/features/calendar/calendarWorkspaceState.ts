@@ -1,4 +1,5 @@
 import type { Calendar } from "./types";
+import type { FocusZoneId } from "../keybinds/types";
 
 export type CalendarSubview = "today" | "weekly" | "recurring" | "completed" | "deleted";
 export type CalendarPanel = "due" | "done-today" | "recurring" | "completed" | "deleted" | "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
@@ -152,4 +153,12 @@ export function calendarSubviewTarget(
   const nextIndex = (currentIndex + offset + calendarSubviewOrder.length) % calendarSubviewOrder.length;
   const subview = calendarSubviewOrder[nextIndex];
   return { panel: defaultCalendarPanelForSubview(subview), subview };
+}
+
+export function calendarSubviewFocusZones(subview: CalendarSubview): FocusZoneId[] {
+  if (subview === "completed") return ["calendar-completed-panel", "calendar-detail"];
+  if (subview === "deleted") return ["calendar-deleted-panel", "calendar-detail"];
+  if (subview === "recurring") return ["calendar-recurring-panel", "calendar-detail"];
+  if (subview === "weekly") return ["calendar-mon-panel", "calendar-tue-panel", "calendar-wed-panel", "calendar-thu-panel", "calendar-fri-panel", "calendar-sat-panel", "calendar-sun-panel"];
+  return ["calendar-today-due-panel", "calendar-today-done-panel", "calendar-detail"];
 }

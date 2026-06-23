@@ -6,6 +6,8 @@ import { FilePreview } from "./FilePreview";
 import { formatStuffCreatedAt, getStuffBodyPreviewLines, type Stuff, type ItemBody } from "./types";
 import { calendarDetailMetadata } from "../calendar/calendarDetailMetadata";
 import type { Calendar } from "../calendar/types";
+import { recurringTemplateDetailMetadata } from "../recurring-calendar-templates/recurringCalendarTemplateDisplay";
+import type { RecurringCalendarTemplate } from "../recurring-calendar-templates/types";
 import { formatScheduleDateTime, type NextAction } from "../next-actions/types";
 import { buildApiUrl } from "../../config/env";
 import { ContextNameWithIcon } from "../contexts/ContextNameWithIcon";
@@ -24,7 +26,7 @@ type InboxStuffDetailsProps = Readonly<{
   onCancelEditing: () => void;
   onVimModeChange?: (mode: "NORMAL" | "INSERT" | "VISUAL") => void;
   showCreatedMeta?: boolean;
-  metaVariant?: "default" | "next-action" | "calendar";
+  metaVariant?: "default" | "next-action" | "calendar" | "recurring-template";
 }>;
 
 function initialMetaParts(item: Stuff, showCreatedMeta: boolean): ReactNode[] {
@@ -141,6 +143,18 @@ function CalendarDetailHeader({ item }: Readonly<Pick<InboxStuffDetailsProps, "i
   );
 }
 
+function RecurringTemplateDetailHeader({ item }: Readonly<Pick<InboxStuffDetailsProps, "item">>) {
+  const metadata = recurringTemplateDetailMetadata(item as unknown as RecurringCalendarTemplate);
+
+  return (
+    <>
+      <h1 className="inbox-detail__title">{metadata.title}</h1>
+      <CalendarScheduleMetaRow label="Recurring calendar template schedule" value={metadata.recurrence} />
+      <div className="inbox-detail__divider" />
+    </>
+  );
+}
+
 function CalendarScheduleMetaRow({ label, value }: Readonly<{ label: string; value: string | null }>) {
   if (!value) return null;
   return (
@@ -156,6 +170,7 @@ function CalendarScheduleMetaRow({ label, value }: Readonly<{ label: string; val
 function DetailHeader({ item, metaVariant, showCreatedMeta }: Readonly<Pick<InboxStuffDetailsProps, "item" | "metaVariant" | "showCreatedMeta">>) {
   if (metaVariant === "calendar") return <CalendarDetailHeader item={item} />;
   if (metaVariant === "next-action") return <NextActionDetailHeader item={item} />;
+  if (metaVariant === "recurring-template") return <RecurringTemplateDetailHeader item={item} />;
   return <InboxDetailHeader item={item} showCreatedMeta={showCreatedMeta} />;
 }
 

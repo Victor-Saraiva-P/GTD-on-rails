@@ -1,5 +1,6 @@
 import { apiFetch, apiJson } from "../../lib/api/apiClient.ts";
-import type { Stuff } from "../inbox/types";
+import { updateStuffBody } from "../inbox/api.ts";
+import type { ItemBody, Stuff } from "../inbox/types";
 import type {
   RecurringCalendarTemplate,
   RecurringCalendarTemplateConversionPayload,
@@ -44,6 +45,14 @@ export async function patchRecurringCalendarTemplate(
   const response = await apiJson<RecurringCalendarTemplateResponse>(
     `/recurring-calendar-templates/${id}`, jsonRequest("PATCH", payload));
   return toRecurringCalendarTemplate(response);
+}
+
+export function updateRecurringCalendarTemplateBody(
+  template: RecurringCalendarTemplate,
+  body: ItemBody
+): Promise<RecurringCalendarTemplate> {
+  return updateStuffBody({ ...template, status: "RECURRING_TEMPLATE" }, body)
+    .then((updated) => ({ ...template, body: updated.body, title: updated.title }));
 }
 
 /**
