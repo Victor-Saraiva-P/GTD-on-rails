@@ -47,7 +47,7 @@ function canEditCalendar(controller: CalendarWorkspaceController): boolean {
 }
 
 function canEditRecurringTemplate(controller: CalendarWorkspaceController): boolean {
-  return !controller.isLoading && !controller.isUpdating && Boolean(controller.selectedRecurringTemplate) && !controller.recurringEditingBodyId;
+  return !controller.isLoading && !controller.isDeleting && !controller.isUpdating && Boolean(controller.selectedRecurringTemplate) && !controller.recurringEditingBodyId;
 }
 
 function runCalendarAction(canRun: boolean, action: () => Promise<void>, message: string): void {
@@ -165,6 +165,7 @@ function recurringCalendarBindings(controller: CalendarWorkspaceController): Key
     calendarBinding("calendars.move-recurring-first", "g", "Move to first template", "calendar-recurring-panel", controller.selectFirstRecurringTemplate, false, ["g", "g"]),
     calendarBinding("calendars.move-recurring-last", "G", "Move to last template", "calendar-recurring-panel", controller.selectLastRecurringTemplate),
     calendarBinding("calendars.edit-recurring-body", "l", "Edit recurring body", "calendar-recurring-panel", () => canEditRecurringTemplate(controller) && controller.startRecurringTemplateBodyEdit()),
+    calendarBinding("calendars.delete-recurring-template", "d", "Delete recurring template", "calendar-recurring-panel", () => runCalendarAction(canEditRecurringTemplate(controller), controller.deleteSelectedRecurringTemplate, "Failed to delete recurring template")),
     calendarBinding("calendars.reload-recurring", "r", "Reload recurring templates", "calendar-recurring-panel", controller.reload)
   ];
 }

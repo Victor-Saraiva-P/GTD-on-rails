@@ -28,6 +28,13 @@ export function recurringTemplateDetailMetadata(
   return { recurrence: recurringTemplateRecurrenceLabel(template), title: template.title };
 }
 
+export function recurringCalendarTemplateListWithoutItem(
+  templates: RecurringCalendarTemplate[],
+  id: string
+): RecurringCalendarTemplate[] {
+  return templates.filter((template) => template.id !== id);
+}
+
 function recurrenceCadenceText(intervalValue: number, recurrenceUnit: string): string {
   const unit = intervalValue === 1 ? recurrenceUnit : `${recurrenceUnit}s`;
   return intervalValue === 1 ? `Every ${unit}` : `Every ${intervalValue} ${unit}`;

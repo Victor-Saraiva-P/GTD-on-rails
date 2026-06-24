@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test, { describe } from "node:test";
 
 import {
+  recurringCalendarTemplateListWithoutItem,
   recurringTemplateDetailMetadata,
   recurringTemplateRecurrenceLabel
 } from "../src/features/recurring-calendar-templates/recurringCalendarTemplateDisplay.ts";
@@ -24,6 +25,12 @@ describe("recurring calendar template list", () => {
 
   test("summarizes open-ended daily recurrence", () => {
     assert.equal(recurringTemplateRecurrenceLabel(template({})), "Every day from 21/05/2026");
+  });
+
+  test("removes deleted template from local collection", () => {
+    const templates = [template({ id: "template-1" }), template({ id: "template-2" })];
+
+    assert.deepEqual(recurringCalendarTemplateListWithoutItem(templates, "template-1"), [templates[1]]);
   });
 
   test("builds detail metadata for selected template", () => {

@@ -246,6 +246,14 @@ async function deleteSelectedCalendarAction(model: CalendarModel): Promise<void>
   model.zone.setActiveZone(calendarListZoneForPanel(model.view.activePanel));
 }
 
+async function deleteSelectedRecurringTemplateAction(model: CalendarModel): Promise<void> {
+  const template = model.recurringSelection.selectedItem;
+  if (!template) return;
+  await model.query.deleteRecurringTemplate(template.id);
+  clearRecurringTemplateBodyEdit(model.edit);
+  model.zone.setActiveZone("calendar-recurring-panel");
+}
+
 async function undoCalendarAction(model: CalendarModel) {
   const action = model.history.popUndo();
   if (!action) return;
@@ -336,6 +344,7 @@ function useCalendarWorkspaceActions(model: CalendarModel) {
     commitRecurringTemplateBody: (body: ItemBody) => commitRecurringTemplateBodyEdit(model, body),
     commitTitle: () => commitCalendarTitleEdit(model),
     deleteSelected: () => deleteSelectedCalendarAction(model),
+    deleteSelectedRecurringTemplate: () => deleteSelectedRecurringTemplateAction(model),
     focusPanel: (panel: CalendarPanel) => focusCalendarPanel(model, panel),
     markAsDone: () => runSelectedCalendarMutation(model, model.query.markAsDone),
     markAsOnGoing: () => runSelectedCalendarMutation(model, model.query.markAsOnGoing),

@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useSyncStatus } from "../sync-status/SyncStatusProvider";
 import type { ItemBody } from "../inbox/types";
-import { fetchRecurringCalendarTemplates, updateRecurringCalendarTemplateBody } from "../recurring-calendar-templates/api";
+import { deleteRecurringCalendarTemplate, fetchRecurringCalendarTemplates, updateRecurringCalendarTemplateBody } from "../recurring-calendar-templates/api";
 import type { RecurringCalendarTemplate } from "../recurring-calendar-templates/types";
+import { recurringCalendarTemplateListWithoutItem } from "../recurring-calendar-templates/recurringCalendarTemplateDisplay";
 import {
   deleteCalendar,
   fetchDoneTodayCalendars,
@@ -128,6 +129,10 @@ function replaceRecurringCalendarTemplate(state: CalendarDataState, updated: Rec
   state.setRecurringCalendarTemplates((items) => items.map((item) => item.id === updated.id ? updated : item));
 }
 
+function removeRecurringCalendarTemplate(state: CalendarDataState, id: string): void {
+  state.setRecurringCalendarTemplates((items) => recurringCalendarTemplateListWithoutItem(items, id));
+}
+
 async function mutateCalendarStatus(
   id: string,
   state: CalendarDataState,
@@ -230,6 +235,21 @@ async function updateRecurringTemplateBody(
   return updated;
 }
 
+async function deleteRecurringTemplate(
+  id: string,
+  state: CalendarDataState,
+  mutations: CalendarMutationState
+): Promise<void> {
+  mutations.setIsDeleting(true);
+  try {
+    await deleteRecurringCalendarTemplate(id);
+    removeRecurringCalendarTemplate(state, id);
+    state.setErrorMessage(null);
+  } finally {
+    mutations.setIsDeleting(false);
+  }
+}
+
 async function updateCalendarItemTitle(
   item: Calendar,
   title: string,
@@ -256,6 +276,7 @@ function useCalendarMutations(
   const { triggerSyncStatusPolling } = useSyncStatus();
   return {
     deleteItem: (id: string) => deleteCalendarItem(id, state, mutations, triggerSyncStatusPolling),
+    deleteRecurringTemplate: (id: string) => deleteRecurringTemplate(id, state, mutations),
     markAsDone: (id: string) => markCalendarDoneItem(id, state, mutations, triggerSyncStatusPolling),
     markAsOnGoing: (id: string) => mutateCalendarStatus(id, state, mutations, triggerSyncStatusPolling, markCalendarOnGoing),
     restoreStatus: (id: string) => mutateCalendarStatus(id, state, mutations, triggerSyncStatusPolling, resetCalendarStatus),
