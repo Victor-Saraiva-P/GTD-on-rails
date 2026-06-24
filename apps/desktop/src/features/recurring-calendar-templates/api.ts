@@ -1,5 +1,4 @@
 import { apiFetch, apiJson } from "../../lib/api/apiClient.ts";
-import { updateStuffBody } from "../inbox/api.ts";
 import type { ItemBody, Stuff } from "../inbox/types";
 import type {
   RecurringCalendarTemplate,
@@ -51,8 +50,9 @@ export function updateRecurringCalendarTemplateBody(
   template: RecurringCalendarTemplate,
   body: ItemBody
 ): Promise<RecurringCalendarTemplate> {
-  return updateStuffBody({ ...template, status: "RECURRING_TEMPLATE" }, body)
-    .then((updated) => ({ ...template, body: updated.body, title: updated.title }));
+  return apiJson<RecurringCalendarTemplateResponse>(
+    `/recurring-calendar-templates/${template.id}/body`, jsonRequest("PATCH", { body }))
+    .then(toRecurringCalendarTemplate);
 }
 
 /**

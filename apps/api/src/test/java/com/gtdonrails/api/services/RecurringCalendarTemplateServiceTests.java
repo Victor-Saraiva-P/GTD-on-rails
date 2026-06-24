@@ -13,6 +13,7 @@ import com.gtdonrails.api.dtos.recurring.ConvertStuffToRecurringCalendarTemplate
 import com.gtdonrails.api.dtos.recurring.RecurringCalendarTemplateResponseDto;
 import com.gtdonrails.api.dtos.recurring.UpdateRecurringCalendarTemplateRequestDto;
 import com.gtdonrails.api.dtos.calendar.PatchCalendarRequestDto;
+import com.gtdonrails.api.dtos.item.PatchItemBodyRequestDto;
 import com.gtdonrails.api.dtos.item.UpdateItemTitleRequestDto;
 import com.gtdonrails.api.entities.Calendar;
 import com.gtdonrails.api.entities.Item;
@@ -22,6 +23,7 @@ import com.gtdonrails.api.repositories.CalendarRepository;
 import com.gtdonrails.api.repositories.ItemRepository;
 import com.gtdonrails.api.repositories.RecurringCalendarTemplateRepository;
 import com.gtdonrails.api.types.Title;
+import com.gtdonrails.api.types.ItemBody;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -156,6 +158,37 @@ class RecurringCalendarTemplateServiceTests {
     }
 
     @Test
+    void updatingTemplateBodyPropagatesToFutureDefaultOccurrences() {
+        Item stuff = itemRepository.save(new Item(new Title("Take out trash"), "Old body"));
+        RecurringCalendarTemplateResponseDto template = recurringCalendarTemplateService
+            .convertStuffToRecurringCalendarTemplate(stuff.getId(), dailyRequest());
+
+        recurringCalendarTemplateService.patchTemplateBody(
+            template.id(), new PatchItemBodyRequestDto(bodyValue("New body")));
+
+        List<Calendar> occurrences = calendarRepository
+            .findAllByRecurringCalendarTemplate_ItemIdOrderByOriginalScheduledDateAsc(template.id());
+        assertEquals("New body", occurrences.get(0).getItem().getBody().text());
+        assertEquals("New body", occurrences.get(2).getItem().getBody().text());
+    }
+
+    @Test
+    void updatingTemplateBodySkipsPersonalizedOccurrences() {
+        Item stuff = itemRepository.save(new Item(new Title("Take out trash"), "Old body"));
+        RecurringCalendarTemplateResponseDto template = recurringCalendarTemplateService
+            .convertStuffToRecurringCalendarTemplate(stuff.getId(), dailyRequest());
+        Calendar occurrence = firstOccurrence(template);
+        itemService.patchItemBody(occurrence.getItemId(), new PatchItemBodyRequestDto(bodyValue("Custom body")));
+
+        recurringCalendarTemplateService.patchTemplateBody(
+            template.id(), new PatchItemBodyRequestDto(bodyValue("New body")));
+
+        Calendar personalized = calendarRepository.findById(occurrence.getItemId()).orElseThrow();
+        assertEquals(true, personalized.isPersonalizedOccurrence());
+        assertEquals("Custom body", personalized.getItem().getBody().text());
+    }
+
+    @Test
     void directOccurrenceScheduleEditPersonalizesAndSkipsFutureTemplateUpdates() {
         Item stuff = itemRepository.save(new Item(new Title("Take out trash"), null));
         RecurringCalendarTemplateResponseDto template = recurringCalendarTemplateService
@@ -240,6 +273,10 @@ class RecurringCalendarTemplateServiceTests {
     private UpdateRecurringCalendarTemplateRequestDto updateRequest() {
         return new UpdateRecurringCalendarTemplateRequestDto(
             "Take bins out", "2026-05-21", "10:15", 1, "day", List.of(), "2026-05-23");
+    }
+
+    private ItemBody bodyValue(String text) {
+        return new ItemBody(text, List.of(), List.of(), List.of());
     }
 
     private List<LocalDate> occurrenceDates(List<Calendar> occurrences) {

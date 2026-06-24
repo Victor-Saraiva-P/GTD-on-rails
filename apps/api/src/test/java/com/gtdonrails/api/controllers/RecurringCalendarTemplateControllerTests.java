@@ -112,6 +112,26 @@ class RecurringCalendarTemplateControllerTests {
     }
 
     @Test
+    void patchesRecurringCalendarTemplateBody() throws Exception {
+        RecurringCalendarTemplateResponseDto template = createTemplate("Body recurring work");
+
+        mockMvc.perform(patch("/recurring-calendar-templates/{id}/body", template.id())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "body": {
+                        "text": "Updated body",
+                        "inlineMarks": [],
+                        "lineBlocks": [],
+                        "blockEntities": []
+                      }
+                    }
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.body.text").value("Updated body"));
+    }
+
+    @Test
     void deletesAndRestoresRecurringCalendarTemplate() throws Exception {
         RecurringCalendarTemplateResponseDto template = createTemplate("Restorable recurring work");
 

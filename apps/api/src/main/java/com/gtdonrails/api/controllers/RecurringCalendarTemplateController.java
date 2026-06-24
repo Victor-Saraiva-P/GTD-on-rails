@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import com.gtdonrails.api.dtos.recurring.RecurringCalendarTemplateResponseDto;
 import com.gtdonrails.api.dtos.recurring.UpdateRecurringCalendarTemplateRequestDto;
+import com.gtdonrails.api.dtos.item.PatchItemBodyRequestDto;
 import com.gtdonrails.api.services.RecurringCalendarTemplateService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -48,6 +49,19 @@ public class RecurringCalendarTemplateController {
         @Valid @RequestBody UpdateRecurringCalendarTemplateRequestDto request
     ) {
         return recurringCalendarTemplateService.updateTemplate(id, request);
+    }
+
+    /**
+     * Handles Recurring Calendar Template body edit requests.
+     *
+     * <p>Example: {@code PATCH /recurring-calendar-templates/018f13b2-a7f3-7c44-8f1a-9f31f65a7fd2/body}.</p>
+     */
+    @PatchMapping("/{id}/body")
+    public RecurringCalendarTemplateResponseDto patchTemplateBody(
+        @PathVariable UUID id,
+        @Valid @RequestBody PatchItemBodyRequestDto request
+    ) {
+        return recurringCalendarTemplateService.patchTemplateBody(id, request);
     }
 
     /**

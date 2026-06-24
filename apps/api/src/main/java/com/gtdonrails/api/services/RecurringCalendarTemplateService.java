@@ -8,6 +8,7 @@ import java.util.UUID;
 import com.gtdonrails.api.dtos.recurring.ConvertStuffToRecurringCalendarTemplateRequestDto;
 import com.gtdonrails.api.dtos.recurring.RecurringCalendarTemplateResponseDto;
 import com.gtdonrails.api.dtos.recurring.UpdateRecurringCalendarTemplateRequestDto;
+import com.gtdonrails.api.dtos.item.PatchItemBodyRequestDto;
 import com.gtdonrails.api.entities.Calendar;
 import com.gtdonrails.api.entities.Item;
 import com.gtdonrails.api.entities.RecurringCalendarTemplate;
@@ -15,6 +16,7 @@ import com.gtdonrails.api.enums.CalendarStatus;
 import com.gtdonrails.api.enums.ItemStatus;
 import com.gtdonrails.api.exceptions.item.ItemNotFoundException;
 import com.gtdonrails.api.mappers.RecurringCalendarTemplateMapper;
+import com.gtdonrails.api.normalizers.ItemBodyNormalizer;
 import com.gtdonrails.api.normalizers.ItemTextNormalizer;
 import com.gtdonrails.api.persistence.bootstrap.model.PersistenceChangeType;
 import com.gtdonrails.api.persistence.bootstrap.services.PersistenceGitSyncService;
@@ -22,6 +24,7 @@ import com.gtdonrails.api.repositories.CalendarRepository;
 import com.gtdonrails.api.repositories.ItemRepository;
 import com.gtdonrails.api.repositories.RecurringCalendarTemplateRepository;
 import com.gtdonrails.api.types.Title;
+import com.gtdonrails.api.types.ItemBody;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +36,8 @@ public class RecurringCalendarTemplateService {
     private final ItemRepository itemRepository;
     private final RecurringCalendarTemplateMapper templateMapper;
     private final RecurringCalendarOccurrencePlanner occurrencePlanner;
+    private final ItemBodyNormalizer itemBodyNormalizer;
+    private final ItemAssetService itemAssetService;
     private final ItemTextNormalizer itemTextNormalizer;
     private final Clock clock;
     private final PersistenceGitSyncService persistenceGitSyncService;
@@ -45,6 +50,8 @@ public class RecurringCalendarTemplateService {
         ItemRepository itemRepository,
         RecurringCalendarTemplateMapper templateMapper,
         RecurringCalendarOccurrencePlanner occurrencePlanner,
+        ItemBodyNormalizer itemBodyNormalizer,
+        ItemAssetService itemAssetService,
         ItemTextNormalizer itemTextNormalizer,
         Clock clock,
         PersistenceGitSyncService persistenceGitSyncService,
@@ -56,6 +63,8 @@ public class RecurringCalendarTemplateService {
         this.itemRepository = itemRepository;
         this.templateMapper = templateMapper;
         this.occurrencePlanner = occurrencePlanner;
+        this.itemBodyNormalizer = itemBodyNormalizer;
+        this.itemAssetService = itemAssetService;
         this.itemTextNormalizer = itemTextNormalizer;
         this.clock = clock;
         this.persistenceGitSyncService = persistenceGitSyncService;
@@ -108,6 +117,26 @@ public class RecurringCalendarTemplateService {
         propagateTemplateToOccurrences(template);
         refreshTemplateHorizon(template);
         requestPersistenceSyncAfterCommit("recurring calendar template updated");
+        return templateMapper.toResponse(template);
+    }
+
+    /**
+     * Updates template body and propagates it to future default occurrences.
+     *
+     * <p>Example: {@code service.patchTemplateBody(templateId, request)}.</p>
+     */
+    @Transactional
+    public RecurringCalendarTemplateResponseDto patchTemplateBody(
+        UUID templateId,
+        PatchItemBodyRequestDto request
+    ) {
+        RecurringCalendarTemplate template = findTemplate(templateId);
+        ItemBody body = itemBodyNormalizer.normalizeBody(request.body());
+        itemAssetService.reconcileBodyAssetReferences(templateId, body);
+        template.getItem().setBody(body);
+        templateRepository.saveAndFlush(template);
+        propagateTemplateToOccurrences(template);
+        requestPersistenceSyncAfterCommit("recurring calendar template body updated");
         return templateMapper.toResponse(template);
     }
 

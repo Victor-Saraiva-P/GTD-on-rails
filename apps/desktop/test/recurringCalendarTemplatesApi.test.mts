@@ -74,7 +74,7 @@ describe("recurring calendar template API", () => {
     const template = { ...response, body: { text: "old", inlineMarks: [], lineBlocks: [], blockEntities: [] } };
     const body = { text: "new", inlineMarks: [], lineBlocks: [], blockEntities: [] };
     globalThis.fetch = mock.fn(async (input, init) => {
-      assert.ok(input.toString().endsWith("/items/template-1/body"));
+      assert.ok(input.toString().endsWith("/recurring-calendar-templates/template-1/body"));
       assert.equal(init?.method, "PATCH");
       assert.equal(init?.body, JSON.stringify({ body }));
       return new Response(JSON.stringify({ ...template, body }), { status: 200 });
