@@ -25,7 +25,7 @@ test("calendar GTD flow: creates, schedules, manages state, and deletes", async 
   const { panel: panel1, item: dueCalendar } = await focusPanelAndSelectItem(page, 0, title);
   await page.keyboard.press("o");
   await expect(dueCalendar).not.toBeVisible();
-  await expect(page.locator(".list-pane__title", { hasText: "On Going Calendar Detail" })).toBeVisible();
+  await expect(page.locator(".list-pane__title", { hasText: "On Going Detail" })).toBeVisible();
   await page.keyboard.press("Escape");
   await page.keyboard.down("Control");
   await page.keyboard.press("h");
@@ -37,13 +37,12 @@ test("calendar GTD flow: creates, schedules, manages state, and deletes", async 
   await page.keyboard.press("o");
   await expect(page.locator(".list-pane__title", { hasText: "On Going" }).first()).toBeVisible();
 
-  const ongoingPanel2 = page.locator(".inbox-pane").nth(1);
-  const ongoingCalendar = ongoingPanel2.getByRole("button", { name: title, exact: false }).first();
+  const ongoingPanel = page.locator(".inbox-pane").nth(0);
+  const ongoingCalendar = ongoingPanel.getByRole("button", { name: title, exact: false }).first();
   await expect(ongoingCalendar).toBeVisible();
 
   // 5. Mark done and verify in Today panel (2)
-  await page.keyboard.press("2");
-  await expect(ongoingPanel2).toHaveClass(/list-pane--active/);
+  await expect(ongoingPanel).toHaveClass(/list-pane--active/);
   await ongoingCalendar.click();
   await page.keyboard.press("x");
 

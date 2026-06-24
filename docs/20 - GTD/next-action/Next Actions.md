@@ -58,9 +58,9 @@ Focused detail pages start body editing automatically when opened.
 
 The body is [[Body Content]] and supports the shared formatting shortcuts from [[Global Shortcuts]].
 
-## On Going Next Actions List
+## On Going List
 
-The on going next actions page is the list of actions currently pulled into active execution.
+The on going page is the unified list of next actions and calendars currently pulled into active execution.
 
 On going next actions appear on the shared external On Going agenda using the time they were pulled into active execution.
 
@@ -68,11 +68,7 @@ On going next actions appear on the shared external On Going agenda using the ti
 | --- | --- | --- |
 | `d` | List | Delete selected on going item. |
 | `x` | List | Mark selected item as done. |
-| `e` | List | Edit attributes for selected next action. |
-| `o` | List | Cycle next-action ordering. |
-| `u` | List | Undo last deletion. |
-| `r` | List | Restore selected item. |
-| `Ctrl+r` | List | Redo last action. |
+| `r` | List | Restore selected item to its original state. |
 | `gg` | List | Move selection to the first item. |
 | `G` | List | Move selection to the last item. |
 | `j` | List | Move selection down. |
@@ -85,15 +81,15 @@ On going next actions appear on the shared external On Going agenda using the ti
 
 The on going action detail body is [[Body Content]] and supports the shared formatting shortcuts from [[Global Shortcuts]].
 
-## On Going Next Action Detail Page
+## On Going Detail Page
 
-The on going next action detail page is the focused detail view for an action in active execution.
+The on going detail page is the focused detail view for an item in active execution.
 
 Focused detail pages start body editing automatically when opened.
 
 | Shortcut | Action |
 | --- | --- |
-| `Escape` | Back to on going actions when body editing is not active. |
+| `Escape` | Back to on going list when body editing is not active. |
 | `Space k` | Show available keybindings. |
 
 The body is [[Body Content]] and supports the shared formatting shortcuts from [[Global Shortcuts]].

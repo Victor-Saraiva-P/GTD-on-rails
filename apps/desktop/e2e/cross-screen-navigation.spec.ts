@@ -49,7 +49,7 @@ test("Space n from on going detail returns to next actions list focus", async ({
   await page.getByRole("button", { name: promotedTitle, exact: false }).first().click();
 
   await page.keyboard.press("o");
-  await expect(page.locator(".list-pane__title", { hasText: "On Going Action Detail" })).toBeVisible();
+  await expect(page.locator(".list-pane__title", { hasText: "On Going Detail" })).toBeVisible();
   await openNextActions(page);
 
   await expect(page.locator(".inbox-pane--list")).toHaveClass(/list-pane--active/);
@@ -82,32 +82,16 @@ test("Space o from on going detail returns to on going list mode", async ({ page
   await openApp(page);
   await openOnGoing(page);
   await page.getByRole("button", { name: title, exact: false }).first().click();
-  await openFocusedDetail(page, "On Going Action Detail");
+  await openFocusedDetail(page, "On Going Detail");
 
   await openOnGoing(page);
 
-  await expect(page.getByText("Panel: Next Actions")).toBeVisible();
+  await expect(page.locator(".list-pane__title", { hasText: "On Going" }).first()).toBeVisible();
   await expect(page.locator(".inbox-pane").nth(0)).toHaveClass(/list-pane--active/);
   await expect(page.locator(".cm-content")).not.toBeVisible();
 });
 
-test("Space o from on going calendar panel focuses next actions panel", async ({ page, request }) => {
-  const actionTitle = uniqueLabel("Panel one action");
-  const calendarTitle = uniqueLabel("Panel two calendar");
-  await resetTestData(request);
-  await createOnGoingNextActionApi(request, actionTitle);
-  await createOnGoingCalendarApi(request, calendarTitle);
-  await openApp(page);
-  await openOnGoing(page);
-  await page.keyboard.press("2");
-  await expect(page.getByText("Panel: Calendars")).toBeVisible();
 
-  await openOnGoing(page);
-
-  await expect(page.getByText("Panel: Next Actions")).toBeVisible();
-  await expect(page.locator(".inbox-pane").nth(0)).toHaveClass(/list-pane--active/);
-  await expect(page.locator(".inbox-pane").nth(1)).not.toHaveClass(/list-pane--active/);
-});
 
 async function createNextActionApi(request: APIRequestContext, title: string): Promise<string> {
   const stuff = await createStuffApi(request, title);

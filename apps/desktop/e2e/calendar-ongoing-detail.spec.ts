@@ -1,4 +1,4 @@
-import { expect, test, type APIRequestContext } from "@playwright/test";
+import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 import { apiBaseUrl, convertStuffToNextActionApi, createAndSelectInboxStuff, createStuffApi, focusApp, focusPanelAndSelectItem, openApp, openCalendars, processIntoCalendar, resetTestData, uniqueLabel } from "./support/app";
 
 test.beforeEach(async ({ page, request }) => {
@@ -15,7 +15,7 @@ test("pressing o on a due calendar opens its on going detail in body editing", a
   await page.keyboard.press("o");
 
   await expect(item).not.toBeVisible();
-  await expect(page.locator(".list-pane__title", { hasText: "On Going Calendar Detail" })).toBeVisible();
+  await expect(page.locator(".list-pane__title", { hasText: "On Going Detail" })).toBeVisible();
   await expect(page.getByText(title).first()).toBeVisible();
   await expect(page.locator(".cm-content")).toBeVisible();
 });
@@ -28,7 +28,7 @@ test("pressing o edits the promoted calendar when another calendar is already on
   await openCalendars(page);
   await focusPanelAndSelectItem(page, 0, existingTitle);
   await page.keyboard.press("o");
-  await expect(page.locator(".list-pane__title", { hasText: "On Going Calendar Detail" })).toBeVisible();
+  await expect(page.locator(".list-pane__title", { hasText: "On Going Detail" })).toBeVisible();
   await openApp(page);
   await openCalendars(page);
   await focusPanelAndSelectItem(page, 0, promotedTitle);
@@ -62,7 +62,7 @@ test("pressing o on a weekly calendar opens its on going detail", async ({ page 
 
   await page.keyboard.press("o");
 
-  await expect(page.locator(".list-pane__title", { hasText: "On Going Calendar Detail" })).toBeVisible();
+  await expect(page.locator(".list-pane__title", { hasText: "On Going Detail" })).toBeVisible();
   await expect(page.getByText(title).first()).toBeVisible();
 });
 
@@ -78,14 +78,14 @@ test("Space Enter on the on going calendar list opens calendar detail", async ({
   const title = uniqueLabel("Open on going calendar");
   await openSelectedCalendarAsOnGoingDetail(page, title);
   await page.keyboard.press("Escape");
-  await expect(page.getByText("Panel: Calendars")).toBeVisible();
+  await expect(page.locator(".list-pane__title", { hasText: "On Going" }).first()).toBeVisible();
 
   await focusApp(page);
   await page.keyboard.press("Space");
   await expect(page.locator(".leader-menu")).toBeVisible();
   await page.keyboard.press("Enter");
 
-  await expect(page.locator(".list-pane__title", { hasText: "On Going Calendar Detail" })).toBeVisible();
+  await expect(page.locator(".list-pane__title", { hasText: "On Going Detail" })).toBeVisible();
   await expect(page.getByText(title).first()).toBeVisible();
 });
 
@@ -97,12 +97,11 @@ test("Escape from on going calendar detail returns to the calendar list focus", 
 
   await page.keyboard.press("Escape");
 
-  const calendarPanel = page.locator(".inbox-pane").nth(1);
-  await expect(page.locator(".list-pane__title", { hasText: "On Going Calendars" })).toBeVisible();
-  await expect(calendarPanel).toHaveClass(/list-pane--active/);
-  await expect(page.getByText("Panel: Calendars")).toBeVisible();
-  await expect(page.locator(".inbox-pane").nth(0).getByRole("button", { name: nextActionTitle, exact: false }).first()).not.toHaveClass(/tree-entry--active/);
-  await expect(calendarPanel.getByRole("button", { name: title, exact: false }).first()).toBeVisible();
+  const ongoingPanel = page.locator(".inbox-pane").nth(0);
+  await expect(page.locator(".list-pane__title", { hasText: "On Going" }).first()).toBeVisible();
+  await expect(ongoingPanel).toHaveClass(/list-pane--active/);
+  await expect(ongoingPanel.getByRole("button", { name: nextActionTitle, exact: false }).first()).not.toHaveClass(/tree-entry--active/);
+  await expect(ongoingPanel.getByRole("button", { name: title, exact: false }).first()).toBeVisible();
 });
 
 async function createOnGoingNextActionApi(request: APIRequestContext, title: string): Promise<void> {
