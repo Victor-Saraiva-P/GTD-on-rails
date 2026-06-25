@@ -5,7 +5,6 @@ import { RetryState } from "../components/RetryState";
 import { buildFormattingBindings } from "../features/inbox/formattingKeybinds";
 import { InboxStuffDetails } from "../features/inbox/InboxStuffDetails";
 import { prefetchNearbyInboxAssets } from "../features/inbox/inboxAssetPrefetch";
-import type { ItemBody } from "../features/inbox/types";
 import { LeaderMenu } from "../features/keybinds/LeaderMenu";
 import { useActiveScreen, useKeybindScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
 import type { FocusZoneId, KeybindDefinition, ScreenId } from "../features/keybinds/types";

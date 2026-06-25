@@ -24,7 +24,7 @@ function unifiedGlyphClassName(selection: OnGoingItemSelection): string {
 
 function UnifiedGlyph({ selection }: Readonly<{ selection: OnGoingItemSelection }>) {
   const statusClassName = unifiedGlyphClassName(selection);
-  const className = `tree-entry__glyph tree-entry__glyph--stuff${statusClassName ? ` ${statusClassName}` : ""}`;
+  const className = ["tree-entry__glyph", "tree-entry__glyph--stuff", statusClassName].filter(Boolean).join(" ");
   const icon = selection.type === "calendar" ? calendarItemIconText : "N";
 
   return (
