@@ -7,3 +7,7 @@ The Desktop context covers the local keyboard-driven application experience, inc
 **Current Availability State**:
 The volatile next-action list filter that represents the user's current execution constraints: contexts, available energy, and available time. It can include multiple simultaneous contexts and is not persisted on a next action.
 _Avoid_: current state, item state, next-action attributes
+
+**On Going Item**:
+An active execution item shown in the On Going list. It can be either an on going next action or an on going calendar item.
+_Avoid_: on going thing, on going row, active panel item

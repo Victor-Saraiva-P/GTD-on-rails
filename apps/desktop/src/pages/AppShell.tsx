@@ -1,5 +1,4 @@
 import { useEffect, useMemo } from "react";
-import { useOnGoingCalendarsWorkspaceController } from "../features/calendar/useOnGoingCalendarsWorkspaceController";
 import { clearAssetObjectUrlCache } from "../features/inbox/assetFiles";
 import { useCalendarWorkspaceController, type CalendarWorkspaceController } from "../features/calendar/useCalendarWorkspaceController";
 import { useDeletedInboxWorkspaceController } from "../features/inbox/useDeletedInboxWorkspaceController";
@@ -31,9 +30,11 @@ import { NextActionsPage } from "./NextActionsPage";
 import { OnGoingNextActionDetailPage } from "./OnGoingNextActionDetailPage";
 import { OnGoingNextActionsPage } from "./OnGoingNextActionsPage";
 import { StuffDetailPage } from "./StuffDetailPage";
-import { useOnGoingNextActionsWorkspaceController } from "../features/next-actions/useOnGoingNextActionsWorkspaceController";
 import { useGoogleCalendarIntegrationController } from "../features/integrations/useGoogleCalendarIntegrationController";
 import { GoogleCalendarIntegrationPage } from "./GoogleCalendarIntegrationPage";
+import type { NextActionsWorkspaceController } from "../features/next-actions/useNextActionsWorkspaceController";
+import { useOnGoingWorkspaceController } from "../features/ongoing/useOnGoingWorkspaceController";
+import type { OnGoingWorkspaceController } from "../features/ongoing/useOnGoingWorkspaceController";
 
 const doneNextActionsConfig = {
   detailZone: "done-next-action-detail",
@@ -54,10 +55,26 @@ const deletedNextActionsConfig = {
 
 type AppControllers = ReturnType<typeof useAppControllers>;
 
+function openNextActionsWorkspace(controller: NextActionsWorkspaceController, setActiveScreen: (screen: ScreenId) => void) {
+  controller.resetWorkspace();
+  setActiveScreen("next-actions");
+}
+
+function openOnGoingWorkspace(
+  controller: OnGoingWorkspaceController,
+  setActiveScreen: (screen: ScreenId) => void
+) {
+  controller.resetWorkspace();
+  controller.setActiveZone("next-actions-list");
+  setActiveScreen("ongoing-next-actions");
+}
+
 function buildNavigationBindings(
   setActiveScreen: (screen: ScreenId) => void,
   inboxController: InboxWorkspaceController,
-  calendarController: CalendarWorkspaceController
+  calendarController: CalendarWorkspaceController,
+  nextActionsController: NextActionsWorkspaceController,
+  onGoingController: OnGoingWorkspaceController
 ) {
   return [
     {
@@ -96,15 +113,15 @@ function buildNavigationBindings(
       description: "Open next actions",
       leader: true,
       sequence: ["n"],
-      runKeybind: () => setActiveScreen("next-actions")
+      runKeybind: () => openNextActionsWorkspace(nextActionsController, setActiveScreen)
     },
     {
       id: "navigation.open-ongoing-next-actions",
       key: "o",
-      description: "Open ongoing next actions",
+      description: "Open ongoing work",
       leader: true,
       sequence: ["o"],
-      runKeybind: () => setActiveScreen("ongoing-next-actions")
+      runKeybind: () => openOnGoingWorkspace(onGoingController, setActiveScreen)
     },
     {
       id: "navigation.open-google-calendar-integration",
@@ -125,8 +142,7 @@ function useAppControllers() {
     doneNextActions: useArchivedNextActionsWorkspaceController(doneNextActionsConfig),
     inbox: useInboxWorkspaceController(),
     nextActions: useNextActionsWorkspaceController(),
-    ongoingCalendars: useOnGoingCalendarsWorkspaceController(),
-    ongoingNextActions: useOnGoingNextActionsWorkspaceController(),
+    ongoing: useOnGoingWorkspaceController(),
     googleCalendarIntegration: useGoogleCalendarIntegrationController()
   };
 }
@@ -139,10 +155,9 @@ function useReloadActiveScreen(activeScreen: ScreenId, controllers: AppControlle
     if (activeScreen === "calendars") controllers.calendars.reload();
     if (activeScreen === "calendar-detail-page") controllers.calendars.reload();
     if (activeScreen === "next-actions") controllers.nextActions.reload();
-    if (activeScreen === "ongoing-next-actions") controllers.ongoingNextActions.reload();
-    if (activeScreen === "ongoing-next-actions") controllers.ongoingCalendars.reload();
-    if (activeScreen === "ongoing-next-action-detail-page") controllers.ongoingNextActions.reload();
-    if (activeScreen === "ongoing-calendar-detail-page") controllers.ongoingCalendars.reload();
+    if (activeScreen === "ongoing-next-actions") controllers.ongoing.reload();
+    if (activeScreen === "ongoing-next-action-detail-page") controllers.ongoing.reload();
+    if (activeScreen === "ongoing-calendar-detail-page") controllers.ongoing.reload();
     if (activeScreen === "done-next-actions") controllers.doneNextActions.reload();
     if (activeScreen === "deleted-next-actions") controllers.deletedNextActions.reload();
     if (activeScreen === "google-calendar-integration") controllers.googleCalendarIntegration.reload();
@@ -187,15 +202,15 @@ function renderDeletedNextActionsPage(controllers: AppControllers) {
 
 function renderActiveScreen(activeScreen: ScreenId, controllers: AppControllers) {
   if (activeScreen === "contexts") return <ContextsPage />;
-  if (activeScreen === "calendars") return <CalendarPage controller={controllers.calendars} selectOnGoingCalendar={controllers.ongoingCalendars.selectAfterReload} />;
+  if (activeScreen === "calendars") return <CalendarPage controller={controllers.calendars} selectOnGoingCalendar={controllers.ongoing.setSelectedId} />;
   if (activeScreen === "calendar-detail-page") return <CalendarDetailPage controller={controllers.calendars} />;
   if (activeScreen === "stuff-detail") return <StuffDetailPage controller={controllers.inbox} />;
   if (activeScreen === "deleted-inbox") return <DeletedInboxPage controller={controllers.deletedInbox} />;
-  if (activeScreen === "next-actions") return <NextActionsPage controller={controllers.nextActions} selectOnGoingAction={controllers.ongoingNextActions.setSelectedId} />;
-  if (activeScreen === "ongoing-next-actions") return <OnGoingNextActionsPage controller={controllers.ongoingNextActions} calendarController={controllers.ongoingCalendars} selectNextAction={controllers.nextActions.setSelectedId} />;
+  if (activeScreen === "next-actions") return <NextActionsPage controller={controllers.nextActions} selectOnGoingAction={controllers.ongoing.setSelectedId} />;
+  if (activeScreen === "ongoing-next-actions") return <OnGoingNextActionsPage controller={controllers.ongoing} selectNextAction={controllers.nextActions.setSelectedId} />;
   if (activeScreen === "next-action-detail-page") return <NextActionDetailPage controller={controllers.nextActions} />;
-  if (activeScreen === "ongoing-next-action-detail-page") return <OnGoingNextActionDetailPage controller={controllers.ongoingNextActions} />;
-  if (activeScreen === "ongoing-calendar-detail-page") return <OnGoingCalendarDetailPage controller={controllers.ongoingCalendars} />;
+  if (activeScreen === "ongoing-next-action-detail-page") return <OnGoingNextActionDetailPage controller={controllers.ongoing} />;
+  if (activeScreen === "ongoing-calendar-detail-page") return <OnGoingCalendarDetailPage controller={controllers.ongoing} />;
   if (activeScreen === "done-next-actions") return renderDoneNextActionsPage(controllers);
   if (activeScreen === "deleted-next-actions") return renderDeletedNextActionsPage(controllers);
   if (activeScreen === "google-calendar-integration") return <GoogleCalendarIntegrationPage controller={controllers.googleCalendarIntegration} />;
@@ -212,8 +227,8 @@ export function AppShell() {
   const { activeScreen, setActiveScreen } = useActiveScreen();
   const controllers = useAppControllers();
   const navigationBindings = useMemo(
-    () => buildNavigationBindings(setActiveScreen, controllers.inbox, controllers.calendars),
-    [setActiveScreen, controllers.inbox, controllers.calendars]
+    () => buildNavigationBindings(setActiveScreen, controllers.inbox, controllers.calendars, controllers.nextActions, controllers.ongoing),
+    [setActiveScreen, controllers.inbox, controllers.calendars, controllers.nextActions, controllers.ongoing]
   );
 
   useReloadActiveScreen(activeScreen, controllers);

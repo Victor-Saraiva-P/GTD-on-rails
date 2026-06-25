@@ -167,7 +167,8 @@ function calendarControllerActions(model: CalendarModel) {
   return {
     ...calendarEditActions(model),
     ...calendarMutationActions(model),
-    ...calendarSelectionActions(model)
+    ...calendarSelectionActions(model),
+    resetWorkspace: () => clearCalendarEditing(model.edit)
   };
 }
 

@@ -69,6 +69,10 @@
     grid-template-rows: minmax(220px, 28vh) minmax(220px, 28vh) minmax(260px, 1fr);
   }
 
+  .ongoing-unified-layout {
+    grid-template-rows: minmax(260px, 42vh) minmax(260px, 1fr);
+  }
+
   .stuff-detail-layout {
     padding: 16px 8px 10px;
   }

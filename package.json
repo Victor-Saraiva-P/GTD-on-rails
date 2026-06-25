@@ -13,6 +13,7 @@
     "e2e": "turbo run e2e",
     "lint": "turbo run lint",
     "check": "turbo run check",
+    "demo:reset": "node scripts/demo-reset.mjs",
     "unitTest": "pnpm run version:test && turbo run unitTest",
     "integrationTest": "turbo run integrationTest",
     "version:sync": "node scripts/sync-version.mjs sync",

@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -154,6 +155,18 @@ class AssetStorageServiceTests {
         assetStorageService.copyLocalItemAsset(relativePath, sourcePath);
 
         assertEquals("Engage-mint-vit-ria.pdf", fileName);
+        assertTrue(Files.exists(tempDir.resolve("assets").resolve(relativePath)));
+    }
+
+    @Test
+    void copiesBundledItemAssetInExpectedPath() {
+        UUID itemId = UUID.randomUUID();
+        UUID assetId = UUID.randomUUID();
+        AssetStorageService assetStorageService = newAssetStorageService();
+        String relativePath = "items/" + itemId + "/" + assetId + "/report.pdf";
+
+        assetStorageService.copyBundledItemAsset(relativePath, new ByteArrayInputStream(new byte[] {1, 2}), "report.pdf");
+
         assertTrue(Files.exists(tempDir.resolve("assets").resolve(relativePath)));
     }
 

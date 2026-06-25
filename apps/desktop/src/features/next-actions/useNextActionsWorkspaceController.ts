@@ -190,6 +190,11 @@ export async function redoAction(model: Model) {
   else { await model.query.restoreItem(action.payload.id); model.selection.setSelectedId(action.payload.id); }
 }
 
+export function resetNextActionsWorkspace(model: Model) {
+  clearEditing(model.edit);
+  model.zone.setActiveZone("next-actions-list");
+}
+
 export function useNextActionsActions(model: Model) {
   return {
     autosaveBody: (body: ItemBody) => autosaveBodyEdit(model, body),
@@ -201,6 +206,7 @@ export function useNextActionsActions(model: Model) {
     markAsDone: () => markAsDone(model),
     markAsOnGoing: () => markAsOnGoing(model),
     patchSelected: (patch: NextActionPatch) => patchSelected(model, patch),
+    resetWorkspace: () => resetNextActionsWorkspace(model),
     redo: () => redoAction(model),
     restoreSelected: () => restoreSelectedStatus(model),
     selectFirst: model.selection.selectFirst,
