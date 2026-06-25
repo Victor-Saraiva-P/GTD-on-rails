@@ -37,6 +37,10 @@
   overflow: hidden;
 }
 
+.ongoing-unified-layout {
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+}
+
 .stuff-detail-layout {
   padding: 20px 10px 16px;
   min-height: 0;

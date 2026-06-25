@@ -9,14 +9,14 @@ import { LeaderMenu } from "../features/keybinds/LeaderMenu";
 import { useActiveScreen, useKeybindScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
 import type { KeybindDefinition, ScreenId } from "../features/keybinds/types";
 import { onGoingNextActionDetailListTheme } from "../features/lists/listThemes";
-import type { OnGoingNextActionsWorkspaceController } from "../features/next-actions/useOnGoingNextActionsWorkspaceController";
+import type { OnGoingWorkspaceController } from "../features/ongoing/useOnGoingWorkspaceController";
 
 type OnGoingNextActionDetailPageProps = Readonly<{
-  controller: OnGoingNextActionsWorkspaceController;
+  controller: OnGoingWorkspaceController;
 }>;
 
 type DetailReadyProps = Readonly<{
-  controller: OnGoingNextActionsWorkspaceController;
+  controller: OnGoingWorkspaceController;
   setActiveScreen: (screen: ScreenId) => void;
 }>;
 
@@ -34,13 +34,13 @@ function ongoingDetailBinding(id: string, key: string, description: string, runK
   return { description, id, key, leader, runKeybind, screen: "ongoing-next-action-detail-page", zone: "next-action-detail" };
 }
 
-function backToOnGoingActions(controller: OnGoingNextActionsWorkspaceController, setActiveScreen: (screen: ScreenId) => void) {
+function backToOnGoingActions(controller: OnGoingWorkspaceController, setActiveScreen: (screen: ScreenId) => void) {
   if (controller.editingBodyId) return;
   controller.setActiveZone("next-actions-list");
   setActiveScreen("ongoing-next-actions");
 }
 
-function buildDetailBindings(controller: OnGoingNextActionsWorkspaceController, setActiveScreen: (screen: ScreenId) => void, openLink: () => void, openAsset: () => void) {
+function buildDetailBindings(controller: OnGoingWorkspaceController, setActiveScreen: (screen: ScreenId) => void, openLink: () => void, openAsset: () => void) {
   return [
     ongoingDetailBinding("ongoing-next-action-detail-page.back", "Escape", "Back to on going actions", () => backToOnGoingActions(controller, setActiveScreen)),
     ongoingDetailBinding("ongoing-next-action-detail-page.which-key", "k", "Show available keybinds", () => undefined, true),
@@ -48,20 +48,20 @@ function buildDetailBindings(controller: OnGoingNextActionsWorkspaceController, 
   ];
 }
 
-function useDetailBindings(controller: OnGoingNextActionsWorkspaceController, openLink: () => void, openAsset: () => void) {
+function useDetailBindings(controller: OnGoingWorkspaceController, openLink: () => void, openAsset: () => void) {
   const { setActiveScreen } = useActiveScreen();
   const bindings = useMemo(() => buildDetailBindings(controller, setActiveScreen, openLink, openAsset), [controller, setActiveScreen, openLink, openAsset]);
   useRegisterKeybinds(bindings);
 }
 
-function useDetailZone(controller: OnGoingNextActionsWorkspaceController) {
+function useDetailZone(controller: OnGoingWorkspaceController) {
   useEffect(() => {
     controller.setActiveZone("next-action-detail");
     if (!controller.editingBodyId && controller.selectedItem) controller.startBodyEdit();
   }, [controller.setActiveZone, controller.editingBodyId, controller.selectedItem, controller.startBodyEdit]);
 }
 
-async function exitBodyEditingToOnGoingActions(controller: OnGoingNextActionsWorkspaceController, setActiveScreen: (screen: ScreenId) => void, body: ItemBody): Promise<void> {
+async function exitBodyEditingToOnGoingActions(controller: OnGoingWorkspaceController, setActiveScreen: (screen: ScreenId) => void, body: ItemBody): Promise<void> {
   await controller.commitBody(body);
   controller.setActiveZone("next-actions-list");
   setActiveScreen("ongoing-next-actions");
@@ -69,7 +69,7 @@ async function exitBodyEditingToOnGoingActions(controller: OnGoingNextActionsWor
 
 function DetailReady({ controller, setActiveScreen }: DetailReadyProps) {
   if (!controller.selectedItem) return null;
-  return <InboxStuffDetails item={controller.selectedItem} showCreatedMeta={false} metaVariant="next-action" editing={controller.editingBodyId === controller.selectedItem.id} onAutosaveEditing={(body) => controller.autosaveBody(body)} onCommitEditing={(body) => controller.commitBody(body)} onExitEditingFromNormalMode={(body) => exitBodyEditingToOnGoingActions(controller, setActiveScreen, body)} onCancelEditing={controller.cancelBodyEdit} onVimModeChange={controller.setVimMode} />;
+  return <InboxStuffDetails item={controller.selectedItem.item} showCreatedMeta={false} metaVariant="next-action" editing={controller.editingBodyId === controller.selectedItem.item.id} onAutosaveEditing={(body) => controller.autosaveBody(body)} onCommitEditing={(body) => controller.commitBody(body)} onExitEditingFromNormalMode={(body) => exitBodyEditingToOnGoingActions(controller, setActiveScreen, body)} onCancelEditing={controller.cancelBodyEdit} onVimModeChange={controller.setVimMode} />;
 }
 
 function DetailBody({ controller, setActiveScreen }: DetailReadyProps) {
@@ -80,7 +80,7 @@ function DetailBody({ controller, setActiveScreen }: DetailReadyProps) {
 }
 
 function DetailView({ controller, setActiveScreen }: DetailReadyProps) {
-  return <ListView title="On Going Action Detail" active bodyClassName="list-pane__body--detail"><DetailBody controller={controller} setActiveScreen={setActiveScreen} /></ListView>;
+  return <ListView title="On Going Detail" active bodyClassName="list-pane__body--detail"><DetailBody controller={controller} setActiveScreen={setActiveScreen} /></ListView>;
 }
 
 /**
@@ -106,7 +106,7 @@ export function OnGoingNextActionDetailPage({ controller }: OnGoingNextActionDet
       <LeaderMenu />
       <Suspense fallback={null}>
         {isLinkComboOpen ? <LazyMarkdownLinkComboDialog onClose={() => setIsLinkComboOpen(false)} /> : null}
-        {isAssetComboOpen && controller.selectedItem ? <LazyMarkdownAssetComboDialog itemId={controller.selectedItem.id} onClose={() => setIsAssetComboOpen(false)} /> : null}
+        {isAssetComboOpen && controller.selectedItem ? <LazyMarkdownAssetComboDialog itemId={controller.selectedItem.item.id} onClose={() => setIsAssetComboOpen(false)} /> : null}
       </Suspense>
     </ListWorkspace>
   );
