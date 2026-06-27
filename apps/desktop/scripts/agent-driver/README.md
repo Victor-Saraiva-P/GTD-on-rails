@@ -20,6 +20,8 @@ pnpm agent:driver
 
 The driver listens only on `127.0.0.1` and targets `http://127.0.0.1:1420` by default.
 
+The driver refuses to run in production-like runtimes. It exits when `NODE_ENV=production`, when `GTD_SIDECAR_PROFILES` contains `prod`, or when the target URL is not `localhost`, `127.0.0.1`, or `[::1]`.
+
 ## Configuration
 
 ```bash
@@ -81,5 +83,7 @@ Use full `GET /observe` only at checkpoints where the complete visible text or c
 ## Limits
 
 The driver controls the browser UI only. It intentionally avoids endpoints such as `create-task`, `delete-task`, or `process-inbox` because those would bypass the keyboard-first experience the driver is meant to validate.
+
+The driver is development-only. It does not accept remote target hosts and should not be used against packaged production builds.
 
 The driver intentionally does not expose screenshot endpoints. Use textual observation through `/observe?compact=true` and `/state` so agent loops stay fast and low-token.

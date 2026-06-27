@@ -1,17 +1,36 @@
 import { chromium } from "@playwright/test";
 import { createServer } from "node:http";
+import { pathToFileURL } from "node:url";
 
 const driverName = "gtd-agent-driver";
 const host = "127.0.0.1";
 const defaultPort = 3199;
 const defaultTargetUrl = "http://127.0.0.1:1420";
 const requestLimitBytes = 1024 * 1024;
+const allowedTargetHosts = new Set(["127.0.0.1", "localhost", "::1", "[::1]"]);
 
 let browser = null;
 let page = null;
-let targetUrl = process.env.GTD_AGENT_TARGET_URL || defaultTargetUrl;
+let targetUrl = validateAgentTargetUrl(process.env.GTD_AGENT_TARGET_URL || defaultTargetUrl);
 let consoleErrors = [];
 let networkErrors = [];
+
+assertDevelopmentRuntime();
+
+export function assertDevelopmentRuntime(env = process.env) {
+  if (env.NODE_ENV === "production") throw new Error("Agent driver cannot run with NODE_ENV='production'; expected a development runtime.");
+  if (sidecarProfilesIncludeProduction(env)) throw new Error("Agent driver cannot run with GTD_SIDECAR_PROFILES containing 'prod'; expected a non-production profile.");
+}
+
+function sidecarProfilesIncludeProduction(env) {
+  return (env.GTD_SIDECAR_PROFILES || "").split(",").map(profile => profile.trim()).includes("prod");
+}
+
+export function validateAgentTargetUrl(value) {
+  const parsedUrl = new URL(value);
+  if (allowedTargetHosts.has(parsedUrl.hostname)) return parsedUrl.toString();
+  throw new Error(`Agent target URL '${value}' used host '${parsedUrl.hostname}'; expected localhost, 127.0.0.1, or ::1.`);
+}
 
 function configuredPort() {
   const rawPort = process.env.GTD_AGENT_DRIVER_PORT || `${defaultPort}`;
@@ -81,7 +100,7 @@ function collectErrorResponse(response) {
 }
 
 async function startSession(options = {}) {
-  if (options.url) targetUrl = options.url;
+  if (options.url) targetUrl = validateAgentTargetUrl(options.url);
   if (options.force) await closeSession(false);
   if (page && !page.isClosed()) return page;
   browser = await chromium.launch({ headless: configuredHeadless() });
@@ -104,9 +123,9 @@ async function currentPage() {
 }
 
 async function gotoUrl(url) {
+  targetUrl = validateAgentTargetUrl(url);
   const openPage = await currentPage();
-  targetUrl = url;
-  await openPage.goto(url, { waitUntil: "domcontentloaded" });
+  await openPage.goto(targetUrl, { waitUntil: "domcontentloaded" });
   return observePage(openPage, false, true);
 }
 
@@ -305,4 +324,8 @@ async function startInitialSession() {
   }
 }
 
-startHttpServer();
+function runningAsEntrypoint() {
+  return process.argv[1] ? import.meta.url === pathToFileURL(process.argv[1]).href : false;
+}
+
+if (runningAsEntrypoint()) startHttpServer();
