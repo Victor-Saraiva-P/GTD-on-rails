@@ -32,6 +32,7 @@ apps/api/dev-gtd-on-rails/
 .gtd-assets-sync/
 apps/api/.gtd-assets-sync/
 /.geminiignore
+.ai-jail
 
 # Obsidian
 .obsidian/workspace.json
