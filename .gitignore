@@ -18,6 +18,7 @@ coverage/
 apps/desktop/playwright-report/
 apps/desktop/test-results/
 apps/desktop/coverage/
+apps/desktop/.agent/
 .env
 .env.*
 !.env.example
