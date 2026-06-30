@@ -12,8 +12,10 @@ function ProjectCard({ item, selected, onSelect }: Readonly<{ item: Project; sel
   return (
     <li className="project-card-list__item">
       <button type="button" className={`project-card${selected ? " project-card--active" : ""}`} data-project-id={item.id} onClick={() => onSelect(item.id)}>
-        <span className="project-card__glyph" aria-hidden="true">P</span>
-        <span className="project-card__title">{item.title}</span>
+        <span className="project-card__heading">
+          <span className="project-card__glyph" aria-hidden="true">P</span>
+          <span className="project-card__title">{item.title}</span>
+        </span>
         <span className="project-card__deadline">{deadline ?? "No deadline"}</span>
       </button>
     </li>
