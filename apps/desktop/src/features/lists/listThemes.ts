@@ -36,8 +36,8 @@ export const nextActionsListTheme: ListTheme = {
 export const onGoingNextActionsListTheme: ListTheme = {
   id: "ongoing-next-actions",
   label: "On Going Actions",
-  accentColor: "#9B5AB7",
-  accentColorRgb: "155, 90, 183"
+  accentColor: "#2D8C8A",
+  accentColorRgb: "45, 140, 138"
 };
 
 export const onGoingNextActionDetailListTheme: ListTheme = {
