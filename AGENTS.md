@@ -24,6 +24,7 @@
 - Tests run with a single command: `pnpm test`.
 - See also: [Desktop Execution](docs/30%20-%20Guides%20and%20Manuals/Desktop%20Execution.md) and [API Execution](docs/30%20-%20Guides%20and%20Manuals/API%20Execution.md).
 - Every new function gets a test. Bug fixes get a regression test.
+- For desktop features that can be exercised through keybindings and do not depend on external integrations such as Google Calendar, run a real user-like flow with the Agent Interactive Driver (`pnpm agent:driver`) before considering the work complete. The validation must use the feature the way the owner would: navigate by keybinds, perform the main action, observe the resulting UI state, and continue far enough to catch broken focus, modal, persistence, or follow-up navigation behavior.
 - Mock external I/O (API, DB, filesystem) with named fake classes,
   not inline stubs.
 - Tests must be F.I.R.S.T: fast, independent, repeatable,

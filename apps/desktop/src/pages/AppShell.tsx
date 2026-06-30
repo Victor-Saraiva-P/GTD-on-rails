@@ -164,6 +164,25 @@ function useReloadActiveScreen(activeScreen: ScreenId, controllers: AppControlle
   }, [activeScreen]);
 }
 
+function useAgentStateBridge(activeScreen: ScreenId) {
+  useEffect(() => {
+    if (!agentStateBridgeEnabled()) return;
+    window.__GTD_AGENT_STATE__ = {
+      route: window.location.pathname,
+      activeView: activeScreen,
+      focusedPanel: activeScreen,
+      modalOpen: document.querySelector('dialog, [role="dialog"]') !== null
+    };
+    return () => {
+      delete window.__GTD_AGENT_STATE__;
+    };
+  }, [activeScreen]);
+}
+
+function agentStateBridgeEnabled() {
+  return import.meta.env.DEV || import.meta.env.VITE_GTD_AGENT_STATE === "true";
+}
+
 function renderDoneNextActionsPage(controllers: AppControllers) {
   return (
     <ArchivedNextActionsPage
@@ -232,6 +251,7 @@ export function AppShell() {
   );
 
   useReloadActiveScreen(activeScreen, controllers);
+  useAgentStateBridge(activeScreen);
   useRegisterKeybinds(navigationBindings);
   return renderActiveScreen(activeScreen, controllers);
 }
