@@ -19,4 +19,5 @@ These master-list motions apply to Inbox, Deleted Inbox, Next Actions, On Going,
 
 - [[Inbox]]
 - [[Next Actions]]
+- [[Projects]]
 - [[Contexts]]

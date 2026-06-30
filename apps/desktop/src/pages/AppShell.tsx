@@ -29,12 +29,15 @@ import { NextActionDetailPage } from "./NextActionDetailPage";
 import { NextActionsPage } from "./NextActionsPage";
 import { OnGoingNextActionDetailPage } from "./OnGoingNextActionDetailPage";
 import { OnGoingNextActionsPage } from "./OnGoingNextActionsPage";
+import { ProjectsPage } from "./ProjectsPage";
 import { StuffDetailPage } from "./StuffDetailPage";
 import { useGoogleCalendarIntegrationController } from "../features/integrations/useGoogleCalendarIntegrationController";
 import { GoogleCalendarIntegrationPage } from "./GoogleCalendarIntegrationPage";
 import type { NextActionsWorkspaceController } from "../features/next-actions/useNextActionsWorkspaceController";
 import { useOnGoingWorkspaceController } from "../features/ongoing/useOnGoingWorkspaceController";
 import type { OnGoingWorkspaceController } from "../features/ongoing/useOnGoingWorkspaceController";
+import { useProjectsWorkspaceController } from "../features/projects/useProjectsWorkspaceController";
+import type { ProjectsWorkspaceController } from "../features/projects/useProjectsWorkspaceController";
 
 const doneNextActionsConfig = {
   detailZone: "done-next-action-detail",
@@ -69,12 +72,21 @@ function openOnGoingWorkspace(
   setActiveScreen("ongoing-next-actions");
 }
 
+function openProjectsWorkspace(
+  controller: ProjectsWorkspaceController,
+  setActiveScreen: (screen: ScreenId) => void
+) {
+  controller.resetWorkspace();
+  setActiveScreen("projects");
+}
+
 function buildNavigationBindings(
   setActiveScreen: (screen: ScreenId) => void,
   inboxController: InboxWorkspaceController,
   calendarController: CalendarWorkspaceController,
   nextActionsController: NextActionsWorkspaceController,
-  onGoingController: OnGoingWorkspaceController
+  onGoingController: OnGoingWorkspaceController,
+  projectsController: ProjectsWorkspaceController
 ) {
   return [
     {
@@ -124,6 +136,14 @@ function buildNavigationBindings(
       runKeybind: () => openOnGoingWorkspace(onGoingController, setActiveScreen)
     },
     {
+      id: "navigation.open-projects",
+      key: "p",
+      description: "Open projects",
+      leader: true,
+      sequence: ["p"],
+      runKeybind: () => openProjectsWorkspace(projectsController, setActiveScreen)
+    },
+    {
       id: "navigation.open-google-calendar-integration",
       key: "g",
       description: "Google Calendar Integration",
@@ -143,6 +163,7 @@ function useAppControllers() {
     inbox: useInboxWorkspaceController(),
     nextActions: useNextActionsWorkspaceController(),
     ongoing: useOnGoingWorkspaceController(),
+    projects: useProjectsWorkspaceController(),
     googleCalendarIntegration: useGoogleCalendarIntegrationController()
   };
 }
@@ -155,6 +176,7 @@ function useReloadActiveScreen(activeScreen: ScreenId, controllers: AppControlle
     if (activeScreen === "calendars") controllers.calendars.reload();
     if (activeScreen === "calendar-detail-page") controllers.calendars.reload();
     if (activeScreen === "next-actions") controllers.nextActions.reload();
+    if (activeScreen === "projects") controllers.projects.reload();
     if (activeScreen === "ongoing-next-actions") controllers.ongoing.reload();
     if (activeScreen === "ongoing-next-action-detail-page") controllers.ongoing.reload();
     if (activeScreen === "ongoing-calendar-detail-page") controllers.ongoing.reload();
@@ -219,11 +241,18 @@ function renderDeletedNextActionsPage(controllers: AppControllers) {
   );
 }
 
-function renderActiveScreen(activeScreen: ScreenId, controllers: AppControllers) {
+function openProjectsAfterProcessing(controllers: AppControllers, setActiveScreen: (screen: ScreenId) => void) {
+  controllers.projects.reload();
+  controllers.projects.resetWorkspace();
+  setActiveScreen("projects");
+}
+
+function renderActiveScreen(activeScreen: ScreenId, controllers: AppControllers, setActiveScreen: (screen: ScreenId) => void) {
   if (activeScreen === "contexts") return <ContextsPage />;
   if (activeScreen === "calendars") return <CalendarPage controller={controllers.calendars} selectOnGoingCalendar={controllers.ongoing.setSelectedId} />;
   if (activeScreen === "calendar-detail-page") return <CalendarDetailPage controller={controllers.calendars} />;
   if (activeScreen === "stuff-detail") return <StuffDetailPage controller={controllers.inbox} />;
+  if (activeScreen === "projects") return <ProjectsPage controller={controllers.projects} />;
   if (activeScreen === "deleted-inbox") return <DeletedInboxPage controller={controllers.deletedInbox} />;
   if (activeScreen === "next-actions") return <NextActionsPage controller={controllers.nextActions} selectOnGoingAction={controllers.ongoing.setSelectedId} />;
   if (activeScreen === "ongoing-next-actions") return <OnGoingNextActionsPage controller={controllers.ongoing} selectNextAction={controllers.nextActions.setSelectedId} />;
@@ -234,7 +263,7 @@ function renderActiveScreen(activeScreen: ScreenId, controllers: AppControllers)
   if (activeScreen === "deleted-next-actions") return renderDeletedNextActionsPage(controllers);
   if (activeScreen === "google-calendar-integration") return <GoogleCalendarIntegrationPage controller={controllers.googleCalendarIntegration} />;
 
-  return <InboxPage controller={controllers.inbox} />;
+  return <InboxPage controller={controllers.inbox} openProjects={() => openProjectsAfterProcessing(controllers, setActiveScreen)} />;
 }
 
 /**
@@ -246,12 +275,12 @@ export function AppShell() {
   const { activeScreen, setActiveScreen } = useActiveScreen();
   const controllers = useAppControllers();
   const navigationBindings = useMemo(
-    () => buildNavigationBindings(setActiveScreen, controllers.inbox, controllers.calendars, controllers.nextActions, controllers.ongoing),
-    [setActiveScreen, controllers.inbox, controllers.calendars, controllers.nextActions, controllers.ongoing]
+    () => buildNavigationBindings(setActiveScreen, controllers.inbox, controllers.calendars, controllers.nextActions, controllers.ongoing, controllers.projects),
+    [setActiveScreen, controllers.inbox, controllers.calendars, controllers.nextActions, controllers.ongoing, controllers.projects]
   );
 
   useReloadActiveScreen(activeScreen, controllers);
   useAgentStateBridge(activeScreen);
   useRegisterKeybinds(navigationBindings);
-  return renderActiveScreen(activeScreen, controllers);
+  return renderActiveScreen(activeScreen, controllers, setActiveScreen);
 }

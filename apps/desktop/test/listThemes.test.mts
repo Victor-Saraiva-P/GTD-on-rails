@@ -9,6 +9,7 @@ import {
   doneNextActionsListTheme,
   inboxListTheme,
   nextActionsListTheme,
+  projectsListTheme,
   stuffDetailListTheme
 } from "../src/features/lists/listThemes.ts";
 
@@ -34,6 +35,12 @@ test("nextActionsListTheme defines green next actions styling", () => {
   assert.equal(nextActionsListTheme.id, "next-actions");
   assert.equal(nextActionsListTheme.label, "Next Actions");
   assert.equal(nextActionsListTheme.accentColor, "#4F9768");
+});
+
+test("projectsListTheme defines purple projects styling", () => {
+  assert.equal(projectsListTheme.id, "projects");
+  assert.equal(projectsListTheme.label, "Projects");
+  assert.equal(projectsListTheme.accentColor, "#9B5AB7");
 });
 
 test("calendarsListTheme keeps the calendar red accent", () => {

@@ -11,3 +11,7 @@ _Avoid_: current state, item state, next-action attributes
 **On Going Item**:
 An active execution item shown in the On Going list. It can be either an on going next action or an on going calendar item.
 _Avoid_: on going thing, on going row, active panel item
+
+**Project Card**:
+A compact project representation in the Projects page that shows the project title and project glyph. It does not expose the captured stuff body that may have originated the project.
+_Avoid_: project detail, project preview

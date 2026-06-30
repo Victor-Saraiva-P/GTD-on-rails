@@ -40,6 +40,13 @@ export const onGoingNextActionsListTheme: ListTheme = {
   accentColorRgb: "45, 140, 138"
 };
 
+export const projectsListTheme: ListTheme = {
+  id: "projects",
+  label: "Projects",
+  accentColor: "#9B5AB7",
+  accentColorRgb: "155, 90, 183"
+};
+
 export const onGoingNextActionDetailListTheme: ListTheme = {
   id: "ongoing-next-action-detail-page",
   label: "On Going Action Detail",

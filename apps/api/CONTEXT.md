@@ -12,6 +12,10 @@ _Avoid_: Task, todo
 The date a next action should be done by. When present, it is the date used to represent the active next action on an external agenda.
 _Avoid_: Due date, scheduled date
 
+**Project**:
+A GTD outcome that represents a desired result with a title and optional deadline. A project may originate from captured stuff, but the project view is concerned with the result rather than the original captured body.
+_Avoid_: On going, task
+
 **External Agenda Mirror**:
 A derived calendar representation of GTD items outside the local GTD system. The local GTD item remains the source of truth.
 _Avoid_: Calendar source, remote truth

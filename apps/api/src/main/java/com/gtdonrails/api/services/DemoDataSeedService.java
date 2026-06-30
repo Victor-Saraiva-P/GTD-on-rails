@@ -24,6 +24,7 @@ import com.gtdonrails.api.repositories.ContextRepository;
 import com.gtdonrails.api.repositories.ItemAssetRepository;
 import com.gtdonrails.api.repositories.ItemRepository;
 import com.gtdonrails.api.repositories.NextActionRepository;
+import com.gtdonrails.api.repositories.ProjectRepository;
 import com.gtdonrails.api.types.BlockEntity;
 import com.gtdonrails.api.types.BlockEntityAttrs;
 import com.gtdonrails.api.types.InlineMark;
@@ -53,6 +54,7 @@ public class DemoDataSeedService {
     private final ItemAssetRepository itemAssetRepository;
     private final ItemRepository itemRepository;
     private final NextActionRepository nextActionRepository;
+    private final ProjectRepository projectRepository;
     private final Clock clock;
 
     public DemoDataSeedService(
@@ -63,6 +65,7 @@ public class DemoDataSeedService {
         ItemAssetRepository itemAssetRepository,
         ItemRepository itemRepository,
         NextActionRepository nextActionRepository,
+        ProjectRepository projectRepository,
         Clock clock
     ) {
         this.assetStorageService = assetStorageService;
@@ -72,6 +75,7 @@ public class DemoDataSeedService {
         this.itemAssetRepository = itemAssetRepository;
         this.itemRepository = itemRepository;
         this.nextActionRepository = nextActionRepository;
+        this.projectRepository = projectRepository;
         this.clock = clock;
     }
 
@@ -102,6 +106,7 @@ public class DemoDataSeedService {
         nextActionRepository.findAll().forEach(nextAction -> nextActionRepository.deleteContextLinks(nextAction.getItemId()));
         calendarRepository.deleteAll();
         nextActionRepository.deleteAll();
+        projectRepository.deleteAll();
         itemAssetRepository.deleteAll();
         contextIconAssetRepository.deleteAll();
         itemRepository.deleteAll();

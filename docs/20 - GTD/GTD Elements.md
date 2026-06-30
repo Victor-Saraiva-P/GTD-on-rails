@@ -6,6 +6,7 @@ This page defines the direct GTD elements used by GTD on Rails and separates the
 
 - [[Stuff]]
 - [[Next Action]]
+- [[Project]]
 
 ## Supporting Attributes
 
@@ -18,16 +19,17 @@ This page defines the direct GTD elements used by GTD on Rails and separates the
 
 - [[Inbox]]
 - [[Next Actions]]
+- [[Projects]]
 
 Lists and pages are documented separately in [[Lists and Pages]]. For example, [[Next Action]] documents the GTD element, while [[Next Actions]] documents the next-action lists and page family.
 
-Workflow states are documented inside their element page. `Stuff` contains captured and deleted states. `Next Action` contains available, on going, completed, and deleted states.
+Workflow states are documented inside their element page. `Stuff` contains captured and deleted states. `Next Action` contains available, on going, completed, and deleted states. `Project` contains active project outcomes.
 
 ## Core Flow
 
 1. Capture new stuff into the inbox.
 2. Process inbox stuff only when ready to decide what it means.
-3. Convert actionable items into next actions with useful context and attributes.
+3. Convert actionable items into next actions with useful context and attributes, or into projects when the desired result is larger than one action.
 4. Pull a next action into on going when actively working on it.
 5. Mark finished work as done.
 6. Use deleted and completed lists as recovery and review buffers.

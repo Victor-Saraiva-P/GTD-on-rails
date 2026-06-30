@@ -57,6 +57,11 @@ export async function convertStuffToNextActionApi(request: APIRequestContext, st
   expect(response.ok()).toBeTruthy();
 }
 
+export async function convertStuffToProjectApi(request: APIRequestContext, stuffId: string, deadline: string | null = null): Promise<void> {
+  const response = await request.post(`${apiBaseUrl}/inbox/${stuffId}/project`, { data: { deadline } });
+  expect(response.ok()).toBeTruthy();
+}
+
 export async function createInboxStuffFromKeyboard(page: Page, title: string): Promise<void> {
   await focusApp(page);
   await page.keyboard.press("a");

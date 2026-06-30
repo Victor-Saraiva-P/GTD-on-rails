@@ -137,6 +137,29 @@ test("enters calendar date with segmented keyboard input", async ({ page }) => {
   const payload = calendarRequest.postDataJSON() as CalendarProcessingRequestPayload;
   expect(payload).toEqual({ scheduledDate: "2028-02-29", scheduledTime: null });
 });
+
+test("processes stuff into a project and opens projects", async ({ page }) => {
+  const title = uniqueLabel("Processing project");
+  await createAndSelectInboxStuff(page, title);
+
+  await page.keyboard.press("p");
+  await page.keyboard.press("p");
+
+  const dialog = page.getByRole("dialog", { name: "Processing" });
+  const dateControl = dialog.getByRole("textbox", { name: "Deadline:" });
+  await expect(dateControl).toHaveText("__/__/____");
+
+  const projectRequestPromise = page.waitForRequest((request) => request.url().endsWith("/project") && request.method() === "POST");
+  await page.keyboard.type("29022028");
+  await page.keyboard.press("Enter");
+
+  const projectRequest = await projectRequestPromise;
+  const payload = projectRequest.postDataJSON() as ProjectProcessingRequestPayload;
+  expect(payload.deadline).toEqual("2028-02-29");
+  await expect(page.locator(".list-pane__title").first()).toHaveText("Projects");
+  await expect(page.getByRole("button", { name: title, exact: false })).toBeVisible();
+});
+
 async function confirmNextActionProcessing(page: Page): Promise<void> {
   await page.keyboard.press("Enter");
   await page.keyboard.press("Enter");
@@ -150,5 +173,9 @@ type CalendarProcessingRequestPayload = {
 };
 
 type NextActionProcessingRequestPayload = {
+  deadline: string | null;
+};
+
+type ProjectProcessingRequestPayload = {
   deadline: string | null;
 };

@@ -11,6 +11,85 @@
   gap: 0;
 }
 
+.project-card-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 320px));
+  gap: 14px;
+  list-style: none;
+  margin: 0;
+  padding: 28px 16px 16px;
+}
+
+.projects-pane {
+  border-color: rgba(155, 90, 183, 0.36);
+}
+
+.projects-pane.list-pane--active {
+  border-color: rgba(155, 90, 183, 0.52);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.02),
+    0 0 0 1px rgba(155, 90, 183, 0.1),
+    0 18px 36px rgba(0, 0, 0, 0.2);
+}
+
+.project-card-list__item {
+  min-width: 0;
+}
+
+.project-card {
+  display: grid;
+  grid-template-rows: auto minmax(72px, 1fr) auto;
+  gap: 12px;
+  width: 100%;
+  min-height: 148px;
+  padding: 16px;
+  border: 1px solid rgba(155, 90, 183, 0.28);
+  border-radius: 14px;
+  background: linear-gradient(145deg, rgba(155, 90, 183, 0.18), rgba(32, 30, 33, 0.94));
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.22);
+  color: #f0e8f4;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.project-card:hover,
+.project-card:focus-visible,
+.project-card--active {
+  border-color: rgba(155, 90, 183, 0.9);
+  outline: none;
+  box-shadow: 0 0 0 1px rgba(155, 90, 183, 0.42), 0 16px 38px rgba(0, 0, 0, 0.28);
+}
+
+.project-card__glyph {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 9px;
+  background: rgba(155, 90, 183, 0.22);
+  color: #d7a4ee;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.project-card__title {
+  align-self: start;
+  color: #f1e8f5;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.28;
+}
+
+.project-card__deadline {
+  color: #b7a7bd;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .tree-list--inbox .tree-list__item {
   border-bottom: 0;
 }
@@ -160,6 +239,10 @@
   color: #2D8C8A;
 }
 
+.tree-entry__glyph--project {
+  color: #9B5AB7;
+}
+
 .tree-entry__glyph--calendar-done {
   color: #7F8D3F;
 }
@@ -183,6 +266,12 @@
   -webkit-box-orient: vertical;
   line-clamp: 2;
   text-overflow: ellipsis;
+}
+
+.tree-entry__meta {
+  color: #9b9b9b;
+  flex: 0 0 auto;
+  font-size: 0.72rem;
 }
 
 .tree-list--inbox .tree-entry__label {

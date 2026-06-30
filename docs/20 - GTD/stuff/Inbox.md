@@ -10,7 +10,7 @@ This page is the umbrella documentation for the inbox list and the inbox-related
 
 The inbox is the list that holds unprocessed stuff. Its purpose is to collect without deciding too early.
 
-Inbox items should be processed later into a [[Next Actions|next action]], reference material, project-related material, or another outcome supported by the processing flow.
+Inbox items should be processed later into a [[Next Actions|next action]], [[Projects|project]], reference material, project-related material, or another outcome supported by the processing flow.
 
 ## Inbox List
 
@@ -19,6 +19,8 @@ The inbox page is the list for unprocessed stuff. Use it to capture new stuff, i
 The active Inbox is ordered from the oldest captured stuff to the newest captured stuff.
 
 After processing removes stuff from the Inbox, focus returns to the Inbox list. Selection moves to the next item below the processed item, or to the item above when the processed item was last.
+
+Processing stuff into a project opens the Projects page after the project is created.
 
 | Shortcut | Scope | Action |
 | --- | --- | --- |
