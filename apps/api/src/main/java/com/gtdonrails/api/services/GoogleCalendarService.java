@@ -174,13 +174,18 @@ public class GoogleCalendarService {
             
             createOrUpdateCalendar(client, existing, "Next Action", "#4F9768");
             createOrUpdateCalendar(client, existing, "Calendar", "#c85a53");
-            createOrUpdateCalendar(client, existing, "On Going", "#9B5AB7");
+            createOrUpdateCalendar(client, existing, "On Going", "#2D8C8A");
             createOrUpdateCalendar(client, existing, "Done", "#7F8D3F");
             
         } catch (Exception e) {
             log.error("Failed to setup GTD calendars", e);
             throw new RuntimeException("Failed to setup calendars", e);
         }
+    }
+
+    @Transactional
+    public void reconcileGtdCalendars() {
+        setupGtdCalendars();
     }
 
     private void createOrUpdateCalendar(Calendar client, List<CalendarListEntry> existing, String name, String colorHex) throws Exception {
