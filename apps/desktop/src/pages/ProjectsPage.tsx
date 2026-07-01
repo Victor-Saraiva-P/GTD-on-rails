@@ -5,7 +5,7 @@ import { RetryState } from "../components/RetryState";
 import { useKeybindScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
 import type { KeybindDefinition } from "../features/keybinds/types";
 import { LeaderMenu } from "../features/keybinds/LeaderMenu";
-import { projectsListTheme } from "../features/lists/listThemes";
+import { doneProjectsListTheme, projectsListTheme } from "../features/lists/listThemes";
 import { ProjectEditDialog } from "../features/projects/ProjectEditDialog";
 import { nextProjectGridSelection } from "../features/projects/projectGridNavigation";
 import type { ProjectGridDirection, ProjectGridCardRect } from "../features/projects/projectGridNavigation";
@@ -17,8 +17,8 @@ type ProjectsPageProps = Readonly<{
   controller: ProjectsWorkspaceController;
 }>;
 
-function projectBinding(id: string, key: string, description: string, runKeybind: () => void): KeybindDefinition {
-  return { id, key, description, runKeybind, screen: "projects", zone: "projects-list" };
+function projectBinding(id: string, key: string, description: string, runKeybind: () => void, sequence?: string[]): KeybindDefinition {
+  return { id, key, description, runKeybind, screen: "projects", sequence, zone: "projects-list" };
 }
 
 function canEdit(controller: ProjectsWorkspaceController): boolean {
@@ -26,14 +26,25 @@ function canEdit(controller: ProjectsWorkspaceController): boolean {
 }
 
 function buildProjectBindings(controller: ProjectsWorkspaceController, openEdit: () => void) {
-  return [
+  const bindings = [
     projectBinding("projects.move-left", "h", "Move to project on the left", () => moveProjectSelection(controller, "left")),
     projectBinding("projects.move-down", "j", "Move to project below", () => moveProjectSelection(controller, "down")),
     projectBinding("projects.move-up", "k", "Move to project above", () => moveProjectSelection(controller, "up")),
     projectBinding("projects.move-right", "l", "Move to project on the right", () => moveProjectSelection(controller, "right")),
+    projectBinding("projects.move-first", "g", "Move to first project", controller.selectFirst, ["g", "g"]),
+    projectBinding("projects.move-last", "G", "Move to last project", controller.selectLast),
+    projectBinding("projects.switch-forward", "]", "Switch Projects subview", controller.switchSubview),
+    projectBinding("projects.switch-back", "[", "Switch Projects subview", controller.switchSubview),
     projectBinding("projects.edit", "e", "Edit selected project", () => canEdit(controller) && openEdit()),
     { ...projectBinding("projects.which-key", "k", "Show available keybinds", () => undefined), leader: true }
   ];
+  if (controller.activeSubview === "active") return [...bindings, projectBinding("projects.done", "x", "Mark selected project done", () => runProjectAction(controller, controller.markSelectedDone, "Failed to mark project done"))];
+  return [...bindings, projectBinding("projects.restore", "r", "Restore selected project", () => runProjectAction(controller, controller.resetSelectedStatus, "Failed to restore project"))];
+}
+
+function runProjectAction(controller: ProjectsWorkspaceController, action: () => Promise<void>, message: string) {
+  if (!canEdit(controller)) return;
+  void action().catch((error: unknown) => console.error(message, error));
 }
 
 function moveProjectSelection(controller: ProjectsWorkspaceController, direction: ProjectGridDirection) {
@@ -50,10 +61,22 @@ function projectCardRects(): ProjectGridCardRect[] {
 }
 
 function ProjectsBody({ controller }: ProjectsPageProps) {
-  if (controller.isLoading) return <p className="pane-state">Loading projects...</p>;
+  if (controller.isLoading) return <p className="pane-state">Loading {projectLabel(controller).toLowerCase()}...</p>;
   if (controller.errorMessage) return <RetryState message={controller.errorMessage} onRetry={controller.reload} />;
-  if (controller.projects.length === 0) return <p className="pane-state">No projects yet.</p>;
+  if (controller.projects.length === 0) return <p className="pane-state">{projectEmptyMessage(controller)}</p>;
   return <ProjectsList items={controller.projects} selectedId={controller.selectedItem?.id ?? ""} onSelect={controller.setSelectedId} />;
+}
+
+function projectEmptyMessage(controller: ProjectsWorkspaceController): string {
+  return controller.activeSubview === "active" ? "No active projects." : "No completed projects.";
+}
+
+function projectLabel(controller: ProjectsWorkspaceController): string {
+  return controller.activeSubview === "active" ? "Projects" : "Completed Projects";
+}
+
+function projectTheme(controller: ProjectsWorkspaceController) {
+  return controller.activeSubview === "active" ? projectsListTheme : doneProjectsListTheme;
 }
 
 /**
@@ -67,10 +90,11 @@ export function ProjectsPage({ controller }: ProjectsPageProps) {
   const bindings = useMemo(() => buildProjectBindings(controller, openEdit), [controller, openEdit]);
   useKeybindScreen("projects");
   useRegisterKeybinds(bindings);
+  const theme = projectTheme(controller);
   return (
-    <ListWorkspace theme={projectsListTheme} currentLabel={projectsListTheme.label}>
-      <section className="projects-terminal-layout" aria-label="Projects">
-        <ListView title="Projects" viewIndex={1} active={controller.activeZone === "projects-list"} bodyClassName="list-pane__body--flush" className="inbox-pane inbox-pane--list projects-pane">
+    <ListWorkspace theme={theme} currentLabel={theme.label}>
+      <section className="projects-terminal-layout" aria-label={projectLabel(controller)}>
+        <ListView title={projectLabel(controller)} viewIndex={1} active={controller.activeZone === "projects-list"} bodyClassName="list-pane__body--flush" className="inbox-pane inbox-pane--list projects-pane">
           <ProjectsBody controller={controller} />
         </ListView>
       </section>

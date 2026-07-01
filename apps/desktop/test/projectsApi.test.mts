@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test, { afterEach, describe, mock } from "node:test";
 
-import { fetchProjects, patchProject, processStuffToProject } from "../src/features/projects/api.ts";
+import { fetchDoneProjects, fetchProjects, markProjectDone, patchProject, processStuffToProject, resetProjectStatus } from "../src/features/projects/api.ts";
 import type { Stuff } from "../src/features/inbox/types.ts";
 
 describe("projects API", () => {
@@ -14,12 +14,23 @@ describe("projects API", () => {
   test("fetchProjects loads project cards", async () => {
     globalThis.fetch = mock.fn(async (input) => {
       assert.ok(input.toString().endsWith("/projects"));
-      return new Response(JSON.stringify([{ id: "project-1", title: "Launch", deadline: "2028-02-29" }]), { status: 200 });
+      return new Response(JSON.stringify([{ id: "project-1", title: "Launch", deadline: "2028-02-29", doneDate: null, doneTime: null }]), { status: 200 });
     });
 
     const projects = await fetchProjects();
 
-    assert.deepEqual(projects, [{ id: "project-1", title: "Launch", deadline: "2028-02-29" }]);
+    assert.deepEqual(projects, [{ id: "project-1", title: "Launch", deadline: "2028-02-29", doneDate: null, doneTime: null }]);
+  });
+
+  test("fetchDoneProjects loads completed project cards", async () => {
+    globalThis.fetch = mock.fn(async (input) => {
+      assert.ok(input.toString().endsWith("/projects/done"));
+      return new Response(JSON.stringify([{ id: "project-1", title: "Launch", deadline: null, doneDate: "2028-02-29", doneTime: "10:15:00" }]), { status: 200 });
+    });
+
+    const projects = await fetchDoneProjects();
+
+    assert.deepEqual(projects, [{ id: "project-1", title: "Launch", deadline: null, doneDate: "2028-02-29", doneTime: "10:15:00" }]);
   });
 
   test("processStuffToProject posts optional deadline", async () => {
@@ -39,13 +50,37 @@ describe("projects API", () => {
       assert.ok(input.toString().endsWith("/projects/project-1"));
       assert.equal(init?.method, "PATCH");
       assert.equal(init?.body, JSON.stringify(patch));
-      return new Response(JSON.stringify({ id: "project-1", title: "New title", deadline: null }), { status: 200 });
+      return new Response(JSON.stringify({ id: "project-1", title: "New title", deadline: null, doneDate: null, doneTime: null }), { status: 200 });
     });
 
     const project = await patchProject("project-1", patch);
 
     assert.equal(project.title, "New title");
     assert.equal(project.deadline, null);
+  });
+
+  test("markProjectDone posts status move", async () => {
+    globalThis.fetch = mock.fn(async (input, init) => {
+      assert.ok(input.toString().endsWith("/projects/project-1/done"));
+      assert.equal(init?.method, "POST");
+      return new Response(JSON.stringify({ id: "project-1", title: "Done", deadline: null, doneDate: "2028-02-29", doneTime: "10:15:00" }), { status: 200 });
+    });
+
+    const project = await markProjectDone("project-1");
+
+    assert.equal(project.doneDate, "2028-02-29");
+  });
+
+  test("resetProjectStatus posts active restore", async () => {
+    globalThis.fetch = mock.fn(async (input, init) => {
+      assert.ok(input.toString().endsWith("/projects/project-1/reset-status"));
+      assert.equal(init?.method, "POST");
+      return new Response(JSON.stringify({ id: "project-1", title: "Active", deadline: null, doneDate: null, doneTime: null }), { status: 200 });
+    });
+
+    const project = await resetProjectStatus("project-1");
+
+    assert.equal(project.doneDate, null);
   });
 });
 

@@ -7,6 +7,7 @@ import {
   contextsListTheme,
   doneCalendarsListTheme,
   doneNextActionsListTheme,
+  doneProjectsListTheme,
   inboxListTheme,
   nextActionsListTheme,
   projectsListTheme,
@@ -51,4 +52,9 @@ test("calendarsListTheme keeps the calendar red accent", () => {
 
 test("doneCalendarsListTheme reuses completed next actions green", () => {
   assert.equal(doneCalendarsListTheme.accentColor, doneNextActionsListTheme.accentColor);
+});
+
+test("doneProjectsListTheme uses completed green", () => {
+  assert.equal(doneProjectsListTheme.label, "Completed Projects");
+  assert.equal(doneProjectsListTheme.accentColor, "#7F8D3F");
 });

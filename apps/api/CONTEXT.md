@@ -16,6 +16,14 @@ _Avoid_: Due date, scheduled date
 A GTD outcome that represents a desired result with a title and optional deadline. A project may originate from captured stuff, but the project view is concerned with the result rather than the original captured body.
 _Avoid_: On going, task
 
+**Active Project**:
+A project whose desired result has not yet been achieved and remains part of current commitments.
+_Avoid_: In-progress project, on going project
+
+**Done Project**:
+A project whose desired result has been achieved and is no longer active.
+_Avoid_: Completed Project, concluded project
+
 **External Agenda Mirror**:
 A derived calendar representation of GTD items outside the local GTD system. The local GTD item remains the source of truth.
 _Avoid_: Calendar source, remote truth

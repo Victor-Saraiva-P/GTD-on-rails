@@ -1,11 +1,13 @@
 package com.gtdonrails.api.services;
 
 import java.util.List;
+import java.time.Clock;
 import java.util.UUID;
 
 import com.gtdonrails.api.dtos.project.PatchProjectRequestDto;
 import com.gtdonrails.api.dtos.project.ProjectResponseDto;
 import com.gtdonrails.api.entities.Project;
+import com.gtdonrails.api.enums.ProjectStatus;
 import com.gtdonrails.api.exceptions.item.ItemNotFoundException;
 import com.gtdonrails.api.mappers.ProjectMapper;
 import com.gtdonrails.api.normalizers.ItemTextNormalizer;
@@ -23,19 +25,22 @@ public class ProjectService {
     private final ItemTextNormalizer itemTextNormalizer;
     private final PersistenceGitSyncService persistenceGitSyncService;
     private final AfterCommitExecutor afterCommitExecutor;
+    private final Clock clock;
 
     public ProjectService(
         ProjectRepository projectRepository,
         ProjectMapper projectMapper,
         ItemTextNormalizer itemTextNormalizer,
         PersistenceGitSyncService persistenceGitSyncService,
-        AfterCommitExecutor afterCommitExecutor
+        AfterCommitExecutor afterCommitExecutor,
+        Clock clock
     ) {
         this.projectRepository = projectRepository;
         this.projectMapper = projectMapper;
         this.itemTextNormalizer = itemTextNormalizer;
         this.persistenceGitSyncService = persistenceGitSyncService;
         this.afterCommitExecutor = afterCommitExecutor;
+        this.clock = clock;
     }
 
     /**
@@ -45,9 +50,49 @@ public class ProjectService {
      */
     @Transactional(readOnly = true)
     public List<ProjectResponseDto> listProjects() {
-        return projectRepository.findAllByItem_DeletedAtIsNullOrderByItem_CreatedAtAsc().stream()
+        return projectRepository.findAllByStatusAndItem_DeletedAtIsNullOrderByItem_CreatedAtAsc(ProjectStatus.ACTIVE).stream()
             .map(projectMapper::toResponse)
             .toList();
+    }
+
+    /**
+     * Marks an active project as done.
+     *
+     * <p>Example: {@code projectService.markDone(projectId)}.</p>
+     */
+    @Transactional
+    public ProjectResponseDto markDone(UUID id) {
+        Project project = findProject(id);
+        project.markDone(clock);
+        ProjectResponseDto response = projectMapper.toResponse(projectRepository.save(project));
+        requestPersistenceSyncAfterCommit("project marked done");
+        return response;
+    }
+
+    /**
+     * Lists done projects newest first.
+     *
+     * <p>Example: {@code projectService.listDoneProjects()}.</p>
+     */
+    @Transactional(readOnly = true)
+    public List<ProjectResponseDto> listDoneProjects() {
+        return projectRepository.findAllByStatusAndItem_DeletedAtIsNullOrderByDoneDateDescDoneTimeDescItem_UpdatedAtDesc(ProjectStatus.DONE).stream()
+            .map(projectMapper::toResponse)
+            .toList();
+    }
+
+    /**
+     * Restores a done project to active commitments.
+     *
+     * <p>Example: {@code projectService.resetStatus(projectId)}.</p>
+     */
+    @Transactional
+    public ProjectResponseDto resetStatus(UUID id) {
+        Project project = findProject(id);
+        project.resetStatus();
+        ProjectResponseDto response = projectMapper.toResponse(projectRepository.save(project));
+        requestPersistenceSyncAfterCommit("project status restored");
+        return response;
     }
 
     /**
@@ -61,7 +106,7 @@ public class ProjectService {
         applyTitlePatch(project, request);
         applyDeadlinePatch(project, request);
         ProjectResponseDto response = projectMapper.toResponse(projectRepository.save(project));
-        requestPersistenceSyncAfterCommit();
+        requestPersistenceSyncAfterCommit("project updated");
         return response;
     }
 
@@ -80,8 +125,8 @@ public class ProjectService {
             .orElseThrow(() -> new ItemNotFoundException("project not found"));
     }
 
-    private void requestPersistenceSyncAfterCommit() {
+    private void requestPersistenceSyncAfterCommit(String reason) {
         afterCommitExecutor.run(() ->
-            persistenceGitSyncService.requestSync("project updated", PersistenceChangeType.UPDATE_ITEM));
+            persistenceGitSyncService.requestSync(reason, PersistenceChangeType.UPDATE_ITEM));
     }
 }

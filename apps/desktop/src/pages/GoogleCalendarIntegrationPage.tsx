@@ -133,7 +133,7 @@ type CredentialInputProps = Readonly<{
 
 function ConnectionStatus({ controller }: Props) {
   const canConnect = controller.status?.configurationStatus === "READY";
-  const canReconcile = canConnect && controller.status?.connected;
+  const canReconcile = canConnect && Boolean(controller.status?.connected);
   const reason = controller.status?.configurationMessage ?? "Loading Google Calendar configuration.";
   return (
     <div style={sectionStyle}>
@@ -167,7 +167,7 @@ function CalendarRow({ colorHex, name }: Readonly<{ colorHex: string; name: stri
 function useGoogleCalendarKeybinds({ controller, isFormOpen, setIsFormOpen }: KeybindsProps) {
   const { setActiveScreen } = useActiveScreen();
   const canConnect = controller.status?.configurationStatus === "READY";
-  const canReconcile = canConnect && controller.status?.connected;
+  const canReconcile = canConnect && Boolean(controller.status?.connected);
   const reason = controller.status?.configurationMessage ?? "Loading Google Calendar configuration.";
   const reconcileReason = controller.status?.connected ? reason : "Connect to Google Calendar first.";
   useKeybindScreen("google-calendar-integration");

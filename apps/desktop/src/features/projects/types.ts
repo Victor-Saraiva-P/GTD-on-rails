@@ -2,6 +2,8 @@ export type Project = {
   id: string;
   title: string;
   deadline?: string | null;
+  doneDate?: string | null;
+  doneTime?: string | null;
 };
 
 export type ProjectPatch = {

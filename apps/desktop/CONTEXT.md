@@ -15,3 +15,11 @@ _Avoid_: on going thing, on going row, active panel item
 **Project Card**:
 A compact project representation in the Projects page that shows the project title and project glyph. It does not expose the captured stuff body that may have originated the project.
 _Avoid_: project detail, project preview
+
+**Active Project**:
+A project whose desired result has not yet been achieved and remains part of current commitments.
+_Avoid_: In-progress project, on going project
+
+**Done Project**:
+A project whose desired result has been achieved and is no longer active.
+_Avoid_: Completed Project, concluded project

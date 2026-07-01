@@ -16,6 +16,8 @@ public class ProjectMapper {
         return new ProjectResponseDto(
             project.getItemId(),
             project.getItem().getTitle().value(),
-            project.getDeadline());
+            project.getDeadline(),
+            project.getDoneDate(),
+            project.getDoneTime());
     }
 }

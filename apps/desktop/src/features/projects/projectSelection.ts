@@ -24,5 +24,10 @@ export function useProjectSelection(projects: Project[]) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selectedItem = selectedProject(projects, selectedId);
   const selectedIndex = selectedProjectIndex(projects, selectedItem);
-  return { selectedId, selectedItem, selectedIndex, setSelectedId, selectNext: () => selectByOffset(projects, selectedIndex, setSelectedId, 1), selectPrevious: () => selectByOffset(projects, selectedIndex, setSelectedId, -1) };
+  return { selectedId, selectedItem, selectedIndex, setSelectedId, selectFirst: () => selectByBoundary(projects, setSelectedId, "first"), selectLast: () => selectByBoundary(projects, setSelectedId, "last"), selectNext: () => selectByOffset(projects, selectedIndex, setSelectedId, 1), selectPrevious: () => selectByOffset(projects, selectedIndex, setSelectedId, -1) };
+}
+
+function selectByBoundary(projects: Project[], setSelectedId: (id: string | null) => void, boundary: "first" | "last") {
+  const index = boundary === "first" ? 0 : projects.length - 1;
+  setSelectedId(projects[index]?.id ?? null);
 }

@@ -1,10 +1,15 @@
 package com.gtdonrails.api.entities;
 
+import java.time.Clock;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.UUID;
 
+import com.gtdonrails.api.enums.ProjectStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.MapsId;
@@ -33,12 +38,47 @@ public class Project extends AuditableEntity {
     @Column(name = "deadline")
     private LocalDate deadline;
 
+    @Column(name = "done_date")
+    private LocalDate doneDate;
+
+    @Column(name = "done_time")
+    private LocalTime doneTime;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 50)
+    private ProjectStatus status = ProjectStatus.ACTIVE;
+
     public Project() {
     }
 
     public Project(Item item, LocalDate deadline) {
         setItem(item);
         setDeadline(deadline);
+        status = ProjectStatus.ACTIVE;
+    }
+
+    /**
+     * Marks this project as done with the current clock date and time.
+     *
+     * <p>Example: {@code project.markDone(clock)}.</p>
+     */
+    public void markDone(Clock clock) {
+        requireClock(clock);
+        if (status == ProjectStatus.DONE) return;
+        doneDate = LocalDate.now(clock);
+        doneTime = LocalTime.now(clock);
+        status = ProjectStatus.DONE;
+    }
+
+    /**
+     * Restores this project to active commitments and clears completion time.
+     *
+     * <p>Example: {@code project.resetStatus()}.</p>
+     */
+    public void resetStatus() {
+        doneDate = null;
+        doneTime = null;
+        status = ProjectStatus.ACTIVE;
     }
 
     /**
@@ -64,5 +104,9 @@ public class Project extends AuditableEntity {
     @PreUpdate
     void preUpdate() {
         touchUpdatedAt();
+    }
+
+    private static void requireClock(Clock clock) {
+        if (clock == null) throw new IllegalArgumentException("clock value 'null' is invalid; expected Clock");
     }
 }

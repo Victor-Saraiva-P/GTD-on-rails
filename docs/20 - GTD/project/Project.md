@@ -10,4 +10,8 @@ The original captured body is not part of the project card experience.
 
 ## Workflow State
 
-Projects are active project outcomes in this initial implementation.
+Projects can be active or done.
+
+An active project is a current commitment whose desired result has not yet been achieved.
+
+A done project is a project whose desired result has been achieved and is no longer active.

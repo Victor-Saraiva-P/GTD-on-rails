@@ -6,6 +6,8 @@ type ProjectResponse = {
   id: string;
   title: string;
   deadline?: string | null;
+  doneDate?: string | null;
+  doneTime?: string | null;
 };
 
 /**
@@ -15,6 +17,15 @@ type ProjectResponse = {
  */
 export async function fetchProjects(): Promise<Project[]> {
   return (await apiJson<ProjectResponse[]>("/projects")).map(toProject);
+}
+
+/**
+ * Loads completed projects from the API.
+ *
+ * @example await fetchDoneProjects()
+ */
+export async function fetchDoneProjects(): Promise<Project[]> {
+  return (await apiJson<ProjectResponse[]>("/projects/done")).map(toProject);
 }
 
 /**
@@ -43,6 +54,24 @@ export async function patchProject(id: string, patch: ProjectPatch): Promise<Pro
   }));
 }
 
+/**
+ * Moves a project to the done state.
+ *
+ * @example await markProjectDone(project.id)
+ */
+export async function markProjectDone(id: string): Promise<Project> {
+  return toProject(await apiJson<ProjectResponse>(`/projects/${id}/done`, { method: "POST" }));
+}
+
+/**
+ * Restores a completed project to active commitments.
+ *
+ * @example await resetProjectStatus(project.id)
+ */
+export async function resetProjectStatus(id: string): Promise<Project> {
+  return toProject(await apiJson<ProjectResponse>(`/projects/${id}/reset-status`, { method: "POST" }));
+}
+
 function toProject(response: ProjectResponse): Project {
-  return { id: response.id, title: response.title, deadline: response.deadline ?? null };
+  return { id: response.id, title: response.title, deadline: response.deadline ?? null, doneDate: response.doneDate ?? null, doneTime: response.doneTime ?? null };
 }

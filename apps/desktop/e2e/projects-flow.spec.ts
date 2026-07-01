@@ -55,6 +55,40 @@ test("moves down to the project card below", async ({ page, request }) => {
   await expect(rowBelowCard).toHaveClass(/project-card--active/);
 });
 
+test("marks project done, edits it in completed projects, and restores it", async ({ page, request }) => {
+  const title = uniqueLabel("Project done");
+  const updatedTitle = uniqueLabel("Project done updated");
+  const stuff = await createStuffApi(request, title);
+  await convertStuffToProjectApi(request, stuff.id);
+
+  await page.keyboard.press("Space");
+  await page.keyboard.press("p");
+  await expect(page.getByRole("button", { name: title, exact: false })).toBeVisible();
+
+  const doneResponse = page.waitForResponse((response) => response.url().includes("/projects/") && response.url().endsWith("/done") && response.ok());
+  await page.keyboard.press("x");
+  await doneResponse;
+  await expect(page.getByRole("button", { name: title, exact: false })).not.toBeVisible();
+
+  await page.keyboard.press("]");
+  await expect(page.locator(".list-pane__title").first()).toHaveText("Completed Projects");
+  await expect(page.getByRole("button", { name: title, exact: false })).toBeVisible();
+
+  await page.keyboard.press("e");
+  const editDialog = page.getByRole("dialog", { name: "Edit project" });
+  await page.keyboard.press("t");
+  await editDialog.getByRole("textbox", { name: "Title:" }).fill(updatedTitle);
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("button", { name: updatedTitle, exact: false })).toBeVisible();
+
+  const resetResponse = page.waitForResponse((response) => response.url().includes("/projects/") && response.url().endsWith("/reset-status") && response.ok());
+  await page.keyboard.press("r");
+  await resetResponse;
+  await expect(page.getByRole("button", { name: updatedTitle, exact: false })).not.toBeVisible();
+  await page.keyboard.press("[");
+  await expect(page.getByRole("button", { name: updatedTitle, exact: false })).toBeVisible();
+});
+
 async function createProjectGrid(request: Parameters<typeof createStuffApi>[0]): Promise<string[]> {
   const titles = Array.from({ length: 8 }, (_, index) => uniqueLabel(`Project grid ${index + 1}`));
   for (const title of titles) {

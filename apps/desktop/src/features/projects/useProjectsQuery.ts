@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { ApiRequestError } from "../../lib/api/apiClient";
 import { useSyncStatus } from "../sync-status/SyncStatusProvider";
-import { fetchProjects, patchProject } from "./api";
+import { fetchDoneProjects, fetchProjects, markProjectDone, patchProject, resetProjectStatus } from "./api";
+import type { ProjectSubview } from "./projectSubview";
 import type { Project, ProjectPatch } from "./types";
 
 function toErrorMessage(error: unknown): string {
@@ -17,18 +18,18 @@ function replaceProject(projects: Project[], updated: Project): Project[] {
 /**
  * Loads projects and exposes project mutations.
  *
- * @example const projects = useProjectsQuery()
+ * @example const projects = useProjectsQuery("active")
  */
-export function useProjectsQuery() {
+export function useProjectsQuery(subview: ProjectSubview) {
   const state = useProjectsLoadState();
   const [isUpdating, setIsUpdating] = useState(false);
   const { triggerSyncStatusPolling } = useSyncStatus();
 
   useEffect(() => {
     let cancelled = false;
-    void loadProjects(() => cancelled, state);
+    void loadProjects(subview, () => cancelled, state);
     return () => { cancelled = true; };
-  }, [state.reloadToken]);
+  }, [state.reloadToken, subview]);
 
   const patchItem = async (id: string, patch: ProjectPatch) => {
     setIsUpdating(true);
@@ -42,7 +43,9 @@ export function useProjectsQuery() {
     }
   };
 
-  return { errorMessage: state.errorMessage, isLoading: state.isLoading, isUpdating, items: state.items, patchItem, reload: state.reload };
+  const markDone = (id: string) => moveProject(id, markProjectDone, state, setIsUpdating, triggerSyncStatusPolling);
+  const resetStatus = (id: string) => moveProject(id, resetProjectStatus, state, setIsUpdating, triggerSyncStatusPolling);
+  return { errorMessage: state.errorMessage, isLoading: state.isLoading, isUpdating, items: state.items, markDone, patchItem, reload: state.reload, resetStatus };
 }
 
 function useProjectsLoadState() {
@@ -53,15 +56,26 @@ function useProjectsLoadState() {
   return { errorMessage, isLoading, items, reload: () => setReloadToken((value) => value + 1), reloadToken, setErrorMessage, setIsLoading, setItems };
 }
 
-async function loadProjects(isCancelled: () => boolean, state: ReturnType<typeof useProjectsLoadState>) {
+async function loadProjects(subview: ProjectSubview, isCancelled: () => boolean, state: ReturnType<typeof useProjectsLoadState>) {
   state.setIsLoading(true);
   state.setErrorMessage(null);
   try {
-    const nextItems = await fetchProjects();
+    const nextItems = subview === "active" ? await fetchProjects() : await fetchDoneProjects();
     if (!isCancelled()) state.setItems(nextItems);
   } catch (error) {
     if (!isCancelled()) state.setErrorMessage(toErrorMessage(error));
   } finally {
     if (!isCancelled()) state.setIsLoading(false);
+  }
+}
+
+async function moveProject(id: string, action: (id: string) => Promise<Project>, state: ReturnType<typeof useProjectsLoadState>, setUpdating: (value: boolean) => void, poll: () => void) {
+  setUpdating(true);
+  try {
+    await action(id);
+    state.setItems((items) => items.filter((project) => project.id !== id));
+    poll();
+  } finally {
+    setUpdating(false);
   }
 }
