@@ -8,6 +8,7 @@ import {
   doneCalendarsListTheme,
   doneNextActionsListTheme,
   doneProjectsListTheme,
+  deletedProjectsListTheme,
   inboxListTheme,
   nextActionsListTheme,
   projectsListTheme,
@@ -57,4 +58,9 @@ test("doneCalendarsListTheme reuses completed next actions green", () => {
 test("doneProjectsListTheme uses completed green", () => {
   assert.equal(doneProjectsListTheme.label, "Completed Projects");
   assert.equal(doneProjectsListTheme.accentColor, "#7F8D3F");
+});
+
+test("deletedProjectsListTheme uses deleted gray", () => {
+  assert.equal(deletedProjectsListTheme.label, "Deleted Projects");
+  assert.equal(deletedProjectsListTheme.accentColor, "#9B9B9B");
 });

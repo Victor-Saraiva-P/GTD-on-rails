@@ -24,6 +24,10 @@ _Avoid_: In-progress project, on going project
 A project whose desired result has been achieved and is no longer active.
 _Avoid_: Completed Project, concluded project
 
+**Deleted Project**:
+A project removed from active operational use but kept as a recoverable project record. Recovering a deleted project returns it to the project state it had before deletion.
+_Avoid_: Removed project, trashed project
+
 **External Agenda Mirror**:
 A derived calendar representation of GTD items outside the local GTD system. The local GTD item remains the source of truth.
 _Avoid_: Calendar source, remote truth

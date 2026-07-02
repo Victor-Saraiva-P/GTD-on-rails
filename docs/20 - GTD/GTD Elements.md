@@ -23,7 +23,7 @@ This page defines the direct GTD elements used by GTD on Rails and separates the
 
 Lists and pages are documented separately in [[Lists and Pages]]. For example, [[Next Action]] documents the GTD element, while [[Next Actions]] documents the next-action lists and page family.
 
-Workflow states are documented inside their element page. `Stuff` contains captured and deleted states. `Next Action` contains available, on going, completed, and deleted states. `Project` contains active project outcomes.
+Workflow states are documented inside their element page. `Stuff` contains captured and deleted states. `Next Action` contains available, on going, completed, and deleted states. `Project` contains active, done, and deleted project outcomes.
 
 ## Core Flow
 

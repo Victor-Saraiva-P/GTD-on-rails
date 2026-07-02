@@ -7,6 +7,8 @@ import com.gtdonrails.api.dtos.project.PatchProjectRequestDto;
 import com.gtdonrails.api.dtos.project.ProjectResponseDto;
 import com.gtdonrails.api.services.ProjectService;
 import jakarta.validation.Valid;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -45,6 +47,16 @@ public class ProjectController {
     }
 
     /**
+     * Handles deleted project list requests.
+     *
+     * <p>Example: {@code GET /projects/deleted}.</p>
+     */
+    @GetMapping("/deleted")
+    public List<ProjectResponseDto> listDeletedProjects() {
+        return projectService.listDeletedProjects();
+    }
+
+    /**
      * Handles project title and deadline updates.
      *
      * <p>Example: {@code PATCH /projects/018f13b2-a7f3-7c44-8f1a-9f31f65a7fd2}.</p>
@@ -72,5 +84,26 @@ public class ProjectController {
     @PostMapping("/{id}/reset-status")
     public ProjectResponseDto resetStatus(@PathVariable UUID id) {
         return projectService.resetStatus(id);
+    }
+
+    /**
+     * Handles project soft deletion requests.
+     *
+     * <p>Example: {@code DELETE /projects/018f13b2-a7f3-7c44-8f1a-9f31f65a7fd2}.</p>
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteProject(@PathVariable UUID id) {
+        projectService.deleteProject(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Handles project recovery requests.
+     *
+     * <p>Example: {@code POST /projects/018f13b2-a7f3-7c44-8f1a-9f31f65a7fd2/recover}.</p>
+     */
+    @PostMapping("/{id}/recover")
+    public ProjectResponseDto recoverProject(@PathVariable UUID id) {
+        return projectService.recoverProject(id);
     }
 }

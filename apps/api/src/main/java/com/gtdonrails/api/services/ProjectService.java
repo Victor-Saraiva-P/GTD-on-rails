@@ -82,6 +82,18 @@ public class ProjectService {
     }
 
     /**
+     * Lists deleted projects newest first.
+     *
+     * <p>Example: {@code projectService.listDeletedProjects()}.</p>
+     */
+    @Transactional(readOnly = true)
+    public List<ProjectResponseDto> listDeletedProjects() {
+        return projectRepository.findAllByItem_DeletedAtIsNotNullOrderByItem_DeletedAtDesc().stream()
+            .map(projectMapper::toResponse)
+            .toList();
+    }
+
+    /**
      * Restores a done project to active commitments.
      *
      * <p>Example: {@code projectService.resetStatus(projectId)}.</p>
@@ -110,6 +122,33 @@ public class ProjectService {
         return response;
     }
 
+    /**
+     * Soft deletes a project without changing its project status.
+     *
+     * <p>Example: {@code projectService.deleteProject(projectId)}.</p>
+     */
+    @Transactional
+    public void deleteProject(UUID id) {
+        Project project = findProject(id);
+        project.getItem().softDelete();
+        projectRepository.save(project);
+        requestPersistenceSyncAfterCommit("project deleted", PersistenceChangeType.DELETE_ITEM);
+    }
+
+    /**
+     * Recovers a deleted project without changing its project status.
+     *
+     * <p>Example: {@code projectService.recoverProject(projectId)}.</p>
+     */
+    @Transactional
+    public ProjectResponseDto recoverProject(UUID id) {
+        Project project = findAnyProject(id);
+        project.getItem().restore();
+        ProjectResponseDto response = projectMapper.toResponse(projectRepository.save(project));
+        requestPersistenceSyncAfterCommit("project recovered", PersistenceChangeType.UPDATE_ITEM);
+        return response;
+    }
+
     private void applyTitlePatch(Project project, PatchProjectRequestDto request) {
         if (request.title() == null) return;
         project.getItem().setTitle(new Title(itemTextNormalizer.normalizeTitle(request.title())));
@@ -125,8 +164,17 @@ public class ProjectService {
             .orElseThrow(() -> new ItemNotFoundException("project not found"));
     }
 
+    private Project findAnyProject(UUID id) {
+        return projectRepository.findById(id)
+            .orElseThrow(() -> new ItemNotFoundException("project not found"));
+    }
+
     private void requestPersistenceSyncAfterCommit(String reason) {
+        requestPersistenceSyncAfterCommit(reason, PersistenceChangeType.UPDATE_ITEM);
+    }
+
+    private void requestPersistenceSyncAfterCommit(String reason, PersistenceChangeType changeType) {
         afterCommitExecutor.run(() ->
-            persistenceGitSyncService.requestSync(reason, PersistenceChangeType.UPDATE_ITEM));
+            persistenceGitSyncService.requestSync(reason, changeType));
     }
 }

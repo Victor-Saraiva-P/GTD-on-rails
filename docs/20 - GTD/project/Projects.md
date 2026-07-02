@@ -13,8 +13,11 @@ The projects page is the list of active project outcomes. It shows project cards
 | Shortcut | Scope | Action |
 | --- | --- | --- |
 | `e` | List | Edit selected project title or deadline. |
+| `d` | List | Delete selected project. |
 | `x` | List | Mark selected project as done. |
-| `[` | List | Open completed projects. |
+| `u` | List | Undo last action. |
+| `Ctrl+r` | List | Redo last action. |
+| `[` | List | Open deleted projects. |
 | `]` | List | Open completed projects. |
 | `gg` | List | Move selection to the first project. |
 | `G` | List | Move selection to the last project. |
@@ -31,8 +34,31 @@ The completed projects subview is the review and recovery list for projects mark
 | Shortcut | Scope | Action |
 | --- | --- | --- |
 | `e` | List | Edit selected completed project title or deadline. |
+| `d` | List | Delete selected completed project. |
 | `r` | List | Restore selected completed project as active. |
+| `u` | List | Undo last action. |
+| `Ctrl+r` | List | Redo last action. |
 | `[` | List | Open active projects. |
+| `]` | List | Open deleted projects. |
+| `gg` | List | Move selection to the first project. |
+| `G` | List | Move selection to the last project. |
+| `h` | List | Move selection to the previous project. |
+| `j` | List | Move selection to the next project. |
+| `k` | List | Move selection to the previous project. |
+| `l` | List | Move selection to the next project. |
+| `Space k` | List | Show available keybindings. |
+
+## Deleted Projects List
+
+The deleted projects subview is the recovery list for deleted projects. It uses the deleted gray page color and shows the most recently deleted project first.
+
+| Shortcut | Scope | Action |
+| --- | --- | --- |
+| `e` | List | Edit selected deleted project title or deadline. |
+| `r` | List | Recover selected project. |
+| `u` | List | Undo last action. |
+| `Ctrl+r` | List | Redo last action. |
+| `[` | List | Open completed projects. |
 | `]` | List | Open active projects. |
 | `gg` | List | Move selection to the first project. |
 | `G` | List | Move selection to the last project. |

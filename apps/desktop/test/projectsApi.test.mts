@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test, { afterEach, describe, mock } from "node:test";
 
-import { fetchDoneProjects, fetchProjects, markProjectDone, patchProject, processStuffToProject, resetProjectStatus } from "../src/features/projects/api.ts";
+import { deleteProject, fetchDeletedProjects, fetchDoneProjects, fetchProjects, markProjectDone, patchProject, processStuffToProject, recoverProject, resetProjectStatus } from "../src/features/projects/api.ts";
 import type { Stuff } from "../src/features/inbox/types.ts";
 
 describe("projects API", () => {
@@ -31,6 +31,17 @@ describe("projects API", () => {
     const projects = await fetchDoneProjects();
 
     assert.deepEqual(projects, [{ id: "project-1", title: "Launch", deadline: null, doneDate: "2028-02-29", doneTime: "10:15:00" }]);
+  });
+
+  test("fetchDeletedProjects loads deleted project cards", async () => {
+    globalThis.fetch = mock.fn(async (input) => {
+      assert.ok(input.toString().endsWith("/projects/deleted"));
+      return new Response(JSON.stringify([{ id: "project-1", title: "Launch", deadline: null, doneDate: null, doneTime: null }]), { status: 200 });
+    });
+
+    const projects = await fetchDeletedProjects();
+
+    assert.deepEqual(projects, [{ id: "project-1", title: "Launch", deadline: null, doneDate: null, doneTime: null }]);
   });
 
   test("processStuffToProject posts optional deadline", async () => {
@@ -81,6 +92,28 @@ describe("projects API", () => {
     const project = await resetProjectStatus("project-1");
 
     assert.equal(project.doneDate, null);
+  });
+
+  test("deleteProject sends project delete request", async () => {
+    globalThis.fetch = mock.fn(async (input, init) => {
+      assert.ok(input.toString().endsWith("/projects/project-1"));
+      assert.equal(init?.method, "DELETE");
+      return new Response(null, { status: 204 });
+    });
+
+    await deleteProject("project-1");
+  });
+
+  test("recoverProject posts project recover request", async () => {
+    globalThis.fetch = mock.fn(async (input, init) => {
+      assert.ok(input.toString().endsWith("/projects/project-1/recover"));
+      assert.equal(init?.method, "POST");
+      return new Response(JSON.stringify({ id: "project-1", title: "Recovered", deadline: null, doneDate: null, doneTime: null }), { status: 200 });
+    });
+
+    const project = await recoverProject("project-1");
+
+    assert.equal(project.title, "Recovered");
   });
 });
 

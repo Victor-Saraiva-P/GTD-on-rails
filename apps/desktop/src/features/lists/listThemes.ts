@@ -82,6 +82,13 @@ export const doneProjectsListTheme: ListTheme = {
   accentColorRgb: doneNextActionsListTheme.accentColorRgb
 };
 
+export const deletedProjectsListTheme: ListTheme = {
+  id: "deleted-projects",
+  label: "Deleted Projects",
+  accentColor: deletedInboxListTheme.accentColor,
+  accentColorRgb: deletedInboxListTheme.accentColorRgb
+};
+
 export const deletedNextActionsListTheme: ListTheme = {
   id: "deleted-next-actions",
   label: "Deleted Next Actions",

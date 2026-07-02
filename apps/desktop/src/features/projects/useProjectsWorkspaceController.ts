@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
+import { useUndoRedoHistory } from "../history/useUndoRedoHistory";
 import { useActiveZone } from "../keybinds/hooks";
-import { projectSubviewTarget, type ProjectSubview } from "./projectSubview";
+import { projectSubviewTarget, type ProjectSubview, type ProjectSubviewDirection } from "./projectSubview";
 import type { ProjectPatch } from "./types";
 import { useProjectSelection } from "./projectSelection";
 import { useProjectsQuery } from "./useProjectsQuery";
@@ -10,7 +11,8 @@ function useProjectsModel() {
   const query = useProjectsQuery(activeSubview);
   const selection = useProjectSelection(query.items);
   const zone = useActiveZone();
-  return { activeSubview, query, selection, setActiveSubview, zone };
+  const history = useUndoRedoHistory<NonNullable<typeof selection.selectedItem>>();
+  return { activeSubview, history, query, selection, setActiveSubview, zone };
 }
 
 function useProjectPruning(model: ReturnType<typeof useProjectsModel>) {
@@ -22,9 +24,12 @@ function useProjectPruning(model: ReturnType<typeof useProjectsModel>) {
 
 function useProjectActions(model: ReturnType<typeof useProjectsModel>) {
   return {
+    deleteSelected: () => deleteSelectedProject(model),
     markSelectedDone: () => moveSelectedProject(model, model.query.markDone),
     patchSelected: (patch: ProjectPatch) => patchSelected(model, patch),
+    recoverSelected: () => recoverSelectedProject(model),
     reload: model.query.reload,
+    redo: () => redoProjectAction(model),
     resetSelectedStatus: () => moveSelectedProject(model, model.query.resetStatus),
     resetWorkspace: () => resetWorkspace(model),
     selectFirst: model.selection.selectFirst,
@@ -33,7 +38,8 @@ function useProjectActions(model: ReturnType<typeof useProjectsModel>) {
     selectPrevious: model.selection.selectPrevious,
     setActiveZone: model.zone.setActiveZone,
     setSelectedId: model.selection.setSelectedId,
-    switchSubview: () => switchSubview(model)
+    switchSubview: (direction: ProjectSubviewDirection) => switchSubview(model, direction),
+    undo: () => undoProjectAction(model)
   };
 }
 
@@ -49,13 +55,45 @@ async function moveSelectedProject(model: ReturnType<typeof useProjectsModel>, a
   await action(selected.id);
 }
 
+async function deleteSelectedProject(model: ReturnType<typeof useProjectsModel>) {
+  const selected = model.selection.selectedItem;
+  if (!selected) return;
+  await model.query.deleteItem(selected.id);
+  model.history.pushUndo({ type: "DELETE", payload: selected });
+}
+
+async function recoverSelectedProject(model: ReturnType<typeof useProjectsModel>) {
+  const selected = model.selection.selectedItem;
+  if (!selected) return;
+  await model.query.recoverItem(selected.id);
+  model.history.pushUndo({ type: "RESTORE", payload: selected });
+}
+
+async function undoProjectAction(model: ReturnType<typeof useProjectsModel>) {
+  const action = model.history.popUndo();
+  if (!action) return;
+  await runHistoryProjectAction(model, action.type, action.payload.id);
+}
+
+async function redoProjectAction(model: ReturnType<typeof useProjectsModel>) {
+  const action = model.history.popRedo();
+  if (!action) return;
+  await runHistoryProjectAction(model, action.type, action.payload.id);
+}
+
+async function runHistoryProjectAction(model: ReturnType<typeof useProjectsModel>, type: "DELETE" | "RESTORE", id: string) {
+  if (type === "DELETE") await model.query.recoverItem(id);
+  else await model.query.deleteItem(id);
+  model.selection.setSelectedId(id);
+}
+
 function resetWorkspace(model: ReturnType<typeof useProjectsModel>) {
   model.setActiveSubview("active");
   model.zone.setActiveZone("projects-list");
 }
 
-function switchSubview(model: ReturnType<typeof useProjectsModel>) {
-  model.setActiveSubview(projectSubviewTarget(model.activeSubview));
+function switchSubview(model: ReturnType<typeof useProjectsModel>, direction: ProjectSubviewDirection) {
+  model.setActiveSubview(projectSubviewTarget(model.activeSubview, direction));
   model.zone.setActiveZone("projects-list");
 }
 

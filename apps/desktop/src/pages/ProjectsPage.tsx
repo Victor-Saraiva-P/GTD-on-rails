@@ -5,7 +5,7 @@ import { RetryState } from "../components/RetryState";
 import { useKeybindScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
 import type { KeybindDefinition } from "../features/keybinds/types";
 import { LeaderMenu } from "../features/keybinds/LeaderMenu";
-import { doneProjectsListTheme, projectsListTheme } from "../features/lists/listThemes";
+import { deletedProjectsListTheme, doneProjectsListTheme, projectsListTheme } from "../features/lists/listThemes";
 import { ProjectEditDialog } from "../features/projects/ProjectEditDialog";
 import { nextProjectGridSelection } from "../features/projects/projectGridNavigation";
 import type { ProjectGridDirection, ProjectGridCardRect } from "../features/projects/projectGridNavigation";
@@ -33,13 +33,30 @@ function buildProjectBindings(controller: ProjectsWorkspaceController, openEdit:
     projectBinding("projects.move-right", "l", "Move to project on the right", () => moveProjectSelection(controller, "right")),
     projectBinding("projects.move-first", "g", "Move to first project", controller.selectFirst, ["g", "g"]),
     projectBinding("projects.move-last", "G", "Move to last project", controller.selectLast),
-    projectBinding("projects.switch-forward", "]", "Switch Projects subview", controller.switchSubview),
-    projectBinding("projects.switch-back", "[", "Switch Projects subview", controller.switchSubview),
+    projectBinding("projects.switch-forward", "]", "Open next Projects subview", () => controller.switchSubview("next")),
+    projectBinding("projects.switch-back", "[", "Open previous Projects subview", () => controller.switchSubview("previous")),
     projectBinding("projects.edit", "e", "Edit selected project", () => canEdit(controller) && openEdit()),
+    projectBinding("projects.undo", "u", "Undo last action", () => void controller.undo()),
+    { ...projectBinding("projects.redo", "r", "Redo last action", () => void controller.redo()), ctrl: true },
     { ...projectBinding("projects.which-key", "k", "Show available keybinds", () => undefined), leader: true }
   ];
-  if (controller.activeSubview === "active") return [...bindings, projectBinding("projects.done", "x", "Mark selected project done", () => runProjectAction(controller, controller.markSelectedDone, "Failed to mark project done"))];
-  return [...bindings, projectBinding("projects.restore", "r", "Restore selected project", () => runProjectAction(controller, controller.resetSelectedStatus, "Failed to restore project"))];
+  if (controller.activeSubview === "active") return [...bindings, ...activeProjectBindings(controller)];
+  if (controller.activeSubview === "completed") return [...bindings, ...completedProjectBindings(controller)];
+  return [...bindings, projectBinding("projects.recover", "r", "Recover selected project", () => runProjectAction(controller, controller.recoverSelected, "Failed to recover project"))];
+}
+
+function activeProjectBindings(controller: ProjectsWorkspaceController): KeybindDefinition[] {
+  return [
+    projectBinding("projects.delete", "d", "Delete selected project", () => runProjectAction(controller, controller.deleteSelected, "Failed to delete project")),
+    projectBinding("projects.done", "x", "Mark selected project done", () => runProjectAction(controller, controller.markSelectedDone, "Failed to mark project done"))
+  ];
+}
+
+function completedProjectBindings(controller: ProjectsWorkspaceController): KeybindDefinition[] {
+  return [
+    projectBinding("projects.delete-completed", "d", "Delete selected project", () => runProjectAction(controller, controller.deleteSelected, "Failed to delete project")),
+    projectBinding("projects.restore", "r", "Restore selected project", () => runProjectAction(controller, controller.resetSelectedStatus, "Failed to restore project"))
+  ];
 }
 
 function runProjectAction(controller: ProjectsWorkspaceController, action: () => Promise<void>, message: string) {
@@ -68,15 +85,21 @@ function ProjectsBody({ controller }: ProjectsPageProps) {
 }
 
 function projectEmptyMessage(controller: ProjectsWorkspaceController): string {
-  return controller.activeSubview === "active" ? "No active projects." : "No completed projects.";
+  if (controller.activeSubview === "active") return "No active projects.";
+  if (controller.activeSubview === "completed") return "No completed projects.";
+  return "No deleted projects.";
 }
 
 function projectLabel(controller: ProjectsWorkspaceController): string {
-  return controller.activeSubview === "active" ? "Projects" : "Completed Projects";
+  if (controller.activeSubview === "active") return "Projects";
+  if (controller.activeSubview === "completed") return "Completed Projects";
+  return "Deleted Projects";
 }
 
 function projectTheme(controller: ProjectsWorkspaceController) {
-  return controller.activeSubview === "active" ? projectsListTheme : doneProjectsListTheme;
+  if (controller.activeSubview === "active") return projectsListTheme;
+  if (controller.activeSubview === "completed") return doneProjectsListTheme;
+  return deletedProjectsListTheme;
 }
 
 /**

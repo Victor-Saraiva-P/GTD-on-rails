@@ -29,6 +29,15 @@ export async function fetchDoneProjects(): Promise<Project[]> {
 }
 
 /**
+ * Loads deleted projects from the API.
+ *
+ * @example await fetchDeletedProjects()
+ */
+export async function fetchDeletedProjects(): Promise<Project[]> {
+  return (await apiJson<ProjectResponse[]>("/projects/deleted")).map(toProject);
+}
+
+/**
  * Converts captured stuff into a project.
  *
  * @example await processStuffToProject(stuff, "2028-02-29")
@@ -70,6 +79,24 @@ export async function markProjectDone(id: string): Promise<Project> {
  */
 export async function resetProjectStatus(id: string): Promise<Project> {
   return toProject(await apiJson<ProjectResponse>(`/projects/${id}/reset-status`, { method: "POST" }));
+}
+
+/**
+ * Soft-deletes a project.
+ *
+ * @example await deleteProject(project.id)
+ */
+export async function deleteProject(id: string): Promise<void> {
+  await apiFetch(`/projects/${id}`, { method: "DELETE" });
+}
+
+/**
+ * Recovers a deleted project.
+ *
+ * @example await recoverProject(project.id)
+ */
+export async function recoverProject(id: string): Promise<Project> {
+  return toProject(await apiJson<ProjectResponse>(`/projects/${id}/recover`, { method: "POST" }));
 }
 
 function toProject(response: ProjectResponse): Project {

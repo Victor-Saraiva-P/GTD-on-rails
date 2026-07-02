@@ -23,3 +23,7 @@ _Avoid_: In-progress project, on going project
 **Done Project**:
 A project whose desired result has been achieved and is no longer active.
 _Avoid_: Completed Project, concluded project
+
+**Deleted Project**:
+A project removed from active operational use but kept as a recoverable project record. Recovering a deleted project returns it to the project state it had before deletion.
+_Avoid_: Removed project, trashed project

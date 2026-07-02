@@ -15,5 +15,7 @@ public interface ProjectRepository extends JpaRepository<Project, UUID> {
 
     List<Project> findAllByStatusAndItem_DeletedAtIsNullOrderByDoneDateDescDoneTimeDescItem_UpdatedAtDesc(ProjectStatus status);
 
+    List<Project> findAllByItem_DeletedAtIsNotNullOrderByItem_DeletedAtDesc();
+
     Optional<Project> findByItemIdAndItem_DeletedAtIsNull(UUID itemId);
 }

@@ -89,6 +89,37 @@ test("marks project done, edits it in completed projects, and restores it", asyn
   await expect(page.getByRole("button", { name: updatedTitle, exact: false })).toBeVisible();
 });
 
+test("deletes active project, undoes, redoes, and recovers from deleted projects", async ({ page, request }) => {
+  const title = uniqueLabel("Project delete");
+  const stuff = await createStuffApi(request, title);
+  await convertStuffToProjectApi(request, stuff.id);
+
+  await page.keyboard.press("Space");
+  await page.keyboard.press("p");
+  await expect(page.getByRole("button", { name: title, exact: false })).toBeVisible();
+
+  await deleteSelectedProject(page);
+  await page.keyboard.press("u");
+  await expect(page.getByRole("button", { name: title, exact: false })).toBeVisible();
+
+  await page.keyboard.press("Control+r");
+  await expect(page.getByRole("button", { name: title, exact: false })).not.toBeVisible();
+  await page.keyboard.press("[");
+  await expect(page.locator(".list-pane__title").first()).toHaveText("Deleted Projects");
+  await expect(page.getByRole("button", { name: title, exact: false })).toBeVisible();
+
+  await page.keyboard.press("r");
+  await expect(page.getByRole("button", { name: title, exact: false })).not.toBeVisible();
+  await page.keyboard.press("]");
+  await expect(page.getByRole("button", { name: title, exact: false })).toBeVisible();
+});
+
+async function deleteSelectedProject(page: Page): Promise<void> {
+  const deleteResponse = page.waitForResponse((response) => response.url().includes("/projects/") && response.request().method() === "DELETE" && response.ok());
+  await page.keyboard.press("d");
+  await deleteResponse;
+}
+
 async function createProjectGrid(request: Parameters<typeof createStuffApi>[0]): Promise<string[]> {
   const titles = Array.from({ length: 8 }, (_, index) => uniqueLabel(`Project grid ${index + 1}`));
   for (const title of titles) {

@@ -3,6 +3,7 @@ package com.gtdonrails.api.controllers;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -111,6 +112,39 @@ class ProjectControllerTests {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.title").value("New title"))
             .andExpect(jsonPath("$.doneDate").value("2026-05-21"));
+    }
+
+    @Test
+    void deletesActiveProjectIntoDeletedProjects() throws Exception {
+        Project project = saveProject("Recoverable outcome");
+
+        mockMvc.perform(delete("/projects/{id}", project.getItemId()))
+            .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/projects"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(0)));
+
+        mockMvc.perform(get("/projects/deleted"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(1)))
+            .andExpect(jsonPath("$[0].id").value(project.getItemId().toString()));
+    }
+
+    @Test
+    void recoversDeletedDoneProjectToDoneProjects() throws Exception {
+        Project project = doneProject("Recover done", "2026-05-21T12:00:00Z");
+        mockMvc.perform(delete("/projects/{id}", project.getItemId()))
+            .andExpect(status().isNoContent());
+
+        mockMvc.perform(post("/projects/{id}/recover", project.getItemId()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.doneDate").value("2026-05-21"));
+
+        mockMvc.perform(get("/projects/done"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(1)))
+            .andExpect(jsonPath("$[0].id").value(project.getItemId().toString()));
     }
 
     private Project saveProject(String title) {
