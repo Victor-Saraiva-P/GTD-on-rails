@@ -10,6 +10,8 @@ This page is the umbrella documentation for the projects list.
 
 The projects page is the list of active project outcomes. It shows project cards with the project title, optional deadline, and the purple `P` project glyph.
 
+Active projects with a deadline appear as all-day entries on the external Project agenda for the deadline date. Active projects without a deadline do not appear on an external agenda.
+
 | Shortcut | Scope | Action |
 | --- | --- | --- |
 | `e` | List | Edit selected project title or deadline. |
@@ -30,6 +32,8 @@ The projects page is the list of active project outcomes. It shows project cards
 ## Completed Projects List
 
 The completed projects subview is the review and recovery list for projects marked done. It uses the completed green page color and shows the most recently done project first.
+
+Done projects with a deadline appear as all-day entries on the shared external Done agenda for the deadline date. Done projects without a deadline do not appear on an external agenda.
 
 | Shortcut | Scope | Action |
 | --- | --- | --- |

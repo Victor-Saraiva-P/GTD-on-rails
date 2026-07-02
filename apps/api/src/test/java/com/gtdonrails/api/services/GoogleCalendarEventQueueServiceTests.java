@@ -144,7 +144,7 @@ class GoogleCalendarEventQueueServiceTests {
         private volatile int failuresBeforeSuccess;
 
         private FakeGoogleCalendarEventSyncService() {
-            super(null, null, null, null, null);
+            super(null, null, null, null, null, null);
         }
 
         @Override

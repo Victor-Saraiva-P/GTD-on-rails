@@ -24,6 +24,7 @@ public class ProjectService {
     private final ProjectMapper projectMapper;
     private final ItemTextNormalizer itemTextNormalizer;
     private final PersistenceGitSyncService persistenceGitSyncService;
+    private final GoogleCalendarEventQueueService googleCalendarEventQueueService;
     private final AfterCommitExecutor afterCommitExecutor;
     private final Clock clock;
 
@@ -32,6 +33,7 @@ public class ProjectService {
         ProjectMapper projectMapper,
         ItemTextNormalizer itemTextNormalizer,
         PersistenceGitSyncService persistenceGitSyncService,
+        GoogleCalendarEventQueueService googleCalendarEventQueueService,
         AfterCommitExecutor afterCommitExecutor,
         Clock clock
     ) {
@@ -39,6 +41,7 @@ public class ProjectService {
         this.projectMapper = projectMapper;
         this.itemTextNormalizer = itemTextNormalizer;
         this.persistenceGitSyncService = persistenceGitSyncService;
+        this.googleCalendarEventQueueService = googleCalendarEventQueueService;
         this.afterCommitExecutor = afterCommitExecutor;
         this.clock = clock;
     }
@@ -65,6 +68,7 @@ public class ProjectService {
         Project project = findProject(id);
         project.markDone(clock);
         ProjectResponseDto response = projectMapper.toResponse(projectRepository.save(project));
+        requestGoogleCalendarEventUpsertAfterCommit(id);
         requestPersistenceSyncAfterCommit("project marked done");
         return response;
     }
@@ -103,6 +107,7 @@ public class ProjectService {
         Project project = findProject(id);
         project.resetStatus();
         ProjectResponseDto response = projectMapper.toResponse(projectRepository.save(project));
+        requestGoogleCalendarEventUpsertAfterCommit(id);
         requestPersistenceSyncAfterCommit("project status restored");
         return response;
     }
@@ -118,6 +123,7 @@ public class ProjectService {
         applyTitlePatch(project, request);
         applyDeadlinePatch(project, request);
         ProjectResponseDto response = projectMapper.toResponse(projectRepository.save(project));
+        requestGoogleCalendarEventUpsertAfterCommit(id);
         requestPersistenceSyncAfterCommit("project updated");
         return response;
     }
@@ -132,6 +138,7 @@ public class ProjectService {
         Project project = findProject(id);
         project.getItem().softDelete();
         projectRepository.save(project);
+        requestGoogleCalendarEventDeleteAfterCommit(id);
         requestPersistenceSyncAfterCommit("project deleted", PersistenceChangeType.DELETE_ITEM);
     }
 
@@ -145,6 +152,7 @@ public class ProjectService {
         Project project = findAnyProject(id);
         project.getItem().restore();
         ProjectResponseDto response = projectMapper.toResponse(projectRepository.save(project));
+        requestGoogleCalendarEventUpsertAfterCommit(id);
         requestPersistenceSyncAfterCommit("project recovered", PersistenceChangeType.UPDATE_ITEM);
         return response;
     }
@@ -176,5 +184,13 @@ public class ProjectService {
     private void requestPersistenceSyncAfterCommit(String reason, PersistenceChangeType changeType) {
         afterCommitExecutor.run(() ->
             persistenceGitSyncService.requestSync(reason, changeType));
+    }
+
+    private void requestGoogleCalendarEventUpsertAfterCommit(UUID itemId) {
+        afterCommitExecutor.run(() -> googleCalendarEventQueueService.requestUpsert(itemId));
+    }
+
+    private void requestGoogleCalendarEventDeleteAfterCommit(UUID itemId) {
+        afterCommitExecutor.run(() -> googleCalendarEventQueueService.requestDelete(itemId));
     }
 }

@@ -21,6 +21,7 @@ import com.gtdonrails.api.dtos.inbox.ConvertStuffToNextActionRequestDto;
 import com.gtdonrails.api.dtos.inbox.CreateStuffRequestDto;
 import com.gtdonrails.api.dtos.inbox.StuffResponseDto;
 import com.gtdonrails.api.dtos.item.ItemTimeRequestDto;
+import com.gtdonrails.api.dtos.project.ConvertStuffToProjectRequestDto;
 import com.gtdonrails.api.entities.Context;
 import com.gtdonrails.api.entities.Item;
 import com.gtdonrails.api.enums.ItemStatus;
@@ -191,6 +192,18 @@ class InboxServiceTests {
         when(itemRepository.findByIdAndStatusAndDeletedAtIsNull(stuffId, ItemStatus.STUFF)).thenReturn(Optional.of(stuff));
 
         inboxService.convertStuffToCalendar(stuffId, new ConvertStuffToCalendarRequestDto("2026-05-21", "09:30"));
+
+        verify(itemRepository).save(stuff);
+        verify(googleCalendarEventQueueService).requestUpsert(stuffId);
+    }
+
+    @Test
+    void convertStuffToProjectQueuesGoogleCalendarEvent() {
+        UUID stuffId = UUID.randomUUID();
+        Item stuff = new Item(new Title("Launch beta"), null);
+        when(itemRepository.findByIdAndStatusAndDeletedAtIsNull(stuffId, ItemStatus.STUFF)).thenReturn(Optional.of(stuff));
+
+        inboxService.convertStuffToProject(stuffId, new ConvertStuffToProjectRequestDto(LocalDate.parse("2026-06-01")));
 
         verify(itemRepository).save(stuff);
         verify(googleCalendarEventQueueService).requestUpsert(stuffId);

@@ -9,11 +9,14 @@ import java.util.UUID;
 import com.gtdonrails.api.entities.Calendar;
 import com.gtdonrails.api.entities.GoogleCalendar;
 import com.gtdonrails.api.entities.NextAction;
+import com.gtdonrails.api.entities.Project;
 import com.gtdonrails.api.enums.CalendarStatus;
 import com.gtdonrails.api.enums.NextActionStatus;
+import com.gtdonrails.api.enums.ProjectStatus;
 import com.gtdonrails.api.repositories.CalendarRepository;
 import com.gtdonrails.api.repositories.GoogleCalendarRepository;
 import com.gtdonrails.api.repositories.NextActionRepository;
+import com.gtdonrails.api.repositories.ProjectRepository;
 import com.gtdonrails.api.types.ScheduleWindow;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,12 +27,14 @@ public class GoogleCalendarEventSyncService {
 
     private static final String CALENDAR_NAME = "Calendar";
     private static final String NEXT_ACTION_NAME = "Next Action";
+    private static final String PROJECT_NAME = "Project";
     private static final String ONGOING_NAME = "On Going";
     private static final String DONE_NAME = "Done";
 
     private final GoogleCalendarService googleCalendarService;
     private final CalendarRepository calendarRepository;
     private final NextActionRepository nextActionRepository;
+    private final ProjectRepository projectRepository;
     private final GoogleCalendarRepository googleCalendarRepository;
     private final GoogleCalendarEventGateway eventGateway;
 
@@ -48,6 +53,12 @@ public class GoogleCalendarEventSyncService {
         Optional<NextAction> nextAction = nextActionRepository.findByItemIdAndItem_DeletedAtIsNull(itemId);
         if (nextAction.isPresent()) {
             syncNextActionEvent(nextAction.get());
+            return;
+        }
+
+        Optional<Project> project = projectRepository.findByItemIdAndItem_DeletedAtIsNull(itemId);
+        if (project.isPresent()) {
+            syncProjectEvent(project.get());
             return;
         }
 
@@ -90,6 +101,26 @@ public class GoogleCalendarEventSyncService {
     }
 
     /**
+     * Mirrors the current GTD project state into the derived Google calendars.
+     *
+     * <p>Example: {@code syncService.syncProjectEvent(project)}.</p>
+     */
+    public void syncProjectEvent(Project project) {
+        Optional<GtdGoogleCalendarIds> readyIds = findReadyCalendarIds();
+        if (readyIds.isEmpty()) return;
+
+        UUID itemId = requireItemId(project);
+        GtdGoogleCalendarIds calendarIds = readyIds.get();
+        if (!mirrorableProject(project)) {
+            deleteCalendarEvent(itemId);
+            return;
+        }
+
+        eventGateway.upsertEvent(eventRequest(project, calendarIds, itemId));
+        deleteStaleEvents(project, calendarIds, eventId(itemId));
+    }
+
+    /**
      * Removes the GTD calendar event from all derived Google calendars.
      *
      * <p>Example: {@code syncService.deleteCalendarEvent(calendar)}.</p>
@@ -120,21 +151,24 @@ public class GoogleCalendarEventSyncService {
 
         GoogleCalendar calendar = googleCalendarRepository.findByName(CALENDAR_NAME);
         GoogleCalendar nextAction = googleCalendarRepository.findByName(NEXT_ACTION_NAME);
+        GoogleCalendar project = googleCalendarRepository.findByName(PROJECT_NAME);
         GoogleCalendar ongoing = googleCalendarRepository.findByName(ONGOING_NAME);
         GoogleCalendar done = googleCalendarRepository.findByName(DONE_NAME);
-        return calendarIds(calendar, nextAction, ongoing, done);
+        return calendarIds(calendar, nextAction, project, ongoing, done);
     }
 
     private Optional<GtdGoogleCalendarIds> calendarIds(
         GoogleCalendar calendar,
         GoogleCalendar nextAction,
+        GoogleCalendar project,
         GoogleCalendar ongoing,
         GoogleCalendar done
     ) {
-        if (missingCalendar(calendar) || missingCalendar(nextAction) || missingCalendar(ongoing) || missingCalendar(done)) return Optional.empty();
+        if (missingCalendar(calendar) || missingCalendar(nextAction) || missingCalendar(project) || missingCalendar(ongoing) || missingCalendar(done)) return Optional.empty();
         return Optional.of(new GtdGoogleCalendarIds(
             calendar.getGoogleCalendarId(),
             nextAction.getGoogleCalendarId(),
+            project.getGoogleCalendarId(),
             ongoing.getGoogleCalendarId(),
             done.getGoogleCalendarId()));
     }
@@ -158,8 +192,21 @@ public class GoogleCalendarEventSyncService {
         return allDayEvent(nextAction.getItem().getTitle().value(), calendarIds.nextActionId(), itemId, nextAction.getDeadline(), nextAction.getDeadline());
     }
 
+    private GoogleCalendarEventRequest eventRequest(
+        Project project,
+        GtdGoogleCalendarIds calendarIds,
+        UUID itemId
+    ) {
+        if (project.getStatus() == ProjectStatus.DONE) return doneEvent(project, calendarIds.doneId(), itemId);
+        return allDayEvent(project.getItem().getTitle().value(), calendarIds.projectId(), itemId, project.getDeadline(), project.getDeadline());
+    }
+
     private boolean mirrorableNextAction(NextAction nextAction) {
         return nextAction.getDeadline() != null || nextAction.getStatus() != NextActionStatus.NEXT_ACTION;
+    }
+
+    private boolean mirrorableProject(Project project) {
+        return project.getDeadline() != null;
     }
 
     private GoogleCalendarEventRequest activeEvent(Calendar calendar, String googleCalendarId, UUID itemId) {
@@ -187,6 +234,10 @@ public class GoogleCalendarEventSyncService {
             return allDayEvent(nextAction.getItem().getTitle().value(), googleCalendarId, itemId, completedDate, completedDate);
         }
         return scheduledEvent(nextAction.getItem().getTitle().value(), googleCalendarId, itemId, schedule);
+    }
+
+    private GoogleCalendarEventRequest doneEvent(Project project, String googleCalendarId, UUID itemId) {
+        return allDayEvent(project.getItem().getTitle().value(), googleCalendarId, itemId, project.getDeadline(), project.getDeadline());
     }
 
     private GoogleCalendarEventRequest scheduledEvent(String title, String googleCalendarId, UUID itemId, ScheduleWindow schedule) {
@@ -251,6 +302,12 @@ public class GoogleCalendarEventSyncService {
         }
     }
 
+    private void deleteStaleEvents(Project project, GtdGoogleCalendarIds calendarIds, String eventId) {
+        for (String googleCalendarId : calendarIds.staleIds(project.getStatus())) {
+            eventGateway.deleteEvent(new GoogleCalendarEventDeleteRequest(googleCalendarId, eventId));
+        }
+    }
+
     private UUID requireItemId(Calendar calendar) {
         UUID itemId = calendar.getItemId();
         if (itemId != null) return itemId;
@@ -265,6 +322,13 @@ public class GoogleCalendarEventSyncService {
         throw new IllegalArgumentException("next action itemId value 'null' is invalid; expected persisted UUID");
     }
 
+    private UUID requireItemId(Project project) {
+        UUID itemId = project.getItemId();
+        if (itemId != null) return itemId;
+        if (project.getItem().getId() != null) return project.getItem().getId();
+        throw new IllegalArgumentException("project itemId value 'null' is invalid; expected persisted UUID");
+    }
+
     private String eventId(UUID itemId) {
         return itemId.toString().replace("-", "");
     }
@@ -273,7 +337,7 @@ public class GoogleCalendarEventSyncService {
         return calendar == null || calendar.getGoogleCalendarId() == null || calendar.getGoogleCalendarId().isBlank();
     }
 
-    private record GtdGoogleCalendarIds(String calendarId, String nextActionId, String ongoingId, String doneId) {
+    private record GtdGoogleCalendarIds(String calendarId, String nextActionId, String projectId, String ongoingId, String doneId) {
 
         private String targetId(CalendarStatus status) {
             if (status == CalendarStatus.ONGOING) return ongoingId;
@@ -287,20 +351,31 @@ public class GoogleCalendarEventSyncService {
             return nextActionId;
         }
 
+        private String targetId(ProjectStatus status) {
+            if (status == ProjectStatus.DONE) return doneId;
+            return projectId;
+        }
+
         private java.util.List<String> staleIds(CalendarStatus status) {
-            return java.util.stream.Stream.of(calendarId, nextActionId, ongoingId, doneId)
+            return java.util.stream.Stream.of(calendarId, nextActionId, projectId, ongoingId, doneId)
                 .filter(id -> !id.equals(targetId(status)))
                 .toList();
         }
 
         private java.util.List<String> staleIds(NextActionStatus status) {
-            return java.util.stream.Stream.of(calendarId, nextActionId, ongoingId, doneId)
+            return java.util.stream.Stream.of(calendarId, nextActionId, projectId, ongoingId, doneId)
+                .filter(id -> !id.equals(targetId(status)))
+                .toList();
+        }
+
+        private java.util.List<String> staleIds(ProjectStatus status) {
+            return java.util.stream.Stream.of(calendarId, nextActionId, projectId, ongoingId, doneId)
                 .filter(id -> !id.equals(targetId(status)))
                 .toList();
         }
 
         private java.util.List<String> allIds() {
-            return java.util.List.of(calendarId, nextActionId, ongoingId, doneId);
+            return java.util.List.of(calendarId, nextActionId, projectId, ongoingId, doneId);
         }
     }
 }

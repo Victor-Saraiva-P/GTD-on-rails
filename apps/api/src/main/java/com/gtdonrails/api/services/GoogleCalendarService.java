@@ -38,6 +38,16 @@ import lombok.extern.slf4j.Slf4j;
 public class GoogleCalendarService {
 
     private static final String GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
+    private static final String NEXT_ACTION_NAME = "Next Action";
+    private static final String CALENDAR_NAME = "Calendar";
+    private static final String PROJECT_NAME = "Project";
+    private static final String ONGOING_NAME = "On Going";
+    private static final String DONE_NAME = "Done";
+    private static final String NEXT_ACTION_COLOR_HEX = "#4F9768";
+    private static final String CALENDAR_COLOR_HEX = "#c85a53";
+    private static final String PROJECT_COLOR_HEX = "#9B5AB7";
+    private static final String ONGOING_COLOR_HEX = "#2D8C8A";
+    private static final String DONE_COLOR_HEX = "#7F8D3F";
     private static final ParameterizedTypeReference<Map<String, Object>> TOKEN_RESPONSE_TYPE = new ParameterizedTypeReference<>() {
     };
 
@@ -172,10 +182,11 @@ public class GoogleCalendarService {
         try {
             List<CalendarListEntry> existing = client.calendarList().list().execute().getItems();
             
-            createOrUpdateCalendar(client, existing, "Next Action", "#4F9768");
-            createOrUpdateCalendar(client, existing, "Calendar", "#c85a53");
-            createOrUpdateCalendar(client, existing, "On Going", "#2D8C8A");
-            createOrUpdateCalendar(client, existing, "Done", "#7F8D3F");
+            createOrUpdateCalendar(client, existing, NEXT_ACTION_NAME, NEXT_ACTION_COLOR_HEX);
+            createOrUpdateCalendar(client, existing, CALENDAR_NAME, CALENDAR_COLOR_HEX);
+            createOrUpdateCalendar(client, existing, PROJECT_NAME, PROJECT_COLOR_HEX);
+            createOrUpdateCalendar(client, existing, ONGOING_NAME, ONGOING_COLOR_HEX);
+            createOrUpdateCalendar(client, existing, DONE_NAME, DONE_COLOR_HEX);
             
         } catch (Exception e) {
             log.error("Failed to setup GTD calendars", e);

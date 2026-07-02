@@ -21,7 +21,7 @@ A project whose desired result has not yet been achieved and remains part of cur
 _Avoid_: In-progress project, on going project
 
 **Done Project**:
-A project whose desired result has been achieved and is no longer active.
+A project whose desired result has been achieved and is no longer active. On an external agenda, it is represented by its deadline when a deadline exists.
 _Avoid_: Completed Project, concluded project
 
 **Deleted Project**:
@@ -33,7 +33,7 @@ A derived calendar representation of GTD items outside the local GTD system. The
 _Avoid_: Calendar source, remote truth
 
 **GTD Google Calendar**:
-One of the external agendas owned by the GTD system, including Calendar, Next Action, On Going, and Done. A GTD item should appear on at most one of these agendas at a time.
+One of the external agendas owned by the GTD system, including Calendar, Next Action, Project, On Going, and Done. A GTD item should appear on at most one of these agendas at a time.
 _Avoid_: Google agenda set, remote GTD state
 
 **Token Encryption Key**:

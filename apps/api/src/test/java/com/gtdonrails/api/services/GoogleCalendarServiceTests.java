@@ -163,6 +163,7 @@ class GoogleCalendarServiceTests {
 
         verify(calendarRepository).save(namedCalendar("Next Action", "next-id", "#4F9768"));
         verify(calendarRepository).save(namedCalendar("Calendar", "created-Calendar", "#c85a53"));
+        verify(calendarRepository).save(namedCalendar("Project", "created-Project", "#9B5AB7"));
         verify(calendarRepository).save(namedCalendar("On Going", "created-On Going", "#2D8C8A"));
         verify(calendarRepository).save(namedCalendar("Done", "created-Done", "#7F8D3F"));
     }
@@ -180,6 +181,7 @@ class GoogleCalendarServiceTests {
 
         verify(calendarRepository).save(namedCalendar("Next Action", "next-id", "#4F9768"));
         verify(calendarRepository).save(namedCalendar("Calendar", "created-Calendar", "#c85a53"));
+        verify(calendarRepository).save(namedCalendar("Project", "created-Project", "#9B5AB7"));
         verify(calendarRepository).save(namedCalendar("On Going", "created-On Going", "#2D8C8A"));
         verify(calendarRepository).save(namedCalendar("Done", "created-Done", "#7F8D3F"));
     }
@@ -275,6 +277,7 @@ class GoogleCalendarServiceTests {
         Calendar.Calendars calendars = mock(Calendar.Calendars.class);
         when(client.calendars()).thenReturn(calendars);
         stubCreatedCalendar(calendars, "Calendar");
+        stubCreatedCalendar(calendars, "Project");
         stubCreatedCalendar(calendars, "On Going");
         stubCreatedCalendar(calendars, "Done");
     }
@@ -293,6 +296,7 @@ class GoogleCalendarServiceTests {
         Calendar.CalendarList calendarList = client.calendarList();
         stubCalendarColorUpdate(calendarList, "next-id");
         stubCalendarColorUpdate(calendarList, "created-Calendar");
+        stubCalendarColorUpdate(calendarList, "created-Project");
         stubCalendarColorUpdate(calendarList, "created-On Going");
         stubCalendarColorUpdate(calendarList, "created-Done");
     }
