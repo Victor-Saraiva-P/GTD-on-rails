@@ -12,7 +12,7 @@ import java.util.Properties;
 
 import com.gtdonrails.api.config.GoogleProperties;
 import com.gtdonrails.api.persistence.converters.CryptoConverter;
-import com.gtdonrails.api.persistence.bootstrap.properties.PersistenceBootstrapProperties;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -25,14 +25,14 @@ public class GoogleClientCredentialsStore {
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private final GoogleProperties googleProperties;
-    private final PersistenceBootstrapProperties bootstrapProperties;
+    private final Path dataRoot;
 
     public GoogleClientCredentialsStore(
         GoogleProperties googleProperties,
-        PersistenceBootstrapProperties bootstrapProperties
+        @Value("${gtd.data.root-directory}") String dataRoot
     ) {
         this.googleProperties = googleProperties;
-        this.bootstrapProperties = bootstrapProperties;
+        this.dataRoot = Path.of(dataRoot).toAbsolutePath().normalize();
     }
 
     /**
@@ -249,7 +249,7 @@ public class GoogleClientCredentialsStore {
     }
 
     private Path credentialsPath() {
-        return Path.of(bootstrapProperties.getCloneDirectory(), "config", "google.properties");
+        return dataRoot.resolve("google.properties");
     }
 
     private String readFileIfExists(Path path) throws IOException {

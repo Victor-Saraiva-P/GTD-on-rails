@@ -13,7 +13,7 @@ describe("sync-status API", () => {
 
   test("fetchSyncStatus returns current status", async () => {
     const mockResponse: SyncStatus = {
-      assets: {
+      data: {
         state: "SYNCED",
         pending: false,
         running: false,
@@ -30,15 +30,6 @@ describe("sync-status API", () => {
         lastFinishedAt: "2026-05-01T00:00:05Z",
         lastSuccessfulSyncAt: "2026-05-01T00:00:05Z",
         lastError: null
-      },
-      persistence: {
-        state: "IDLE",
-        lastStartedAt: "2026-05-01T00:00:00Z",
-        lastFinishedAt: "2026-05-01T00:00:05Z",
-        lastSuccessfulSyncAt: "2026-05-01T00:00:05Z",
-        lastError: null,
-        hasLocalChanges: false,
-        hasUnpushedCommits: false
       }
     };
     

@@ -27,10 +27,8 @@ import org.springframework.web.context.WebApplicationContext;
 
 @SpringBootTest(properties = {
     "spring.datasource.url=jdbc:sqlite:./build/dev-demo-controller-test.db",
-    "gtd.persistence.bootstrap.enabled=false",
-    "gtd.persistence.sync.enabled=false",
     "gtd.assets.local-directory=./build/dev-demo-controller-assets",
-    "gtd.assets.rclone.enabled=false",
+    "gtd.sync.rclone.enabled=false",
     "gtd.cleanup.enabled=false",
     "gtd.google.token-encryption-key=MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
 })

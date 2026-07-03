@@ -20,8 +20,6 @@ import com.gtdonrails.api.entities.Item;
 import com.gtdonrails.api.mappers.ItemMapper;
 import com.gtdonrails.api.normalizers.ItemBodyNormalizer;
 import com.gtdonrails.api.normalizers.ItemTextNormalizer;
-import com.gtdonrails.api.persistence.bootstrap.model.PersistenceChangeType;
-import com.gtdonrails.api.persistence.bootstrap.services.PersistenceGitSyncService;
 import com.gtdonrails.api.repositories.ItemRepository;
 import com.gtdonrails.api.types.BlockEntity;
 import com.gtdonrails.api.types.ItemBody;
@@ -49,7 +47,7 @@ class ItemServiceTests {
     private ItemAssetService itemAssetService;
 
     @Mock
-    private PersistenceGitSyncService persistenceGitSyncService;
+    private DataSyncService dataSyncService;
 
     @Captor
     private ArgumentCaptor<Item> itemCaptor;
@@ -67,7 +65,7 @@ class ItemServiceTests {
             new ItemTextNormalizer(),
             new ItemBodyNormalizer(),
             itemAssetService,
-            persistenceGitSyncService,
+            dataSyncService,
             googleCalendarEventQueueService,
             new AfterCommitExecutor());
     }
@@ -85,7 +83,7 @@ class ItemServiceTests {
 
         assertEquals("New title", capturedSavedItem().getTitle().value());
         assertEquals(expectedResponse, response);
-        verify(persistenceGitSyncService).requestSync("item title updated", PersistenceChangeType.UPDATE_ITEM);
+        verify(dataSyncService).requestSync("item title updated");
     }
 
     @Test
@@ -161,7 +159,7 @@ class ItemServiceTests {
 
         assertTrue(item.isDeleted());
         verify(itemAssetService).softDeleteActiveItemAssets(itemId);
-        verify(persistenceGitSyncService).requestSync("item deleted", PersistenceChangeType.DELETE_ITEM);
+        verify(dataSyncService).requestSync("item deleted");
         verify(googleCalendarEventQueueService).requestDelete(itemId);
     }
 
@@ -191,7 +189,7 @@ class ItemServiceTests {
 
         assertFalse(item.isDeleted());
         verify(itemAssetService).reconcileBodyAssetReferences(itemId, item.getBody());
-        verify(persistenceGitSyncService).requestSync("item restored", PersistenceChangeType.UPDATE_ITEM);
+        verify(dataSyncService).requestSync("item restored");
         verify(googleCalendarEventQueueService).requestUpsert(itemId);
     }
 
