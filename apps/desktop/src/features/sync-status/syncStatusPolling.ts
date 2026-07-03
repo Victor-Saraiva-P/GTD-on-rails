@@ -17,11 +17,10 @@ export function startupObservationDeadline(startedAt: number): number {
  * @example isSettledSyncStatus(status)
  */
 export function isSettledSyncStatus(status: SyncStatus): boolean {
-  const assetsSettled = status.assets.state === "SYNCED" || status.assets.state === "DISABLED" || status.assets.state === "FAILED";
+  const dataSettled = status.data.state === "SYNCED" || status.data.state === "DISABLED" || status.data.state === "FAILED";
   const googleSettled = status.googleCalendar.state === "SYNCED" || status.googleCalendar.state === "DISABLED" || status.googleCalendar.state === "FAILED";
-  const persistenceSettled = status.persistence.state === "IDLE" || status.persistence.state === "DISABLED" || status.persistence.state === "FAILED";
 
-  return assetsSettled && googleSettled && persistenceSettled;
+  return dataSettled && googleSettled;
 }
 
 /**

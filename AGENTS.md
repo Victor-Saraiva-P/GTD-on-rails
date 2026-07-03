@@ -24,6 +24,7 @@
 - Tests run with a single command: `pnpm test`.
 - See also: [Desktop Execution](docs/30%20-%20Guides%20and%20Manuals/Desktop%20Execution.md) and [API Execution](docs/30%20-%20Guides%20and%20Manuals/API%20Execution.md).
 - Every new function gets a test. Bug fixes get a regression test.
+- For desktop features that can be exercised through keybindings and do not depend on external integrations such as Google Calendar, run a real user-like flow with the Agent Interactive Driver (`pnpm agent:driver`) before considering the work complete. The validation must use the feature the way the owner would: navigate by keybinds, perform the main action, observe the resulting UI state, and continue far enough to catch broken focus, modal, persistence, or follow-up navigation behavior.
 - Mock external I/O (API, DB, filesystem) with named fake classes,
   not inline stubs.
 - Tests must be F.I.R.S.T: fast, independent, repeatable,
@@ -46,7 +47,7 @@
 - See also: [Body Content](docs/20%20-%20GTD/shared/Body%20Content.md), [Infrastructure](docs/10%20-%20Architecture/infrastructure.md), and [Synchronization](docs/10%20-%20Architecture/synchronization.md).
 - Item assets are persisted as files plus database metadata. The file lives under `gtd.assets.local-directory`, while metadata lives in `item_assets` and item body references live in `items.body.blockEntities`.
 - The markdown body stores an asset token like `⟦asset:<uuid>⟧`; the matching `blockEntities` entry stores `assetId`, `relativePath`, `url`, `contentType`, and display metadata.
-- `Space m a` opens the asset dialog. Clipboard or dropped local files on Arch/Hyprland should use Tauri native commands to return a local source path, then call `POST /items/{id}/assets/local-file` so the backend copies the file, creates `item_assets`, and schedules asset sync.
+- `Space m a` opens the asset dialog. Clipboard or dropped local files on Arch/Hyprland should use Tauri native commands to return a local source path, then call `POST /items/{id}/assets/local-file` so the backend copies the file, creates `item_assets`, and schedules data sync.
 - Clipboard images that do not exist as OS files should continue through multipart upload to `POST /items/{id}/assets`.
 - The frontend chooses the endpoint from the asset source type: `localFile` sources returned by Tauri clipboard/drop commands call `POST /items/{id}/assets/local-file`; byte-backed `file` sources such as clipboard-only images, browser clipboard blobs, or HTML file input call multipart `POST /items/{id}/assets`.
 - Do not copy assets directly from the frontend into the final asset directory. The backend must own final storage, database metadata, public URL generation, validation, and sync scheduling.

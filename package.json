@@ -7,6 +7,7 @@
     "build": "turbo run build",
     "build:prod": "pnpm --filter @gtd-on-rails/desktop run desktop:build:prod",
     "build:staging": "pnpm --filter @gtd-on-rails/desktop run desktop:build:staging",
+    "agent:driver": "pnpm --filter @gtd-on-rails/desktop run agent:driver",
     "staging": "pnpm --filter @gtd-on-rails/desktop run desktop:staging",
     "test": "pnpm run unitTest && pnpm run integrationTest && pnpm run e2e",
     "frontend:coverage": "pnpm --filter @gtd-on-rails/desktop run coverage",

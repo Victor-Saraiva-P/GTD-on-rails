@@ -1,14 +1,13 @@
-package com.gtdonrails.api.dtos.assets;
+package com.gtdonrails.api.dtos.sync;
 
 import java.time.Instant;
 
-public record AssetSyncStatusDto(
-    AssetSyncState state,
+public record DataSyncStatusDto(
+    DataSyncState state,
     boolean pending,
     boolean running,
     Instant lastStartedAt,
     Instant lastFinishedAt,
     Instant lastSuccessfulSyncAt,
     String lastError
-) {
-}
+) {}

@@ -210,7 +210,7 @@ async function saveCredentialForm(clientId: string, clientSecret: string, onSave
 }
 
 function formErrorMessageFrom(error: unknown): string {
-  if (error instanceof ApiRequestError && error.status === 503) return "Google Calendar configuration could not be synced; fix persistence sync and try again before connecting.";
+  if (error instanceof ApiRequestError && error.status === 503) return "Google Calendar configuration could not be saved; fix data sync and try again before connecting.";
   return errorMessageFrom(error);
 }
 

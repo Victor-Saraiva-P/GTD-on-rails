@@ -17,8 +17,6 @@ import com.gtdonrails.api.exceptions.context.ContextNotFoundException;
 import com.gtdonrails.api.exceptions.item.ItemNotFoundException;
 import com.gtdonrails.api.mappers.StuffMapper;
 import com.gtdonrails.api.normalizers.ItemTextNormalizer;
-import com.gtdonrails.api.persistence.bootstrap.model.PersistenceChangeType;
-import com.gtdonrails.api.persistence.bootstrap.services.PersistenceGitSyncService;
 import com.gtdonrails.api.repositories.ContextRepository;
 import com.gtdonrails.api.repositories.ItemRepository;
 import com.gtdonrails.api.types.Title;
@@ -32,7 +30,7 @@ public class InboxService {
     private final ContextRepository contextRepository;
     private final StuffMapper stuffMapper;
     private final ItemTextNormalizer itemTextNormalizer;
-    private final PersistenceGitSyncService persistenceGitSyncService;
+    private final DataSyncService dataSyncService;
     private final GoogleCalendarEventQueueService googleCalendarEventQueueService;
     private final AfterCommitExecutor afterCommitExecutor;
 
@@ -41,7 +39,7 @@ public class InboxService {
         ContextRepository contextRepository,
         StuffMapper stuffMapper,
         ItemTextNormalizer itemTextNormalizer,
-        PersistenceGitSyncService persistenceGitSyncService,
+        DataSyncService dataSyncService,
         GoogleCalendarEventQueueService googleCalendarEventQueueService,
         AfterCommitExecutor afterCommitExecutor
     ) {
@@ -49,7 +47,7 @@ public class InboxService {
         this.contextRepository = contextRepository;
         this.stuffMapper = stuffMapper;
         this.itemTextNormalizer = itemTextNormalizer;
-        this.persistenceGitSyncService = persistenceGitSyncService;
+        this.dataSyncService = dataSyncService;
         this.googleCalendarEventQueueService = googleCalendarEventQueueService;
         this.afterCommitExecutor = afterCommitExecutor;
     }
@@ -101,7 +99,7 @@ public class InboxService {
         Item item = new Item(title, null);
         item.markAsStuff();
         StuffResponseDto response = stuffMapper.toResponse(itemRepository.save(item));
-        requestPersistenceSyncAfterCommit("stuff created", PersistenceChangeType.CREATE_ITEM);
+        requestDataSyncAfterCommit("stuff created");
         return response;
     }
 
@@ -118,7 +116,7 @@ public class InboxService {
         nextAction.setDeadline(request.deadline());
         itemRepository.save(item);
         requestGoogleCalendarEventSyncAfterCommit(id);
-        requestPersistenceSyncAfterCommit("stuff converted to next action", PersistenceChangeType.UPDATE_ITEM);
+        requestDataSyncAfterCommit("stuff converted to next action");
     }
 
     /**
@@ -132,7 +130,7 @@ public class InboxService {
         item.convertToCalendar(request.toScheduledDate(), request.toScheduledTime());
         itemRepository.save(item);
         requestGoogleCalendarEventSyncAfterCommit(id);
-        requestPersistenceSyncAfterCommit("stuff converted to calendar", PersistenceChangeType.UPDATE_ITEM);
+        requestDataSyncAfterCommit("stuff converted to calendar");
     }
 
     private Item findStuff(UUID id) {
@@ -154,8 +152,8 @@ public class InboxService {
         return new HashSet<>(contexts);
     }
 
-    private void requestPersistenceSyncAfterCommit(String reason, PersistenceChangeType changeType) {
-        afterCommitExecutor.run(() -> persistenceGitSyncService.requestSync(reason, changeType));
+    private void requestDataSyncAfterCommit(String reason) {
+        afterCommitExecutor.run(() -> dataSyncService.requestSync(reason));
     }
 
     private void requestGoogleCalendarEventSyncAfterCommit(UUID itemId) {

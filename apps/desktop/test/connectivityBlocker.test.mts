@@ -6,7 +6,7 @@ import type { SyncStatus } from "../src/features/sync-status/types.ts";
 
 function syncStatus(): SyncStatus {
   return {
-    assets: {
+    data: {
       state: "SYNCED",
       pending: false,
       running: false,
@@ -23,15 +23,6 @@ function syncStatus(): SyncStatus {
       lastFinishedAt: null,
       lastSuccessfulSyncAt: "2026-05-01T00:00:07Z",
       lastError: null
-    },
-    persistence: {
-      state: "IDLE",
-      lastStartedAt: null,
-      lastFinishedAt: null,
-      lastSuccessfulSyncAt: "2026-05-01T00:00:06Z",
-      lastError: null,
-      hasLocalChanges: false,
-      hasUnpushedCommits: false
     }
   };
 }
@@ -42,30 +33,30 @@ describe("connectivity blocker", () => {
     assert.equal(buildConnectivityBlockerModel(true, failedSyncStatus()).isBlocked, false);
   });
 
-  test("reports pending git changes", () => {
+  test("reports pending data sync", () => {
     const status = syncStatus();
-    status.persistence.hasUnpushedCommits = true;
+    status.data.pending = true;
 
     const model = buildConnectivityBlockerModel(false, status);
 
-    assert.equal(model.rows[0].label, "GIT");
+    assert.equal(model.rows[0].label, "DATA");
     assert.equal(model.rows[0].pendingText, "yes");
   });
 
-  test("reports pending rclone sync", () => {
+  test("reports pending Google Calendar sync", () => {
     const status = syncStatus();
-    status.assets.pending = true;
+    status.googleCalendar.pending = true;
 
     const model = buildConnectivityBlockerModel(false, status);
 
-    assert.equal(model.rows[1].label, "RCLONE");
+    assert.equal(model.rows[1].label, "GCAL");
     assert.equal(model.rows[1].pendingText, "yes");
   });
 });
 
 function failedSyncStatus(): SyncStatus {
   const status = syncStatus();
-  status.assets.state = "FAILED";
-  status.persistence.state = "FAILED";
+  status.data.state = "FAILED";
+  status.googleCalendar.state = "FAILED";
   return status;
 }

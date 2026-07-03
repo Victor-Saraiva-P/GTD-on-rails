@@ -10,8 +10,6 @@ import com.gtdonrails.api.exceptions.item.ItemNotFoundException;
 import com.gtdonrails.api.mappers.ItemMapper;
 import com.gtdonrails.api.normalizers.ItemBodyNormalizer;
 import com.gtdonrails.api.normalizers.ItemTextNormalizer;
-import com.gtdonrails.api.persistence.bootstrap.model.PersistenceChangeType;
-import com.gtdonrails.api.persistence.bootstrap.services.PersistenceGitSyncService;
 import com.gtdonrails.api.repositories.ItemRepository;
 import com.gtdonrails.api.types.ItemBody;
 import com.gtdonrails.api.types.Title;
@@ -26,7 +24,7 @@ public class ItemService {
     private final ItemTextNormalizer itemTextNormalizer;
     private final ItemBodyNormalizer itemBodyNormalizer;
     private final ItemAssetService itemAssetService;
-    private final PersistenceGitSyncService persistenceGitSyncService;
+    private final DataSyncService dataSyncService;
     private final GoogleCalendarEventQueueService googleCalendarEventQueueService;
     private final AfterCommitExecutor afterCommitExecutor;
 
@@ -36,7 +34,7 @@ public class ItemService {
         ItemTextNormalizer itemTextNormalizer,
         ItemBodyNormalizer itemBodyNormalizer,
         ItemAssetService itemAssetService,
-        PersistenceGitSyncService persistenceGitSyncService,
+        DataSyncService dataSyncService,
         GoogleCalendarEventQueueService googleCalendarEventQueueService,
         AfterCommitExecutor afterCommitExecutor
     ) {
@@ -45,7 +43,7 @@ public class ItemService {
         this.itemTextNormalizer = itemTextNormalizer;
         this.itemBodyNormalizer = itemBodyNormalizer;
         this.itemAssetService = itemAssetService;
-        this.persistenceGitSyncService = persistenceGitSyncService;
+        this.dataSyncService = dataSyncService;
         this.googleCalendarEventQueueService = googleCalendarEventQueueService;
         this.afterCommitExecutor = afterCommitExecutor;
     }
@@ -62,7 +60,7 @@ public class ItemService {
         itemAssetService.reconcileBodyAssetReferences(id, body);
         item.setBody(body);
         ItemResponseDto response = itemMapper.toResponse(itemRepository.save(item));
-        requestPersistenceSyncAfterCommit("item body updated", PersistenceChangeType.UPDATE_ITEM);
+        requestDataSyncAfterCommit("item body updated");
         return response;
     }
 
@@ -77,12 +75,12 @@ public class ItemService {
         item.setTitle(new Title(itemTextNormalizer.normalizeTitle(request.title())));
         ItemResponseDto response = itemMapper.toResponse(itemRepository.save(item));
         requestCalendarEventUpsertAfterCommit(id, item);
-        requestPersistenceSyncAfterCommit("item title updated", PersistenceChangeType.UPDATE_ITEM);
+        requestDataSyncAfterCommit("item title updated");
         return response;
     }
 
     /**
-     * Soft deletes an active item and schedules persistence sync after commit.
+     * Soft deletes an active item and schedules data sync after commit.
      *
      * <p>Example: {@code itemService.deleteItem(itemId)}.</p>
      */
@@ -93,11 +91,11 @@ public class ItemService {
         item.softDelete();
         itemRepository.save(item);
         requestCalendarEventDeleteAfterCommit(id, item);
-        requestPersistenceSyncAfterCommit("item deleted", PersistenceChangeType.DELETE_ITEM);
+        requestDataSyncAfterCommit("item deleted");
     }
 
     /**
-     * Restores a soft-deleted item and schedules persistence sync after commit.
+     * Restores a soft-deleted item and schedules data sync after commit.
      *
      * <p>Example: {@code itemService.restoreItem(itemId)}.</p>
      */
@@ -109,7 +107,7 @@ public class ItemService {
         itemAssetService.reconcileBodyAssetReferences(id, item.getBody());
         itemRepository.save(item);
         requestCalendarEventUpsertAfterCommit(id, item);
-        requestPersistenceSyncAfterCommit("item restored", PersistenceChangeType.UPDATE_ITEM);
+        requestDataSyncAfterCommit("item restored");
     }
 
     private Item findItem(UUID id) {
@@ -117,8 +115,8 @@ public class ItemService {
             .orElseThrow(() -> new ItemNotFoundException("item not found"));
     }
 
-    private void requestPersistenceSyncAfterCommit(String reason, PersistenceChangeType changeType) {
-        afterCommitExecutor.run(() -> persistenceGitSyncService.requestSync(reason, changeType));
+    private void requestDataSyncAfterCommit(String reason) {
+        afterCommitExecutor.run(() -> dataSyncService.requestSync(reason));
     }
 
     private void requestCalendarEventUpsertAfterCommit(UUID itemId, Item item) {

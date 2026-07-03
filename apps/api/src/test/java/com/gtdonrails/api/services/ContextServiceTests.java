@@ -27,8 +27,6 @@ import com.gtdonrails.api.exceptions.context.ContextNotFoundException;
 import com.gtdonrails.api.mappers.ContextMapper;
 import com.gtdonrails.api.mappers.ItemMapper;
 import com.gtdonrails.api.normalizers.ContextNameNormalizer;
-import com.gtdonrails.api.persistence.bootstrap.model.PersistenceChangeType;
-import com.gtdonrails.api.persistence.bootstrap.services.PersistenceGitSyncService;
 import com.gtdonrails.api.repositories.ContextRepository;
 import com.gtdonrails.api.repositories.NextActionRepository;
 import com.gtdonrails.api.types.Title;
@@ -63,7 +61,7 @@ class ContextServiceTests {
     private ContextIconAssetService contextIconAssetService;
 
     @Mock
-    private PersistenceGitSyncService persistenceGitSyncService;
+    private DataSyncService dataSyncService;
 
     @Captor
     private ArgumentCaptor<Context> contextCaptor;
@@ -79,7 +77,7 @@ class ContextServiceTests {
             itemMapper,
             new ContextNameNormalizer(),
             contextIconAssetService,
-            persistenceGitSyncService,
+            dataSyncService,
             new AfterCommitExecutor());
     }
 
@@ -155,7 +153,7 @@ class ContextServiceTests {
 
         verify(contextRepository).save(contextCaptor.capture());
         assertEquals("home office", contextCaptor.getValue().getName());
-        verify(persistenceGitSyncService).requestSync("context created", PersistenceChangeType.CREATE_CONTEXT);
+        verify(dataSyncService).requestSync("context created");
     }
 
     @Test
@@ -172,7 +170,7 @@ class ContextServiceTests {
 
         assertEquals(expectedResponse, response);
         assertEquals("office", context.getName());
-        verify(persistenceGitSyncService).requestSync("context updated", PersistenceChangeType.UPDATE_CONTEXT);
+        verify(dataSyncService).requestSync("context updated");
     }
 
     @Test
@@ -205,7 +203,7 @@ class ContextServiceTests {
 
         assertFalse(context.isDeleted());
         verify(contextRepository).save(contextCaptor.capture());
-        verify(persistenceGitSyncService).requestSync("context restored", PersistenceChangeType.UPDATE_CONTEXT);
+        verify(dataSyncService).requestSync("context restored");
     }
 
     private NextAction nextAction(String title, Context context) {

@@ -2,7 +2,7 @@ import { apiJson } from "../../lib/api/apiClient.ts";
 import type { SyncStatus } from "./types";
 
 /**
- * Loads the latest persistence and asset sync status snapshot.
+ * Loads the latest data and Google Calendar sync status snapshot.
  *
  * @example await fetchSyncStatus()
  */

@@ -18,8 +18,6 @@ import com.gtdonrails.api.entities.Calendar;
 import com.gtdonrails.api.entities.Item;
 import com.gtdonrails.api.enums.CalendarStatus;
 import com.gtdonrails.api.mappers.CalendarMapper;
-import com.gtdonrails.api.persistence.bootstrap.model.PersistenceChangeType;
-import com.gtdonrails.api.persistence.bootstrap.services.PersistenceGitSyncService;
 import com.gtdonrails.api.repositories.CalendarRepository;
 import com.gtdonrails.api.types.Title;
 import org.junit.jupiter.api.BeforeEach;
@@ -40,7 +38,7 @@ class CalendarServiceTests {
     private CalendarRepository calendarRepository;
 
     @Mock
-    private PersistenceGitSyncService persistenceGitSyncService;
+    private DataSyncService dataSyncService;
 
     @Mock
     private GoogleCalendarEventQueueService googleCalendarEventQueueService;
@@ -57,7 +55,7 @@ class CalendarServiceTests {
             calendarRepository,
             new CalendarMapper(),
             CLOCK,
-            persistenceGitSyncService,
+            dataSyncService,
             googleCalendarEventQueueService,
             new AfterCommitExecutor());
         when(calendarRepository.findById(calendarId)).thenReturn(Optional.of(calendar));
@@ -70,7 +68,7 @@ class CalendarServiceTests {
 
         assertEquals(LocalDate.parse("2026-05-22"), calendar.getScheduledDate());
         assertEquals(LocalTime.parse("10:15"), calendar.getScheduledTime());
-        verifyGoogleCalendarAndPersistenceSync("calendar updated");
+        verifyGoogleCalendarAndDataSync("calendar updated");
     }
 
     @Test
@@ -78,7 +76,7 @@ class CalendarServiceTests {
         calendarService.markOnGoing(calendarId);
 
         assertEquals(CalendarStatus.ONGOING, calendar.getStatus());
-        verifyGoogleCalendarAndPersistenceSync("calendar marked ongoing");
+        verifyGoogleCalendarAndDataSync("calendar marked ongoing");
     }
 
     @Test
@@ -86,7 +84,7 @@ class CalendarServiceTests {
         calendarService.markDone(calendarId);
 
         assertEquals(CalendarStatus.DONE, calendar.getStatus());
-        verifyGoogleCalendarAndPersistenceSync("calendar marked done");
+        verifyGoogleCalendarAndDataSync("calendar marked done");
     }
 
     @Test
@@ -96,7 +94,7 @@ class CalendarServiceTests {
         calendarService.resetCalendarStatus(calendarId);
 
         assertEquals(CalendarStatus.CALENDAR, calendar.getStatus());
-        verifyGoogleCalendarAndPersistenceSync("calendar status restored");
+        verifyGoogleCalendarAndDataSync("calendar status restored");
     }
 
     @Test
@@ -105,12 +103,12 @@ class CalendarServiceTests {
 
         calendarService.recoverCalendar(calendarId);
 
-        verifyGoogleCalendarAndPersistenceSync("calendar recovered");
+        verifyGoogleCalendarAndDataSync("calendar recovered");
     }
 
-    private void verifyGoogleCalendarAndPersistenceSync(String reason) {
+    private void verifyGoogleCalendarAndDataSync(String reason) {
         verify(googleCalendarEventQueueService).requestUpsert(calendarId);
-        verify(persistenceGitSyncService).requestSync(reason, PersistenceChangeType.UPDATE_ITEM);
+        verify(dataSyncService).requestSync(reason);
     }
 
     private Calendar calendar(UUID id) {

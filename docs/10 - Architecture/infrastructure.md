@@ -68,14 +68,10 @@ The normal application database is SQLite.
 The default JDBC URL points to:
 
 ```text
-${gtd.persistence.bootstrap.clone-directory}/db/gtd-on-rails.db
+${gtd.data.root-directory}/gtd-on-rails.db
 ```
 
-The clone directory defaults to:
-
-```text
-${gtd.data.root-directory}/persistence
-```
+The backend creates an empty SQLite file when startup data sync succeeds but the database is still missing. Flyway then initializes the schema.
 
 Flyway migrations live under `apps/api/src/main/resources/db/migration`.
 
@@ -98,6 +94,7 @@ Production is a self-contained local desktop runtime.
 - The user launches the native Linux desktop binary.
 - The Tauri app starts the bundled `gtd-api` sidecar.
 - The sidecar starts Spring Boot with `prod,sidecar` profiles by default.
+- The sidecar runs blocking rclone data sync before SQLite opens.
 - The sidecar binds to `127.0.0.1` on an ephemeral port.
 - The backend writes a readiness file with its selected local base URL.
 - The desktop app reads that readiness file and sends API requests to the sidecar.
@@ -108,7 +105,7 @@ This keeps the backend local to the user's machine and avoids a hosted productio
 
 Staging uses the same sidecar flow as production, but with `staging,sidecar` profiles.
 
-Staging intentionally points to development data defaults so the production data branch and asset remote are not touched while testing release behavior.
+Staging intentionally points to development data defaults so the production data remote is not touched while testing release behavior.
 
 ---
 
@@ -130,42 +127,38 @@ Development and staging default to:
 
 The data root contains:
 
-- `persistence`: Git clone that contains the SQLite database file.
+- `gtd-on-rails.db`: SQLite database file.
+- `google.properties`: Google Integration Configuration.
 - `assets`: local item asset files.
-- `asset-sync-state`: local sync bookkeeping for assets.
+- `sync-state/bootstrap-completed`: synchronized dataset marker.
 
 Environment variables can override these paths when needed, but the default runtime is optimized for the owner's Arch Linux desktop machines.
 
 ---
 
-## 5. Persistence Synchronization
+## 5. Data Synchronization
 
-Structured data is stored in SQLite and synchronized through a private Git repository.
+Structured data, Google Integration Configuration, and assets are synchronized by `rclone` over the whole `gtd.data.root-directory`.
 
-- The persistence repository is configured by `gtd.persistence.bootstrap.repository-url`.
-- Production uses the `main` persistence branch.
-- Development and staging use the `dev` persistence branch.
-- The backend owns database bootstrapping, migration, sync scheduling, and data integrity.
+- Production remote: `gdrive:gtd-on-rails`.
+- Development and staging remote: `gdrive:dev-gtd-on-rails`.
+- The backend owns startup data sync, database initialization, sync scheduling, and data integrity.
 
 The app is designed for a single owner using two devices. It does not implement multi-user or concurrent divergent-edit reconciliation beyond the project-specific assumptions described in [Synchronization](synchronization.md).
 
 ---
 
-## 6. Asset Storage And Synchronization
+## 6. Asset Storage
 
 Item assets are stored as files plus database metadata.
 
 - Asset metadata lives in SQLite.
 - Asset files live under `gtd.assets.local-directory`.
 - The default asset directory is `${gtd.data.root-directory}/assets`.
-- Asset sync state lives under `${gtd.data.root-directory}/asset-sync-state`.
 
 The backend owns final asset storage, metadata creation, validation, and sync scheduling.
 
-Assets are synchronized through `rclone`:
-
-- Production remote: `gdrive:gtd-on-rails`
-- Development and staging remote: `gdrive:dev-gtd-on-rails`
+Assets are synchronized as part of data sync because the asset directory lives under the synchronized data root.
 
 The body model that references these assets is described in [Body Content](../20%20-%20GTD/shared/Body%20Content.md).
 
@@ -259,8 +252,8 @@ The normal runtime is local-first.
 
 - The backend binds to localhost in sidecar mode.
 - The SQLite database is protected by operating-system file permissions.
-- Persistence sync credentials and remote access are outside the application database.
-- Asset sync depends on the local `rclone` configuration.
+- Data sync remote access is outside the application database.
+- Data sync depends on the local `rclone` configuration.
 - GitHub release publishing uses GitHub Actions permissions and repository secrets when needed.
 
 ---
@@ -273,7 +266,7 @@ GTD on Rails currently uses:
 - a Tauri 2 desktop app with React, Vite, TypeScript, and Rust.
 - a Spring Boot 4 backend with Java 21 and Gradle.
 - SQLite for normal application persistence.
-- Git-based persistence synchronization.
-- filesystem-backed assets synchronized with `rclone`.
+- rclone-based data synchronization.
+- filesystem-backed assets under the synchronized data root.
 - native Linux `.tar.gz` production packaging.
 - GitHub Actions for CI and release automation.

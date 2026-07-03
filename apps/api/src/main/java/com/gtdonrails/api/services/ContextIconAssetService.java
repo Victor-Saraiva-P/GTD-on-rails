@@ -7,8 +7,6 @@ import com.gtdonrails.api.entities.Context;
 import com.gtdonrails.api.entities.ContextIconAsset;
 import com.gtdonrails.api.exceptions.context.ContextNotFoundException;
 import com.gtdonrails.api.mappers.ContextMapper;
-import com.gtdonrails.api.persistence.bootstrap.model.PersistenceChangeType;
-import com.gtdonrails.api.persistence.bootstrap.services.PersistenceGitSyncService;
 import com.gtdonrails.api.repositories.ContextIconAssetRepository;
 import com.gtdonrails.api.repositories.ContextRepository;
 import org.springframework.stereotype.Service;
@@ -22,8 +20,7 @@ public class ContextIconAssetService {
     private final ContextRepository contextRepository;
     private final ContextIconAssetRepository contextIconAssetRepository;
     private final AssetStorageService assetStorageService;
-    private final AssetSyncService assetSyncService;
-    private final PersistenceGitSyncService persistenceGitSyncService;
+    private final DataSyncService dataSyncService;
     private final AfterCommitExecutor afterCommitExecutor;
     private final ContextMapper contextMapper;
 
@@ -31,16 +28,14 @@ public class ContextIconAssetService {
         ContextRepository contextRepository,
         ContextIconAssetRepository contextIconAssetRepository,
         AssetStorageService assetStorageService,
-        AssetSyncService assetSyncService,
-        PersistenceGitSyncService persistenceGitSyncService,
+        DataSyncService dataSyncService,
         AfterCommitExecutor afterCommitExecutor,
         ContextMapper contextMapper
     ) {
         this.contextRepository = contextRepository;
         this.contextIconAssetRepository = contextIconAssetRepository;
         this.assetStorageService = assetStorageService;
-        this.assetSyncService = assetSyncService;
-        this.persistenceGitSyncService = persistenceGitSyncService;
+        this.dataSyncService = dataSyncService;
         this.afterCommitExecutor = afterCommitExecutor;
         this.contextMapper = contextMapper;
     }
@@ -57,8 +52,8 @@ public class ContextIconAssetService {
         ContextIconAsset iconAsset = newContextIconAsset(context, file);
         assetStorageService.storeImageAsset(iconAsset.relativePath(), file);
         contextIconAssetRepository.save(iconAsset);
-        requestAssetSyncAfterCommit("context icon updated");
-        requestPersistenceSyncAfterCommit("context icon updated", PersistenceChangeType.UPDATE_CONTEXT_ICON);
+        requestDataSyncAfterCommit("context icon updated");
+        requestDataSyncAfterCommit("context icon updated");
         return contextMapper.toResponse(context);
     }
 
@@ -71,19 +66,19 @@ public class ContextIconAssetService {
     public ContextResponseDto deleteContextIcon(UUID id) {
         Context context = findContext(id);
         deleteExistingIcon(context);
-        requestAssetSyncAfterCommit("context icon deleted");
-        requestPersistenceSyncAfterCommit("context icon deleted", PersistenceChangeType.DELETE_CONTEXT_ICON);
+        requestDataSyncAfterCommit("context icon deleted");
+        requestDataSyncAfterCommit("context icon deleted");
         return contextMapper.toResponse(context);
     }
 
     /**
-     * Removes a context icon during context deletion without extra persistence sync.
+     * Removes a context icon during context deletion without extra data sync.
      *
      * <p>Example: {@code service.deleteContextIconAsset(context)}.</p>
      */
     public void deleteContextIconAsset(Context context) {
         deleteExistingIcon(context);
-        requestAssetSyncAfterCommit("context deleted");
+        requestDataSyncAfterCommit("context deleted");
     }
 
     private Context findContext(UUID id) {
@@ -114,11 +109,7 @@ public class ContextIconAssetService {
         return assetStorageService.mediaType(fileName).toString();
     }
 
-    private void requestAssetSyncAfterCommit(String reason) {
-        afterCommitExecutor.run(() -> assetSyncService.requestSync(reason));
-    }
-
-    private void requestPersistenceSyncAfterCommit(String reason, PersistenceChangeType changeType) {
-        afterCommitExecutor.run(() -> persistenceGitSyncService.requestSync(reason, changeType));
+    private void requestDataSyncAfterCommit(String reason) {
+        afterCommitExecutor.run(() -> dataSyncService.requestSync(reason));
     }
 }
