@@ -21,13 +21,14 @@ import java.time.Instant;
 import com.gtdonrails.api.config.GoogleProperties;
 import com.gtdonrails.api.entities.GoogleCalendar;
 import com.gtdonrails.api.entities.GoogleCredential;
-import com.gtdonrails.api.persistence.bootstrap.properties.PersistenceBootstrapProperties;
 import com.gtdonrails.api.repositories.GoogleCalendarRepository;
+import com.gtdonrails.api.services.DataSyncService;
 import com.gtdonrails.api.services.GoogleCalendarService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
@@ -50,8 +51,11 @@ class GoogleCalendarControllerTests {
     @Autowired
     private GoogleProperties googleProperties;
 
-    @Autowired
-    private PersistenceBootstrapProperties bootstrapProperties;
+    @Value("${gtd.data.root-directory}")
+    private String dataRoot;
+
+    @MockitoBean
+    private DataSyncService dataSyncService;
 
     @MockitoBean
     private GoogleCalendarService googleCalendarService;
@@ -129,6 +133,7 @@ class GoogleCalendarControllerTests {
             .andExpect(status().isOk());
 
         assert googleProperties.getClientId().equals("new-client");
+        verify(dataSyncService).requestSync("integration credentials updated");
     }
 
     @Test
@@ -176,6 +181,6 @@ class GoogleCalendarControllerTests {
     }
 
     private Path googleCredentialsPath() {
-        return Path.of(bootstrapProperties.getCloneDirectory(), "config", "google.properties");
+        return Path.of(dataRoot).resolve("google.properties");
     }
 }

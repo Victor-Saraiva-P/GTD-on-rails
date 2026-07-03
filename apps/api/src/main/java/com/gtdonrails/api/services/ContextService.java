@@ -14,8 +14,6 @@ import com.gtdonrails.api.exceptions.context.ContextNotFoundException;
 import com.gtdonrails.api.mappers.ContextMapper;
 import com.gtdonrails.api.mappers.ItemMapper;
 import com.gtdonrails.api.normalizers.ContextNameNormalizer;
-import com.gtdonrails.api.persistence.bootstrap.model.PersistenceChangeType;
-import com.gtdonrails.api.persistence.bootstrap.services.PersistenceGitSyncService;
 import com.gtdonrails.api.repositories.ContextRepository;
 import com.gtdonrails.api.repositories.NextActionRepository;
 import org.springframework.data.domain.PageRequest;
@@ -31,7 +29,7 @@ public class ContextService {
     private final ItemMapper itemMapper;
     private final ContextNameNormalizer contextNameNormalizer;
     private final ContextIconAssetService contextIconAssetService;
-    private final PersistenceGitSyncService persistenceGitSyncService;
+    private final DataSyncService dataSyncService;
     private final AfterCommitExecutor afterCommitExecutor;
 
     public ContextService(
@@ -41,7 +39,7 @@ public class ContextService {
         ItemMapper itemMapper,
         ContextNameNormalizer contextNameNormalizer,
         ContextIconAssetService contextIconAssetService,
-        PersistenceGitSyncService persistenceGitSyncService,
+        DataSyncService dataSyncService,
         AfterCommitExecutor afterCommitExecutor
     ) {
         this.contextRepository = contextRepository;
@@ -50,7 +48,7 @@ public class ContextService {
         this.itemMapper = itemMapper;
         this.contextNameNormalizer = contextNameNormalizer;
         this.contextIconAssetService = contextIconAssetService;
-        this.persistenceGitSyncService = persistenceGitSyncService;
+        this.dataSyncService = dataSyncService;
         this.afterCommitExecutor = afterCommitExecutor;
     }
 
@@ -114,7 +112,7 @@ public class ContextService {
         String normalizedName = contextNameNormalizer.normalize(request.name());
         Context context = new Context(normalizedName);
         ContextResponseDto response = contextMapper.toResponse(contextRepository.save(context));
-        requestPersistenceSyncAfterCommit("context created", PersistenceChangeType.CREATE_CONTEXT);
+        requestDataSyncAfterCommit("context created");
         return response;
     }
 
@@ -130,7 +128,7 @@ public class ContextService {
 
         context.setName(normalizedName);
         ContextResponseDto response = contextMapper.toResponse(contextRepository.save(context));
-        requestPersistenceSyncAfterCommit("context updated", PersistenceChangeType.UPDATE_CONTEXT);
+        requestDataSyncAfterCommit("context updated");
         return response;
     }
 
@@ -146,11 +144,11 @@ public class ContextService {
         contextIconAssetService.deleteContextIconAsset(context);
         context.softDelete();
         contextRepository.save(context);
-        requestPersistenceSyncAfterCommit("context deleted", PersistenceChangeType.DELETE_CONTEXT);
+        requestDataSyncAfterCommit("context deleted");
     }
 
     /**
-     * Restores a soft-deleted context and schedules persistence sync after commit.
+     * Restores a soft-deleted context and schedules data sync after commit.
      *
      * <p>Example: {@code contextService.restoreContext(contextId)}.</p>
      */
@@ -160,7 +158,7 @@ public class ContextService {
             .orElseThrow(() -> new ContextNotFoundException("context not found"));
         context.restore();
         contextRepository.save(context);
-        requestPersistenceSyncAfterCommit("context restored", PersistenceChangeType.UPDATE_CONTEXT);
+        requestDataSyncAfterCommit("context restored");
     }
 
     private Context findContext(UUID id) {
@@ -168,7 +166,7 @@ public class ContextService {
             .orElseThrow(() -> new ContextNotFoundException("context not found"));
     }
 
-    private void requestPersistenceSyncAfterCommit(String reason, PersistenceChangeType changeType) {
-        afterCommitExecutor.run(() -> persistenceGitSyncService.requestSync(reason, changeType));
+    private void requestDataSyncAfterCommit(String reason) {
+        afterCommitExecutor.run(() -> dataSyncService.requestSync(reason));
     }
 }

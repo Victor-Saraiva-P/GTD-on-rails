@@ -9,10 +9,10 @@ import {
 } from "../src/features/sync-status/syncStatusPolling.ts";
 import type { SyncStatus } from "../src/features/sync-status/types.ts";
 
-function syncStatus(assetState: SyncStatus["assets"]["state"], persistenceState: SyncStatus["persistence"]["state"]): SyncStatus {
+function syncStatus(dataState: SyncStatus["data"]["state"]): SyncStatus {
   return {
-    assets: {
-      state: assetState,
+    data: {
+      state: dataState,
       pending: false,
       running: false,
       lastStartedAt: null,
@@ -28,15 +28,6 @@ function syncStatus(assetState: SyncStatus["assets"]["state"], persistenceState:
       lastFinishedAt: null,
       lastSuccessfulSyncAt: null,
       lastError: null
-    },
-    persistence: {
-      state: persistenceState,
-      lastStartedAt: null,
-      lastFinishedAt: null,
-      lastSuccessfulSyncAt: null,
-      lastError: null,
-      hasLocalChanges: false,
-      hasUnpushedCommits: false
     }
   };
 }
@@ -47,15 +38,14 @@ describe("sync status polling", () => {
   });
 
   test("isSettledSyncStatus returns false while either sync is active", () => {
-    assert.equal(isSettledSyncStatus(syncStatus("SYNCING", "IDLE")), false);
-    assert.equal(isSettledSyncStatus(syncStatus("SYNCED", "SYNCING")), false);
-    const status = syncStatus("SYNCED", "IDLE");
+    assert.equal(isSettledSyncStatus(syncStatus("SYNCING")), false);
+    const status = syncStatus("SYNCED");
     status.googleCalendar.state = "PENDING";
     assert.equal(isSettledSyncStatus(status), false);
   });
 
   test("shouldStopSyncStatusPolling keeps startup failures observable until deadline", () => {
-    const failedStatus = syncStatus("FAILED", "FAILED");
+    const failedStatus = syncStatus("FAILED");
 
     assert.equal(shouldStopSyncStatusPolling(failedStatus, 2_000, 1_500), false);
     assert.equal(shouldStopSyncStatusPolling(failedStatus, 2_000, 2_000), true);

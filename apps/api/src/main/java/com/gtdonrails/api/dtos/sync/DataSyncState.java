@@ -1,6 +1,6 @@
-package com.gtdonrails.api.dtos.assets;
+package com.gtdonrails.api.dtos.sync;
 
-public enum AssetSyncState {
+public enum DataSyncState {
     DISABLED,
     BOOTSTRAPPING,
     SYNCED,

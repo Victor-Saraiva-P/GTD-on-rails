@@ -28,8 +28,7 @@ export default defineConfig({
       timeout: 120_000,
       env: {
         GTD_TEST_DB_URL: "jdbc:sqlite:./build/e2e-playwright.db",
-        GTD_PERSISTENCE_SYNC_ENABLED: "false",
-        GTD_ASSETS_RCLONE_ENABLED: "false",
+        GTD_SYNC_RCLONE_ENABLED: "false",
         APP_CORS_ALLOWED_ORIGINS: desktopWebUrl
       }
     },

@@ -11,8 +11,6 @@ import com.gtdonrails.api.entities.Calendar;
 import com.gtdonrails.api.enums.CalendarStatus;
 import com.gtdonrails.api.exceptions.item.ItemNotFoundException;
 import com.gtdonrails.api.mappers.CalendarMapper;
-import com.gtdonrails.api.persistence.bootstrap.model.PersistenceChangeType;
-import com.gtdonrails.api.persistence.bootstrap.services.PersistenceGitSyncService;
 import com.gtdonrails.api.repositories.CalendarRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,7 +21,7 @@ public class CalendarService {
     private final CalendarRepository calendarRepository;
     private final CalendarMapper calendarMapper;
     private final Clock clock;
-    private final PersistenceGitSyncService persistenceGitSyncService;
+    private final DataSyncService dataSyncService;
     private final GoogleCalendarEventQueueService googleCalendarEventQueueService;
     private final AfterCommitExecutor afterCommitExecutor;
 
@@ -31,14 +29,14 @@ public class CalendarService {
         CalendarRepository calendarRepository,
         CalendarMapper calendarMapper,
         Clock clock,
-        PersistenceGitSyncService persistenceGitSyncService,
+        DataSyncService dataSyncService,
         GoogleCalendarEventQueueService googleCalendarEventQueueService,
         AfterCommitExecutor afterCommitExecutor
     ) {
         this.calendarRepository = calendarRepository;
         this.calendarMapper = calendarMapper;
         this.clock = clock;
-        this.persistenceGitSyncService = persistenceGitSyncService;
+        this.dataSyncService = dataSyncService;
         this.googleCalendarEventQueueService = googleCalendarEventQueueService;
         this.afterCommitExecutor = afterCommitExecutor;
     }
@@ -127,7 +125,7 @@ public class CalendarService {
         Calendar savedCalendar = calendarRepository.save(calendar);
         CalendarResponseDto response = calendarMapper.toResponse(savedCalendar);
         requestGoogleCalendarEventSyncAfterCommit(savedCalendar.getItemId());
-        requestPersistenceSyncAfterCommit("calendar updated", PersistenceChangeType.UPDATE_ITEM);
+        requestDataSyncAfterCommit("calendar updated");
         return response;
     }
 
@@ -192,7 +190,7 @@ public class CalendarService {
         Calendar savedCalendar = calendarRepository.save(calendar);
         CalendarResponseDto response = calendarMapper.toResponse(savedCalendar);
         requestGoogleCalendarEventSyncAfterCommit(savedCalendar.getItemId());
-        requestPersistenceSyncAfterCommit(reason, PersistenceChangeType.UPDATE_ITEM);
+        requestDataSyncAfterCommit(reason);
         return response;
     }
 
@@ -205,8 +203,8 @@ public class CalendarService {
         return calendars.stream().map(calendarMapper::toResponse).toList();
     }
 
-    private void requestPersistenceSyncAfterCommit(String reason, PersistenceChangeType changeType) {
-        afterCommitExecutor.run(() -> persistenceGitSyncService.requestSync(reason, changeType));
+    private void requestDataSyncAfterCommit(String reason) {
+        afterCommitExecutor.run(() -> dataSyncService.requestSync(reason));
     }
 
     private void requestGoogleCalendarEventSyncAfterCommit(UUID itemId) {

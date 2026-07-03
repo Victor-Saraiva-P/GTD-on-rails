@@ -8,7 +8,7 @@
 
 GTD on Rails is a local-first personal GTD system for capturing information, processing it into next actions, planning daily and weekly work, and executing fast from keyboard-driven lists.
 
-It is also a portfolio-grade full-stack desktop app: Tauri 2 and React 19 on the frontend, a Spring Boot backend sidecar, SQLite local persistence, Git-backed DB sync, Google Drive asset sync, and Google Calendar mirroring.
+It is also a portfolio-grade full-stack desktop app: Tauri 2 and React 19 on the frontend, a Spring Boot backend sidecar, SQLite local persistence, rclone data sync, and Google Calendar mirroring.
 
 ![Next Actions workspace with selected detail and PDF preview](docs/assets/screenshots/main-next-actions.png)
 > Main workspace showing a next-actions list, selected item detail, keyboard focus state, and sync indicators in the footer.
@@ -31,7 +31,7 @@ The name is about the philosophy of the project: the app keeps GTD decisions on 
 - Keyboard-first UI: Vim-style navigation, leader-key shortcuts.
 - Current availability filtering: choose next actions by current context, available energy, and available time.
 - Rich supporting material: markdown bodies with formatting, links, file assets, image previews, and PDF previews.
-- Local-first sync: SQLite structured data syncs through a private Git repository, while file assets sync through Google Drive via `rclone`.
+- Local-first sync: SQLite structured data, Google Integration Configuration, and file assets sync through Google Drive via `rclone`.
 - External agenda mirror: Google Calendar reflects deadlines, On Going work, and Done items while local GTD items remain the source of truth.
 
 ## Screenshots
@@ -72,25 +72,25 @@ Local HTTP API on 127.0.0.1
         |
 Spring Boot sidecar
         |
-SQLite + asset files
+SQLite + Google config + asset files
         |
-Git persistence sync + Google Drive asset sync
+rclone data sync
 ```
 
 - Desktop shell: Tauri starts the bundled backend sidecar and connects to it through a local readiness file.
 - Backend: Spring Boot exposes the local HTTP API, owns persistence, migrations, sync scheduling, assets, and integrations.
-- Persistence: structured data lives in SQLite inside a private Git-backed persistence repository.
-- Assets: item attachments live as local files with SQLite metadata and sync through Google Drive via `rclone bisync`.
+- Persistence: structured data lives in SQLite under the synchronized local data root.
+- Assets: item attachments live as local files with SQLite metadata and sync as part of rclone data sync.
 - External agenda mirror: Google Calendar receives derived calendar events; the local GTD system remains the source of truth.
 
 ![Synchronization status indicators](docs/assets/screenshots/sync-status.png)
-> Sync/status area showing Git persistence sync, Google Drive asset sync, Google Calendar sync, and local sidecar health.
+> Sync/status area showing Data sync, Google Calendar sync, and local sidecar health.
 
 ## Engineering Highlights
 
 - Full-stack desktop architecture with Tauri 2, React 19, Rust native commands, and a Spring Boot 4 sidecar.
 - Local-first persistence using SQLite, Flyway migrations, Spring Data JPA, and Hibernate.
-- Two-channel sync model: Git for structured data and Google Drive through `rclone` for file assets.
+- Two-channel sync model: Google Drive through `rclone` for local data and Google Calendar for the external agenda mirror.
 - Google Calendar integration with OAuth configuration, encrypted token storage, event queueing, and external agenda mirroring.
 - Native Linux release packaging with a bundled executable, backend sidecar launcher, Spring Boot JAR, and installer script.
 - Automated quality gates covering version drift, TypeScript checks, API tests, integration tests, and Playwright e2e workflows.
@@ -100,7 +100,7 @@ Git persistence sync + Google Drive asset sync
 - Desktop: Tauri 2, React 19, TypeScript, Vite, Rust
 - Backend: Spring Boot 4, Java 21, Gradle
 - Persistence: SQLite, Flyway, Spring Data JPA, Hibernate
-- Sync and integrations: Git, `rclone`, Google Drive, Google Calendar API
+- Sync and integrations: `rclone`, Google Drive, Google Calendar API
 - Tooling: pnpm, Turbo, Playwright
 
 ## Run Locally

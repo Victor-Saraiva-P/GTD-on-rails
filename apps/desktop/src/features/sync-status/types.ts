@@ -1,4 +1,4 @@
-export type AssetSyncState =
+export type DataSyncState =
   | "DISABLED"
   | "BOOTSTRAPPING"
   | "SYNCED"
@@ -6,28 +6,16 @@ export type AssetSyncState =
   | "SYNCING"
   | "FAILED";
 
-export type PersistenceSyncState = "IDLE" | "SYNCING" | "FAILED" | "DISABLED";
-
 export type GoogleCalendarSyncState = "DISABLED" | "SYNCED" | "PENDING" | "SYNCING" | "FAILED";
 
-export type AssetSyncStatus = {
-  state: AssetSyncState;
+export type DataSyncStatus = {
+  state: DataSyncState;
   pending: boolean;
   running: boolean;
   lastStartedAt: string | null;
   lastFinishedAt: string | null;
   lastSuccessfulSyncAt: string | null;
   lastError: string | null;
-};
-
-export type PersistenceSyncStatus = {
-  state: PersistenceSyncState;
-  lastStartedAt: string | null;
-  lastFinishedAt: string | null;
-  lastSuccessfulSyncAt: string | null;
-  lastError: string | null;
-  hasLocalChanges: boolean;
-  hasUnpushedCommits: boolean;
 };
 
 export type GoogleCalendarSyncStatus = {
@@ -41,7 +29,6 @@ export type GoogleCalendarSyncStatus = {
 };
 
 export type SyncStatus = {
-  assets: AssetSyncStatus;
+  data: DataSyncStatus;
   googleCalendar: GoogleCalendarSyncStatus;
-  persistence: PersistenceSyncStatus;
 };
