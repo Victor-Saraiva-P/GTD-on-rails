@@ -11,8 +11,7 @@ public class DataSyncProperties {
 
     private Rclone rclone = new Rclone();
     private long intervalMs = 300_000;
-    private String stateDirectory = "sync-state";
-    private String baselineMarker = "bootstrap-completed";
+    private String syncCheckFilename = "gtd-on-rails-sync-check";
     private boolean force = true;
 
     @Getter

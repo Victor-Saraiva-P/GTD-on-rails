@@ -130,7 +130,7 @@ The data root contains:
 - `gtd-on-rails.db`: SQLite database file.
 - `google.properties`: Google Integration Configuration.
 - `assets`: local item asset files.
-- `sync-state/bootstrap-completed`: synchronized dataset marker.
+- `gtd-on-rails-sync-check`: synchronized dataset marker and rclone access check file.
 
 Environment variables can override these paths when needed, but the default runtime is optimized for the owner's Arch Linux desktop machines.
 
