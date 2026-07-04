@@ -59,8 +59,7 @@ public class DataSyncService {
             return;
         }
 
-        runOnce(!baselineExists(), "startup");
-        createMissingBaselineAfterBootstrap();
+        runOnce(!syncCheckExists(), "startup");
     }
 
     /**
@@ -85,7 +84,7 @@ public class DataSyncService {
         }
 
         pending.set(true);
-        submit(!baselineExists(), reason);
+        submit(!syncCheckExists(), reason);
     }
 
     /**
@@ -117,8 +116,7 @@ public class DataSyncService {
             do {
                 pending.set(false);
                 runOnce(shouldBootstrap, reason);
-                createMissingBaselineAfterBootstrap();
-                shouldBootstrap = !baselineExists();
+                shouldBootstrap = !syncCheckExists();
             } while (pending.get());
         } finally {
             running.set(false);
@@ -136,8 +134,7 @@ public class DataSyncService {
             .log("Starting data sync");
 
         try {
-            runRcloneSync(bootstrap);
-            markSyncSucceeded();
+            performSyncAttempt(bootstrap);
         } catch (RuntimeException exception) {
             lastError = exception.getMessage();
             state = DataSyncState.FAILED;
@@ -146,6 +143,12 @@ public class DataSyncService {
         } finally {
             lastFinishedAt = Instant.now();
         }
+    }
+
+    private void performSyncAttempt(boolean bootstrap) {
+        runRcloneSync(bootstrap);
+        if (bootstrap) publishMissingSyncCheckAfterBootstrap();
+        markSyncSucceeded();
     }
 
     private void runRcloneSync(boolean bootstrap) {
@@ -163,28 +166,27 @@ public class DataSyncService {
         state = pending.get() ? DataSyncState.PENDING : DataSyncState.SYNCED;
     }
 
-    private void createMissingBaselineAfterBootstrap() {
-        if (baselineExists()) return;
+    private void publishMissingSyncCheckAfterBootstrap() {
+        if (syncCheckExists()) return;
 
-        writeBaselineMarker();
-        rcloneDataSyncService.bisync(dataRoot);
+        writeSyncCheckFile();
+        rcloneDataSyncService.publishBootstrapSyncCheck(dataRoot);
     }
 
-    private void writeBaselineMarker() {
+    private void writeSyncCheckFile() {
         try {
-            Files.createDirectories(baselineMarkerPath().getParent());
-            Files.writeString(baselineMarkerPath(), Instant.now().toString());
+            Files.writeString(syncCheckPath(), Instant.now().toString());
         } catch (IOException exception) {
-            throw new IllegalStateException("Failed to write data sync baseline marker: " + baselineMarkerPath(), exception);
+            throw new IllegalStateException("Failed to write data sync check file: " + syncCheckPath(), exception);
         }
     }
 
-    private Path baselineMarkerPath() {
-        return dataRoot.resolve(dataSyncProperties.getStateDirectory()).resolve(dataSyncProperties.getBaselineMarker());
+    private Path syncCheckPath() {
+        return dataRoot.resolve(dataSyncProperties.getSyncCheckFilename());
     }
 
-    private boolean baselineExists() {
-        return Files.exists(baselineMarkerPath());
+    private boolean syncCheckExists() {
+        return Files.exists(syncCheckPath());
     }
 
     @PreDestroy

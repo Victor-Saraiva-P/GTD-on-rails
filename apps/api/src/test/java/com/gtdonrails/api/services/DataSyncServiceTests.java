@@ -39,7 +39,7 @@ class DataSyncServiceTests {
     }
 
     @Test
-    void bootstrapsFromRemoteWhenBaselineMarkerIsMissing() throws Exception {
+    void bootstrapsFromRemoteWhenSyncCheckIsMissing() throws Exception {
         FakeRcloneDataSyncService rcloneDataSyncService = new FakeRcloneDataSyncService();
         service = new DataSyncService(properties(), rcloneDataSyncService, tempDir.toString());
 
@@ -48,15 +48,14 @@ class DataSyncServiceTests {
         service.syncOnStartup();
 
         assertEquals(tempDir.toAbsolutePath().normalize(), rcloneDataSyncService.bootstrapBisyncDirectory);
-        assertEquals(tempDir.toAbsolutePath().normalize(), rcloneDataSyncService.bisyncDirectory);
+        assertEquals(tempDir.toAbsolutePath().normalize(), rcloneDataSyncService.bootstrapPublishDirectory);
         assertEquals(DataSyncState.SYNCED, service.status().state());
-        assertTrue(Files.exists(baselineMarker()));
+        assertTrue(Files.exists(syncCheckFile()));
     }
 
     @Test
-    void runsNormalBisyncWhenBaselineMarkerExists() throws Exception {
-        Files.createDirectories(baselineMarker().getParent());
-        Files.writeString(baselineMarker(), "ready");
+    void runsNormalBisyncWhenSyncCheckExists() throws Exception {
+        Files.writeString(syncCheckFile(), "ready");
         FakeRcloneDataSyncService rcloneDataSyncService = new FakeRcloneDataSyncService();
         service = new DataSyncService(properties(), rcloneDataSyncService, tempDir.toString());
 
@@ -66,18 +65,18 @@ class DataSyncServiceTests {
 
         assertEquals(tempDir.toAbsolutePath().normalize(), rcloneDataSyncService.bisyncDirectory);
         assertEquals(null, rcloneDataSyncService.bootstrapBisyncDirectory);
+        assertEquals(null, rcloneDataSyncService.bootstrapPublishDirectory);
         assertEquals(DataSyncState.SYNCED, service.status().state());
     }
 
     private DataSyncProperties properties() {
         DataSyncProperties properties = new DataSyncProperties();
-        properties.setStateDirectory("sync-state");
-        properties.setBaselineMarker("bootstrap-completed");
+        properties.setSyncCheckFilename("gtd-on-rails-sync-check");
         return properties;
     }
 
-    private Path baselineMarker() {
-        return tempDir.resolve("sync-state/bootstrap-completed");
+    private Path syncCheckFile() {
+        return tempDir.resolve("gtd-on-rails-sync-check");
     }
 
     private static class FakeRcloneDataSyncService extends RcloneDataSyncService {
@@ -85,6 +84,7 @@ class DataSyncServiceTests {
         private boolean enabled;
         private Path bisyncDirectory;
         private Path bootstrapBisyncDirectory;
+        private Path bootstrapPublishDirectory;
 
         private FakeRcloneDataSyncService() {
             super(new DataSyncProperties());
@@ -103,6 +103,11 @@ class DataSyncServiceTests {
         @Override
         public void bootstrapBisync(Path dataRoot) {
             bootstrapBisyncDirectory = dataRoot;
+        }
+
+        @Override
+        public void publishBootstrapSyncCheck(Path dataRoot) {
+            bootstrapPublishDirectory = dataRoot;
         }
     }
 }

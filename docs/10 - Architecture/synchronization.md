@@ -45,7 +45,7 @@ The data root contains:
 gtd-on-rails.db
 google.properties
 assets/
-sync-state/bootstrap-completed
+gtd-on-rails-sync-check
 ```
 
 The SQLite database path is:
@@ -76,7 +76,7 @@ Startup behavior:
 
 - The backend creates the data root directory when needed.
 - If rclone data sync is enabled, startup runs blocking data sync before SQLite opens.
-- If `sync-state/bootstrap-completed` is missing, startup runs bootstrap sync from remote to local.
+- If `gtd-on-rails-sync-check` is missing, startup runs bootstrap sync from remote to local.
 - If the SQLite database is still missing after successful startup sync, the backend creates an empty database file and Flyway initializes the schema.
 - When a new empty database was created, the backend queues asynchronous data sync after application startup so the migrated schema is uploaded.
 
@@ -90,27 +90,27 @@ Runtime behavior:
 
 ---
 
-## 4. Bootstrap Marker
+## 4. Sync Check Marker
 
 The marker path is:
 
 ```text
-${gtd.data.root-directory}/sync-state/bootstrap-completed
+${gtd.data.root-directory}/gtd-on-rails-sync-check
 ```
 
 When the marker exists, the backend runs incremental bisync:
 
 ```text
-rclone bisync <data-root> <remote>
+rclone bisync <remote> <data-root> --check-access --check-filename gtd-on-rails-sync-check
 ```
 
 When the marker is missing, the backend treats the remote as the source and runs:
 
 ```text
-rclone bisync <data-root> <remote> --resync --resync-mode path2
+rclone bisync <remote> <data-root> --resync
 ```
 
-If the marker is still missing after a successful bootstrap, the backend creates it locally and runs one normal bisync to publish the marker.
+If the marker is still missing after a successful bootstrap, the backend creates it locally and runs one bisync without `--check-access` to publish the marker.
 
 First publication or migration of local data to the remote is manual. The automatic bootstrap path always treats the remote as source.
 
@@ -136,8 +136,7 @@ Key properties:
 - `gtd.sync.rclone.remote`
 - `gtd.sync.interval-ms`
 - `gtd.sync.force`
-- `gtd.sync.state-directory`
-- `gtd.sync.baseline-marker`
+- `gtd.sync.sync-check-filename`
 
 When `gtd.sync.force` is true, the backend adds:
 

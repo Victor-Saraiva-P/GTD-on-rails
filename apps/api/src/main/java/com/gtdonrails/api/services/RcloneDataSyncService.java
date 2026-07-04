@@ -15,6 +15,26 @@ import org.springframework.util.StringUtils;
 public class RcloneDataSyncService {
 
     private static final Logger logger = LoggerFactory.getLogger(RcloneDataSyncService.class);
+    private static final List<String> COMMON_FLAGS = List.of(
+        "--compare",
+        "size,modtime,checksum",
+        "--modify-window",
+        "1s",
+        "--create-empty-src-dirs",
+        "--drive-acknowledge-abuse",
+        "--drive-skip-gdocs",
+        "--drive-skip-shortcuts",
+        "--drive-skip-dangling-shortcuts",
+        "--metadata"
+    );
+    private static final List<String> FINAL_FLAGS = List.of(
+        "--track-renames",
+        "--fix-case",
+        "--resilient",
+        "--recover",
+        "--max-lock",
+        "2m"
+    );
 
     private final DataSyncProperties dataSyncProperties;
 
@@ -39,9 +59,22 @@ public class RcloneDataSyncService {
     public void bisync(Path dataRoot) {
         if (!isEnabled()) return;
 
-        List<String> arguments = new ArrayList<>(List.of("bisync", dataRoot.toString(), remote()));
-        if (dataSyncProperties.isForce()) arguments.add("--force");
+        List<String> arguments = baseBisyncArguments(dataRoot, true);
+        arguments.add("--check-access");
+        arguments.add("--check-filename");
+        arguments.add(dataSyncProperties.getSyncCheckFilename());
         runRclone(arguments);
+    }
+
+    /**
+     * Runs a bisync that can publish the sync check file before access checks are safe.
+     *
+     * <p>Example: {@code rcloneDataSyncService.publishBootstrapSyncCheck(dataRoot)}.</p>
+     */
+    public void publishBootstrapSyncCheck(Path dataRoot) {
+        if (!isEnabled()) return;
+
+        runRclone(baseBisyncArguments(dataRoot, true));
     }
 
     /**
@@ -52,7 +85,17 @@ public class RcloneDataSyncService {
     public void bootstrapBisync(Path dataRoot) {
         if (!isEnabled()) return;
 
-        runRclone(List.of("bisync", dataRoot.toString(), remote(), "--resync", "--resync-mode", "path2"));
+        List<String> arguments = baseBisyncArguments(dataRoot, false);
+        arguments.add("--resync");
+        runRclone(arguments);
+    }
+
+    private List<String> baseBisyncArguments(Path dataRoot, boolean includeFinalFlags) {
+        List<String> arguments = new ArrayList<>(List.of("bisync", remote(), dataRoot.toString()));
+        if (dataSyncProperties.isForce()) arguments.add("--force");
+        arguments.addAll(COMMON_FLAGS);
+        if (includeFinalFlags) arguments.addAll(FINAL_FLAGS);
+        return arguments;
     }
 
     private String remote() {
@@ -75,7 +118,7 @@ public class RcloneDataSyncService {
             .log("rclone command completed");
     }
 
-    private void executeRcloneCommand(List<String> command) {
+    protected void executeRcloneCommand(List<String> command) {
         try {
             Process process = new ProcessBuilder(command).redirectErrorStream(true).start();
             String output = new String(process.getInputStream().readAllBytes());
