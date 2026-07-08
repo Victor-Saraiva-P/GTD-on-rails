@@ -205,6 +205,7 @@ class InboxServiceTests {
 
         verify(itemRepository).save(stuff);
         verify(googleCalendarEventQueueService).requestUpsert(stuffId);
+        verify(dataSyncService).requestSync("stuff converted to project");
     }
 
     private ConvertStuffToNextActionRequestDto convertRequest(UUID contextId) {

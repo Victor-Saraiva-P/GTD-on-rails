@@ -11,8 +11,6 @@ import com.gtdonrails.api.enums.ProjectStatus;
 import com.gtdonrails.api.exceptions.item.ItemNotFoundException;
 import com.gtdonrails.api.mappers.ProjectMapper;
 import com.gtdonrails.api.normalizers.ItemTextNormalizer;
-import com.gtdonrails.api.persistence.bootstrap.model.PersistenceChangeType;
-import com.gtdonrails.api.persistence.bootstrap.services.PersistenceGitSyncService;
 import com.gtdonrails.api.repositories.ProjectRepository;
 import com.gtdonrails.api.types.Title;
 import org.springframework.stereotype.Service;
@@ -23,7 +21,7 @@ public class ProjectService {
     private final ProjectRepository projectRepository;
     private final ProjectMapper projectMapper;
     private final ItemTextNormalizer itemTextNormalizer;
-    private final PersistenceGitSyncService persistenceGitSyncService;
+    private final DataSyncService dataSyncService;
     private final GoogleCalendarEventQueueService googleCalendarEventQueueService;
     private final AfterCommitExecutor afterCommitExecutor;
     private final Clock clock;
@@ -32,7 +30,7 @@ public class ProjectService {
         ProjectRepository projectRepository,
         ProjectMapper projectMapper,
         ItemTextNormalizer itemTextNormalizer,
-        PersistenceGitSyncService persistenceGitSyncService,
+        DataSyncService dataSyncService,
         GoogleCalendarEventQueueService googleCalendarEventQueueService,
         AfterCommitExecutor afterCommitExecutor,
         Clock clock
@@ -40,7 +38,7 @@ public class ProjectService {
         this.projectRepository = projectRepository;
         this.projectMapper = projectMapper;
         this.itemTextNormalizer = itemTextNormalizer;
-        this.persistenceGitSyncService = persistenceGitSyncService;
+        this.dataSyncService = dataSyncService;
         this.googleCalendarEventQueueService = googleCalendarEventQueueService;
         this.afterCommitExecutor = afterCommitExecutor;
         this.clock = clock;
@@ -69,7 +67,7 @@ public class ProjectService {
         project.markDone(clock);
         ProjectResponseDto response = projectMapper.toResponse(projectRepository.save(project));
         requestGoogleCalendarEventUpsertAfterCommit(id);
-        requestPersistenceSyncAfterCommit("project marked done");
+        requestDataSyncAfterCommit("project marked done");
         return response;
     }
 
@@ -108,7 +106,7 @@ public class ProjectService {
         project.resetStatus();
         ProjectResponseDto response = projectMapper.toResponse(projectRepository.save(project));
         requestGoogleCalendarEventUpsertAfterCommit(id);
-        requestPersistenceSyncAfterCommit("project status restored");
+        requestDataSyncAfterCommit("project status restored");
         return response;
     }
 
@@ -124,7 +122,7 @@ public class ProjectService {
         applyDeadlinePatch(project, request);
         ProjectResponseDto response = projectMapper.toResponse(projectRepository.save(project));
         requestGoogleCalendarEventUpsertAfterCommit(id);
-        requestPersistenceSyncAfterCommit("project updated");
+        requestDataSyncAfterCommit("project updated");
         return response;
     }
 
@@ -139,7 +137,7 @@ public class ProjectService {
         project.getItem().softDelete();
         projectRepository.save(project);
         requestGoogleCalendarEventDeleteAfterCommit(id);
-        requestPersistenceSyncAfterCommit("project deleted", PersistenceChangeType.DELETE_ITEM);
+        requestDataSyncAfterCommit("project deleted");
     }
 
     /**
@@ -153,7 +151,7 @@ public class ProjectService {
         project.getItem().restore();
         ProjectResponseDto response = projectMapper.toResponse(projectRepository.save(project));
         requestGoogleCalendarEventUpsertAfterCommit(id);
-        requestPersistenceSyncAfterCommit("project recovered", PersistenceChangeType.UPDATE_ITEM);
+        requestDataSyncAfterCommit("project recovered");
         return response;
     }
 
@@ -177,13 +175,8 @@ public class ProjectService {
             .orElseThrow(() -> new ItemNotFoundException("project not found"));
     }
 
-    private void requestPersistenceSyncAfterCommit(String reason) {
-        requestPersistenceSyncAfterCommit(reason, PersistenceChangeType.UPDATE_ITEM);
-    }
-
-    private void requestPersistenceSyncAfterCommit(String reason, PersistenceChangeType changeType) {
-        afterCommitExecutor.run(() ->
-            persistenceGitSyncService.requestSync(reason, changeType));
+    private void requestDataSyncAfterCommit(String reason) {
+        afterCommitExecutor.run(() -> dataSyncService.requestSync(reason));
     }
 
     private void requestGoogleCalendarEventUpsertAfterCommit(UUID itemId) {

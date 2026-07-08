@@ -15,8 +15,6 @@ import com.gtdonrails.api.entities.ProjectItem;
 import com.gtdonrails.api.enums.ItemStatus;
 import com.gtdonrails.api.exceptions.item.ItemNotFoundException;
 import com.gtdonrails.api.normalizers.ItemTextNormalizer;
-import com.gtdonrails.api.persistence.bootstrap.model.PersistenceChangeType;
-import com.gtdonrails.api.persistence.bootstrap.services.PersistenceGitSyncService;
 import com.gtdonrails.api.repositories.ItemRepository;
 import com.gtdonrails.api.repositories.ProjectItemRepository;
 import com.gtdonrails.api.repositories.ProjectRepository;
@@ -31,15 +29,15 @@ public class ProjectItemService {
     private final ProjectItemRepository projectItemRepository;
     private final ItemRepository itemRepository;
     private final ItemTextNormalizer itemTextNormalizer;
-    private final PersistenceGitSyncService persistenceGitSyncService;
+    private final DataSyncService dataSyncService;
     private final AfterCommitExecutor afterCommitExecutor;
 
-    public ProjectItemService(ProjectRepository projectRepository, ProjectItemRepository projectItemRepository, ItemRepository itemRepository, ItemTextNormalizer itemTextNormalizer, PersistenceGitSyncService persistenceGitSyncService, AfterCommitExecutor afterCommitExecutor) {
+    public ProjectItemService(ProjectRepository projectRepository, ProjectItemRepository projectItemRepository, ItemRepository itemRepository, ItemTextNormalizer itemTextNormalizer, DataSyncService dataSyncService, AfterCommitExecutor afterCommitExecutor) {
         this.projectRepository = projectRepository;
         this.projectItemRepository = projectItemRepository;
         this.itemRepository = itemRepository;
         this.itemTextNormalizer = itemTextNormalizer;
-        this.persistenceGitSyncService = persistenceGitSyncService;
+        this.dataSyncService = dataSyncService;
         this.afterCommitExecutor = afterCommitExecutor;
     }
 
@@ -55,7 +53,7 @@ public class ProjectItemService {
         item.markAsStuff();
         Item savedItem = itemRepository.saveAndFlush(item);
         projectItemRepository.insertProjectItem(project.getItemId(), savedItem.getId());
-        requestPersistenceSyncAfterCommit("project stuff created", PersistenceChangeType.CREATE_ITEM);
+        requestDataSyncAfterCommit("project stuff created");
         return toResponse(new ProjectItem(project, savedItem));
     }
 
@@ -122,7 +120,7 @@ public class ProjectItemService {
         return new ProjectItemResponseDto(projectItem.getProject().getItemId(), item.getId(), item.getStatus().name(), item.getTitle().value(), item.getBody(), item.getCreatedAt(), calendarDate(projectItem), calendarTime(projectItem), nextActionDeadline(projectItem));
     }
 
-    private void requestPersistenceSyncAfterCommit(String reason, PersistenceChangeType changeType) {
-        afterCommitExecutor.run(() -> persistenceGitSyncService.requestSync(reason, changeType));
+    private void requestDataSyncAfterCommit(String reason) {
+        afterCommitExecutor.run(() -> dataSyncService.requestSync(reason));
     }
 }

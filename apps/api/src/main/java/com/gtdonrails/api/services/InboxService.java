@@ -145,7 +145,7 @@ public class InboxService {
         item.convertToProject(request.deadline());
         itemRepository.save(item);
         requestGoogleCalendarEventSyncAfterCommit(id);
-        requestPersistenceSyncAfterCommit("stuff converted to project", PersistenceChangeType.UPDATE_ITEM);
+        requestDataSyncAfterCommit("stuff converted to project");
     }
 
     private Item findStuff(UUID id) {
