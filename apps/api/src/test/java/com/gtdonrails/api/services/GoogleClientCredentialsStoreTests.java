@@ -10,7 +10,6 @@ import java.nio.file.Path;
 import java.util.Base64;
 
 import com.gtdonrails.api.config.GoogleProperties;
-import com.gtdonrails.api.persistence.bootstrap.properties.PersistenceBootstrapProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -28,15 +27,12 @@ class GoogleClientCredentialsStoreTests {
     @BeforeEach
     void setUp() {
         googleProperties = new GoogleProperties();
-        PersistenceBootstrapProperties bootstrapProperties = new PersistenceBootstrapProperties();
-        bootstrapProperties.setCloneDirectory(tempDir.toString());
-        store = new GoogleClientCredentialsStore(googleProperties, bootstrapProperties);
+        store = new GoogleClientCredentialsStore(googleProperties, tempDir.toString());
     }
 
     @Test
     void loadConfiguredCredentialsAppliesPersistedProperties() throws Exception {
-        Files.createDirectories(tempDir.resolve("config"));
-        Files.writeString(tempDir.resolve("config/google.properties"), """
+        Files.writeString(tempDir.resolve("google.properties"), """
             gtd.google.client-id=persisted-client
             gtd.google.client-secret=persisted-secret
             """);
@@ -52,7 +48,7 @@ class GoogleClientCredentialsStoreTests {
 
         assertEquals("new-client", googleProperties.getClientId());
         assertEquals("new-secret", googleProperties.getClientSecret());
-        assertTrue(Files.readString(tempDir.resolve("config/google.properties")).contains(expectedCredentialsFile()));
+        assertTrue(Files.readString(tempDir.resolve("google.properties")).contains(expectedCredentialsFile()));
     }
 
     @Test
@@ -62,7 +58,7 @@ class GoogleClientCredentialsStoreTests {
         String tokenEncryptionKey = googleProperties.getTokenEncryptionKey();
         assertNotNull(tokenEncryptionKey);
         assertEquals(32, Base64.getDecoder().decode(tokenEncryptionKey).length);
-        assertTrue(Files.readString(tempDir.resolve("config/google.properties"))
+        assertTrue(Files.readString(tempDir.resolve("google.properties"))
             .contains("gtd.google.token-encryption-key=" + tokenEncryptionKey));
     }
 
@@ -86,8 +82,7 @@ class GoogleClientCredentialsStoreTests {
 
     @Test
     void configurationHealthIsInvalidWhenTokenEncryptionKeyIsMalformed() throws Exception {
-        Files.createDirectories(tempDir.resolve("config"));
-        Files.writeString(tempDir.resolve("config/google.properties"), """
+        Files.writeString(tempDir.resolve("google.properties"), """
             gtd.google.client-id=persisted-client
             gtd.google.client-secret=persisted-secret
             gtd.google.token-encryption-key=not-base64
@@ -101,14 +96,13 @@ class GoogleClientCredentialsStoreTests {
 
     @Test
     void repairMissingTokenEncryptionKeyWritesGeneratedKey() throws Exception {
-        Files.createDirectories(tempDir.resolve("config"));
-        Files.writeString(tempDir.resolve("config/google.properties"), expectedCredentialsFile());
+        Files.writeString(tempDir.resolve("google.properties"), expectedCredentialsFile());
 
         assertTrue(store.repairMissingTokenEncryptionKey());
 
         String tokenEncryptionKey = googleProperties.getTokenEncryptionKey();
         assertNotNull(tokenEncryptionKey);
-        assertTrue(Files.readString(tempDir.resolve("config/google.properties"))
+        assertTrue(Files.readString(tempDir.resolve("google.properties"))
             .contains("gtd.google.token-encryption-key=" + tokenEncryptionKey));
     }
 

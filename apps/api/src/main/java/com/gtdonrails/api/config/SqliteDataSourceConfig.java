@@ -1,11 +1,12 @@
 package com.gtdonrails.api.config;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+
 import javax.sql.DataSource;
 
-import com.gtdonrails.api.persistence.bootstrap.properties.PersistenceBootstrapProperties;
-import com.gtdonrails.api.persistence.bootstrap.properties.PersistenceSyncProperties;
-import com.gtdonrails.api.persistence.bootstrap.services.GitPersistenceBootstrapService;
-import com.gtdonrails.api.persistence.bootstrap.services.PersistenceGitSyncService;
+import com.gtdonrails.api.persistence.bootstrap.services.SqliteJdbcUrlResolver;
+import com.gtdonrails.api.services.DataSyncService;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -14,23 +15,31 @@ import org.springframework.core.env.Environment;
 import org.sqlite.SQLiteDataSource;
 
 @Configuration
-@EnableConfigurationProperties({PersistenceBootstrapProperties.class, PersistenceSyncProperties.class})
+@EnableConfigurationProperties({AssetsProperties.class, DataSyncProperties.class})
 public class SqliteDataSourceConfig {
 
     @Bean
     @ConditionalOnProperty(name = "spring.datasource.url")
     DataSource dataSource(
         Environment environment,
-        GitPersistenceBootstrapService gitPersistenceBootstrapService,
-        PersistenceGitSyncService persistenceGitSyncService
-    ) {
+        DataSyncService dataSyncService,
+        DatabaseInitializationState databaseInitializationState,
+        SqliteJdbcUrlResolver sqliteJdbcUrlResolver
+    ) throws Exception {
         String jdbcUrl = environment.getRequiredProperty("spring.datasource.url");
-        gitPersistenceBootstrapService.ensureDatabaseAvailable(jdbcUrl);
-        persistenceGitSyncService.initialize(jdbcUrl);
-        persistenceGitSyncService.pullOnStartup();
+        dataSyncService.syncOnStartup();
+        createDatabaseWhenMissing(sqliteJdbcUrlResolver.resolve(jdbcUrl), databaseInitializationState);
 
         SQLiteDataSource dataSource = new SQLiteDataSource();
         dataSource.setUrl(jdbcUrl);
         return dataSource;
+    }
+
+    private void createDatabaseWhenMissing(Path databasePath, DatabaseInitializationState databaseInitializationState) throws Exception {
+        if (Files.exists(databasePath)) return;
+
+        Files.createDirectories(databasePath.getParent());
+        Files.createFile(databasePath);
+        databaseInitializationState.markCreatedEmptyDatabase();
     }
 }

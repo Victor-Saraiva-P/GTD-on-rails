@@ -24,36 +24,36 @@ export function buildConnectivityBlockerModel(isBrowserOnline: boolean, syncStat
   return {
     isBlocked: !isBrowserOnline,
     title: isBrowserOnline ? "Connection active" : "No internet connection",
-    message: "The affected features are GitHub via git and Google Drive via rclone.",
+    message: "The affected features are Data sync via rclone and Google Calendar.",
     rows: buildSyncRows(syncStatus)
   };
 }
 
 function buildSyncRows(syncStatus: SyncStatus | null): ConnectivitySyncRow[] {
-  return [buildGitRow(syncStatus), buildRcloneRow(syncStatus)];
+  return [buildDataRow(syncStatus), buildGoogleCalendarRow(syncStatus)];
 }
 
-function buildGitRow(syncStatus: SyncStatus | null): ConnectivitySyncRow {
-  const persistence = syncStatus?.persistence;
+function buildDataRow(syncStatus: SyncStatus | null): ConnectivitySyncRow {
+  const data = syncStatus?.data;
 
   return {
-    label: "GIT",
-    state: persistence?.state ?? "UNKNOWN",
-    pendingText: pendingText(Boolean(persistence?.hasLocalChanges || persistence?.hasUnpushedCommits)),
-    lastSuccessfulSyncAt: persistence?.lastSuccessfulSyncAt ?? "Never synced",
-    lastError: persistence?.lastError ?? null
+    label: "DATA",
+    state: data?.state ?? "UNKNOWN",
+    pendingText: pendingText(Boolean(data?.pending || data?.running || data?.state === "FAILED")),
+    lastSuccessfulSyncAt: data?.lastSuccessfulSyncAt ?? "Never synced",
+    lastError: data?.lastError ?? null
   };
 }
 
-function buildRcloneRow(syncStatus: SyncStatus | null): ConnectivitySyncRow {
-  const assets = syncStatus?.assets;
+function buildGoogleCalendarRow(syncStatus: SyncStatus | null): ConnectivitySyncRow {
+  const googleCalendar = syncStatus?.googleCalendar;
 
   return {
-    label: "RCLONE",
-    state: assets?.state ?? "UNKNOWN",
-    pendingText: pendingText(Boolean(assets?.pending || assets?.running || assets?.state === "FAILED")),
-    lastSuccessfulSyncAt: assets?.lastSuccessfulSyncAt ?? "Never synced",
-    lastError: assets?.lastError ?? null
+    label: "GCAL",
+    state: googleCalendar?.state ?? "UNKNOWN",
+    pendingText: pendingText(Boolean(googleCalendar?.pending || googleCalendar?.running || googleCalendar?.state === "FAILED")),
+    lastSuccessfulSyncAt: googleCalendar?.lastSuccessfulSyncAt ?? "Never synced",
+    lastError: googleCalendar?.lastError ?? null
   };
 }
 

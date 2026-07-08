@@ -52,6 +52,10 @@ _Avoid_: Google account, environment config
 The health of a local integration configuration, including whether required secrets are missing, ready, invalid, or failed to repair.
 _Avoid_: Connected status, sync status
 
+**Persistence Sync**:
+The movement of structured GTD data between trusted local app installations.
+_Avoid_: Git sync, database backup
+
 **On Going**:
 An item state for work that has been pulled into active execution. On going items are represented on the shared on-going external agenda.
 _Avoid_: In progress, active task

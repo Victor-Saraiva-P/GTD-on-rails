@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted.
+Superseded by [Use rclone data sync instead of Git persistence sync](../adr/0001-use-rclone-data-sync-instead-of-git-persistence-sync.md).
 
 ## Context
 

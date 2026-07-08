@@ -29,8 +29,6 @@ import com.gtdonrails.api.exceptions.context.ContextNotFoundException;
 import com.gtdonrails.api.exceptions.item.ItemNotFoundException;
 import com.gtdonrails.api.mappers.StuffMapper;
 import com.gtdonrails.api.normalizers.ItemTextNormalizer;
-import com.gtdonrails.api.persistence.bootstrap.model.PersistenceChangeType;
-import com.gtdonrails.api.persistence.bootstrap.services.PersistenceGitSyncService;
 import com.gtdonrails.api.repositories.ContextRepository;
 import com.gtdonrails.api.repositories.ItemRepository;
 import com.gtdonrails.api.types.ItemBody;
@@ -58,7 +56,7 @@ class InboxServiceTests {
     private StuffMapper stuffMapper;
 
     @Mock
-    private PersistenceGitSyncService persistenceGitSyncService;
+    private DataSyncService dataSyncService;
 
     @Mock
     private GoogleCalendarEventQueueService googleCalendarEventQueueService;
@@ -75,7 +73,7 @@ class InboxServiceTests {
             contextRepository,
             stuffMapper,
             new ItemTextNormalizer(),
-            persistenceGitSyncService,
+            dataSyncService,
             googleCalendarEventQueueService,
             new AfterCommitExecutor());
     }
@@ -132,7 +130,7 @@ class InboxServiceTests {
         verify(itemRepository).save(itemCaptor.capture());
         assertEquals("Capture idea later", itemCaptor.getValue().getTitle().value());
         assertEquals(expectedResponse, response);
-        verify(persistenceGitSyncService).requestSync("stuff created", PersistenceChangeType.CREATE_ITEM);
+        verify(dataSyncService).requestSync("stuff created");
     }
 
     @Test
@@ -153,7 +151,7 @@ class InboxServiceTests {
         assertEquals(LocalDate.parse("2028-02-29"), stuff.getNextAction().getDeadline());
         assertEquals(context, stuff.getNextAction().getContexts().iterator().next());
         verify(googleCalendarEventQueueService).requestUpsert(stuffId);
-        verify(persistenceGitSyncService).requestSync("stuff converted to next action", PersistenceChangeType.UPDATE_ITEM);
+        verify(dataSyncService).requestSync("stuff converted to next action");
     }
 
     @Test
