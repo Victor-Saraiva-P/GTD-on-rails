@@ -14,6 +14,7 @@ Active projects with a deadline appear as all-day entries on the external Projec
 
 | Shortcut | Scope | Action |
 | --- | --- | --- |
+| `Enter` | List | Open the selected project's detail page. |
 | `e` | List | Edit selected project title or deadline. |
 | `d` | List | Delete selected project. |
 | `x` | List | Mark selected project as done. |
@@ -28,6 +29,27 @@ Active projects with a deadline appear as all-day entries on the external Projec
 | `k` | List | Move selection to the previous project. |
 | `l` | List | Move selection to the next project. |
 | `Space k` | List | Show available keybindings. |
+
+## Project Detail Page
+
+The project detail page is a fullscreen page for one active project. Its first subview is the Project Actions View, titled with the project title and using the project purple page theme.
+
+The Project Actions View is a unified list of project items with a detail preview pane beside it. It shows captured project stuff first, calendar items second, next actions with deadlines third, and next actions without deadlines last.
+
+Project stuff created from this page remains normal stuff and also appears in Inbox until processed. Processing project stuff can turn it into a next action or calendar item; the resulting item remains in the Project Actions View and also appears in its global page.
+
+| Shortcut | Scope | Action |
+| --- | --- | --- |
+| `a` | Project Actions View | Add project stuff. |
+| `p` | Project Actions View | Process selected project stuff into a next action or calendar item. |
+| `Enter` | Project Actions View | Edit selected project item title. |
+| `l` | Project Actions View | Focus the selected project item detail/body. |
+| `j` | Project Actions View | Move selection to the next project item. |
+| `k` | Project Actions View | Move selection to the previous project item. |
+| `gg` | Project Actions View | Move selection to the first project item. |
+| `G` | Project Actions View | Move selection to the last project item. |
+| `Ctrl+h` | Project Item Detail | Exit body editing and return to the Project Actions View. |
+| `Space p` | Global | Open Projects using the normal global navigation behavior. |
 
 ## Completed Projects List
 

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test, { afterEach, describe, mock } from "node:test";
 
 import { deleteProject, fetchDeletedProjects, fetchDoneProjects, fetchProjects, markProjectDone, patchProject, processStuffToProject, recoverProject, resetProjectStatus } from "../src/features/projects/api.ts";
+import { createProjectStuff, fetchProjectActions } from "../src/features/projects/projectItems.ts";
 import type { Stuff } from "../src/features/inbox/types.ts";
 
 describe("projects API", () => {
@@ -114,6 +115,32 @@ describe("projects API", () => {
     const project = await recoverProject("project-1");
 
     assert.equal(project.title, "Recovered");
+  });
+
+  test("fetchProjectActions loads mixed project items", async () => {
+    globalThis.fetch = mock.fn(async (input) => {
+      assert.ok(input.toString().endsWith("/projects/project-1/items/actions"));
+      return new Response(JSON.stringify([{ id: "item-1", projectId: "project-1", kind: "STUFF", title: "Buy paste", body: null, status: "STUFF", createdAt: "2026-01-01T00:00:00Z" }]), { status: 200 });
+    });
+
+    const items = await fetchProjectActions("project-1");
+
+    assert.equal(items[0].kind, "STUFF");
+    assert.equal(items[0].body.text, "");
+  });
+
+  test("createProjectStuff posts project-scoped stuff", async () => {
+    globalThis.fetch = mock.fn(async (input, init) => {
+      assert.ok(input.toString().endsWith("/projects/project-1/items/stuff"));
+      assert.equal(init?.method, "POST");
+      assert.equal(init?.body, JSON.stringify({ title: "Buy paste" }));
+      return new Response(JSON.stringify({ id: "item-1", projectId: "project-1", kind: "STUFF", title: "Buy paste", body: null, status: "STUFF", createdAt: "2026-01-01T00:00:00Z" }), { status: 201 });
+    });
+
+    const item = await createProjectStuff("project-1", "Buy paste");
+
+    assert.equal(item.projectId, "project-1");
+    assert.equal(item.title, "Buy paste");
   });
 });
 

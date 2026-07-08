@@ -14,7 +14,15 @@ _Avoid_: on going thing, on going row, active panel item
 
 **Project Card**:
 A compact project representation in the Projects page that shows the project title and project glyph. It does not expose the captured stuff body that may have originated the project.
-_Avoid_: project detail, project preview
+_Avoid_: project preview
+
+**Project Detail Page**:
+A fullscreen project-focused page used to inspect and operate the items associated with one active project.
+_Avoid_: Project Workspace, project preview
+
+**Project Actions View**:
+The project detail subview that lists actionable or clarifiable project items. It includes project stuff, active calendar items, next actions with deadlines, and next actions without deadlines.
+_Avoid_: Actions, project task list, project backlog
 
 **Active Project**:
 A project whose desired result has not yet been achieved and remains part of current commitments.

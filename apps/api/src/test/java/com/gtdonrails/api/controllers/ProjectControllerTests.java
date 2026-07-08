@@ -13,10 +13,12 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.UUID;
 
 import com.gtdonrails.api.entities.Item;
 import com.gtdonrails.api.entities.Project;
 import com.gtdonrails.api.repositories.ItemRepository;
+import com.gtdonrails.api.repositories.ProjectItemRepository;
 import com.gtdonrails.api.repositories.ProjectRepository;
 import com.gtdonrails.api.types.Title;
 import org.junit.jupiter.api.BeforeEach;
@@ -47,6 +49,9 @@ class ProjectControllerTests {
     private ProjectRepository projectRepository;
 
     @Autowired
+    private ProjectItemRepository projectItemRepository;
+
+    @Autowired
     private ItemRepository itemRepository;
 
     private MockMvc mockMvc;
@@ -54,6 +59,7 @@ class ProjectControllerTests {
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).build();
+        projectItemRepository.deleteAll();
         projectRepository.deleteAll();
         itemRepository.deleteAll();
     }
@@ -147,9 +153,87 @@ class ProjectControllerTests {
             .andExpect(jsonPath("$[0].id").value(project.getItemId().toString()));
     }
 
+    @Test
+    void createsProjectStuffAndListsItInProjectActionsAndInbox() throws Exception {
+        Project project = saveProject("Replace CPU");
+
+        String location = mockMvc.perform(post("/projects/{id}/items/stuff", project.getItemId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"Buy thermal paste\"}"))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.projectId").value(project.getItemId().toString()))
+            .andExpect(jsonPath("$.kind").value("STUFF"))
+            .andExpect(jsonPath("$.title").value("Buy thermal paste"))
+            .andReturn()
+            .getResponse()
+            .getHeader("Location");
+
+        mockMvc.perform(get("/projects/{id}/items/actions", project.getItemId()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(1)))
+            .andExpect(jsonPath("$[0].kind").value("STUFF"))
+            .andExpect(jsonPath("$[0].title").value("Buy thermal paste"));
+
+        mockMvc.perform(get(location))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.title").value("Buy thermal paste"));
+
+        mockMvc.perform(get("/inbox"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(1)))
+            .andExpect(jsonPath("$[0].title").value("Buy thermal paste"));
+    }
+
+    @Test
+    void keepsProcessedProjectItemsInProjectActionsOrder() throws Exception {
+        Project project = saveProject("Replace CPU");
+        UUID nextActionId = createProjectStuff(project, "Search thermal paste prices");
+        UUID calendarId = createProjectStuff(project, "Buy thermal paste");
+        createProjectStuff(project, "Remember screwdriver");
+
+        mockMvc.perform(post("/inbox/{id}/next-action", nextActionId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "energy": 4.5,
+                      "estimatedTime": { "hours": 1, "minutes": 30 },
+                      "contextIds": [],
+                      "deadline": "2026-02-01"
+                    }
+                    """))
+            .andExpect(status().isNoContent());
+
+        mockMvc.perform(post("/inbox/{id}/calendar", calendarId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"scheduledDate\":\"2026-01-01\",\"scheduledTime\":\"09:30\"}"))
+            .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/projects/{id}/items/actions", project.getItemId()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(3)))
+            .andExpect(jsonPath("$[0].kind").value("STUFF"))
+            .andExpect(jsonPath("$[1].kind").value("CALENDAR"))
+            .andExpect(jsonPath("$[1].scheduledDate").value("2026-01-01"))
+            .andExpect(jsonPath("$[2].kind").value("NEXT_ACTION"))
+            .andExpect(jsonPath("$[2].deadline").value("2026-02-01"));
+    }
+
     private Project saveProject(String title) {
-        Item item = itemRepository.save(new Item(new Title(title), null));
-        return projectRepository.save(new Project(item, LocalDate.parse("2026-06-01")));
+        Item item = new Item(new Title(title), null);
+        Project project = item.convertToProject(LocalDate.parse("2026-06-01"));
+        itemRepository.saveAndFlush(item);
+        return projectRepository.save(project);
+    }
+
+    private UUID createProjectStuff(Project project, String title) throws Exception {
+        String location = mockMvc.perform(post("/projects/{id}/items/stuff", project.getItemId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"" + title + "\"}"))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getHeader("Location");
+        return UUID.fromString(location.substring(location.lastIndexOf('/') + 1));
     }
 
     private Project doneProject(String title, String instant) {

@@ -15,6 +15,11 @@ import type { ProjectsWorkspaceController } from "../features/projects/useProjec
 
 type ProjectsPageProps = Readonly<{
   controller: ProjectsWorkspaceController;
+  openProjectDetail: () => void;
+}>;
+
+type ProjectsControllerProps = Readonly<{
+  controller: ProjectsWorkspaceController;
 }>;
 
 function projectBinding(id: string, key: string, description: string, runKeybind: () => void, sequence?: string[]): KeybindDefinition {
@@ -25,7 +30,7 @@ function canEdit(controller: ProjectsWorkspaceController): boolean {
   return !controller.isLoading && !controller.isUpdating && Boolean(controller.selectedItem);
 }
 
-function buildProjectBindings(controller: ProjectsWorkspaceController, openEdit: () => void) {
+function buildProjectBindings(controller: ProjectsWorkspaceController, openEdit: () => void, openProjectDetail: () => void) {
   const bindings = [
     projectBinding("projects.move-left", "h", "Move to project on the left", () => moveProjectSelection(controller, "left")),
     projectBinding("projects.move-down", "j", "Move to project below", () => moveProjectSelection(controller, "down")),
@@ -35,6 +40,7 @@ function buildProjectBindings(controller: ProjectsWorkspaceController, openEdit:
     projectBinding("projects.move-last", "G", "Move to last project", controller.selectLast),
     projectBinding("projects.switch-forward", "]", "Open next Projects subview", () => controller.switchSubview("next")),
     projectBinding("projects.switch-back", "[", "Open previous Projects subview", () => controller.switchSubview("previous")),
+    projectBinding("projects.open-detail", "Enter", "Open project detail", () => canEdit(controller) && openProjectDetail()),
     projectBinding("projects.edit", "e", "Edit selected project", () => canEdit(controller) && openEdit()),
     projectBinding("projects.undo", "u", "Undo last action", () => void controller.undo()),
     { ...projectBinding("projects.redo", "r", "Redo last action", () => void controller.redo()), ctrl: true },
@@ -77,7 +83,7 @@ function projectCardRects(): ProjectGridCardRect[] {
   }).filter((rect) => rect.id);
 }
 
-function ProjectsBody({ controller }: ProjectsPageProps) {
+function ProjectsBody({ controller }: ProjectsControllerProps) {
   if (controller.isLoading) return <p className="pane-state">Loading {projectLabel(controller).toLowerCase()}...</p>;
   if (controller.errorMessage) return <RetryState message={controller.errorMessage} onRetry={controller.reload} />;
   if (controller.projects.length === 0) return <p className="pane-state">{projectEmptyMessage(controller)}</p>;
@@ -107,10 +113,10 @@ function projectTheme(controller: ProjectsWorkspaceController) {
  *
  * @example <ProjectsPage controller={controller} />
  */
-export function ProjectsPage({ controller }: ProjectsPageProps) {
+export function ProjectsPage({ controller, openProjectDetail }: ProjectsPageProps) {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const openEdit = useCallback(() => setIsEditOpen(true), []);
-  const bindings = useMemo(() => buildProjectBindings(controller, openEdit), [controller, openEdit]);
+  const bindings = useMemo(() => buildProjectBindings(controller, openEdit, openProjectDetail), [controller, openEdit, openProjectDetail]);
   useKeybindScreen("projects");
   useRegisterKeybinds(bindings);
   const theme = projectTheme(controller);

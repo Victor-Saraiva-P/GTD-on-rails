@@ -260,6 +260,18 @@
   color: #9B9B9B;
 }
 
+.tree-entry__glyph--project-stuff {
+  color: #CC782F;
+}
+
+.tree-entry__glyph--project-calendar {
+  color: #c85a53;
+}
+
+.tree-entry__glyph--project-next-action {
+  color: #4F9768;
+}
+
 .tree-entry__label,
 .detail-card__title {
   font-size: 0.95rem;

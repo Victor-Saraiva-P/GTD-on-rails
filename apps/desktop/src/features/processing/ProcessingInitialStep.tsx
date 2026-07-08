@@ -6,9 +6,10 @@ type ProcessingInitialStepProps = Readonly<{
   onCalendar: () => void;
   onProject: () => void;
   onCancel: () => void;
+  allowProject?: boolean;
 }>;
 
-export function ProcessingInitialStep({ onNextAction, onCalendar, onProject, onCancel }: ProcessingInitialStepProps) {
+export function ProcessingInitialStep({ allowProject = true, onNextAction, onCalendar, onProject, onCancel }: ProcessingInitialStepProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -37,7 +38,7 @@ export function ProcessingInitialStep({ onNextAction, onCalendar, onProject, onC
       return;
     }
 
-    if (event.key.toLowerCase() === "p") {
+    if (allowProject && event.key.toLowerCase() === "p") {
       event.preventDefault();
       event.stopPropagation();
       onProject();
@@ -52,9 +53,7 @@ export function ProcessingInitialStep({ onNextAction, onCalendar, onProject, onC
       <button className="processing-dialog__command" type="button" onClick={onCalendar}>
         <kbd>c</kbd><span>Calendar</span>
       </button>
-      <button className="processing-dialog__command" type="button" onClick={onProject}>
-        <kbd>p</kbd><span>Projects</span>
-      </button>
+      {allowProject ? <button className="processing-dialog__command" type="button" onClick={onProject}><kbd>p</kbd><span>Projects</span></button> : null}
     </div>
   );
 }

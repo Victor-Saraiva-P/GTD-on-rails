@@ -17,6 +17,7 @@ type ProcessingDialogProps = Readonly<{
   onProcess: (energy: number | null, estimatedTimeMinutes: number | null, contextIds: string[], deadline: string | null) => void;
   onProcessCalendar: (payload: CalendarConversionPayload) => void;
   onProcessProject: (deadline: string | null) => void;
+  allowProject?: boolean;
 }>;
 
 /**
@@ -24,7 +25,7 @@ type ProcessingDialogProps = Readonly<{
  *
  * @example <ProcessingDialog item={stuff} onClose={close} onProcess={process} />
  */
-export function ProcessingDialog({ item, onClose, onProcess, onProcessCalendar, onProcessProject }: ProcessingDialogProps) {
+export function ProcessingDialog({ allowProject = true, item, onClose, onProcess, onProcessCalendar, onProcessProject }: ProcessingDialogProps) {
   const [step, setStep] = useState<ProcessingStep>("initial");
   const [selectedContextIds, setSelectedContextIds] = useState<string[]>([]);
   const [selectedDeadline, setSelectedDeadline] = useState("");
@@ -85,7 +86,7 @@ export function ProcessingDialog({ item, onClose, onProcess, onProcessCalendar, 
       <div className="processing-dialog__title">Processing</div>
       <div className="processing-dialog__content">
         {step === "initial" && (
-          <ProcessingInitialStep onNextAction={handleNextAction} onCalendar={handleCalendar} onProject={handleProject} onCancel={onClose} />
+          <ProcessingInitialStep allowProject={allowProject} onNextAction={handleNextAction} onCalendar={handleCalendar} onProject={handleProject} onCancel={onClose} />
         )}
         {step === "set-calendar-date" && (
           <ProcessingCalendarDateStep date={selectedCalendarDate} onDateChange={setSelectedCalendarDate} onDateSelected={handleCalendarDateSelected} onBack={handleBack} />

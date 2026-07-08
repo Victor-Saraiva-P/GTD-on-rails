@@ -16,6 +16,10 @@ _Avoid_: Due date, scheduled date
 A GTD outcome that represents a desired result with a title and optional deadline. A project may originate from captured stuff, but the project view is concerned with the result rather than the original captured body.
 _Avoid_: On going, task
 
+**Project Item**:
+A GTD item associated with a project and shown as part of that project's operational work. In the current project detail flow, a project item can be stuff, a next action, or a calendar item.
+_Avoid_: subtask, child task, project task
+
 **Active Project**:
 A project whose desired result has not yet been achieved and remains part of current commitments.
 _Avoid_: In-progress project, on going project
