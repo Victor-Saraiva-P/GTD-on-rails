@@ -7,25 +7,14 @@ services:
       POSTGRES_USER: gtd
       POSTGRES_PASSWORD: gtd
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-
-  api:
-    image: gradle:9.4.0-jdk21
-    container_name: gtd-on-rails-api
-    working_dir: /workspace
-    command: ["./gradlew", "bootRun"]
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/gtd_on_rails
-      SPRING_DATASOURCE_USERNAME: gtd
-      SPRING_DATASOURCE_PASSWORD: gtd
-    ports:
-      - "8080:8080"
-    volumes:
-      - ../apps/api:/workspace
-    depends_on:
-      - postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gtd -d gtd_on_rails"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
 
 volumes:
   postgres_data:

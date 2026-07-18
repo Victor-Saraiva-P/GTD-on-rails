@@ -19,7 +19,7 @@ import org.sqlite.SQLiteDataSource;
 public class SqliteDataSourceConfig {
 
     @Bean
-    @ConditionalOnProperty(name = "spring.datasource.url")
+    @ConditionalOnProperty(name = "spring.datasource.driver-class-name", havingValue = "org.sqlite.JDBC")
     DataSource dataSource(
         Environment environment,
         FileSyncService fileSyncService,
