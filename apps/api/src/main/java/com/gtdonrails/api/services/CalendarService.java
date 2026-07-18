@@ -21,7 +21,7 @@ public class CalendarService {
     private final CalendarRepository calendarRepository;
     private final CalendarMapper calendarMapper;
     private final Clock clock;
-    private final DataSyncService dataSyncService;
+    private final FileSyncService fileSyncService;
     private final GoogleCalendarEventQueueService googleCalendarEventQueueService;
     private final AfterCommitExecutor afterCommitExecutor;
 
@@ -29,14 +29,14 @@ public class CalendarService {
         CalendarRepository calendarRepository,
         CalendarMapper calendarMapper,
         Clock clock,
-        DataSyncService dataSyncService,
+        FileSyncService fileSyncService,
         GoogleCalendarEventQueueService googleCalendarEventQueueService,
         AfterCommitExecutor afterCommitExecutor
     ) {
         this.calendarRepository = calendarRepository;
         this.calendarMapper = calendarMapper;
         this.clock = clock;
-        this.dataSyncService = dataSyncService;
+        this.fileSyncService = fileSyncService;
         this.googleCalendarEventQueueService = googleCalendarEventQueueService;
         this.afterCommitExecutor = afterCommitExecutor;
     }
@@ -125,7 +125,7 @@ public class CalendarService {
         Calendar savedCalendar = calendarRepository.save(calendar);
         CalendarResponseDto response = calendarMapper.toResponse(savedCalendar);
         requestGoogleCalendarEventSyncAfterCommit(savedCalendar.getItemId());
-        requestDataSyncAfterCommit("calendar updated");
+        fileSyncService.requestSyncAfterCommit(afterCommitExecutor, "calendar updated");
         return response;
     }
 
@@ -190,7 +190,7 @@ public class CalendarService {
         Calendar savedCalendar = calendarRepository.save(calendar);
         CalendarResponseDto response = calendarMapper.toResponse(savedCalendar);
         requestGoogleCalendarEventSyncAfterCommit(savedCalendar.getItemId());
-        requestDataSyncAfterCommit(reason);
+        fileSyncService.requestSyncAfterCommit(afterCommitExecutor, reason);
         return response;
     }
 
@@ -201,10 +201,6 @@ public class CalendarService {
 
     private List<CalendarResponseDto> mapCalendars(List<Calendar> calendars) {
         return calendars.stream().map(calendarMapper::toResponse).toList();
-    }
-
-    private void requestDataSyncAfterCommit(String reason) {
-        afterCommitExecutor.run(() -> dataSyncService.requestSync(reason));
     }
 
     private void requestGoogleCalendarEventSyncAfterCommit(UUID itemId) {

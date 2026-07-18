@@ -65,7 +65,7 @@ class ItemServiceTests {
             new ItemTextNormalizer(),
             new ItemBodyNormalizer(),
             itemAssetService,
-            dataSyncService,
+            new FileSyncService(dataSyncService),
             googleCalendarEventQueueService,
             new AfterCommitExecutor());
     }

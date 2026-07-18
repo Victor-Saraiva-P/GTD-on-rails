@@ -26,20 +26,20 @@ public class ItemAssetService {
     private final ItemRepository itemRepository;
     private final ItemAssetRepository itemAssetRepository;
     private final AssetStorageService assetStorageService;
-    private final DataSyncService dataSyncService;
+    private final FileSyncService fileSyncService;
     private final AfterCommitExecutor afterCommitExecutor;
 
     public ItemAssetService(
         ItemRepository itemRepository,
         ItemAssetRepository itemAssetRepository,
         AssetStorageService assetStorageService,
-        DataSyncService dataSyncService,
+        FileSyncService fileSyncService,
         AfterCommitExecutor afterCommitExecutor
     ) {
         this.itemRepository = itemRepository;
         this.itemAssetRepository = itemAssetRepository;
         this.assetStorageService = assetStorageService;
-        this.dataSyncService = dataSyncService;
+        this.fileSyncService = fileSyncService;
         this.afterCommitExecutor = afterCommitExecutor;
     }
 
@@ -54,7 +54,7 @@ public class ItemAssetService {
         ItemAsset itemAsset = newItemAsset(item, file);
         assetStorageService.storeItemAsset(itemAsset.relativePath(), file);
         itemAssetRepository.save(itemAsset);
-        requestDataSyncAfterCommit("item asset uploaded");
+        fileSyncService.requestSyncAfterCommit(afterCommitExecutor, "item asset uploaded");
         return itemAssetResponse(itemAsset);
     }
 
@@ -70,7 +70,7 @@ public class ItemAssetService {
         ItemAsset itemAsset = newLocalItemAsset(item, sourcePath);
         assetStorageService.copyLocalItemAsset(itemAsset.relativePath(), sourcePath);
         itemAssetRepository.save(itemAsset);
-        requestDataSyncAfterCommit("local item asset copied");
+        fileSyncService.requestSyncAfterCommit(afterCommitExecutor, "local item asset copied");
         return itemAssetResponse(itemAsset);
     }
 
@@ -176,7 +176,4 @@ public class ItemAssetService {
             asset.isImage());
     }
 
-    private void requestDataSyncAfterCommit(String reason) {
-        afterCommitExecutor.run(() -> dataSyncService.requestSync(reason));
-    }
 }

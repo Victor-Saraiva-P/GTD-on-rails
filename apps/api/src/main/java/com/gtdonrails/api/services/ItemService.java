@@ -24,7 +24,7 @@ public class ItemService {
     private final ItemTextNormalizer itemTextNormalizer;
     private final ItemBodyNormalizer itemBodyNormalizer;
     private final ItemAssetService itemAssetService;
-    private final DataSyncService dataSyncService;
+    private final FileSyncService fileSyncService;
     private final GoogleCalendarEventQueueService googleCalendarEventQueueService;
     private final AfterCommitExecutor afterCommitExecutor;
 
@@ -34,7 +34,7 @@ public class ItemService {
         ItemTextNormalizer itemTextNormalizer,
         ItemBodyNormalizer itemBodyNormalizer,
         ItemAssetService itemAssetService,
-        DataSyncService dataSyncService,
+        FileSyncService fileSyncService,
         GoogleCalendarEventQueueService googleCalendarEventQueueService,
         AfterCommitExecutor afterCommitExecutor
     ) {
@@ -43,7 +43,7 @@ public class ItemService {
         this.itemTextNormalizer = itemTextNormalizer;
         this.itemBodyNormalizer = itemBodyNormalizer;
         this.itemAssetService = itemAssetService;
-        this.dataSyncService = dataSyncService;
+        this.fileSyncService = fileSyncService;
         this.googleCalendarEventQueueService = googleCalendarEventQueueService;
         this.afterCommitExecutor = afterCommitExecutor;
     }
@@ -60,7 +60,7 @@ public class ItemService {
         itemAssetService.reconcileBodyAssetReferences(id, body);
         item.setBody(body);
         ItemResponseDto response = itemMapper.toResponse(itemRepository.save(item));
-        requestDataSyncAfterCommit("item body updated");
+        fileSyncService.requestSyncAfterCommit(afterCommitExecutor, "item body updated");
         return response;
     }
 
@@ -75,12 +75,12 @@ public class ItemService {
         item.setTitle(new Title(itemTextNormalizer.normalizeTitle(request.title())));
         ItemResponseDto response = itemMapper.toResponse(itemRepository.save(item));
         requestCalendarEventUpsertAfterCommit(id, item);
-        requestDataSyncAfterCommit("item title updated");
+        fileSyncService.requestSyncAfterCommit(afterCommitExecutor, "item title updated");
         return response;
     }
 
     /**
-     * Soft deletes an active item and schedules data sync after commit.
+     * Soft deletes an active item and schedules File Sync after commit.
      *
      * <p>Example: {@code itemService.deleteItem(itemId)}.</p>
      */
@@ -91,11 +91,11 @@ public class ItemService {
         item.softDelete();
         itemRepository.save(item);
         requestCalendarEventDeleteAfterCommit(id, item);
-        requestDataSyncAfterCommit("item deleted");
+        fileSyncService.requestSyncAfterCommit(afterCommitExecutor, "item deleted");
     }
 
     /**
-     * Restores a soft-deleted item and schedules data sync after commit.
+     * Restores a soft-deleted item and schedules File Sync after commit.
      *
      * <p>Example: {@code itemService.restoreItem(itemId)}.</p>
      */
@@ -107,16 +107,12 @@ public class ItemService {
         itemAssetService.reconcileBodyAssetReferences(id, item.getBody());
         itemRepository.save(item);
         requestCalendarEventUpsertAfterCommit(id, item);
-        requestDataSyncAfterCommit("item restored");
+        fileSyncService.requestSyncAfterCommit(afterCommitExecutor, "item restored");
     }
 
     private Item findItem(UUID id) {
         return itemRepository.findByIdAndDeletedAtIsNull(id)
             .orElseThrow(() -> new ItemNotFoundException("item not found"));
-    }
-
-    private void requestDataSyncAfterCommit(String reason) {
-        afterCommitExecutor.run(() -> dataSyncService.requestSync(reason));
     }
 
     private void requestCalendarEventUpsertAfterCommit(UUID itemId, Item item) {

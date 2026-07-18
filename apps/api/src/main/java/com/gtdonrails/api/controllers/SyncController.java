@@ -1,9 +1,7 @@
 package com.gtdonrails.api.controllers;
 
-import com.gtdonrails.api.dtos.sync.DataSyncStatusDto;
 import com.gtdonrails.api.dtos.sync.FileSyncStatusDto;
 import com.gtdonrails.api.dtos.sync.SyncStatusDto;
-import com.gtdonrails.api.services.DataSyncService;
 import com.gtdonrails.api.services.FileSyncService;
 import com.gtdonrails.api.services.GoogleCalendarEventQueueService;
 import org.springframework.http.HttpStatus;
@@ -15,16 +13,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class SyncController {
 
-    private final DataSyncService dataSyncService;
     private final FileSyncService fileSyncService;
     private final GoogleCalendarEventQueueService googleCalendarEventQueueService;
 
     public SyncController(
-        DataSyncService dataSyncService,
         FileSyncService fileSyncService,
         GoogleCalendarEventQueueService googleCalendarEventQueueService
     ) {
-        this.dataSyncService = dataSyncService;
         this.fileSyncService = fileSyncService;
         this.googleCalendarEventQueueService = googleCalendarEventQueueService;
     }
@@ -37,23 +32,22 @@ public class SyncController {
     @GetMapping("/sync/status")
     public SyncStatusDto getStatus() {
         return new SyncStatusDto(
-            dataSyncService.status(),
             fileSyncService.status(),
             googleCalendarEventQueueService.status());
     }
 
     /**
-     * Handles manual data sync requests and reports the queued status.
+     * Handles the legacy manual data sync request and reports the File Sync status.
      *
      * <p>Example: {@code POST /sync/data}.</p>
      */
     @PostMapping("/sync/data")
-    public ResponseEntity<DataSyncStatusDto> requestDataSync() {
-        dataSyncService.requestManualSync();
+    public ResponseEntity<FileSyncStatusDto> requestDataSync() {
+        fileSyncService.requestManualSync();
 
         return ResponseEntity
             .status(HttpStatus.ACCEPTED)
-            .body(dataSyncService.status());
+            .body(fileSyncService.status());
     }
 
     /**

@@ -55,7 +55,7 @@ class CalendarServiceTests {
             calendarRepository,
             new CalendarMapper(),
             CLOCK,
-            dataSyncService,
+            new FileSyncService(dataSyncService),
             googleCalendarEventQueueService,
             new AfterCommitExecutor());
         when(calendarRepository.findById(calendarId)).thenReturn(Optional.of(calendar));

@@ -21,7 +21,7 @@ import com.gtdonrails.api.services.GoogleClientCredentialsStore;
 import com.gtdonrails.api.services.GoogleCalendarService;
 import com.gtdonrails.api.services.GoogleIntegrationConfigurationHealth;
 import com.gtdonrails.api.services.GoogleIntegrationConfigurationStatus;
-import com.gtdonrails.api.services.DataSyncService;
+import com.gtdonrails.api.services.FileSyncService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,7 +34,7 @@ public class GoogleCalendarController {
     private final GoogleCalendarService googleCalendarService;
     private final GoogleCalendarRepository calendarRepository;
     private final GoogleClientCredentialsStore credentialsStore;
-    private final DataSyncService dataSyncService;
+    private final FileSyncService fileSyncService;
 
     @GetMapping("/integrations/google-calendar/status")
     public ResponseEntity<Map<String, Object>> getStatus() {
@@ -62,7 +62,7 @@ public class GoogleCalendarController {
     private boolean repairLegacyConfigurationIfNeeded() {
         try {
             if (credentialsStore.repairMissingTokenEncryptionKey()) {
-                dataSyncService.requestSync("integration credentials repaired");
+                fileSyncService.requestSync("integration credentials repaired");
             }
             return true;
         } catch (Exception exception) {
@@ -75,7 +75,7 @@ public class GoogleCalendarController {
         if (repairFailed) {
             return new GoogleIntegrationConfigurationHealth(
                 GoogleIntegrationConfigurationStatus.REPAIR_FAILED,
-                "Google Integration Configuration repair failed; fix data sync and try again.");
+                "Google Integration Configuration repair failed; fix File Sync and try again.");
         }
         return credentialsStore.configurationHealth();
     }
@@ -89,7 +89,7 @@ public class GoogleCalendarController {
 
         try {
             credentialsStore.save(clientId, clientSecret);
-            dataSyncService.requestSync("integration credentials updated");
+            fileSyncService.requestSync("integration credentials updated");
             return ResponseEntity.ok().build();
         } catch (Exception e) {
             log.error("Failed to save credentials", e);

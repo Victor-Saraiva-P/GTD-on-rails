@@ -55,7 +55,7 @@ class ItemAssetServiceTests {
             itemRepository,
             itemAssetRepository,
             assetStorageService,
-            dataSyncService,
+            new FileSyncService(dataSyncService),
             new AfterCommitExecutor());
     }
 
