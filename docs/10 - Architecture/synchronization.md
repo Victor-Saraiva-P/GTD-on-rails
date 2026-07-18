@@ -12,10 +12,10 @@ The infrastructure that hosts these sync processes is described in [Infrastructu
 
 The system has two synchronization channels.
 
-- Data sync uses `rclone bisync` to move the whole `gtd.data.root-directory` between trusted machines and Google Drive.
+- File Sync uses `rclone bisync` to move the whole `gtd.data.root-directory` between trusted machines and Google Drive. `DataSync*` remains a compatibility alias for existing consumers during the PostgreSQL migration.
 - Google Calendar sync mirrors GTD items to external agendas after local domain changes.
 
-The backend owns both channels. The frontend observes status and can request manual data sync.
+The backend owns both channels. The frontend observes status and can request manual File Sync.
 
 ---
 
@@ -70,7 +70,7 @@ ${gtd.data.root-directory}/google.properties
 
 ## 3. Data Sync Flow
 
-Data sync is handled by `DataSyncService` and `RcloneDataSyncService`.
+File Sync is exposed by `FileSyncService` and remains implemented by the compatible `DataSyncService` and `RcloneDataSyncService` seam until the runtime migration contracts the aliases.
 
 Startup behavior:
 
@@ -85,7 +85,7 @@ Runtime behavior:
 - Application services request data sync after committed domain changes.
 - Google Integration Configuration saves write `google.properties` locally and request asynchronous data sync.
 - Scheduled data sync runs every `gtd.sync.interval-ms`.
-- Manual data sync enqueues work through `POST /sync/data`.
+- Manual File Sync enqueues work through `POST /sync/files`. The compatibility endpoint `POST /sync/data` remains available for existing consumers.
 - Data sync runs in a single-thread executor and coalesces pending requests while one sync is already running.
 
 ---
@@ -157,6 +157,7 @@ GET /sync/status
 The response contains:
 
 - `data`: data sync status.
+- `file`: canonical File Sync status. It has the same state and timestamps as `data` while compatibility aliases remain active.
 - `googleCalendar`: Google Calendar sync status.
 
 Data status includes:
@@ -169,13 +170,13 @@ Data status includes:
 - `lastSuccessfulSyncAt`
 - `lastError`
 
-Manual data sync is requested at:
+Manual File Sync is requested at:
 
 ```text
-POST /sync/data
+POST /sync/files
 ```
 
-The endpoint enqueues sync and returns `202 Accepted` with the current data sync status.
+The endpoint enqueues sync and returns `202 Accepted` with the current File Sync status. Existing clients may continue using `POST /sync/data`.
 
 The desktop footer renders one Data sync indicator and one Google Calendar sync indicator.
 

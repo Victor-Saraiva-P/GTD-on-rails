@@ -11,3 +11,7 @@ _Avoid_: current state, item state, next-action attributes
 **On Going Item**:
 An active execution item shown in the On Going list. It can be either an on going next action or an on going calendar item.
 _Avoid_: on going thing, on going row, active panel item
+
+**Database Setup**:
+The first-installation flow that provisions a runtime environment's structured persistence after successful File Sync confirms that no Database Connection Configuration exists.
+_Avoid_: Database login, connection screen, Supabase setup
