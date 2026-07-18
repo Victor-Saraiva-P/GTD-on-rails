@@ -1,8 +1,8 @@
 import type { CSSProperties } from "react";
 import { useSyncStatus } from "./SyncStatusProvider";
 import type {
-  DataSyncState,
-  DataSyncStatus,
+  FileSyncState,
+  FileSyncStatus,
   GoogleCalendarSyncState,
   GoogleCalendarSyncStatus
 } from "./types";
@@ -26,7 +26,7 @@ function formatInstant(value: string | null): string | null {
   }).format(new Date(value));
 }
 
-function dataVisual(state: DataSyncState | null): IndicatorVisual {
+function fileVisual(state: FileSyncState | null): IndicatorVisual {
   switch (state) {
     case "SYNCED":
       return { label: "Synced", tone: "idle" };
@@ -62,13 +62,13 @@ function googleCalendarVisual(state: GoogleCalendarSyncState | null): IndicatorV
   }
 }
 
-function describeDataStatus(status: DataSyncStatus | null, failed: boolean): string {
+function describeFileStatus(status: FileSyncStatus | null, failed: boolean): string {
   if (!status) {
-    return failed ? "Data sync status unavailable." : "Loading data sync status.";
+    return failed ? "File sync status unavailable." : "Loading file sync status.";
   }
 
   const details = [
-    `Data sync: ${dataVisual(status.state).label}`,
+    `File sync: ${fileVisual(status.state).label}`,
     status.lastSuccessfulSyncAt ? `Last success: ${formatInstant(status.lastSuccessfulSyncAt)}` : null,
     status.lastError ? `Last error: ${status.lastError}` : null
   ].filter(Boolean);
@@ -90,7 +90,7 @@ function describeGoogleCalendarStatus(status: GoogleCalendarSyncStatus | null, f
   return details.join("\n");
 }
 
-function DataSyncIcon() {
+function FileSyncIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" className="sync-status__svg">
       <path d="M18.2 8.1A7.2 7.2 0 0 0 5.7 6.4L4.3 8.1" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
@@ -133,7 +133,7 @@ function SyncIndicatorIcon({ icon }: Readonly<Pick<SyncIndicatorProps, "icon">>)
     return <GoogleCalendarIcon />;
   }
 
-  return <DataSyncIcon />;
+  return <FileSyncIcon />;
 }
 
 function SyncIndicator({ ariaLabel, title, visual, icon }: SyncIndicatorProps) {
@@ -161,12 +161,12 @@ type SyncStatusIndicatorRowProps = Readonly<{
 }>;
 
 function DataStatusIndicator({ failedBeforeStatus, isLoading, status }: SyncStatusIndicatorRowProps) {
-  const visual = dataVisual(status?.data.state ?? null);
+  const visual = fileVisual(status?.file.state ?? null);
 
   return (
     <SyncIndicator
-      ariaLabel={`Data sync ${visual.label.toLowerCase()}`}
-      title={describeDataStatus(status?.data ?? null, failedBeforeStatus)}
+      ariaLabel={`File sync ${visual.label.toLowerCase()}`}
+      title={describeFileStatus(status?.file ?? null, failedBeforeStatus)}
       visual={loadingVisual(visual, isLoading)}
       icon="data"
     />

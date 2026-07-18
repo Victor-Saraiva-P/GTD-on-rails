@@ -6,7 +6,7 @@ import java.nio.file.Path;
 import javax.sql.DataSource;
 
 import com.gtdonrails.api.persistence.bootstrap.services.SqliteJdbcUrlResolver;
-import com.gtdonrails.api.services.DataSyncService;
+import com.gtdonrails.api.services.FileSyncService;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -22,12 +22,12 @@ public class SqliteDataSourceConfig {
     @ConditionalOnProperty(name = "spring.datasource.url")
     DataSource dataSource(
         Environment environment,
-        DataSyncService dataSyncService,
+        FileSyncService fileSyncService,
         DatabaseInitializationState databaseInitializationState,
         SqliteJdbcUrlResolver sqliteJdbcUrlResolver
     ) throws Exception {
         String jdbcUrl = environment.getRequiredProperty("spring.datasource.url");
-        dataSyncService.syncOnStartup();
+        fileSyncService.syncOnStartup();
         createDatabaseWhenMissing(sqliteJdbcUrlResolver.resolve(jdbcUrl), databaseInitializationState);
 
         SQLiteDataSource dataSource = new SQLiteDataSource();

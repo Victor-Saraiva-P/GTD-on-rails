@@ -9,11 +9,11 @@ import org.springframework.stereotype.Component;
 public class NewDatabaseDataSyncPublisher {
 
     private final DatabaseInitializationState databaseInitializationState;
-    private final DataSyncService dataSyncService;
+    private final FileSyncService fileSyncService;
 
-    public NewDatabaseDataSyncPublisher(DatabaseInitializationState databaseInitializationState, DataSyncService dataSyncService) {
+    public NewDatabaseDataSyncPublisher(DatabaseInitializationState databaseInitializationState, FileSyncService fileSyncService) {
         this.databaseInitializationState = databaseInitializationState;
-        this.dataSyncService = dataSyncService;
+        this.fileSyncService = fileSyncService;
     }
 
     /**
@@ -25,6 +25,6 @@ public class NewDatabaseDataSyncPublisher {
     public void publishNewDatabaseSync() {
         if (!databaseInitializationState.createdEmptyDatabase()) return;
 
-        dataSyncService.requestSync("new database initialized");
+        fileSyncService.requestSync("new database initialized");
     }
 }
