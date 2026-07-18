@@ -68,7 +68,7 @@ ${gtd.data.root-directory}/google.properties
 
 ---
 
-## 3. Data Sync Flow
+## 3. File Sync Flow
 
 File Sync is exposed by `FileSyncService`; `DataSyncService` and `RcloneDataSyncService` remain compatibility implementation aliases until final contraction.
 
@@ -78,15 +78,15 @@ Startup behavior:
 - If rclone File Sync is enabled, startup runs blocking File Sync before SQLite opens.
 - If `gtd-on-rails-sync-check` is missing, startup runs bootstrap sync from remote to local.
 - If the SQLite database is still missing after successful startup sync, the backend creates an empty database file and Flyway initializes the schema.
-- When a new empty database was created, the backend queues asynchronous data sync after application startup so the migrated schema is uploaded.
+- When a new empty database was created, the backend queues asynchronous File Sync after application startup so the migrated schema is uploaded.
 
 Runtime behavior:
 
 - Application services request File Sync after committed domain changes.
-- Google Integration Configuration saves write `google.properties` locally and request asynchronous data sync.
+- Google Integration Configuration saves write `google.properties` locally and request asynchronous File Sync.
 - Scheduled File Sync runs every `gtd.sync.interval-ms`.
 - Manual File Sync enqueues work through `POST /sync/files`. The compatibility endpoint `POST /sync/data` remains available for existing consumers.
-- Data sync runs in a single-thread executor and coalesces pending requests while one sync is already running.
+- File Sync runs in a single-thread executor and coalesces pending requests while one sync is already running.
 
 ---
 
@@ -124,7 +124,7 @@ Current rclone remotes are profile-specific:
 - `dev`: `gdrive:dev-gtd-on-rails`
 - `staging`: `gdrive:dev-gtd-on-rails`
 
-Current data sync defaults are profile-specific:
+Current File Sync defaults are profile-specific:
 
 - `prod` and `staging`: rclone enabled by default
 - `dev`, `ci`, and `test`: rclone disabled by default
@@ -156,11 +156,11 @@ GET /sync/status
 
 The response contains:
 
-- `file`: File Sync status. The legacy `data` alias remains available during migration.
-- `file`: canonical File Sync status. It has the same state and timestamps as `data` while compatibility aliases remain active.
+- `file`: canonical File Sync status.
+- `data`: legacy File Sync status alias. It has the same state and timestamps as `file` while compatibility aliases remain active.
 - `googleCalendar`: Google Calendar sync status.
 
-Data status includes:
+File Sync status includes:
 
 - `state`: `DISABLED`, `BOOTSTRAPPING`, `SYNCED`, `PENDING`, `SYNCING`, or `FAILED`.
 - `pending`
@@ -178,17 +178,17 @@ POST /sync/files
 
 The endpoint enqueues sync and returns `202 Accepted` with the current File Sync status. Existing clients may continue using `POST /sync/data`.
 
-The desktop footer renders one Data sync indicator and one Google Calendar sync indicator.
+The desktop footer renders one File Sync indicator and one Google Calendar sync indicator.
 
 ---
 
 ## 7. Failure Behavior
 
-Startup data sync is blocking when enabled. In production and staging, a startup rclone failure prevents the API from becoming ready.
+Startup File Sync is blocking when enabled. In production and staging, a startup rclone failure prevents the API from becoming ready.
 
-Runtime data sync failures do not block local editing. The data sync state becomes `FAILED`, the footer exposes the error state, and later scheduled, manual, or mutation-triggered sync can recover.
+Runtime File Sync failures do not block local editing. The File Sync state becomes `FAILED`, the footer exposes the error state, and later scheduled, manual, or mutation-triggered sync can recover.
 
-Google Integration Configuration saves do not roll back when data sync fails later. They are local writes followed by asynchronous data sync.
+Google Integration Configuration saves do not roll back when File Sync fails later. They are local writes followed by asynchronous File Sync.
 
 ---
 
@@ -209,6 +209,6 @@ GTD on Rails currently synchronizes data with:
 
 - `rclone bisync` over `${gtd.data.root-directory}`.
 - Blocking startup sync before SQLite opens.
-- Async coalesced runtime data sync after domain changes.
+- Async coalesced runtime File Sync after domain changes.
 - Async Google Integration Configuration sync after local save.
 - UI sync indicators backed by `/sync/status`.

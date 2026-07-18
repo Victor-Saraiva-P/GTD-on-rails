@@ -41,6 +41,15 @@ public class FileSyncService {
     }
 
     /**
+     * Queues File Sync after the current transaction commits.
+     *
+     * <p>Example: {@code fileSyncService.requestSyncAfterCommit(executor, "item updated")}.</p>
+     */
+    public void requestSyncAfterCommit(AfterCommitExecutor executor, String reason) {
+        executor.run(() -> requestSync(reason));
+    }
+
+    /**
      * Queues a user-requested File Sync.
      *
      * <p>Example: {@code fileSyncService.requestManualSync()}.</p>

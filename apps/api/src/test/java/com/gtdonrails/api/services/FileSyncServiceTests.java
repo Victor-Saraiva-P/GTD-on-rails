@@ -47,6 +47,16 @@ class FileSyncServiceTests {
         assertEquals(FileSyncState.DISABLED, fileSyncService.status().state());
     }
 
+    @Test
+    void queuesFileSyncAfterCommit() {
+        dataSyncService = new FakeDataSyncService(tempDir);
+        FileSyncService fileSyncService = new FileSyncService(dataSyncService);
+
+        fileSyncService.requestSyncAfterCommit(new AfterCommitExecutor(), "item updated");
+
+        assertEquals("item updated", dataSyncService.lastReason);
+    }
+
     private static class FakeDataSyncService extends DataSyncService {
 
         private int startupCalls;

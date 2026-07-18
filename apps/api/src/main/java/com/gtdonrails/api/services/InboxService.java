@@ -99,7 +99,7 @@ public class InboxService {
         Item item = new Item(title, null);
         item.markAsStuff();
         StuffResponseDto response = stuffMapper.toResponse(itemRepository.save(item));
-        requestDataSyncAfterCommit("stuff created");
+        fileSyncService.requestSyncAfterCommit(afterCommitExecutor, "stuff created");
         return response;
     }
 
@@ -116,7 +116,7 @@ public class InboxService {
         nextAction.setDeadline(request.deadline());
         itemRepository.save(item);
         requestGoogleCalendarEventSyncAfterCommit(id);
-        requestDataSyncAfterCommit("stuff converted to next action");
+        fileSyncService.requestSyncAfterCommit(afterCommitExecutor, "stuff converted to next action");
     }
 
     /**
@@ -130,7 +130,7 @@ public class InboxService {
         item.convertToCalendar(request.toScheduledDate(), request.toScheduledTime());
         itemRepository.save(item);
         requestGoogleCalendarEventSyncAfterCommit(id);
-        requestDataSyncAfterCommit("stuff converted to calendar");
+        fileSyncService.requestSyncAfterCommit(afterCommitExecutor, "stuff converted to calendar");
     }
 
     private Item findStuff(UUID id) {
@@ -150,10 +150,6 @@ public class InboxService {
             throw new ContextNotFoundException("context not found");
         }
         return new HashSet<>(contexts);
-    }
-
-    private void requestDataSyncAfterCommit(String reason) {
-        afterCommitExecutor.run(() -> fileSyncService.requestSync(reason));
     }
 
     private void requestGoogleCalendarEventSyncAfterCommit(UUID itemId) {

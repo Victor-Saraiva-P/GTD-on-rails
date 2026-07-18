@@ -54,7 +54,7 @@ public class ItemAssetService {
         ItemAsset itemAsset = newItemAsset(item, file);
         assetStorageService.storeItemAsset(itemAsset.relativePath(), file);
         itemAssetRepository.save(itemAsset);
-        requestDataSyncAfterCommit("item asset uploaded");
+        fileSyncService.requestSyncAfterCommit(afterCommitExecutor, "item asset uploaded");
         return itemAssetResponse(itemAsset);
     }
 
@@ -70,7 +70,7 @@ public class ItemAssetService {
         ItemAsset itemAsset = newLocalItemAsset(item, sourcePath);
         assetStorageService.copyLocalItemAsset(itemAsset.relativePath(), sourcePath);
         itemAssetRepository.save(itemAsset);
-        requestDataSyncAfterCommit("local item asset copied");
+        fileSyncService.requestSyncAfterCommit(afterCommitExecutor, "local item asset copied");
         return itemAssetResponse(itemAsset);
     }
 
@@ -176,7 +176,4 @@ public class ItemAssetService {
             asset.isImage());
     }
 
-    private void requestDataSyncAfterCommit(String reason) {
-        afterCommitExecutor.run(() -> fileSyncService.requestSync(reason));
-    }
 }

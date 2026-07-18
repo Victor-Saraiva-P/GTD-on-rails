@@ -52,8 +52,7 @@ public class ContextIconAssetService {
         ContextIconAsset iconAsset = newContextIconAsset(context, file);
         assetStorageService.storeImageAsset(iconAsset.relativePath(), file);
         contextIconAssetRepository.save(iconAsset);
-        requestDataSyncAfterCommit("context icon updated");
-        requestDataSyncAfterCommit("context icon updated");
+        fileSyncService.requestSyncAfterCommit(afterCommitExecutor, "context icon updated");
         return contextMapper.toResponse(context);
     }
 
@@ -66,19 +65,18 @@ public class ContextIconAssetService {
     public ContextResponseDto deleteContextIcon(UUID id) {
         Context context = findContext(id);
         deleteExistingIcon(context);
-        requestDataSyncAfterCommit("context icon deleted");
-        requestDataSyncAfterCommit("context icon deleted");
+        fileSyncService.requestSyncAfterCommit(afterCommitExecutor, "context icon deleted");
         return contextMapper.toResponse(context);
     }
 
     /**
-     * Removes a context icon during context deletion without extra data sync.
+     * Removes a context icon during context deletion without extra File Sync.
      *
      * <p>Example: {@code service.deleteContextIconAsset(context)}.</p>
      */
     public void deleteContextIconAsset(Context context) {
         deleteExistingIcon(context);
-        requestDataSyncAfterCommit("context deleted");
+        fileSyncService.requestSyncAfterCommit(afterCommitExecutor, "context deleted");
     }
 
     private Context findContext(UUID id) {
@@ -109,7 +107,4 @@ public class ContextIconAssetService {
         return assetStorageService.mediaType(fileName).toString();
     }
 
-    private void requestDataSyncAfterCommit(String reason) {
-        afterCommitExecutor.run(() -> fileSyncService.requestSync(reason));
-    }
 }

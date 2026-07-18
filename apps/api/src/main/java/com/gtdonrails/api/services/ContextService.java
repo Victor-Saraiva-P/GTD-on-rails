@@ -112,7 +112,7 @@ public class ContextService {
         String normalizedName = contextNameNormalizer.normalize(request.name());
         Context context = new Context(normalizedName);
         ContextResponseDto response = contextMapper.toResponse(contextRepository.save(context));
-        requestDataSyncAfterCommit("context created");
+        fileSyncService.requestSyncAfterCommit(afterCommitExecutor, "context created");
         return response;
     }
 
@@ -128,7 +128,7 @@ public class ContextService {
 
         context.setName(normalizedName);
         ContextResponseDto response = contextMapper.toResponse(contextRepository.save(context));
-        requestDataSyncAfterCommit("context updated");
+        fileSyncService.requestSyncAfterCommit(afterCommitExecutor, "context updated");
         return response;
     }
 
@@ -144,11 +144,11 @@ public class ContextService {
         contextIconAssetService.deleteContextIconAsset(context);
         context.softDelete();
         contextRepository.save(context);
-        requestDataSyncAfterCommit("context deleted");
+        fileSyncService.requestSyncAfterCommit(afterCommitExecutor, "context deleted");
     }
 
     /**
-     * Restores a soft-deleted context and schedules data sync after commit.
+     * Restores a soft-deleted context and schedules File Sync after commit.
      *
      * <p>Example: {@code contextService.restoreContext(contextId)}.</p>
      */
@@ -158,7 +158,7 @@ public class ContextService {
             .orElseThrow(() -> new ContextNotFoundException("context not found"));
         context.restore();
         contextRepository.save(context);
-        requestDataSyncAfterCommit("context restored");
+        fileSyncService.requestSyncAfterCommit(afterCommitExecutor, "context restored");
     }
 
     private Context findContext(UUID id) {
@@ -166,7 +166,4 @@ public class ContextService {
             .orElseThrow(() -> new ContextNotFoundException("context not found"));
     }
 
-    private void requestDataSyncAfterCommit(String reason) {
-        afterCommitExecutor.run(() -> fileSyncService.requestSync(reason));
-    }
 }

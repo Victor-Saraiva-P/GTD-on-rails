@@ -115,7 +115,7 @@ type SyncIndicatorProps = Readonly<{
   ariaLabel: string;
   title: string;
   visual: IndicatorVisual;
-  icon: "calendar" | "data";
+  icon: "calendar" | "file";
 }>;
 
 function syncIndicatorClassName(visual: IndicatorVisual): string {
@@ -168,7 +168,7 @@ function FileStatusIndicator({ failedBeforeStatus, isLoading, status }: SyncStat
       ariaLabel={`File sync ${visual.label.toLowerCase()}`}
       title={describeFileStatus(status?.file ?? null, failedBeforeStatus)}
       visual={loadingVisual(visual, isLoading)}
-      icon="data"
+      icon="file"
     />
   );
 }
@@ -187,7 +187,7 @@ function GoogleCalendarStatusIndicator({ failedBeforeStatus, isLoading, status }
 }
 
 /**
- * Renders data and Google Calendar sync status indicators in the workspace footer.
+ * Renders File Sync and Google Calendar status indicators in the workspace footer.
  *
  * @example <SyncStatusIndicators />
  */
