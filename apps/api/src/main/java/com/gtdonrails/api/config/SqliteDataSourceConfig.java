@@ -15,7 +15,7 @@ import org.springframework.core.env.Environment;
 import org.sqlite.SQLiteDataSource;
 
 @Configuration
-@EnableConfigurationProperties({AssetsProperties.class, DataSyncProperties.class})
+@EnableConfigurationProperties({AssetsProperties.class, DataSyncProperties.class, FileSyncProperties.class})
 public class SqliteDataSourceConfig {
 
     @Bean

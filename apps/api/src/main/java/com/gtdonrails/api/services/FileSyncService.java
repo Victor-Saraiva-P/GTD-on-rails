@@ -1,5 +1,7 @@
 package com.gtdonrails.api.services;
 
+import java.io.IOException;
+
 import com.gtdonrails.api.dtos.sync.DataSyncState;
 import com.gtdonrails.api.dtos.sync.DataSyncStatusDto;
 import com.gtdonrails.api.dtos.sync.FileSyncState;
@@ -20,18 +22,38 @@ public class FileSyncService {
         this.dataSyncService = dataSyncService;
     }
 
-    public void syncOnStartup() throws java.io.IOException {
+    /**
+     * Runs blocking File Sync before the application opens its database.
+     *
+     * <p>Example: {@code fileSyncService.syncOnStartup()}.</p>
+     */
+    public void syncOnStartup() throws IOException {
         dataSyncService.syncOnStartup();
     }
 
+    /**
+     * Queues File Sync work with an observability reason.
+     *
+     * <p>Example: {@code fileSyncService.requestSync("item updated")}.</p>
+     */
     public void requestSync(String reason) {
         dataSyncService.requestSync(reason);
     }
 
+    /**
+     * Queues a user-requested File Sync.
+     *
+     * <p>Example: {@code fileSyncService.requestManualSync()}.</p>
+     */
     public void requestManualSync() {
         dataSyncService.requestManualSync();
     }
 
+    /**
+     * Returns the current canonical File Sync status.
+     *
+     * <p>Example: {@code fileSyncService.status()}.</p>
+     */
     public FileSyncStatusDto status() {
         return toFileStatus(dataSyncService.status());
     }
