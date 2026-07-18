@@ -75,7 +75,7 @@ public class GoogleCalendarController {
         if (repairFailed) {
             return new GoogleIntegrationConfigurationHealth(
                 GoogleIntegrationConfigurationStatus.REPAIR_FAILED,
-                "Google Integration Configuration repair failed; fix data sync and try again.");
+                "Google Integration Configuration repair failed; fix File Sync and try again.");
         }
         return credentialsStore.configurationHealth();
     }

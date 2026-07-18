@@ -30,7 +30,7 @@ public class InboxService {
     private final ContextRepository contextRepository;
     private final StuffMapper stuffMapper;
     private final ItemTextNormalizer itemTextNormalizer;
-    private final DataSyncService dataSyncService;
+    private final FileSyncService fileSyncService;
     private final GoogleCalendarEventQueueService googleCalendarEventQueueService;
     private final AfterCommitExecutor afterCommitExecutor;
 
@@ -39,7 +39,7 @@ public class InboxService {
         ContextRepository contextRepository,
         StuffMapper stuffMapper,
         ItemTextNormalizer itemTextNormalizer,
-        DataSyncService dataSyncService,
+        FileSyncService fileSyncService,
         GoogleCalendarEventQueueService googleCalendarEventQueueService,
         AfterCommitExecutor afterCommitExecutor
     ) {
@@ -47,7 +47,7 @@ public class InboxService {
         this.contextRepository = contextRepository;
         this.stuffMapper = stuffMapper;
         this.itemTextNormalizer = itemTextNormalizer;
-        this.dataSyncService = dataSyncService;
+        this.fileSyncService = fileSyncService;
         this.googleCalendarEventQueueService = googleCalendarEventQueueService;
         this.afterCommitExecutor = afterCommitExecutor;
     }
@@ -153,7 +153,7 @@ public class InboxService {
     }
 
     private void requestDataSyncAfterCommit(String reason) {
-        afterCommitExecutor.run(() -> dataSyncService.requestSync(reason));
+        afterCommitExecutor.run(() -> fileSyncService.requestSync(reason));
     }
 
     private void requestGoogleCalendarEventSyncAfterCommit(UUID itemId) {

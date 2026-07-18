@@ -29,7 +29,7 @@ public class ContextService {
     private final ItemMapper itemMapper;
     private final ContextNameNormalizer contextNameNormalizer;
     private final ContextIconAssetService contextIconAssetService;
-    private final DataSyncService dataSyncService;
+    private final FileSyncService fileSyncService;
     private final AfterCommitExecutor afterCommitExecutor;
 
     public ContextService(
@@ -39,7 +39,7 @@ public class ContextService {
         ItemMapper itemMapper,
         ContextNameNormalizer contextNameNormalizer,
         ContextIconAssetService contextIconAssetService,
-        DataSyncService dataSyncService,
+        FileSyncService fileSyncService,
         AfterCommitExecutor afterCommitExecutor
     ) {
         this.contextRepository = contextRepository;
@@ -48,7 +48,7 @@ public class ContextService {
         this.itemMapper = itemMapper;
         this.contextNameNormalizer = contextNameNormalizer;
         this.contextIconAssetService = contextIconAssetService;
-        this.dataSyncService = dataSyncService;
+        this.fileSyncService = fileSyncService;
         this.afterCommitExecutor = afterCommitExecutor;
     }
 
@@ -167,6 +167,6 @@ public class ContextService {
     }
 
     private void requestDataSyncAfterCommit(String reason) {
-        afterCommitExecutor.run(() -> dataSyncService.requestSync(reason));
+        afterCommitExecutor.run(() -> fileSyncService.requestSync(reason));
     }
 }

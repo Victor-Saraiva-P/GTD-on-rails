@@ -77,7 +77,7 @@ class ContextServiceTests {
             itemMapper,
             new ContextNameNormalizer(),
             contextIconAssetService,
-            dataSyncService,
+            new FileSyncService(dataSyncService),
             new AfterCommitExecutor());
     }
 

@@ -24,7 +24,7 @@ public class ItemService {
     private final ItemTextNormalizer itemTextNormalizer;
     private final ItemBodyNormalizer itemBodyNormalizer;
     private final ItemAssetService itemAssetService;
-    private final DataSyncService dataSyncService;
+    private final FileSyncService fileSyncService;
     private final GoogleCalendarEventQueueService googleCalendarEventQueueService;
     private final AfterCommitExecutor afterCommitExecutor;
 
@@ -34,7 +34,7 @@ public class ItemService {
         ItemTextNormalizer itemTextNormalizer,
         ItemBodyNormalizer itemBodyNormalizer,
         ItemAssetService itemAssetService,
-        DataSyncService dataSyncService,
+        FileSyncService fileSyncService,
         GoogleCalendarEventQueueService googleCalendarEventQueueService,
         AfterCommitExecutor afterCommitExecutor
     ) {
@@ -43,7 +43,7 @@ public class ItemService {
         this.itemTextNormalizer = itemTextNormalizer;
         this.itemBodyNormalizer = itemBodyNormalizer;
         this.itemAssetService = itemAssetService;
-        this.dataSyncService = dataSyncService;
+        this.fileSyncService = fileSyncService;
         this.googleCalendarEventQueueService = googleCalendarEventQueueService;
         this.afterCommitExecutor = afterCommitExecutor;
     }
@@ -116,7 +116,7 @@ public class ItemService {
     }
 
     private void requestDataSyncAfterCommit(String reason) {
-        afterCommitExecutor.run(() -> dataSyncService.requestSync(reason));
+        afterCommitExecutor.run(() -> fileSyncService.requestSync(reason));
     }
 
     private void requestCalendarEventUpsertAfterCommit(UUID itemId, Item item) {

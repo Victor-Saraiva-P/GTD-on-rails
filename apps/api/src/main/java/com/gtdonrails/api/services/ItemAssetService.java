@@ -26,20 +26,20 @@ public class ItemAssetService {
     private final ItemRepository itemRepository;
     private final ItemAssetRepository itemAssetRepository;
     private final AssetStorageService assetStorageService;
-    private final DataSyncService dataSyncService;
+    private final FileSyncService fileSyncService;
     private final AfterCommitExecutor afterCommitExecutor;
 
     public ItemAssetService(
         ItemRepository itemRepository,
         ItemAssetRepository itemAssetRepository,
         AssetStorageService assetStorageService,
-        DataSyncService dataSyncService,
+        FileSyncService fileSyncService,
         AfterCommitExecutor afterCommitExecutor
     ) {
         this.itemRepository = itemRepository;
         this.itemAssetRepository = itemAssetRepository;
         this.assetStorageService = assetStorageService;
-        this.dataSyncService = dataSyncService;
+        this.fileSyncService = fileSyncService;
         this.afterCommitExecutor = afterCommitExecutor;
     }
 
@@ -177,6 +177,6 @@ public class ItemAssetService {
     }
 
     private void requestDataSyncAfterCommit(String reason) {
-        afterCommitExecutor.run(() -> dataSyncService.requestSync(reason));
+        afterCommitExecutor.run(() -> fileSyncService.requestSync(reason));
     }
 }

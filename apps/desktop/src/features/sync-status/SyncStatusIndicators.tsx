@@ -160,7 +160,7 @@ type SyncStatusIndicatorRowProps = Readonly<{
   status: ReturnType<typeof useSyncStatus>["status"];
 }>;
 
-function DataStatusIndicator({ failedBeforeStatus, isLoading, status }: SyncStatusIndicatorRowProps) {
+function FileStatusIndicator({ failedBeforeStatus, isLoading, status }: SyncStatusIndicatorRowProps) {
   const visual = fileVisual(status?.file.state ?? null);
 
   return (
@@ -199,7 +199,7 @@ export function SyncStatusIndicators() {
 
   return (
     <div className="sync-status" aria-label={groupLabel}>
-      <DataStatusIndicator failedBeforeStatus={failedBeforeStatus} isLoading={loadingBeforeStatus} status={status} />
+      <FileStatusIndicator failedBeforeStatus={failedBeforeStatus} isLoading={loadingBeforeStatus} status={status} />
       <GoogleCalendarStatusIndicator failedBeforeStatus={failedBeforeStatus} isLoading={loadingBeforeStatus} status={status} />
     </div>
   );

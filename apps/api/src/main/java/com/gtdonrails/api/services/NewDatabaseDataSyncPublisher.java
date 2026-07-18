@@ -17,7 +17,7 @@ public class NewDatabaseDataSyncPublisher {
     }
 
     /**
-     * Queues data sync after Flyway initializes a newly created database.
+     * Queues File Sync after Flyway initializes a newly created database.
      *
      * <p>Example: {@code publishNewDatabaseSync(event)}.</p>
      */

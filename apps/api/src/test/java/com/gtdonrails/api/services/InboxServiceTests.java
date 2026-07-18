@@ -72,7 +72,7 @@ class InboxServiceTests {
             contextRepository,
             stuffMapper,
             new ItemTextNormalizer(),
-            dataSyncService,
+            new FileSyncService(dataSyncService),
             googleCalendarEventQueueService,
             new AfterCommitExecutor());
     }

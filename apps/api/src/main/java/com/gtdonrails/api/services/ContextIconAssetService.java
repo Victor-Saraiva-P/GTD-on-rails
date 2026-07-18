@@ -20,7 +20,7 @@ public class ContextIconAssetService {
     private final ContextRepository contextRepository;
     private final ContextIconAssetRepository contextIconAssetRepository;
     private final AssetStorageService assetStorageService;
-    private final DataSyncService dataSyncService;
+    private final FileSyncService fileSyncService;
     private final AfterCommitExecutor afterCommitExecutor;
     private final ContextMapper contextMapper;
 
@@ -28,14 +28,14 @@ public class ContextIconAssetService {
         ContextRepository contextRepository,
         ContextIconAssetRepository contextIconAssetRepository,
         AssetStorageService assetStorageService,
-        DataSyncService dataSyncService,
+        FileSyncService fileSyncService,
         AfterCommitExecutor afterCommitExecutor,
         ContextMapper contextMapper
     ) {
         this.contextRepository = contextRepository;
         this.contextIconAssetRepository = contextIconAssetRepository;
         this.assetStorageService = assetStorageService;
-        this.dataSyncService = dataSyncService;
+        this.fileSyncService = fileSyncService;
         this.afterCommitExecutor = afterCommitExecutor;
         this.contextMapper = contextMapper;
     }
@@ -110,6 +110,6 @@ public class ContextIconAssetService {
     }
 
     private void requestDataSyncAfterCommit(String reason) {
-        afterCommitExecutor.run(() -> dataSyncService.requestSync(reason));
+        afterCommitExecutor.run(() -> fileSyncService.requestSync(reason));
     }
 }

@@ -70,21 +70,21 @@ ${gtd.data.root-directory}/google.properties
 
 ## 3. Data Sync Flow
 
-File Sync is exposed by `FileSyncService` and remains implemented by the compatible `DataSyncService` and `RcloneDataSyncService` seam until the runtime migration contracts the aliases.
+File Sync is exposed by `FileSyncService`; `DataSyncService` and `RcloneDataSyncService` remain compatibility implementation aliases until final contraction.
 
 Startup behavior:
 
 - The backend creates the data root directory when needed.
-- If rclone data sync is enabled, startup runs blocking data sync before SQLite opens.
+- If rclone File Sync is enabled, startup runs blocking File Sync before SQLite opens.
 - If `gtd-on-rails-sync-check` is missing, startup runs bootstrap sync from remote to local.
 - If the SQLite database is still missing after successful startup sync, the backend creates an empty database file and Flyway initializes the schema.
 - When a new empty database was created, the backend queues asynchronous data sync after application startup so the migrated schema is uploaded.
 
 Runtime behavior:
 
-- Application services request data sync after committed domain changes.
+- Application services request File Sync after committed domain changes.
 - Google Integration Configuration saves write `google.properties` locally and request asynchronous data sync.
-- Scheduled data sync runs every `gtd.sync.interval-ms`.
+- Scheduled File Sync runs every `gtd.sync.interval-ms`.
 - Manual File Sync enqueues work through `POST /sync/files`. The compatibility endpoint `POST /sync/data` remains available for existing consumers.
 - Data sync runs in a single-thread executor and coalesces pending requests while one sync is already running.
 
@@ -156,7 +156,7 @@ GET /sync/status
 
 The response contains:
 
-- `data`: data sync status.
+- `file`: File Sync status. The legacy `data` alias remains available during migration.
 - `file`: canonical File Sync status. It has the same state and timestamps as `data` while compatibility aliases remain active.
 - `googleCalendar`: Google Calendar sync status.
 
