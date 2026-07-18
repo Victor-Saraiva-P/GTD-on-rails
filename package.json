@@ -3,7 +3,8 @@
   "private": true,
   "packageManager": "pnpm@10.32.1",
   "scripts": {
-    "dev": "turbo run dev",
+    "dev": "docker compose -f infra/compose.yaml up -d --wait postgres && turbo run dev",
+    "dev:reset": "docker compose -f infra/compose.yaml down --volumes --remove-orphans && docker compose -f infra/compose.yaml up -d --wait postgres && turbo run dev",
     "build": "turbo run build",
     "build:prod": "pnpm --filter @gtd-on-rails/desktop run desktop:build:prod",
     "build:staging": "pnpm --filter @gtd-on-rails/desktop run desktop:build:staging",

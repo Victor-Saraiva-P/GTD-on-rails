@@ -166,9 +166,9 @@ The body model that references these assets is described in [Body Content](../20
 
 ## 7. Optional Local Infrastructure
 
-`infra/compose.yaml` defines a local Postgres and API container setup.
+`infra/compose.yaml` defines the local PostgreSQL infrastructure used by development. The database uses a persistent named volume, so ordinary `pnpm dev` runs retain development state. `pnpm dev:reset` is the explicit destructive workflow that removes the volume before starting a fresh database.
 
-This compose file is optional development infrastructure. It is not the production desktop runtime and should not be treated as the canonical persistence topology unless the project explicitly moves away from the SQLite sidecar model.
+The Compose file intentionally contains PostgreSQL only. Tauri and the Spring Boot sidecar remain native host processes so they retain direct access to Wayland, desktop integrations, and local asset paths.
 
 ---
 
