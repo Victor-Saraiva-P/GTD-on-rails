@@ -28,13 +28,17 @@ _Avoid_: Token, password, Google credential
 The synced local secrets that allow trusted app installations to connect to the same Google Calendar integration.
 _Avoid_: Google account, environment config
 
+**Database Connection Configuration**:
+The local secret configuration that allows a trusted app installation to connect to the structured persistence database assigned to its runtime environment. Production and staging installations share it through File Sync.
+_Avoid_: Database credentials, Supabase config, environment config
+
 **Configuration Status**:
 The health of a local integration configuration, including whether required secrets are missing, ready, invalid, or failed to repair.
 _Avoid_: Connected status, sync status
 
-**Persistence Sync**:
-The movement of structured GTD data between trusted local app installations.
-_Avoid_: Git sync, database backup
+**File Sync**:
+The movement of file-backed application state, including assets and trusted local configuration, between app installations. Structured GTD data is shared through the database instead.
+_Avoid_: Persistence Sync, Data Sync, database backup
 
 **On Going**:
 An item state for work that has been pulled into active execution. On going items are represented on the shared on-going external agenda.
