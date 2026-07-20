@@ -1,0 +1,25 @@
+services:
+  integration-postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: gtd_integration
+      POSTGRES_USER: gtd_test
+      POSTGRES_PASSWORD: gtd_test
+    ports: ["127.0.0.1:55432:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gtd_test -d gtd_integration"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+  e2e-postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: gtd_e2e
+      POSTGRES_USER: gtd_test
+      POSTGRES_PASSWORD: gtd_test
+    ports: ["127.0.0.1:55433:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gtd_test -d gtd_e2e"]
+      interval: 1s
+      timeout: 3s
+      retries: 30

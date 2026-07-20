@@ -26,7 +26,6 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
 @SpringBootTest(properties = {
-    "spring.datasource.url=jdbc:sqlite:./build/dev-demo-controller-test.db",
     "gtd.assets.local-directory=./build/dev-demo-controller-assets",
     "gtd.sync.rclone.enabled=false",
     "gtd.cleanup.enabled=false",

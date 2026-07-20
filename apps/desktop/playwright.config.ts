@@ -21,13 +21,15 @@ export default defineConfig({
   webServer: [
     {
       command:
-        "rm -f ./build/e2e-playwright.db && ./gradlew --no-daemon bootRun --args='--spring.profiles.active=test --server.port=18080'",
+        "./gradlew --no-daemon bootRun --args='--spring.profiles.active=test --server.port=18080'",
       cwd: `${__dirname}/../api`,
       url: `${apiUrl}/inbox`,
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
       env: {
-        GTD_TEST_DB_URL: "jdbc:sqlite:./build/e2e-playwright.db",
+        GTD_TEST_DB_URL: process.env.GTD_E2E_DB_URL,
+        GTD_TEST_DB_USERNAME: process.env.GTD_TEST_DB_USERNAME,
+        GTD_TEST_DB_PASSWORD: process.env.GTD_TEST_DB_PASSWORD,
         GTD_SYNC_RCLONE_ENABLED: "false",
         APP_CORS_ALLOWED_ORIGINS: desktopWebUrl
       }
