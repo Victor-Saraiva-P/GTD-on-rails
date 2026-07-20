@@ -32,7 +32,7 @@ import org.springframework.web.context.WebApplicationContext;
     "gtd.cleanup.enabled=false",
     "gtd.google.token-encryption-key=MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
 })
-@ActiveProfiles("dev")
+@ActiveProfiles({"dev", "test"})
 @Tag("integration")
 class DevDemoDataControllerTests {
 
