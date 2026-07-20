@@ -48,7 +48,7 @@ function runDevelopmentScript(sandbox) {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [devScript], {
       cwd: path.resolve("."),
-      env: { ...process.env, PATH: `${sandbox}:${process.env.PATH}`, GTD_TEST_LOG: path.join(sandbox, "docker.log"), GTD_TEST_PNPM_LOG: path.join(sandbox, "pnpm.log") },
+      env: { ...process.env, GTD_DOCKER_EXECUTABLE: path.join(sandbox, "docker"), PATH: `${sandbox}:${process.env.PATH}`, GTD_TEST_LOG: path.join(sandbox, "docker.log"), GTD_TEST_PNPM_LOG: path.join(sandbox, "pnpm.log") },
       stdio: "ignore",
     });
     const timer = setTimeout(() => child.kill("SIGTERM"), 1000);

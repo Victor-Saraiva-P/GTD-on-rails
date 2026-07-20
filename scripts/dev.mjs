@@ -5,6 +5,7 @@ import path from "node:path";
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const composeFile = path.join(repositoryRoot, "infra", "compose.yaml");
 const developmentRoot = path.join(repositoryRoot, "dev-gtd-on-rails");
+const dockerExecutable = process.env.GTD_DOCKER_EXECUTABLE ?? "/usr/bin/docker";
 const composeArgs = ["compose", "-f", composeFile];
 const children = [];
 
@@ -21,12 +22,12 @@ export function developmentEnvironment(baseEnvironment = process.env) {
 }
 
 function runCompose(args) {
-  const result = spawnSync("docker", [...composeArgs, ...args], { cwd: repositoryRoot, stdio: "inherit" });
+  const result = spawnSync(dockerExecutable, [...composeArgs, ...args], { cwd: repositoryRoot, stdio: "inherit" });
   if (result.status !== 0) throw new Error(`development Compose command '${args.join(" ")}' failed; expected PostgreSQL to be available`);
 }
 
 function postgresIsHealthy() {
-  const result = spawnSync("docker", [...composeArgs, "ps", "--status", "running", "--format", "{{.Health}}", "postgres"], { cwd: repositoryRoot, encoding: "utf8" });
+  const result = spawnSync(dockerExecutable, [...composeArgs, "ps", "--status", "running", "--format", "{{.Health}}", "postgres"], { cwd: repositoryRoot, encoding: "utf8" });
   return result.status === 0 && result.stdout.trim() === "healthy";
 }
 
