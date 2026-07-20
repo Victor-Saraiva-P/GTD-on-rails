@@ -11,9 +11,9 @@ insert into database_identity (environment) values ('${databaseIdentity}');
 
 create table items (
     id uuid primary key,
-    title varchar2(200) not null,
+    title varchar(200) not null,
     body text not null default '{"text":"","inlineMarks":[],"lineBlocks":[],"blockEntities":[]}',
-    status varchar2(50) not null check (status in ('STUFF', 'NEXT_ACTION', 'CALENDAR')),
+    status varchar(50) not null check (status in ('STUFF', 'NEXT_ACTION', 'CALENDAR')),
     created_at timestamp with time zone not null,
     updated_at timestamp with time zone not null,
     deleted_at timestamp with time zone,
@@ -22,7 +22,7 @@ create table items (
 
 create table contexts (
     id uuid primary key,
-    name varchar2(100) not null,
+    name varchar(100) not null,
     created_at timestamp with time zone not null,
     updated_at timestamp with time zone not null,
     deleted_at timestamp with time zone
@@ -64,7 +64,7 @@ create table next_actions (
     time_end time,
     all_day boolean not null default false,
     deadline date,
-    status varchar2(50) not null default 'NEXT_ACTION',
+    status varchar(50) not null default 'NEXT_ACTION',
     created_at timestamp with time zone not null,
     updated_at timestamp with time zone not null,
     deleted_at timestamp with time zone
@@ -85,7 +85,7 @@ create table calendars (
     time_start time,
     time_end time,
     all_day boolean not null default false,
-    status varchar2(50) not null default 'CALENDAR',
+    status varchar(50) not null default 'CALENDAR',
     created_at timestamp with time zone not null,
     updated_at timestamp with time zone not null,
     deleted_at timestamp with time zone
