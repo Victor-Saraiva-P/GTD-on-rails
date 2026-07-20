@@ -1,5 +1,11 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalEnv": [
+    "GTD_TEST_DB_URL",
+    "GTD_TEST_DB_USERNAME",
+    "GTD_TEST_DB_PASSWORD",
+    "GTD_E2E_DB_URL"
+  ],
   "tasks": {
     "dev": {
       "cache": false,
