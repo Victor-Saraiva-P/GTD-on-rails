@@ -6,6 +6,8 @@ const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url))
 const composeFile = path.join(repositoryRoot, "infra", "compose.yaml");
 const developmentRoot = path.join(repositoryRoot, "dev-gtd-on-rails");
 const dockerExecutable = process.env.GTD_DOCKER_EXECUTABLE ?? "/usr/bin/docker";
+const pnpmExecutable = process.env.GTD_PNPM_EXECUTABLE ?? "/usr/bin/pnpm";
+const fixedExecutablePath = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin";
 const composeArgs = ["compose", "-f", composeFile];
 const children = [];
 
@@ -16,6 +18,7 @@ export function composeCommand(args) {
 export function developmentEnvironment(baseEnvironment = process.env) {
   return {
     ...baseEnvironment,
+    PATH: fixedExecutablePath,
     GTD_DATA_ROOT_DIRECTORY: developmentRoot,
     GTD_SYNC_RCLONE_ENABLED: "false",
   };
@@ -41,7 +44,7 @@ function waitForPostgres() {
 }
 
 function startWorkspaceProcess(filter) {
-  const child = spawn("pnpm", ["--filter", filter, "dev"], { cwd: repositoryRoot, env: developmentEnvironment(), stdio: "inherit" });
+  const child = spawn(pnpmExecutable, ["--filter", filter, "dev"], { cwd: repositoryRoot, env: developmentEnvironment(), stdio: "inherit" });
   children.push(child);
   return child;
 }

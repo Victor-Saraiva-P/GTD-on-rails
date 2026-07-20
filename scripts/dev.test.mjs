@@ -36,8 +36,9 @@ test("development orchestrator starts Compose and both native processes", async 
 });
 
 async function installFakeCommands(sandbox) {
-  const fakeDocker = `#!/usr/bin/env node\nconst fs = require("node:fs");\nfs.appendFileSync(process.env.GTD_TEST_LOG, process.argv.slice(2).join(" ") + "\\n");\nif (process.argv.includes("ps")) process.stdout.write("healthy\\n");\n`;
-  const fakePnpm = `#!/usr/bin/env node\nconst fs = require("node:fs");\nfs.appendFileSync(process.env.GTD_TEST_PNPM_LOG, process.argv.slice(2).join(" ") + "\\n");\nsetInterval(() => {}, 1000);\n`;
+  const nodeShebang = `#!${process.execPath}`;
+  const fakeDocker = `${nodeShebang}\nconst fs = require("node:fs");\nfs.appendFileSync(process.env.GTD_TEST_LOG, process.argv.slice(2).join(" ") + "\\n");\nif (process.argv.includes("ps")) process.stdout.write("healthy\\n");\n`;
+  const fakePnpm = `${nodeShebang}\nconst fs = require("node:fs");\nfs.appendFileSync(process.env.GTD_TEST_PNPM_LOG, process.argv.slice(2).join(" ") + "\\n");\nsetInterval(() => {}, 1000);\n`;
   await writeFile(path.join(sandbox, "docker"), fakeDocker);
   await writeFile(path.join(sandbox, "pnpm"), fakePnpm);
   await chmod(path.join(sandbox, "docker"), 0o755);
@@ -48,7 +49,7 @@ function runDevelopmentScript(sandbox) {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [devScript], {
       cwd: path.resolve("."),
-      env: { ...process.env, GTD_DOCKER_EXECUTABLE: path.join(sandbox, "docker"), PATH: `${sandbox}:${process.env.PATH}`, GTD_TEST_LOG: path.join(sandbox, "docker.log"), GTD_TEST_PNPM_LOG: path.join(sandbox, "pnpm.log") },
+      env: { ...process.env, GTD_DOCKER_EXECUTABLE: path.join(sandbox, "docker"), GTD_PNPM_EXECUTABLE: path.join(sandbox, "pnpm"), GTD_TEST_LOG: path.join(sandbox, "docker.log"), GTD_TEST_PNPM_LOG: path.join(sandbox, "pnpm.log") },
       stdio: "ignore",
     });
     const timer = setTimeout(() => child.kill("SIGTERM"), 1000);
