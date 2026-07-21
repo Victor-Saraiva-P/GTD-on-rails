@@ -1,10 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { spawn } from "node:child_process";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { composeCommand, developmentEnvironment } from "./dev.mjs";
+import { installFakeDevelopmentCommands } from "./development-test-fixtures.mjs";
+import { runScriptUntilLogContains } from "./script-test-runner.mjs";
 
 const devScript = path.resolve("scripts/dev.mjs");
 
@@ -24,10 +25,13 @@ test("development environment uses repository-local persistent files and disable
 test("development orchestrator starts Compose and both native processes", async () => {
   const sandbox = await mkdtemp(path.join(os.tmpdir(), "gtd-dev-test-"));
   try {
-    await installFakeCommands(sandbox);
-    const result = await runDevelopmentScript(sandbox);
-    assert.equal(result.exitCode, 143);
+    const assetFile = await createDevelopmentAsset(sandbox);
+    await installFakeDevelopmentCommands(sandbox);
+    const processOutcome = await runDevelopmentScript(sandbox, path.dirname(path.dirname(assetFile)));
+    assert.equal(processOutcome.exitCode, 143);
+    assert.equal(await readFile(assetFile, "utf8"), "preserve me");
     assert.match(await readFile(path.join(sandbox, "docker.log"), "utf8"), /up -d postgres/);
+    assert.doesNotMatch(await readFile(path.join(sandbox, "docker.log"), "utf8"), /down -v/);
     assert.match(await readFile(path.join(sandbox, "pnpm.log"), "utf8"), /@gtd-on-rails\/api dev/);
     assert.match(await readFile(path.join(sandbox, "pnpm.log"), "utf8"), /@gtd-on-rails\/desktop dev/);
   } finally {
@@ -35,25 +39,17 @@ test("development orchestrator starts Compose and both native processes", async 
   }
 });
 
-async function installFakeCommands(sandbox) {
-  const nodeShebang = `#!${process.execPath}`;
-  const fakeDocker = `${nodeShebang}\nconst fs = require("node:fs");\nfs.appendFileSync(process.env.GTD_TEST_LOG, process.argv.slice(2).join(" ") + "\\n");\nif (process.argv.includes("ps")) process.stdout.write("healthy\\n");\n`;
-  const fakePnpm = `${nodeShebang}\nconst fs = require("node:fs");\nfs.appendFileSync(process.env.GTD_TEST_PNPM_LOG, process.argv.slice(2).join(" ") + "\\n");\nsetInterval(() => {}, 1000);\n`;
-  await writeFile(path.join(sandbox, "docker"), fakeDocker);
-  await writeFile(path.join(sandbox, "pnpm"), fakePnpm);
-  await chmod(path.join(sandbox, "docker"), 0o755);
-  await chmod(path.join(sandbox, "pnpm"), 0o755);
+async function createDevelopmentAsset(sandbox) {
+  const assetFile = path.join(sandbox, "development-data", "assets", "preserved.txt");
+  await mkdir(path.dirname(assetFile), { recursive: true });
+  await writeFile(assetFile, "preserve me");
+  return assetFile;
 }
 
-function runDevelopmentScript(sandbox) {
-  return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [devScript], {
-      cwd: path.resolve("."),
-      env: { ...process.env, GTD_DOCKER_EXECUTABLE: path.join(sandbox, "docker"), GTD_PNPM_EXECUTABLE: path.join(sandbox, "pnpm"), GTD_TEST_LOG: path.join(sandbox, "docker.log"), GTD_TEST_PNPM_LOG: path.join(sandbox, "pnpm.log") },
-      stdio: "ignore",
-    });
-    const timer = setTimeout(() => child.kill("SIGTERM"), 1000);
-    child.once("error", reject);
-    child.once("close", (exitCode) => { clearTimeout(timer); resolve({ exitCode }); });
-  });
+function runDevelopmentScript(sandbox, developmentRoot) {
+  return runScriptUntilLogContains(devScript, developmentScriptEnvironment(sandbox, developmentRoot), path.join(path.dirname(developmentRoot), "pnpm.log"), "@gtd-on-rails/desktop dev");
+}
+
+function developmentScriptEnvironment(sandbox, developmentRoot) {
+  return { ...process.env, GTD_DEVELOPMENT_ROOT_DIRECTORY: developmentRoot, GTD_DOCKER_EXECUTABLE: path.join(sandbox, "docker"), GTD_PNPM_EXECUTABLE: path.join(sandbox, "pnpm"), GTD_TEST_LOG: path.join(sandbox, "docker.log"), GTD_TEST_PNPM_LOG: path.join(sandbox, "pnpm.log") };
 }
