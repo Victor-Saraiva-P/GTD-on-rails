@@ -1,13 +1,13 @@
 create schema if not exists gtd;
 set search_path to gtd;
 
-create table database_identity (
+create table if not exists database_identity (
     id boolean primary key default true check (id),
     environment text not null check (environment in ('PRODUCTION', 'STAGING', 'DEVELOPMENT', 'TEST')),
     created_at timestamp with time zone not null default current_timestamp
 );
 
-insert into database_identity (environment) values ('${databaseIdentity}');
+insert into database_identity (environment) values ('${databaseIdentity}') on conflict (id) do nothing;
 
 create table items (
     id uuid primary key,

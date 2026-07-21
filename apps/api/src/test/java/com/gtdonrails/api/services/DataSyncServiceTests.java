@@ -69,6 +69,19 @@ class DataSyncServiceTests {
         assertEquals(DataSyncState.SYNCED, service.status().state());
     }
 
+    @Test
+    void syncNowRunsBlockingBisyncEvenWhenSyncCheckExists() throws Exception {
+        Files.writeString(syncCheckFile(), "ready");
+        FakeRcloneDataSyncService rcloneDataSyncService = new FakeRcloneDataSyncService();
+        service = new DataSyncService(properties(), rcloneDataSyncService, tempDir.toString());
+        rcloneDataSyncService.enabled = true;
+
+        service.syncNow();
+
+        assertEquals(tempDir.toAbsolutePath().normalize(), rcloneDataSyncService.bisyncDirectory);
+        assertEquals(DataSyncState.SYNCED, service.status().state());
+    }
+
     private DataSyncProperties properties() {
         DataSyncProperties properties = new DataSyncProperties();
         properties.setSyncCheckFilename("gtd-on-rails-sync-check");

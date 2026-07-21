@@ -21,11 +21,19 @@ public class DatabaseSetupController {
         this.bootstrapConfiguration = bootstrapConfiguration;
     }
 
+    /** Returns the bootstrap configuration state.
+     *
+     * <p>Example: {@code GET /bootstrap/status}.</p>
+     */
     @GetMapping("/status")
     public DatabaseSetupResponse status() {
         return new DatabaseSetupResponse(bootstrapConfiguration.configurationStatus());
     }
 
+    /** Provisions the remote application database.
+     *
+     * <p>Example: {@code POST /bootstrap/database}.</p>
+     */
     @PostMapping("/database")
     public ResponseEntity<DatabaseSetupResponse> setup(@RequestBody DatabaseSetupRequest request) {
         setupService.provision(request);

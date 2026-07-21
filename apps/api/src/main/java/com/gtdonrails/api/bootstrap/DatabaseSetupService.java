@@ -6,10 +6,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermission;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.security.SecureRandom;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.EnumSet;
 import java.util.Properties;
@@ -27,15 +27,18 @@ public class DatabaseSetupService {
     private static final SecureRandom RANDOM = new SecureRandom();
     private final Path configurationPath;
     private final DataSyncService fileSync;
+    private final DatabaseConnectionFactory connectionFactory;
     private final String environment;
 
     public DatabaseSetupService(
         @Value("${gtd.data.root-directory}") String dataRoot,
         DataSyncService fileSync,
+        DatabaseConnectionFactory connectionFactory,
         @Value("${gtd.database.environment:PRODUCTION}") String environment
     ) {
         configurationPath = Path.of(dataRoot).toAbsolutePath().normalize().resolve("database.properties");
         this.fileSync = fileSync;
+        this.connectionFactory = connectionFactory;
         this.environment = environment;
     }
 
@@ -46,24 +49,39 @@ public class DatabaseSetupService {
     public void provision(DatabaseSetupRequest request) {
         validate(request);
         String password = generatedPassword();
-        try (Connection connection = DriverManager.getConnection(
-            request.administrativeUrl(), request.administrativeUsername(), request.administrativePassword())) {
-            provisionDatabase(connection, password);
-            saveConfiguration(request.administrativeUrl(), password);
-            fileSync.requestManualSync();
+        try {
+            try (Connection connection = connectionFactory.open(
+                request.administrativeUrl(), request.administrativeUsername(), request.administrativePassword())) {
+                provisionDatabase(connection, password);
+                saveConfiguration(request.administrativeUrl(), password);
+                fileSync.syncNow();
+            }
         } catch (SQLException | IOException exception) {
             throw new IllegalStateException("database setup failed for administrative URL '" + request.administrativeUrl() + "'", exception);
+        } finally {
+            Arrays.fill(request.administrativePassword(), '\0');
         }
     }
 
     private void validate(DatabaseSetupRequest request) {
         if (request == null || blank(request.administrativeUrl()) || blank(request.administrativeUsername())
-            || blank(request.administrativePassword())) {
+            || request.administrativePassword() == null || request.administrativePassword().length == 0) {
             throw new IllegalArgumentException("database setup request value is incomplete; expected URL, username, and password");
         }
-        if (!request.administrativeUrl().startsWith("jdbc:postgresql://")
-            || !request.administrativeUrl().contains("sslmode=verify-full")) {
-            throw new IllegalArgumentException("administrative URL value '" + request.administrativeUrl() + "' is invalid; expected PostgreSQL URL with sslmode=verify-full");
+        if (!isSupavisorSessionUrl(request.administrativeUrl())) {
+            throw new IllegalArgumentException("administrative URL value '" + request.administrativeUrl() + "' is invalid; expected PostgreSQL Supavisor session URL with sslmode=verify-full");
+        }
+    }
+
+    boolean isSupavisorSessionUrl(String url) {
+        try {
+            java.net.URI parsed = java.net.URI.create(url.substring("jdbc:".length()));
+            return "postgresql".equals(parsed.getScheme()) && parsed.getPort() == 5432
+                && parsed.getHost() != null && parsed.getHost().endsWith(".pooler.supabase.com")
+                && Arrays.stream(parsed.getQuery().split("&"))
+                    .anyMatch(parameter -> parameter.equals("sslmode=verify-full"));
+        } catch (RuntimeException exception) {
+            return false;
         }
     }
 
@@ -75,7 +93,26 @@ public class DatabaseSetupService {
             statement.execute("GRANT USAGE, CREATE ON SCHEMA gtd TO " + APPLICATION_USER);
             statement.execute("REVOKE ALL ON SCHEMA public FROM " + APPLICATION_USER);
             statement.execute("ALTER ROLE " + APPLICATION_USER + " NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS");
+            provisionEnvironmentIdentity(statement);
         }
+    }
+
+    private void provisionEnvironmentIdentity(Statement statement) throws SQLException {
+        if (!isKnownEnvironment(environment)) {
+            throw new IllegalArgumentException("database environment value '" + environment + "' is invalid; expected PRODUCTION or STAGING");
+        }
+        statement.execute("CREATE TABLE IF NOT EXISTS gtd.database_identity (id boolean PRIMARY KEY DEFAULT true CHECK (id), environment text NOT NULL CHECK (environment IN ('PRODUCTION', 'STAGING', 'DEVELOPMENT', 'TEST')))");
+        statement.execute("INSERT INTO gtd.database_identity (environment) VALUES ('" + environment + "') ON CONFLICT (id) DO NOTHING");
+        try (var result = statement.executeQuery("SELECT environment FROM gtd.database_identity WHERE id = true")) {
+            if (result.next() && !environment.equals(result.getString(1))) {
+                throw new IllegalStateException("database environment value '" + result.getString(1) + "' is invalid; expected " + environment);
+            }
+        }
+        statement.execute("GRANT SELECT, INSERT ON gtd.database_identity TO " + APPLICATION_USER);
+    }
+
+    private boolean isKnownEnvironment(String value) {
+        return "PRODUCTION".equals(value) || "STAGING".equals(value);
     }
 
     private void saveConfiguration(String url, String password) throws IOException {

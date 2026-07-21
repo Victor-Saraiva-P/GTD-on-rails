@@ -62,6 +62,16 @@ public class DataSyncService {
         runOnce(!syncCheckExists(), "startup");
     }
 
+    /** Completes a blocking File Sync before bootstrap hands off to normal startup.
+     *
+     * <p>Example: {@code dataSyncService.syncNow()}.</p>
+     */
+    public void syncNow() throws IOException {
+        Files.createDirectories(dataRoot);
+        if (!rcloneDataSyncService.isEnabled()) return;
+        runOnce(false, "database setup");
+    }
+
     /**
      * Queues the periodic data sync requested by the scheduler.
      *

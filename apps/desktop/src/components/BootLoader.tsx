@@ -168,7 +168,7 @@ export function BootLoader({ children }: PropsWithChildren) {
 
   return (
     <>
-      {shouldRenderLoader && (
+      {shouldRenderLoader && !setupRequired && (
         <div className={`boot-loader ${isBooted ? "boot-loader--fade-out" : ""}`}>
           <div className="boot-loader__terminal">
             <p className="boot-loader__brand">{appMetadata.name} v{appMetadata.version}</p>
