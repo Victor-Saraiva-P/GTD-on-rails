@@ -49,7 +49,7 @@ class GoogleCredentialRepositoryTests {
     void readsLegacyPlaintextTokens() {
         jdbcTemplate.update(
             "insert into google_credentials (id, access_token, refresh_token, token_type, expires_at, scope) "
-                + "values (randomblob(16), ?, ?, ?, ?, ?)",
+                + "values (gen_random_uuid(), ?, ?, ?, ?, ?)",
             "legacy-access", "legacy-refresh", "Bearer", Timestamp.from(Instant.now()), "calendar");
 
         GoogleCredential savedCredential = credentialRepository.findAll().getFirst();

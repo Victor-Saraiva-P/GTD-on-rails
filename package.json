@@ -9,7 +9,7 @@
     "build:staging": "pnpm --filter @gtd-on-rails/desktop run desktop:build:staging",
     "agent:driver": "pnpm --filter @gtd-on-rails/desktop run agent:driver",
     "staging": "pnpm --filter @gtd-on-rails/desktop run desktop:staging",
-    "test": "pnpm run unitTest && pnpm run integrationTest && pnpm run e2e",
+    "test": "node scripts/test.mjs",
     "frontend:coverage": "pnpm --filter @gtd-on-rails/desktop run coverage",
     "e2e": "turbo run e2e",
     "lint": "turbo run lint",
