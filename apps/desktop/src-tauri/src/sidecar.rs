@@ -220,11 +220,24 @@ fn monitor_sidecar_events(
             if let CommandEvent::Terminated(payload) = event {
                 record_sidecar_error(
                     &app_handle,
-                    format!("backend exited with code {:?}", payload.code),
+                    backend_exit_message(payload.code, &sidecar_profiles()),
                 );
             }
         }
     });
+}
+
+fn backend_exit_message(code: Option<i32>, profiles: &str) -> String {
+    let exit_message = format!("backend exited with code {:?}", code);
+    if !profiles
+        .split(',')
+        .any(|profile| profile.trim() == "staging")
+    {
+        return exit_message;
+    }
+    format!(
+        "{exit_message}; if the staging database is unavailable, resume the Supabase project manually in its dashboard, then run pnpm staging again"
+    )
 }
 
 fn wait_for_ready_file(app_handle: AppHandle, ready_file: PathBuf) {
@@ -372,7 +385,9 @@ fn record_sidecar_error(app_handle: &AppHandle, error: String) {
 
 #[cfg(test)]
 mod tests {
-    use super::{bootstrap_transition, sidecar_profiles_for, BootstrapStatus};
+    use super::{
+        backend_exit_message, bootstrap_transition, sidecar_profiles_for, BootstrapStatus,
+    };
 
     #[test]
     fn bootstrap_profiles_append_bootstrap_without_replacing_runtime_profiles() {
@@ -394,5 +409,17 @@ mod tests {
             bootstrap_transition("INVALID"),
             Err("bootstrap configuration status 'INVALID' is invalid; expected READY".to_string())
         );
+    }
+
+    #[test]
+    fn staging_backend_failure_explains_manual_supabase_resume() {
+        let message = backend_exit_message(Some(1), "staging,sidecar");
+        assert!(message.contains("if the staging database is unavailable"));
+    }
+
+    #[test]
+    fn production_backend_failure_keeps_generic_error() {
+        let message = backend_exit_message(Some(1), "prod,sidecar");
+        assert!(!message.contains("Supabase"));
     }
 }

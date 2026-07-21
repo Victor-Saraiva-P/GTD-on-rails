@@ -110,7 +110,7 @@ This keeps the backend local to the user's machine and avoids a hosted productio
 
 Staging uses the same sidecar flow as production, but with `staging,sidecar` profiles.
 
-Staging intentionally points to development data defaults so the production data remote is not touched while testing release behavior.
+Staging uses the repository-local, Git-ignored `staging-gtd-on-rails` root and the dedicated `gdrive:staging-gtd-on-rails` remote. `pnpm staging` sets these values explicitly, then the bootstrap sidecar performs blocking File Sync before connecting to the isolated Supabase PostgreSQL project. It does not reset the database, assets, or Google Integration Configuration; use an explicit reset workflow when one is added.
 
 ---
 
