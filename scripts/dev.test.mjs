@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { composeCommand, developmentEnvironment } from "./dev.mjs";
 import { installFakeDevelopmentCommands } from "./development-test-fixtures.mjs";
-import { runScriptUntilStopped } from "./script-test-runner.mjs";
+import { runScriptUntilLogContains } from "./script-test-runner.mjs";
 
 const devScript = path.resolve("scripts/dev.mjs");
 
@@ -47,7 +47,7 @@ async function createDevelopmentAsset(sandbox) {
 }
 
 function runDevelopmentScript(sandbox, developmentRoot) {
-  return runScriptUntilStopped(devScript, developmentScriptEnvironment(sandbox, developmentRoot), 1_000);
+  return runScriptUntilLogContains(devScript, developmentScriptEnvironment(sandbox, developmentRoot), path.join(path.dirname(developmentRoot), "pnpm.log"), "@gtd-on-rails/desktop dev");
 }
 
 function developmentScriptEnvironment(sandbox, developmentRoot) {

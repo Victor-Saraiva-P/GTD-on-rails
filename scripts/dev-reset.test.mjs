@@ -4,7 +4,7 @@ import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises
 import os from "node:os";
 import path from "node:path";
 import { installFakeDevelopmentCommands } from "./development-test-fixtures.mjs";
-import { runScriptUntilStopped } from "./script-test-runner.mjs";
+import { runScriptUntilLogContains, runScriptUntilStopped } from "./script-test-runner.mjs";
 
 const resetScript = path.resolve("scripts/dev-reset.mjs");
 
@@ -40,7 +40,7 @@ test("development reset keeps a running non-development database running", async
 test("development reset recreates assets and starts development after a development identity check", async () => {
   const sandbox = await createResetSandbox("DEVELOPMENT");
   try {
-    const processOutcome = await runResetScript(sandbox, 1_000);
+    const processOutcome = await runResetScriptUntilLog(sandbox, "@gtd-on-rails/api dev");
     assert.equal(processOutcome.exitCode, 143);
     await assert.rejects(readFile(sandbox.assetFile, "utf8"));
     assert.match(await readFile(sandbox.dockerLog, "utf8"), /down -v/);
@@ -79,7 +79,7 @@ test("development reset restores assets when database recreation fails", async (
 test("development reset starts development when staged asset cleanup fails", async () => {
   const sandbox = await createResetSandbox("DEVELOPMENT", true, "", false, true);
   try {
-    const processOutcome = await runResetScript(sandbox, 1_000);
+    const processOutcome = await runResetScriptUntilLog(sandbox, "@gtd-on-rails/api dev");
     assert.equal(processOutcome.exitCode, 143);
     await chmod(sandbox.developmentRoot, 0o700);
     await assert.rejects(readFile(sandbox.assetFile, "utf8"));
@@ -104,6 +104,10 @@ async function createResetSandbox(databaseIdentity, postgresExists = true, faile
 
 function runResetScript(sandbox, stopAfter = 0) {
   return runScriptUntilStopped(resetScript, resetEnvironment(sandbox), stopAfter);
+}
+
+function runResetScriptUntilLog(sandbox, expectedText) {
+  return runScriptUntilLogContains(resetScript, resetEnvironment(sandbox), sandbox.pnpmLog, expectedText);
 }
 
 function resetEnvironment(sandbox) {
