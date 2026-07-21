@@ -96,7 +96,12 @@ async function restoreStagedAssets(stagedAssets) {
 
 async function discardStagedAssets(stagedAssets) {
   if (!stagedAssets) return;
-  await rm(stagedAssets.stagedPath, { recursive: true, force: true });
+  try {
+    await rm(stagedAssets.stagedPath, { recursive: true, force: true });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`Development reset left staged assets at '${stagedAssets.stagedPath}'; expected removable directory, received '${message}'`);
+  }
 }
 
 class StagedDevelopmentAssets {

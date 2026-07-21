@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { installFakeDevelopmentCommands } from "./development-test-fixtures.mjs";
@@ -76,7 +76,21 @@ test("development reset restores assets when database recreation fails", async (
   }
 });
 
-async function createResetSandbox(databaseIdentity, postgresExists = true, failedCommand = "", postgresRunning = false) {
+test("development reset starts development when staged asset cleanup fails", async () => {
+  const sandbox = await createResetSandbox("DEVELOPMENT", true, "", false, true);
+  try {
+    const processOutcome = await runResetScript(sandbox, 1_000);
+    assert.equal(processOutcome.exitCode, 143);
+    await chmod(sandbox.developmentRoot, 0o700);
+    await assert.rejects(readFile(sandbox.assetFile, "utf8"));
+    assert.match(await readFile(sandbox.pnpmLog, "utf8"), /@gtd-on-rails\/api dev/);
+  } finally {
+    await chmod(sandbox.developmentRoot, 0o700);
+    await rm(sandbox.directory, { recursive: true, force: true });
+  }
+});
+
+async function createResetSandbox(databaseIdentity, postgresExists = true, failedCommand = "", postgresRunning = false, stagedAssetCleanupFails = false) {
   const directory = await mkdtemp(path.join(os.tmpdir(), "gtd-reset-test-"));
   const developmentRoot = path.join(directory, "development-data");
   const assetFile = path.join(developmentRoot, "assets", "preserved.txt");
@@ -85,7 +99,7 @@ async function createResetSandbox(databaseIdentity, postgresExists = true, faile
   await mkdir(path.dirname(assetFile), { recursive: true });
   await writeFile(assetFile, "preserve me");
   await installFakeDevelopmentCommands(directory);
-  return { assetFile, databaseIdentity, developmentRoot, directory, dockerLog, failedCommand, pnpmLog, postgresExists, postgresRunning };
+  return { assetFile, databaseIdentity, developmentRoot, directory, dockerLog, failedCommand, pnpmLog, postgresExists, postgresRunning, stagedAssetCleanupFails };
 }
 
 function runResetScript(sandbox, stopAfter = 0) {
@@ -102,6 +116,8 @@ function resetEnvironment(sandbox) {
     GTD_TEST_FAILED_DOCKER_COMMAND: sandbox.failedCommand,
     GTD_TEST_POSTGRES_EXISTS: String(sandbox.postgresExists),
     GTD_TEST_POSTGRES_RUNNING: String(sandbox.postgresRunning),
+    GTD_TEST_DEVELOPMENT_ROOT: sandbox.developmentRoot,
+    GTD_TEST_STAGED_ASSET_CLEANUP_FAILS: String(sandbox.stagedAssetCleanupFails),
     GTD_TEST_DOCKER_LOG: sandbox.dockerLog,
     GTD_TEST_PNPM_LOG: sandbox.pnpmLog,
   };

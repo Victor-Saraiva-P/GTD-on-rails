@@ -4,6 +4,7 @@ const fs = require("node:fs");
 class FakeDevelopmentDocker {
   execute(argumentsList) {
     this.log(argumentsList);
+    this.blockStagedAssetCleanup(argumentsList);
     if (this.shouldFail(argumentsList)) return this.exitWithFailure();
     if (argumentsList.includes("exec")) return this.writeDatabaseIdentity();
     if (argumentsList.includes("--status")) return this.writeHealthyStatus();
@@ -17,6 +18,12 @@ class FakeDevelopmentDocker {
 
   shouldFail(argumentsList) {
     return argumentsList.includes(process.env.GTD_TEST_FAILED_DOCKER_COMMAND);
+  }
+
+  blockStagedAssetCleanup(argumentsList) {
+    if (!argumentsList.includes("down")) return;
+    if (process.env.GTD_TEST_STAGED_ASSET_CLEANUP_FAILS !== "true") return;
+    fs.chmodSync(process.env.GTD_TEST_DEVELOPMENT_ROOT, 0o500);
   }
 
   exitWithFailure() {
