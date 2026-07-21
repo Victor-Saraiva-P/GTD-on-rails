@@ -15,7 +15,18 @@ public class ApiApplication {
      * <p>Example: {@code ApiApplication.main(args)}.</p>
      */
     public static void main(String[] args) {
+        if (hasBootstrapProfile(args)) {
+            BootstrapApplication.run(args);
+            return;
+        }
         SpringApplication.run(ApiApplication.class, args);
+    }
+
+    private static boolean hasBootstrapProfile(String[] args) {
+        for (String arg : args) {
+            if (arg.contains("bootstrap")) return true;
+        }
+        return false;
     }
 
     @Bean

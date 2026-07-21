@@ -674,7 +674,7 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .setup(|app| {
             app.manage(sidecar::SidecarBackendState::new(sidecar::sidecar_enabled()));
-            sidecar::start_sidecar(app)
+            Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             read_clipboard_image,
@@ -688,6 +688,7 @@ pub fn run() {
             render_pdf_first_page_preview,
             native_update::native_update_check,
             native_update::native_update_install,
+            sidecar::start_sidecar_command,
             sidecar_backend_status
         ])
         .run(tauri::generate_context!())

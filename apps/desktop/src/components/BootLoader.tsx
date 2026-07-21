@@ -46,6 +46,10 @@ async function waitForBackendBaseUrl(): Promise<void> {
   }
 }
 
+async function startBackend(): Promise<void> {
+  if (isTauriRuntime()) await invoke("start_sidecar_command");
+}
+
 function delay(milliseconds: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
 }
@@ -90,6 +94,7 @@ function useBackendHealth() {
       }
 
       try {
+        await startBackend();
         await waitForBackendBaseUrl();
       } catch (error) {
         setBootError((error as Error).message);
