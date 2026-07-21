@@ -19,6 +19,7 @@ The project is a `pnpm` monorepo orchestrated with Turbo.
 The root `package.json` exposes the main workflows:
 
 - `pnpm dev`: runs the development tasks through Turbo.
+- `pnpm dev:reset`: safely recreates the development database and assets before starting development.
 - `pnpm build`: builds the workspace.
 - `pnpm test`: runs unit, integration, and e2e tests.
 - `pnpm check`: runs static checks.
@@ -88,6 +89,8 @@ Flyway migrations live under `apps/api/src/main/resources/db/migration`.
 - CORS allows the local desktop dev origin.
 - Development data and assets live in the Git-ignored repository-local `dev-gtd-on-rails` directory.
 - Development rclone File Sync is disabled by default.
+
+`pnpm dev:reset` first confirms the persistent database identity is exactly `DEVELOPMENT`. A mismatch stops before changing the PostgreSQL volume or development assets. After a successful check, the command recreates both state stores and starts the normal development workflow; the dev profile seeds its deterministic fake dataset and representative PDF asset on startup.
 
 ### Production Runtime
 

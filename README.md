@@ -115,6 +115,7 @@ pnpm build:prod
 Useful root commands:
 
 - `pnpm dev`: runs the desktop and API development workflows through Turbo.
+- `pnpm dev:reset`: verifies the local `DEVELOPMENT` database identity, recreates development PostgreSQL and assets, then starts development.
 - `pnpm test`: runs unit, integration, and e2e tests.
 - `pnpm check`: validates TypeScript and API checks.
 - `pnpm build:prod`: creates the production Tauri build with the backend sidecar.
