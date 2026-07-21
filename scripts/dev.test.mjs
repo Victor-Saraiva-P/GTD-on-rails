@@ -1,11 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { spawn } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
 import { composeCommand, developmentEnvironment } from "./dev.mjs";
 import { installFakeDevelopmentCommands } from "./development-test-fixtures.mjs";
+import { runScriptUntilStopped } from "./script-test-runner.mjs";
 
 const devScript = path.resolve("scripts/dev.mjs");
 
@@ -27,8 +27,8 @@ test("development orchestrator starts Compose and both native processes", async 
   try {
     const assetFile = await createDevelopmentAsset(sandbox);
     await installFakeDevelopmentCommands(sandbox);
-    const result = await runDevelopmentScript(sandbox, path.dirname(path.dirname(assetFile)));
-    assert.equal(result.exitCode, 143);
+    const processOutcome = await runDevelopmentScript(sandbox, path.dirname(path.dirname(assetFile)));
+    assert.equal(processOutcome.exitCode, 143);
     assert.equal(await readFile(assetFile, "utf8"), "preserve me");
     assert.match(await readFile(path.join(sandbox, "docker.log"), "utf8"), /up -d postgres/);
     assert.doesNotMatch(await readFile(path.join(sandbox, "docker.log"), "utf8"), /down -v/);
@@ -47,16 +47,7 @@ async function createDevelopmentAsset(sandbox) {
 }
 
 function runDevelopmentScript(sandbox, developmentRoot) {
-  return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [devScript], {
-      cwd: path.resolve("."),
-      env: developmentScriptEnvironment(sandbox, developmentRoot),
-      stdio: "ignore",
-    });
-    const timer = setTimeout(() => child.kill("SIGTERM"), 1000);
-    child.once("error", reject);
-    child.once("close", (exitCode) => { clearTimeout(timer); resolve({ exitCode }); });
-  });
+  return runScriptUntilStopped(devScript, developmentScriptEnvironment(sandbox, developmentRoot), 1_000);
 }
 
 function developmentScriptEnvironment(sandbox, developmentRoot) {

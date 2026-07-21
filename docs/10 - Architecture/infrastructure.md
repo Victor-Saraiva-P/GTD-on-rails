@@ -90,7 +90,7 @@ Flyway migrations live under `apps/api/src/main/resources/db/migration`.
 - Development data and assets live in the Git-ignored repository-local `dev-gtd-on-rails` directory.
 - Development rclone File Sync is disabled by default.
 
-`pnpm dev:reset` first confirms the persistent database identity is exactly `DEVELOPMENT`. A mismatch stops before changing the PostgreSQL volume or development assets. After a successful check, the command recreates both state stores and starts the normal development workflow; the dev profile seeds its deterministic fake dataset and representative PDF asset on startup.
+`pnpm dev:reset` first confirms the persistent database identity is exactly `DEVELOPMENT`. A mismatch restores a previously stopped PostgreSQL container and stops before changing the PostgreSQL volume or development assets. A development database must first be initialized through `pnpm dev`; a missing container fails without starting one. After a successful check, the command recreates both state stores and starts the normal development workflow; the dev profile seeds its deterministic fake dataset and representative PDF asset on startup.
 
 ### Production Runtime
 
