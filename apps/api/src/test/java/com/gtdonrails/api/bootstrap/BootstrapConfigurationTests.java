@@ -56,6 +56,14 @@ class BootstrapConfigurationTests {
         assertEquals("INVALID", status().get("configurationStatus").asText());
     }
 
+    @Test
+    void reportsSyncFailureWithoutTreatingItAsFirstInstallation() throws Exception {
+        int exitCode = configuration().run(new FailingDataSyncService(tempDir));
+
+        assertEquals(1, exitCode);
+        assertEquals("FAILED", status().get("configurationStatus").asText());
+    }
+
     private BootstrapConfiguration configuration() {
         return new BootstrapConfiguration(
             new ObjectMapper(),
@@ -69,12 +77,24 @@ class BootstrapConfigurationTests {
 
     private static class FakeDataSyncService extends DataSyncService {
 
-        private FakeDataSyncService(Path dataRoot) {
+        protected FakeDataSyncService(Path dataRoot) {
             super(new DataSyncProperties(), new RcloneDataSyncService(new DataSyncProperties()), dataRoot.toString());
         }
 
         @Override
         public void syncOnStartup() {
+        }
+    }
+
+    private static class FailingDataSyncService extends FakeDataSyncService {
+
+        private FailingDataSyncService(Path dataRoot) {
+            super(dataRoot);
+        }
+
+        @Override
+        public void syncOnStartup() {
+            throw new IllegalStateException("file sync failed");
         }
     }
 }

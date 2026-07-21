@@ -31,8 +31,20 @@ public class BootstrapApplication {
         ConfigurableApplicationContext context = SpringApplication.run(BootstrapApplication.class, args);
         int exitCode = context.getBean(BootstrapConfiguration.class)
             .run(context.getBean(DataSyncService.class));
+        if (exitCode == 2 && context.getBean(BootstrapConfiguration.class).setupRequired()) {
+            awaitSetup(context);
+        }
         int springExitCode = SpringApplication.exit(context);
         System.exit(Math.max(exitCode, springExitCode));
+    }
+
+    private static void awaitSetup(ConfigurableApplicationContext context) {
+        try {
+            context.getBean(BootstrapConfiguration.class).awaitSetupCompletion();
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("database setup wait was interrupted; expected completed setup", exception);
+        }
     }
 
     private BootstrapApplication() {

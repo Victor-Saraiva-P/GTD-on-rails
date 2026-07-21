@@ -106,7 +106,11 @@ pub fn start_sidecar(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> 
     let (rx, child) = spawn_backend(app, &ready_file, true)?;
     app.state::<SidecarBackendState>().set_child(child);
     drop(rx);
-    wait_for_bootstrap(app.clone(), ready_file);
+    wait_for_bootstrap(
+        app.clone(),
+        ready_file.with_extension("status.json"),
+        ready_file,
+    );
     Ok(())
 }
 
@@ -131,7 +135,10 @@ fn spawn_backend(
         ))
         .env("GTD_API_JAR_PATH", jar_path.as_os_str())
         .env("GTD_SIDECAR_READY_FILE", ready_file.as_os_str())
-        .env("GTD_BOOTSTRAP_STATUS_FILE", ready_file.as_os_str())
+        .env(
+            "GTD_BOOTSTRAP_STATUS_FILE",
+            ready_file.with_extension("status.json").as_os_str(),
+        )
         .spawn()?;
     Ok(child)
 }
@@ -201,6 +208,7 @@ fn bootstrap_file_path() -> PathBuf {
 fn remove_stale_ready_file(ready_file: &Path) {
     let _ = std::fs::remove_file(ready_file);
     let _ = std::fs::remove_file(ready_file.with_extension("json.tmp"));
+    let _ = std::fs::remove_file(ready_file.with_extension("status.json"));
 }
 
 fn monitor_sidecar_events(
@@ -232,12 +240,12 @@ fn wait_for_ready_file(app_handle: AppHandle, ready_file: PathBuf) {
     });
 }
 
-fn wait_for_bootstrap(app_handle: AppHandle, status_file: PathBuf) {
+fn wait_for_bootstrap(app_handle: AppHandle, status_file: PathBuf, ready_file: PathBuf) {
     std::thread::spawn(move || {
         let deadline = Instant::now() + READY_TIMEOUT;
         while Instant::now() < deadline {
             if let Some(status) = read_bootstrap_status(&status_file) {
-                return continue_after_bootstrap(&app_handle, &status_file, status);
+                return continue_after_bootstrap(&app_handle, &status_file, &ready_file, status);
             }
             std::thread::sleep(READY_POLL_INTERVAL);
         }
@@ -250,8 +258,20 @@ fn read_bootstrap_status(status_file: &Path) -> Option<BootstrapStatus> {
     serde_json::from_str(&text).ok()
 }
 
-fn continue_after_bootstrap(app_handle: &AppHandle, status_file: &Path, status: BootstrapStatus) {
+fn continue_after_bootstrap(
+    app_handle: &AppHandle,
+    status_file: &Path,
+    ready_file: &Path,
+    status: BootstrapStatus,
+) {
     let _ = std::fs::remove_file(status_file);
+    if status.configuration_status == "MISSING" {
+        return expose_setup_until_ready(
+            app_handle.clone(),
+            status_file.to_path_buf(),
+            ready_file.to_path_buf(),
+        );
+    }
     if let Err(error) = bootstrap_transition(&status.configuration_status) {
         return record_sidecar_error(app_handle, error);
     }
@@ -265,6 +285,42 @@ fn continue_after_bootstrap(app_handle: &AppHandle, status_file: &Path, status: 
     app_handle.state::<SidecarBackendState>().set_child(child);
     monitor_sidecar_events(app_handle.clone(), rx);
     wait_for_ready_file(app_handle.clone(), ready_file);
+}
+
+fn expose_setup_until_ready(app_handle: AppHandle, status_file: PathBuf, ready_file: PathBuf) {
+    let Some(payload) = read_ready_payload(&ready_file) else {
+        return record_sidecar_error(
+            &app_handle,
+            "bootstrap ready payload was missing; expected local HTTP endpoint".to_string(),
+        );
+    };
+    record_ready_payload(&app_handle, payload);
+    std::thread::spawn(move || {
+        let deadline = Instant::now() + READY_TIMEOUT;
+        while Instant::now() < deadline {
+            if let Some(status) = read_bootstrap_status(&status_file) {
+                if status.configuration_status == "READY" {
+                    return continue_after_bootstrap(
+                        &app_handle,
+                        &status_file,
+                        &ready_file,
+                        status,
+                    );
+                }
+                if status.configuration_status == "FAILED" {
+                    return record_sidecar_error(
+                        &app_handle,
+                        "database setup failed; expected valid limited configuration".to_string(),
+                    );
+                }
+            }
+            std::thread::sleep(READY_POLL_INTERVAL);
+        }
+        record_sidecar_error(
+            &app_handle,
+            "database setup timed out; expected completed setup".to_string(),
+        );
+    });
 }
 
 fn bootstrap_transition(configuration_status: &str) -> Result<(), String> {

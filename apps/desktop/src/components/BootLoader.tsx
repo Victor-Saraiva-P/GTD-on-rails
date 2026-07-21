@@ -4,6 +4,7 @@ import { setRuntimeApiBaseUrl } from "../config/env.ts";
 import { appMetadata } from "../config/appMetadata.ts";
 import { apiJson } from "../lib/api/apiClient.ts";
 import { isTauriRuntime } from "../lib/tauriRuntime.ts";
+import { DatabaseSetup } from "../features/bootstrap/DatabaseSetup.tsx";
 import { shouldCheckNativeUpdates, startupSteps, type StartupStep } from "./nativeUpdatePolicy.ts";
 import "../styles/boot-loader.css";
 
@@ -25,12 +26,17 @@ type NativeUpdateStatus = {
   checksumUrl: string | null;
 };
 
-async function pingBackend(): Promise<boolean> {
+async function pingBackend(): Promise<"ready" | "setup" | "offline"> {
   try {
     await apiJson("/sync/status");
-    return true;
+    return "ready";
   } catch {
-    return false;
+    try {
+      const status = await apiJson<{ status: string }>("/bootstrap/status");
+      return status.status === "MISSING" ? "setup" : "offline";
+    } catch {
+      return "offline";
+    }
   }
 }
 
@@ -89,6 +95,7 @@ function useBackendHealth() {
   const [dots, setDots] = useState("");
   const [bootError, setBootError] = useState<string | null>(null);
   const [updateStatus, setUpdateStatus] = useState<string | null>(null);
+  const [setupRequired, setSetupRequired] = useState(false);
 
   useEffect(() => {
     let timeout: number;
@@ -111,9 +118,13 @@ function useBackendHealth() {
         setBootError((error as Error).message);
         return;
       }
-      const isOnline = await pingBackend();
-      if (isOnline) {
+      const backendState = await pingBackend();
+      if (backendState === "ready") {
+        setSetupRequired(false);
         setIsBooted(true);
+      } else if (backendState === "setup") {
+        setSetupRequired(true);
+        timeout = window.setTimeout(() => void checkHealth(), PING_INTERVAL_MS);
       } else {
         timeout = window.setTimeout(() => void checkHealth(), PING_INTERVAL_MS);
       }
@@ -136,7 +147,7 @@ function useBackendHealth() {
     return () => window.clearInterval(dotInterval);
   }, [isBooted]);
 
-  return { isBooted, dots, bootError, updateStatus };
+  return { isBooted, dots, bootError, updateStatus, setupRequired };
 }
 
 /**
@@ -144,7 +155,7 @@ function useBackendHealth() {
  * Renders a retro terminal loading screen while waiting.
  */
 export function BootLoader({ children }: PropsWithChildren) {
-  const { isBooted, dots, bootError, updateStatus } = useBackendHealth();
+  const { isBooted, dots, bootError, updateStatus, setupRequired } = useBackendHealth();
   const [shouldRenderLoader, setShouldRenderLoader] = useState(true);
 
   // Allow time for fade-out animation
@@ -186,6 +197,7 @@ export function BootLoader({ children }: PropsWithChildren) {
           </div>
         </div>
       )}
+      {setupRequired ? <DatabaseSetup /> : null}
       {isBooted && children}
     </>
   );

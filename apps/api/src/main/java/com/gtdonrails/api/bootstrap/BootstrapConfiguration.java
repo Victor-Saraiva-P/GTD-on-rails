@@ -5,6 +5,7 @@ import java.io.BufferedReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Properties;
+import java.util.concurrent.CountDownLatch;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gtdonrails.api.config.DataSyncProperties;
@@ -24,6 +25,8 @@ public class BootstrapConfiguration {
     private final ObjectMapper objectMapper;
     private final Path dataRoot;
     private final Path statusFile;
+    private String configurationStatus = "FAILED";
+    private final CountDownLatch setupCompletion = new CountDownLatch(1);
 
     public BootstrapConfiguration(
         ObjectMapper objectMapper,
@@ -56,13 +59,35 @@ public class BootstrapConfiguration {
     public int run(DataSyncService dataSyncService) {
         try {
             dataSyncService.syncOnStartup();
-            String status = databaseConfigurationStatus();
-            writeStatus(status);
-            return "READY".equals(status) ? 0 : 2;
+            configurationStatus = databaseConfigurationStatus();
+            writeStatus(configurationStatus);
+            return "READY".equals(configurationStatus) ? 0 : 2;
         } catch (RuntimeException | IOException exception) {
             writeStatus("FAILED");
             return 1;
         }
+    }
+
+    /** Marks setup complete so the host can replace bootstrap with normal startup.
+     *
+     * <p>Example: {@code bootstrapConfiguration.markReady()}.</p>
+     */
+    public void markReady() {
+        configurationStatus = "READY";
+        writeStatus(configurationStatus);
+        setupCompletion.countDown();
+    }
+
+    public boolean setupRequired() {
+        return "MISSING".equals(configurationStatus);
+    }
+
+    public String configurationStatus() {
+        return configurationStatus;
+    }
+
+    public void awaitSetupCompletion() throws InterruptedException {
+        setupCompletion.await();
     }
 
     private String databaseConfigurationStatus() throws IOException {
