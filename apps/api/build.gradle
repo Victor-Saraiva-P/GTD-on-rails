@@ -9,6 +9,10 @@ plugins {
 group = 'com.gtdonrails'
 version = '1.4.1'
 
+springBoot {
+	mainClass = 'com.gtdonrails.api.ApiApplication'
+}
+
 java {
 	sourceCompatibility = JavaVersion.VERSION_21
 	targetCompatibility = JavaVersion.VERSION_21

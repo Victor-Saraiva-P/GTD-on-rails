@@ -1,0 +1,80 @@
+package com.gtdonrails.api.bootstrap;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.gtdonrails.api.config.DataSyncProperties;
+import com.gtdonrails.api.services.DataSyncService;
+import com.gtdonrails.api.services.RcloneDataSyncService;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.api.Tag;
+
+@Tag("unit")
+class BootstrapConfigurationTests {
+
+    @TempDir
+    private Path tempDir;
+
+    @Test
+    void reportsMissingConfigurationWithoutStartingNormalRuntime() throws Exception {
+        BootstrapConfiguration configuration = configuration();
+
+        int exitCode = configuration.run(new FakeDataSyncService(tempDir));
+
+        assertEquals(2, exitCode);
+        assertEquals("MISSING", status().get("configurationStatus").asText());
+    }
+
+    @Test
+    void acceptsOnlyPostgresqlConfigurationWithCredentials() throws Exception {
+        Files.writeString(tempDir.resolve("database.properties"), """
+            spring.datasource.url=jdbc:postgresql://db.example/gtd
+            spring.datasource.username=gtd_app
+            spring.datasource.password=secret
+            """);
+        BootstrapConfiguration configuration = configuration();
+
+        int exitCode = configuration.run(new FakeDataSyncService(tempDir));
+
+        assertEquals(0, exitCode);
+        assertEquals("READY", status().get("configurationStatus").asText());
+    }
+
+    @Test
+    void rejectsConfigurationWithoutPostgresqlCredentials() throws Exception {
+        Files.writeString(tempDir.resolve("database.properties"),
+            "spring.datasource.url=jdbc:sqlite:legacy.db\n");
+
+        int exitCode = configuration().run(new FakeDataSyncService(tempDir));
+
+        assertEquals(2, exitCode);
+        assertEquals("INVALID", status().get("configurationStatus").asText());
+    }
+
+    private BootstrapConfiguration configuration() {
+        return new BootstrapConfiguration(
+            new ObjectMapper(),
+            tempDir.toString(),
+            tempDir.resolve("bootstrap-status.json").toString());
+    }
+
+    private JsonNode status() throws Exception {
+        return new ObjectMapper().readTree(Files.readString(tempDir.resolve("bootstrap-status.json")));
+    }
+
+    private static class FakeDataSyncService extends DataSyncService {
+
+        private FakeDataSyncService(Path dataRoot) {
+            super(new DataSyncProperties(), new RcloneDataSyncService(new DataSyncProperties()), dataRoot.toString());
+        }
+
+        @Override
+        public void syncOnStartup() {
+        }
+    }
+}
