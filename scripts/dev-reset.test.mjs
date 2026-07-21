@@ -24,6 +24,19 @@ test("development reset refuses a non-development database without deleting pers
   }
 });
 
+test("development reset keeps a running non-development database running", async () => {
+  const sandbox = await createResetSandbox("PRODUCTION", true, "", true);
+  try {
+    const processOutcome = await runResetScript(sandbox);
+    assert.equal(processOutcome.exitCode, 1);
+    assert.equal(await readFile(sandbox.assetFile, "utf8"), "preserve me");
+    const dockerLog = await readFile(sandbox.dockerLog, "utf8");
+    assert.doesNotMatch(dockerLog, /start postgres|stop postgres|down -v|up -d postgres/);
+  } finally {
+    await rm(sandbox.directory, { recursive: true, force: true });
+  }
+});
+
 test("development reset recreates assets and starts development after a development identity check", async () => {
   const sandbox = await createResetSandbox("DEVELOPMENT");
   try {
@@ -63,7 +76,7 @@ test("development reset restores assets when database recreation fails", async (
   }
 });
 
-async function createResetSandbox(databaseIdentity, postgresExists = true, failedCommand = "") {
+async function createResetSandbox(databaseIdentity, postgresExists = true, failedCommand = "", postgresRunning = false) {
   const directory = await mkdtemp(path.join(os.tmpdir(), "gtd-reset-test-"));
   const developmentRoot = path.join(directory, "development-data");
   const assetFile = path.join(developmentRoot, "assets", "preserved.txt");
@@ -72,7 +85,7 @@ async function createResetSandbox(databaseIdentity, postgresExists = true, faile
   await mkdir(path.dirname(assetFile), { recursive: true });
   await writeFile(assetFile, "preserve me");
   await installFakeDevelopmentCommands(directory);
-  return { assetFile, databaseIdentity, developmentRoot, directory, dockerLog, failedCommand, pnpmLog, postgresExists };
+  return { assetFile, databaseIdentity, developmentRoot, directory, dockerLog, failedCommand, pnpmLog, postgresExists, postgresRunning };
 }
 
 function runResetScript(sandbox, stopAfter = 0) {
@@ -88,6 +101,7 @@ function resetEnvironment(sandbox) {
     GTD_TEST_DATABASE_IDENTITY: sandbox.databaseIdentity,
     GTD_TEST_FAILED_DOCKER_COMMAND: sandbox.failedCommand,
     GTD_TEST_POSTGRES_EXISTS: String(sandbox.postgresExists),
+    GTD_TEST_POSTGRES_RUNNING: String(sandbox.postgresRunning),
     GTD_TEST_DOCKER_LOG: sandbox.dockerLog,
     GTD_TEST_PNPM_LOG: sandbox.pnpmLog,
   };
