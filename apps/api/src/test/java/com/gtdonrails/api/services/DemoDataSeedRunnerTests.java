@@ -4,9 +4,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.boot.DefaultApplicationArguments;
@@ -17,15 +17,11 @@ class DemoDataSeedRunnerTests {
     @Mock
     private DemoDataSeedService demoDataSeedService;
 
+    @InjectMocks
     private DemoDataSeedRunner demoDataSeedRunner;
 
-    @BeforeEach
-    void setUp() {
-        demoDataSeedRunner = new DemoDataSeedRunner(demoDataSeedService);
-    }
-
     @Test
-    void seedsDeterministicDemoDataWhenDevelopmentDatabaseIsEmpty() throws Exception {
+    void seedsDeterministicDemoDataWhenDevelopmentDatabaseIsEmpty() {
         when(demoDataSeedService.isDatabaseEmpty()).thenReturn(true);
 
         demoDataSeedRunner.run(new DefaultApplicationArguments());
@@ -34,7 +30,7 @@ class DemoDataSeedRunnerTests {
     }
 
     @Test
-    void preservesExistingDevelopmentData() throws Exception {
+    void preservesExistingDevelopmentData() {
         when(demoDataSeedService.isDatabaseEmpty()).thenReturn(false);
 
         demoDataSeedRunner.run(new DefaultApplicationArguments());
