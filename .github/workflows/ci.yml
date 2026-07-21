@@ -45,8 +45,19 @@ jobs:
       - name: Run tests
         run: pnpm test
 
+      - name: Start PostgreSQL for checks
+        run: docker compose -f infra/compose.test.yaml -p gtd-on-rails-test up -d --wait
+
       - name: Run checks
+        env:
+          GTD_TEST_DB_URL: jdbc:postgresql://127.0.0.1:55432/gtd_integration?currentSchema=gtd
+          GTD_TEST_DB_USERNAME: gtd_test
+          GTD_TEST_DB_PASSWORD: gtd_test
         run: pnpm check
+
+      - name: Stop PostgreSQL for checks
+        if: always()
+        run: docker compose -f infra/compose.test.yaml -p gtd-on-rails-test down --volumes --remove-orphans
 
   desktop-native:
     name: Desktop Native
