@@ -25,7 +25,12 @@ export function runScriptUntilLogContains(scriptPath, environment, logPath, expe
     const childProcess = spawn(process.execPath, [scriptPath], { cwd: process.cwd(), detached: true, env: environment, stdio: "ignore" });
     let settled = false;
     let timeout;
-    const settle = (callback) => { if (settled) return; settled = true; clearTimeout(timeout); callback(); };
+    const settle = (callback) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      callback();
+    };
     const settleWithError = (error) => settle(() => reject(error));
     timeout = setTimeout(() => {
       if (!childProcess.killed) stopScriptProcessGroup(childProcess.pid);
