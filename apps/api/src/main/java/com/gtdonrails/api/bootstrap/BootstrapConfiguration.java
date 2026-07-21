@@ -1,6 +1,7 @@
 package com.gtdonrails.api.bootstrap;
 
 import java.io.IOException;
+import java.io.BufferedReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Properties;
@@ -47,6 +48,11 @@ public class BootstrapConfiguration {
         return new DataSyncService(properties, rcloneDataSyncService, dataRoot.toString());
     }
 
+    /**
+     * Performs File Sync and publishes the configuration status for the desktop host.
+     *
+     * <p>Example: {@code bootstrapConfiguration.run(dataSyncService)}.</p>
+     */
     public int run(DataSyncService dataSyncService) {
         try {
             dataSyncService.syncOnStartup();
@@ -63,10 +69,21 @@ public class BootstrapConfiguration {
         Path configuration = dataRoot.resolve("database.properties");
         if (!Files.isRegularFile(configuration)) return "MISSING";
         Properties properties = new Properties();
-        try (var reader = Files.newBufferedReader(configuration)) {
+        try (BufferedReader reader = Files.newBufferedReader(configuration)) {
             properties.load(reader);
         }
-        return properties.containsKey("spring.datasource.url") ? "READY" : "INVALID";
+        return validDatabaseConfiguration(properties) ? "READY" : "INVALID";
+    }
+
+    private boolean validDatabaseConfiguration(Properties properties) {
+        return hasText(properties.getProperty("spring.datasource.url"))
+            && properties.getProperty("spring.datasource.url").startsWith("jdbc:postgresql://")
+            && hasText(properties.getProperty("spring.datasource.username"))
+            && hasText(properties.getProperty("spring.datasource.password"));
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 
     private void writeStatus(String configurationStatus) {

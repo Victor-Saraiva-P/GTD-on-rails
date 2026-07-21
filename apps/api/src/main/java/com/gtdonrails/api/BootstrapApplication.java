@@ -22,6 +22,11 @@ import org.springframework.context.annotation.Profile;
 @ComponentScan(basePackageClasses = BootstrapConfiguration.class)
 public class BootstrapApplication {
 
+    /**
+     * Runs the temporary bootstrap context and exits with its lifecycle result.
+     *
+     * <p>Example: {@code BootstrapApplication.run(args)}.</p>
+     */
     public static void run(String[] args) {
         ConfigurableApplicationContext context = SpringApplication.run(BootstrapApplication.class, args);
         int exitCode = context.getBean(BootstrapConfiguration.class)
