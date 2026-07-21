@@ -252,14 +252,8 @@ fn read_bootstrap_status(status_file: &Path) -> Option<BootstrapStatus> {
 
 fn continue_after_bootstrap(app_handle: &AppHandle, status_file: &Path, status: BootstrapStatus) {
     let _ = std::fs::remove_file(status_file);
-    if status.configuration_status != "READY" {
-        return record_sidecar_error(
-            app_handle,
-            format!(
-                "bootstrap configuration status '{}' is invalid; expected READY",
-                status.configuration_status
-            ),
-        );
+    if let Err(error) = bootstrap_transition(&status.configuration_status) {
+        return record_sidecar_error(app_handle, error);
     }
 
     let ready_file = ready_file_path();
@@ -271,6 +265,16 @@ fn continue_after_bootstrap(app_handle: &AppHandle, status_file: &Path, status: 
     app_handle.state::<SidecarBackendState>().set_child(child);
     monitor_sidecar_events(app_handle.clone(), rx);
     wait_for_ready_file(app_handle.clone(), ready_file);
+}
+
+fn bootstrap_transition(configuration_status: &str) -> Result<(), String> {
+    if configuration_status == "READY" {
+        return Ok(());
+    }
+    Err(format!(
+        "bootstrap configuration status '{}' is invalid; expected READY",
+        configuration_status
+    ))
 }
 
 fn read_ready_payload(ready_file: &Path) -> Option<ReadyPayload> {
@@ -312,7 +316,7 @@ fn record_sidecar_error(app_handle: &AppHandle, error: String) {
 
 #[cfg(test)]
 mod tests {
-    use super::{sidecar_profiles_for, BootstrapStatus};
+    use super::{bootstrap_transition, sidecar_profiles_for, BootstrapStatus};
 
     #[test]
     fn bootstrap_profiles_append_bootstrap_without_replacing_runtime_profiles() {
@@ -325,5 +329,14 @@ mod tests {
         let status: BootstrapStatus = serde_json::from_str(r#"{"configurationStatus":"READY"}"#)
             .expect("valid bootstrap status JSON");
         assert_eq!(status.configuration_status, "READY");
+    }
+
+    #[test]
+    fn bootstrap_transition_starts_normal_sidecar_only_when_ready() {
+        assert_eq!(bootstrap_transition("READY"), Ok(()));
+        assert_eq!(
+            bootstrap_transition("INVALID"),
+            Err("bootstrap configuration status 'INVALID' is invalid; expected READY".to_string())
+        );
     }
 }

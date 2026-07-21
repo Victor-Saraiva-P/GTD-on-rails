@@ -4,7 +4,7 @@ import { setRuntimeApiBaseUrl } from "../config/env.ts";
 import { appMetadata } from "../config/appMetadata.ts";
 import { apiJson } from "../lib/api/apiClient.ts";
 import { isTauriRuntime } from "../lib/tauriRuntime.ts";
-import { shouldCheckNativeUpdates } from "./nativeUpdatePolicy.ts";
+import { shouldCheckNativeUpdates, startupSteps, type StartupStep } from "./nativeUpdatePolicy.ts";
 import "../styles/boot-loader.css";
 
 const PING_INTERVAL_MS = 1000;
@@ -50,6 +50,15 @@ async function startBackend(): Promise<void> {
   if (isTauriRuntime()) await invoke("start_sidecar_command");
 }
 
+async function runStartupStep(
+  step: StartupStep,
+  setUpdateStatus: (status: string) => void
+): Promise<boolean> {
+  if (step === "native-update") return installNativeUpdate(setUpdateStatus);
+  await startBackend();
+  return false;
+}
+
 function delay(milliseconds: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
 }
@@ -87,14 +96,16 @@ function useBackendHealth() {
     const checkHealth = async () => {
       if (isTauriRuntime()) {
         try {
-          if (await installNativeUpdate(setUpdateStatus)) return;
+          const steps = startupSteps(isTauriRuntime(), import.meta.env.DEV);
+          for (const step of steps) {
+            if (await runStartupStep(step, setUpdateStatus)) return;
+          }
         } catch (e) {
           console.error("Failed to check for updates:", e);
         }
       }
 
       try {
-        await startBackend();
         await waitForBackendBaseUrl();
       } catch (error) {
         setBootError((error as Error).message);
