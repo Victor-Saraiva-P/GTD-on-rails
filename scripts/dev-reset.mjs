@@ -1,4 +1,5 @@
-import { rm } from "node:fs/promises";
+import { rename, rm } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { composeOutput, developmentRootDirectory, runCompose, startDevelopment, waitForPostgres } from "./dev.mjs";
 
@@ -12,16 +13,25 @@ const expectedDatabaseIdentity = "DEVELOPMENT";
 export async function resetDevelopmentData() {
   const postgresWasRunning = startExistingPostgresForIdentityCheck();
   assertDevelopmentIdentityOrRestoreState(postgresWasRunning);
-  runCompose(["down", "-v"]);
-  await removeDevelopmentAssets();
+  const stagedAssets = await stageDevelopmentAssets();
+  await recreateDatabaseAndDiscardAssets(stagedAssets);
 }
 
 function startExistingPostgresForIdentityCheck() {
   assertPostgresContainerExists();
   const postgresWasRunning = postgresIsRunning();
   if (!postgresWasRunning) runCompose(["start", "postgres"]);
-  waitForPostgres();
-  return postgresWasRunning;
+  return waitForHealthyPostgresOrRestoreState(postgresWasRunning);
+}
+
+function waitForHealthyPostgresOrRestoreState(postgresWasRunning) {
+  try {
+    waitForPostgres();
+    return postgresWasRunning;
+  } catch (error) {
+    restorePostgresState(postgresWasRunning);
+    throw error;
+  }
 }
 
 function assertPostgresContainerExists() {
@@ -57,8 +67,43 @@ function restorePostgresState(postgresWasRunning) {
   runCompose(["stop", "postgres"]);
 }
 
-async function removeDevelopmentAssets() {
-  await rm(path.join(developmentRootDirectory(), "assets"), { recursive: true, force: true });
+async function stageDevelopmentAssets() {
+  const activePath = path.join(developmentRootDirectory(), "assets");
+  const stagedPath = `${activePath}.reset-${randomUUID()}`;
+  try {
+    await rename(activePath, stagedPath);
+    return new StagedDevelopmentAssets(activePath, stagedPath);
+  } catch (error) {
+    if (error.code === "ENOENT") return null;
+    throw new Error(`development asset directory value '${activePath}' is invalid; expected movable directory`, { cause: error });
+  }
+}
+
+async function recreateDatabaseAndDiscardAssets(stagedAssets) {
+  try {
+    runCompose(["down", "-v"]);
+  } catch (error) {
+    await restoreStagedAssets(stagedAssets);
+    throw error;
+  }
+  await discardStagedAssets(stagedAssets);
+}
+
+async function restoreStagedAssets(stagedAssets) {
+  if (!stagedAssets) return;
+  await rename(stagedAssets.stagedPath, stagedAssets.activePath);
+}
+
+async function discardStagedAssets(stagedAssets) {
+  if (!stagedAssets) return;
+  await rm(stagedAssets.stagedPath, { recursive: true, force: true });
+}
+
+class StagedDevelopmentAssets {
+  constructor(activePath, stagedPath) {
+    this.activePath = activePath;
+    this.stagedPath = stagedPath;
+  }
 }
 
 async function main() {

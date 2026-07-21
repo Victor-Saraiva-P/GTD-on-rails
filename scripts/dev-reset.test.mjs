@@ -50,7 +50,20 @@ test("development reset refuses a missing PostgreSQL container without starting 
   }
 });
 
-async function createResetSandbox(databaseIdentity, postgresExists = true) {
+test("development reset restores assets when database recreation fails", async () => {
+  const sandbox = await createResetSandbox("DEVELOPMENT", true, "down");
+  try {
+    const processOutcome = await runResetScript(sandbox);
+    assert.equal(processOutcome.exitCode, 1);
+    assert.equal(await readFile(sandbox.assetFile, "utf8"), "preserve me");
+    assert.match(await readFile(sandbox.dockerLog, "utf8"), /down -v/);
+    await assert.rejects(readFile(sandbox.pnpmLog, "utf8"));
+  } finally {
+    await rm(sandbox.directory, { recursive: true, force: true });
+  }
+});
+
+async function createResetSandbox(databaseIdentity, postgresExists = true, failedCommand = "") {
   const directory = await mkdtemp(path.join(os.tmpdir(), "gtd-reset-test-"));
   const developmentRoot = path.join(directory, "development-data");
   const assetFile = path.join(developmentRoot, "assets", "preserved.txt");
@@ -59,7 +72,7 @@ async function createResetSandbox(databaseIdentity, postgresExists = true) {
   await mkdir(path.dirname(assetFile), { recursive: true });
   await writeFile(assetFile, "preserve me");
   await installFakeDevelopmentCommands(directory);
-  return { assetFile, databaseIdentity, developmentRoot, directory, dockerLog, pnpmLog, postgresExists };
+  return { assetFile, databaseIdentity, developmentRoot, directory, dockerLog, failedCommand, pnpmLog, postgresExists };
 }
 
 function runResetScript(sandbox, stopAfter = 0) {
@@ -73,6 +86,7 @@ function resetEnvironment(sandbox) {
     GTD_DOCKER_EXECUTABLE: path.join(sandbox.directory, "docker"),
     GTD_PNPM_EXECUTABLE: path.join(sandbox.directory, "pnpm"),
     GTD_TEST_DATABASE_IDENTITY: sandbox.databaseIdentity,
+    GTD_TEST_FAILED_DOCKER_COMMAND: sandbox.failedCommand,
     GTD_TEST_POSTGRES_EXISTS: String(sandbox.postgresExists),
     GTD_TEST_DOCKER_LOG: sandbox.dockerLog,
     GTD_TEST_PNPM_LOG: sandbox.pnpmLog,
