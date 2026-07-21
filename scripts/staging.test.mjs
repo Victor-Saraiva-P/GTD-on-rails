@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import path from "node:path";
-import { stagingCommand, stagingEnvironment, stagingRootDirectory } from "./staging.mjs";
+import { buildStaging, launchStaging, stagingCommand, stagingEnvironment, stagingRootDirectory } from "./staging.mjs";
 
 test("staging uses a repository-local persistent root by default", () => {
   assert.equal(stagingRootDirectory({}), path.resolve("staging-gtd-on-rails"));
@@ -25,4 +25,28 @@ test("staging environment isolates File Sync and never inherits production defau
 
 test("staging build command selects the staging desktop workflow", () => {
   assert.deepEqual(stagingCommand(), ["--filter", "@gtd-on-rails/desktop", "desktop:build:staging"]);
+});
+
+test("buildStaging runs the isolated desktop build", () => {
+  const calls = [];
+  buildStaging({ TEST: "staging" }, (...argumentsList) => {
+    calls.push(argumentsList);
+    return { status: 0 };
+  });
+
+  assert.equal(calls[0][0], "/usr/bin/pnpm");
+  assert.deepEqual(calls[0][1], stagingCommand());
+  assert.equal(calls[0][2].env.TEST, "staging");
+});
+
+test("launchStaging starts the packaged desktop executable", () => {
+  const calls = [];
+  const child = { once() {} };
+  assert.equal(launchStaging({ TEST: "staging" }, (...argumentsList) => {
+    calls.push(argumentsList);
+    return child;
+  }), child);
+
+  assert.match(calls[0][0], /apps\/desktop\/src-tauri\/target\/release\/desktop$/);
+  assert.equal(calls[0][2].env.TEST, "staging");
 });

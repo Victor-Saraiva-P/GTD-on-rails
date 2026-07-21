@@ -236,7 +236,7 @@ fn backend_exit_message(code: Option<i32>, profiles: &str) -> String {
         return exit_message;
     }
     format!(
-        "{exit_message}; staging Supabase may be paused — resume the project manually in the Supabase dashboard, then run pnpm staging again"
+        "{exit_message}; if the staging database is unavailable, resume the Supabase project manually in its dashboard, then run pnpm staging again"
     )
 }
 
@@ -414,7 +414,7 @@ mod tests {
     #[test]
     fn staging_backend_failure_explains_manual_supabase_resume() {
         let message = backend_exit_message(Some(1), "staging,sidecar");
-        assert!(message.contains("resume the project manually"));
+        assert!(message.contains("if the staging database is unavailable"));
     }
 
     #[test]

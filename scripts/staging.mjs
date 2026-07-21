@@ -40,13 +40,13 @@ export function stagingCommand() {
   return ["--filter", "@gtd-on-rails/desktop", "desktop:build:staging"];
 }
 
-function buildStaging(environment) {
-  const result = spawnSync(pnpmExecutable, stagingCommand(), { cwd: repositoryRoot, env: environment, stdio: "inherit" });
+export function buildStaging(environment, runBuild = spawnSync) {
+  const result = runBuild(pnpmExecutable, stagingCommand(), { cwd: repositoryRoot, env: environment, stdio: "inherit" });
   if (result.status !== 0) throw new Error(`staging build exit value '${result.status ?? "unknown"}' is invalid; expected successful desktop build`);
 }
 
-function launchStaging(environment) {
-  const child = spawn(stagingExecutable, [], { cwd: repositoryRoot, env: environment, stdio: "inherit" });
+export function launchStaging(environment, runProcess = spawn) {
+  const child = runProcess(stagingExecutable, [], { cwd: repositoryRoot, env: environment, stdio: "inherit" });
   child.once("exit", (code, signal) => process.exit(code ?? (signal ? 1 : 0)));
   return child;
 }
