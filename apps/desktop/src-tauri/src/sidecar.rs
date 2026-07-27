@@ -235,6 +235,14 @@ fn backend_exit_message(code: Option<i32>, profiles: &str) -> String {
     {
         return exit_message;
     }
+    if profiles
+        .split(',')
+        .any(|profile| profile.trim() == "staging-reset")
+    {
+        return format!(
+            "{exit_message}; staging reset did not complete, no desktop data was published; fix the reported error and run pnpm staging:reset again"
+        );
+    }
     format!(
         "{exit_message}; if the staging database is unavailable, resume the Supabase project manually in its dashboard, then run pnpm staging again"
     )
