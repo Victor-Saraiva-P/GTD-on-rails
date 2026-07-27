@@ -103,12 +103,14 @@ public class DatabaseSetupService {
         }
         statement.execute("CREATE TABLE IF NOT EXISTS gtd.database_identity (id boolean PRIMARY KEY DEFAULT true CHECK (id), environment text NOT NULL CHECK (environment IN ('PRODUCTION', 'STAGING', 'DEVELOPMENT', 'TEST')))");
         statement.execute("INSERT INTO gtd.database_identity (environment) VALUES ('" + environment + "') ON CONFLICT (id) DO NOTHING");
+        statement.execute("CREATE TABLE IF NOT EXISTS gtd.database_cutover (id boolean PRIMARY KEY DEFAULT true CHECK (id), state text NOT NULL CHECK (state IN ('AWAITING_LEGACY_IMPORT', 'IMPORTING', 'READY', 'FAILED')))");
+        statement.execute("INSERT INTO gtd.database_cutover (state) VALUES ('READY') ON CONFLICT (id) DO NOTHING");
         try (var result = statement.executeQuery("SELECT environment FROM gtd.database_identity WHERE id = true")) {
             if (result.next() && !environment.equals(result.getString(1))) {
                 throw new IllegalStateException("database environment value '" + result.getString(1) + "' is invalid; expected " + environment);
             }
         }
-        statement.execute("GRANT SELECT, INSERT ON gtd.database_identity TO " + APPLICATION_USER);
+        statement.execute("GRANT SELECT, INSERT ON gtd.database_identity, gtd.database_cutover TO " + APPLICATION_USER);
     }
 
     private boolean isKnownEnvironment(String value) {

@@ -63,7 +63,7 @@ export function ConnectivityBlocker({ children }: PropsWithChildren) {
   if (!model.isBlocked) return children;
 
   return (
-    <div className="boot-loader connectivity-blocker">
+    <div aria-modal="true" className="boot-loader connectivity-blocker" role="dialog">
       <div className="boot-loader__terminal">
         <p className="boot-loader__brand">{appMetadata.name} v{appMetadata.version}</p>
         <p className="boot-loader__line"><span className="boot-loader__status">[OFFLINE]</span> {model.title}</p>

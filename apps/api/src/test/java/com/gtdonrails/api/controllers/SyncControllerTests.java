@@ -42,6 +42,12 @@ class SyncControllerTests {
     }
 
     @Test
+    void reportsDatabaseReadiness() throws Exception {
+        mockMvc.perform(get("/readiness"))
+            .andExpect(status().isOk());
+    }
+
+    @Test
     void removesAssetSyncStatusEndpoint() throws Exception {
         mockMvc.perform(get("/assets/sync/status"))
             .andExpect(status().is4xxClientError());

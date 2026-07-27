@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test, { describe, mock } from "node:test";
 
-import { ApiRequestError, apiFetch, apiJson } from "../src/lib/api/apiClient.ts";
+import { ApiRequestError, DATABASE_UNAVAILABLE_EVENT, apiFetch, apiJson } from "../src/lib/api/apiClient.ts";
 
 test("ApiRequestError exposes status and responseBody", () => {
   const error = new ApiRequestError(404, '{"error":"Not Found"}');
@@ -43,6 +43,19 @@ describe("apiFetch", () => {
         return true;
       }
     );
+  });
+
+  test("apiFetch announces a service-unavailable database response", async () => {
+    const globalScope = globalThis as { window?: EventTarget };
+    const originalWindow = globalScope.window;
+    globalScope.window = new EventTarget();
+    const unavailable = new Promise<void>((resolve) => {
+      window.addEventListener(DATABASE_UNAVAILABLE_EVENT, () => resolve(), { once: true });
+    });
+
+    await assert.rejects(apiFetch("/inbox", {}, async () => new Response("Unavailable", { status: 503 })));
+    await unavailable;
+    globalScope.window = originalWindow;
   });
 });
 
