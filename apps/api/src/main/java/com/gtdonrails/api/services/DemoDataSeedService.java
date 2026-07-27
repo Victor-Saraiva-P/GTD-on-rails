@@ -14,16 +14,13 @@ import java.util.stream.Stream;
 
 import com.gtdonrails.api.entities.Calendar;
 import com.gtdonrails.api.entities.Context;
-import com.gtdonrails.api.entities.ContextIconAsset;
 import com.gtdonrails.api.entities.Item;
 import com.gtdonrails.api.entities.ItemAsset;
 import com.gtdonrails.api.entities.NextAction;
 import com.gtdonrails.api.repositories.CalendarRepository;
-import com.gtdonrails.api.repositories.ContextIconAssetRepository;
 import com.gtdonrails.api.repositories.ContextRepository;
 import com.gtdonrails.api.repositories.ItemAssetRepository;
 import com.gtdonrails.api.repositories.ItemRepository;
-import com.gtdonrails.api.repositories.NextActionRepository;
 import com.gtdonrails.api.types.BlockEntity;
 import com.gtdonrails.api.types.BlockEntityAttrs;
 import com.gtdonrails.api.types.InlineMark;
@@ -48,30 +45,27 @@ public class DemoDataSeedService {
 
     private final AssetStorageService assetStorageService;
     private final CalendarRepository calendarRepository;
-    private final ContextIconAssetRepository contextIconAssetRepository;
     private final ContextRepository contextRepository;
     private final ItemAssetRepository itemAssetRepository;
     private final ItemRepository itemRepository;
-    private final NextActionRepository nextActionRepository;
+    private final DevelopmentDataCleaner developmentDataCleaner;
     private final Clock clock;
 
     public DemoDataSeedService(
         AssetStorageService assetStorageService,
         CalendarRepository calendarRepository,
-        ContextIconAssetRepository contextIconAssetRepository,
         ContextRepository contextRepository,
         ItemAssetRepository itemAssetRepository,
         ItemRepository itemRepository,
-        NextActionRepository nextActionRepository,
+        DevelopmentDataCleaner developmentDataCleaner,
         Clock clock
     ) {
         this.assetStorageService = assetStorageService;
         this.calendarRepository = calendarRepository;
-        this.contextIconAssetRepository = contextIconAssetRepository;
         this.contextRepository = contextRepository;
         this.itemAssetRepository = itemAssetRepository;
         this.itemRepository = itemRepository;
-        this.nextActionRepository = nextActionRepository;
+        this.developmentDataCleaner = developmentDataCleaner;
         this.clock = clock;
     }
 
@@ -82,7 +76,7 @@ public class DemoDataSeedService {
      */
     @Transactional
     public DemoSeedResult resetDemoData() {
-        deleteDemoData();
+        developmentDataCleaner.deleteAll();
         seedDemoData();
         return new DemoSeedResult(itemRepository.count(), contextRepository.count());
     }
@@ -93,19 +87,7 @@ public class DemoDataSeedService {
      * <p>Example: {@code if (demoDataSeedService.isDatabaseEmpty()) seed();}.</p>
      */
     public boolean isDatabaseEmpty() {
-        return itemRepository.count() == 0;
-    }
-
-    private void deleteDemoData() {
-        itemAssetRepository.findAll().forEach(this::deleteItemAsset);
-        contextIconAssetRepository.findAll().forEach(this::deleteContextIconAsset);
-        nextActionRepository.findAll().forEach(nextAction -> nextActionRepository.deleteContextLinks(nextAction.getItemId()));
-        calendarRepository.deleteAll();
-        nextActionRepository.deleteAll();
-        itemAssetRepository.deleteAll();
-        contextIconAssetRepository.deleteAll();
-        itemRepository.deleteAll();
-        contextRepository.deleteAll();
+        return itemRepository.count() == 0 && contextRepository.count() == 0;
     }
 
     private void seedDemoData() {
@@ -273,14 +255,6 @@ public class DemoDataSeedService {
             - Keep the architecture explanation under two minutes.
             - Mention why the local-first storage model matters.
             """.trim();
-    }
-
-    private void deleteItemAsset(ItemAsset asset) {
-        assetStorageService.deleteAsset(asset.relativePath());
-    }
-
-    private void deleteContextIconAsset(ContextIconAsset asset) {
-        assetStorageService.deleteAsset(asset.relativePath());
     }
 
     public record DemoSeedResult(long itemCount, long contextCount) {}
