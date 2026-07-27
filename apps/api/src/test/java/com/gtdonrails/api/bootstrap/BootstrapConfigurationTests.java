@@ -64,11 +64,33 @@ class BootstrapConfigurationTests {
         assertEquals("FAILED", status().get("configurationStatus").asText());
     }
 
+    @Test
+    void resetModeValidatesConfigurationWithoutPullingBeforeIdentityCheck() throws Exception {
+        Files.writeString(tempDir.resolve("database.properties"), """
+            spring.datasource.url=jdbc:postgresql://db.example/gtd
+            spring.datasource.username=gtd_app
+            spring.datasource.password=secret
+            """);
+        CountingDataSyncService sync = new CountingDataSyncService(tempDir);
+
+        assertEquals(0, resetConfiguration().run(sync));
+        assertEquals(0, sync.startupCalls);
+    }
+
     private BootstrapConfiguration configuration() {
+        return configuration(false);
+    }
+
+    private BootstrapConfiguration resetConfiguration() {
+        return configuration(true);
+    }
+
+    private BootstrapConfiguration configuration(boolean stagingReset) {
         return new BootstrapConfiguration(
             new ObjectMapper(),
             tempDir.toString(),
-            tempDir.resolve("bootstrap-status.json").toString());
+            tempDir.resolve("bootstrap-status.json").toString(),
+            stagingReset);
     }
 
     private JsonNode status() throws Exception {
@@ -95,6 +117,20 @@ class BootstrapConfigurationTests {
         @Override
         public void syncOnStartup() {
             throw new IllegalStateException("file sync failed");
+        }
+    }
+
+    private static class CountingDataSyncService extends FakeDataSyncService {
+
+        private int startupCalls;
+
+        private CountingDataSyncService(Path dataRoot) {
+            super(dataRoot);
+        }
+
+        @Override
+        public void syncOnStartup() {
+            startupCalls++;
         }
     }
 }

@@ -32,6 +32,15 @@ public class FileSyncService {
     }
 
     /**
+     * Runs a blocking File Sync after a completed reset.
+     *
+     * <p>Example: {@code fileSyncService.syncNow()}.</p>
+     */
+    public void syncNow() throws IOException {
+        dataSyncService.syncNow();
+    }
+
+    /**
      * Queues File Sync work with an observability reason.
      *
      * <p>Example: {@code fileSyncService.requestSync("item updated")}.</p>

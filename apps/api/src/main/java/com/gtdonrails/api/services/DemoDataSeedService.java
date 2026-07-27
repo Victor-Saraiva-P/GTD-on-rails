@@ -33,7 +33,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@Profile("dev")
+@Profile({"dev", "staging-reset"})
 public class DemoDataSeedService {
 
     private static final String PDF_RESOURCE = "demo-assets/TauriSlideshow.pdf";

@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@Profile("dev")
+@Profile({"dev", "staging-reset"})
 public class DevelopmentDataCleaner {
 
     private final AssetStorageService assetStorageService;

@@ -25,17 +25,20 @@ public class BootstrapConfiguration {
     private final ObjectMapper objectMapper;
     private final Path dataRoot;
     private final Path statusFile;
+    private final boolean stagingReset;
     private String configurationStatus = "FAILED";
     private final CountDownLatch setupCompletion = new CountDownLatch(1);
 
     public BootstrapConfiguration(
         ObjectMapper objectMapper,
         @Value("${gtd.data.root-directory}") String dataRoot,
-        @Value("${gtd.bootstrap.status-file}") String statusFile
+        @Value("${gtd.bootstrap.status-file}") String statusFile,
+        @Value("${gtd.staging.reset:false}") boolean stagingReset
     ) {
         this.objectMapper = objectMapper;
         this.dataRoot = Path.of(dataRoot).toAbsolutePath().normalize();
         this.statusFile = Path.of(statusFile).toAbsolutePath().normalize();
+        this.stagingReset = stagingReset;
     }
 
     @Bean
@@ -58,7 +61,7 @@ public class BootstrapConfiguration {
      */
     public int run(DataSyncService dataSyncService) {
         try {
-            dataSyncService.syncOnStartup();
+            if (!stagingReset) dataSyncService.syncOnStartup();
             configurationStatus = databaseConfigurationStatus();
             writeStatus(configurationStatus);
             return "READY".equals(configurationStatus) ? 0 : 2;
