@@ -1,10 +1,12 @@
 package com.gtdonrails.api.services;
 
 import com.gtdonrails.api.repositories.GoogleCredentialRepository;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@Profile("staging-reset")
 public class StagingDataResetService {
 
     private final DemoDataSeedService demoDataSeedService;
