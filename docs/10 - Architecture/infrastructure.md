@@ -2,7 +2,7 @@
 
 This document describes the current technical infrastructure of GTD on Rails: repository layout, runtime topology, persistence, synchronization, release packaging, and CI/CD.
 
-The application is desktop-first. The production runtime is a native Linux desktop app that starts a bundled local backend sidecar and stores data on the user's machine.
+The application is desktop-first. The production runtime is a native Linux desktop app that starts a bundled local backend sidecar and stores file-backed state locally while shared structured state lives in PostgreSQL.
 
 ---
 
@@ -74,7 +74,7 @@ jdbc:postgresql://127.0.0.1:5432/gtd_on_rails
 
 Flyway initializes new development databases with the baseline in schema `gtd` and records the `DEVELOPMENT` database identity.
 
-Flyway migrations live under `apps/api/src/main/resources/db/migration`.
+The PostgreSQL baseline migration lives under `apps/api/src/main/resources/db/postgresql-migration`. Legacy SQLite migrations are not selected by normal runtime startup and remain available for the one-time cutover implementation.
 
 ---
 
@@ -138,7 +138,7 @@ dev-gtd-on-rails
 
 The data root contains:
 
-- PostgreSQL structured data: persistent local Compose volume during development.
+- PostgreSQL structured data: persistent local Compose volume during development or the configured Supabase project in staging and production.
 - `google.properties`: Google Integration Configuration.
 - `assets`: local item asset files.
 - `gtd-on-rails-sync-check`: synchronized dataset marker and rclone access check file.
@@ -149,7 +149,7 @@ Environment variables can override these paths when needed, but the default runt
 
 ## 5. Data Synchronization
 
-Structured data, Google Integration Configuration, and assets are synchronized by `rclone` over the whole `gtd.data.root-directory`.
+Assets, Google Integration Configuration, Database Connection Configuration, certificates, backups, and the File Sync marker are synchronized by `rclone`. Structured GTD data is never synchronized as a live database file; it is stored in the configured PostgreSQL environment.
 
 - Production remote: `gdrive:gtd-on-rails`.
 - Development and staging remote: `gdrive:dev-gtd-on-rails`.
@@ -163,7 +163,7 @@ The app is designed for a single owner using two devices. It does not implement 
 
 Item assets are stored as files plus database metadata.
 
-- Asset metadata lives in SQLite.
+- Asset metadata lives in PostgreSQL.
 - Asset files live under `gtd.assets.local-directory`.
 - The default asset directory is `${gtd.data.root-directory}/assets`.
 
@@ -262,9 +262,9 @@ It performs:
 The normal runtime is local-first.
 
 - The backend binds to localhost in sidecar mode.
-- The SQLite database is protected by operating-system file permissions.
-- Data sync remote access is outside the application database.
-- Data sync depends on the local `rclone` configuration.
+- Database Connection Configuration is protected by owner-only operating-system file permissions.
+- File Sync remote access is outside the application database.
+- File Sync depends on the local `rclone` configuration.
 - GitHub release publishing uses GitHub Actions permissions and repository secrets when needed.
 
 ---
@@ -276,8 +276,8 @@ GTD on Rails currently uses:
 - a `pnpm` and Turbo monorepo.
 - a Tauri 2 desktop app with React, Vite, TypeScript, and Rust.
 - a Spring Boot 4 backend with Java 21 and Gradle.
-- SQLite for normal application persistence.
-- rclone-based data synchronization.
+- PostgreSQL for normal application persistence.
+- rclone-based File Sync for file-backed state.
 - filesystem-backed assets under the synchronized data root.
 - native Linux `.tar.gz` production packaging.
 - GitHub Actions for CI and release automation.
