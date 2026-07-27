@@ -31,7 +31,8 @@ public class BootstrapApplication {
         ConfigurableApplicationContext context = SpringApplication.run(BootstrapApplication.class, args);
         int exitCode = context.getBean(BootstrapConfiguration.class)
             .run(context.getBean(DataSyncService.class));
-        if (exitCode == 2 && context.getBean(BootstrapConfiguration.class).setupRequired()) {
+        BootstrapConfiguration bootstrapConfiguration = context.getBean(BootstrapConfiguration.class);
+        if (exitCode == 2 && (bootstrapConfiguration.setupRequired() || bootstrapConfiguration.repairRequired())) {
             awaitSetup(context);
         }
         int springExitCode = SpringApplication.exit(context);
