@@ -1,6 +1,6 @@
 # Synchronization
 
-This document describes the current GTD on Rails synchronization model for structured data, Google integration configuration, and file assets.
+This document describes the current GTD on Rails synchronization model for PostgreSQL-backed structured data, Google integration configuration, and file assets.
 
 The application is built for one owner using two trusted Arch Linux desktop machines. The expected operating discipline is simple: let one device finish syncing before editing the same persistence state on the other device. The app does not implement multi-user merge resolution or concurrent divergent-edit reconciliation.
 
@@ -12,7 +12,7 @@ The infrastructure that hosts these sync processes is described in [Infrastructu
 
 The system has two synchronization channels.
 
-- File Sync uses `rclone bisync` to move the whole `gtd.data.root-directory` between trusted machines and Google Drive. `DataSync*` remains a compatibility alias for existing consumers during the PostgreSQL migration.
+- File Sync uses `rclone bisync` to move file-backed state under the trusted data root between machines and Google Drive. It never moves a live PostgreSQL database. `DataSync*` remains a compatibility alias for existing consumers during the PostgreSQL migration.
 - Google Calendar sync mirrors GTD items to external agendas after local domain changes.
 
 The backend owns both channels. The frontend observes status and can request manual File Sync.
@@ -21,7 +21,7 @@ The backend owns both channels. The frontend observes status and can request man
 
 ## 2. Data Root
 
-Structured data, integration configuration, assets, and the dataset marker live under:
+File-backed state, integration configuration, assets, and the dataset marker live under:
 
 ```text
 ${gtd.data.root-directory}
@@ -42,16 +42,10 @@ Development and staging default to:
 The data root contains:
 
 ```text
-gtd-on-rails.db
 google.properties
+database.properties
 assets/
 gtd-on-rails-sync-check
-```
-
-The SQLite database path is:
-
-```text
-${gtd.data.root-directory}/gtd-on-rails.db
 ```
 
 Asset files live under:
@@ -75,10 +69,9 @@ File Sync is exposed by `FileSyncService`; `DataSyncService` and `RcloneDataSync
 Startup behavior:
 
 - The backend creates the data root directory when needed.
-- If rclone File Sync is enabled, startup runs blocking File Sync before SQLite opens.
+- If rclone File Sync is enabled, startup runs blocking File Sync before PostgreSQL opens.
 - If `gtd-on-rails-sync-check` is missing, startup runs bootstrap sync from remote to local.
-- If the SQLite database is still missing after successful startup sync, the backend creates an empty database file and Flyway initializes the schema.
-- When a new empty database was created, the backend queues asynchronous File Sync after application startup so the migrated schema is uploaded.
+- After successful startup sync, the backend validates Database Connection Configuration and connects to the configured PostgreSQL environment.
 
 Runtime behavior:
 
@@ -112,7 +105,7 @@ rclone bisync <remote> <data-root> --resync
 
 If the marker is still missing after a successful bootstrap, the backend creates it locally and runs one bisync without `--check-access` to publish the marker.
 
-First publication or migration of local data to the remote is manual. The automatic bootstrap path always treats the remote as source.
+First publication or migration of local file-backed state to the remote is manual. The automatic bootstrap path always treats the remote as source.
 
 ---
 
@@ -196,10 +189,10 @@ Google Integration Configuration saves do not roll back when File Sync fails lat
 
 Because the project targets one owner and trusted machines, the synchronization model depends on these rules:
 
-- Do not edit the same persistence state on two devices before the first device has synced and the second device has synced.
+- Do not edit the same PostgreSQL environment on two devices at the same time.
 - Keep `rclone` configured for the expected Google Drive remotes.
 - Treat `FAILED` sync states as operational issues to resolve before continuing long editing sessions.
-- Do not manually edit the SQLite database, `google.properties`, assets, or sync marker while the app is running.
+- Do not manually edit `database.properties`, `google.properties`, assets, or the sync marker while the app is running.
 
 ---
 
@@ -207,8 +200,8 @@ Because the project targets one owner and trusted machines, the synchronization 
 
 GTD on Rails currently synchronizes data with:
 
-- `rclone bisync` over `${gtd.data.root-directory}`.
-- Blocking startup sync before SQLite opens.
+- `rclone bisync` over file-backed state under `${gtd.data.root-directory}`.
+- Blocking startup File Sync before PostgreSQL opens.
 - Async coalesced runtime File Sync after domain changes.
 - Async Google Integration Configuration sync after local save.
 - UI sync indicators backed by `/sync/status`.

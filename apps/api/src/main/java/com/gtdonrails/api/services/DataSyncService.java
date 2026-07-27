@@ -48,7 +48,7 @@ public class DataSyncService {
     }
 
     /**
-     * Runs blocking startup data sync before SQLite opens.
+     * Runs blocking startup File Sync before PostgreSQL opens.
      *
      * <p>Example: {@code dataSyncService.syncOnStartup()}.</p>
      */

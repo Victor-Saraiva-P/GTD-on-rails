@@ -6,6 +6,6 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @Configuration
 @EnableScheduling
-@EnableConfigurationProperties({AssetsProperties.class, CleanupProperties.class})
+@EnableConfigurationProperties({AssetsProperties.class, CleanupProperties.class, DataSyncProperties.class})
 public class AssetsConfig {
 }
