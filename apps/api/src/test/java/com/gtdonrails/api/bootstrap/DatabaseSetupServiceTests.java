@@ -1,11 +1,11 @@
 package com.gtdonrails.api.bootstrap;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -74,7 +74,9 @@ class DatabaseSetupServiceTests {
         FakeDatabaseConnectionFactory factory = new FakeDatabaseConnectionFactory(connection);
         DatabaseSetupService service = service(factory);
 
-        assertThrows(DatabaseRepairException.class, () -> service.repair(request("aws-0-us-east-1.pooler.supabase.com")));
+        DatabaseSetupRequest request = request("aws-0-us-east-1.pooler.supabase.com");
+
+        assertThrows(DatabaseRepairException.class, () -> service.repair(request));
 
         verify(connection.createStatement()).executeQuery(anyString());
         verify(connection.createStatement(), never()).execute(anyString());
@@ -96,7 +98,7 @@ class DatabaseSetupServiceTests {
 
         assertArrayEquals(new char[] {'\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0'}, administrativePassword);
         assertEquals("gtd_app", readConfiguration().getProperty("spring.datasource.username"));
-        assertFalse("old-secret".equals(readConfiguration().getProperty("spring.datasource.password")));
+        assertNotEquals("old-secret", readConfiguration().getProperty("spring.datasource.password"));
         verify(connection.createStatement(), times(2)).executeQuery(anyString());
     }
 
@@ -107,7 +109,9 @@ class DatabaseSetupServiceTests {
         factory.failure = new SQLException("temporary connection failure for password admin-secret");
         DatabaseSetupService service = service(factory);
 
-        DatabaseRepairException exception = assertThrows(DatabaseRepairException.class, () -> service.repair(request("aws-0-us-east-1.pooler.supabase.com")));
+        DatabaseSetupRequest request = request("aws-0-us-east-1.pooler.supabase.com");
+
+        DatabaseRepairException exception = assertThrows(DatabaseRepairException.class, () -> service.repair(request));
 
         assertFalse(exception.getMessage().contains("admin-secret"));
         assertEquals("old-secret", readConfiguration().getProperty("spring.datasource.password"));
@@ -120,7 +124,9 @@ class DatabaseSetupServiceTests {
         Connection limited = verifiedConnection("STAGING");
         DatabaseSetupService service = service(new FakeDatabaseConnectionFactory(administrative, limited));
 
-        assertThrows(DatabaseRepairException.class, () -> service.repair(request("aws-0-us-east-1.pooler.supabase.com")));
+        DatabaseSetupRequest request = request("aws-0-us-east-1.pooler.supabase.com");
+
+        assertThrows(DatabaseRepairException.class, () -> service.repair(request));
 
         verify(administrative.createStatement(), times(2)).execute(anyString());
         assertEquals("old-secret", readConfiguration().getProperty("spring.datasource.password"));

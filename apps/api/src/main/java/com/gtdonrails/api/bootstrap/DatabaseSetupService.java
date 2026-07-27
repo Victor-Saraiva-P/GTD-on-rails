@@ -25,6 +25,7 @@ import org.springframework.context.annotation.Profile;
 public class DatabaseSetupService {
 
     private static final String APPLICATION_USER = "gtd_app";
+    private static final String JDBC_PREFIX = "jdbc:";
     private static final SecureRandom RANDOM = new SecureRandom();
     private final Path configurationPath;
     private final DataSyncService fileSync;
@@ -111,8 +112,8 @@ public class DatabaseSetupService {
 
     boolean isSupavisorSessionUrl(String url) {
         try {
-            if (url == null || !url.startsWith("jdbc:")) return false;
-            java.net.URI parsed = java.net.URI.create(url.substring("jdbc:".length()));
+            if (url == null || !url.startsWith(JDBC_PREFIX)) return false;
+            java.net.URI parsed = java.net.URI.create(url.substring(JDBC_PREFIX.length()));
             return "postgresql".equals(parsed.getScheme()) && parsed.getPort() == 5432
                 && parsed.getHost() != null && parsed.getHost().endsWith(".pooler.supabase.com")
                 && Arrays.stream(parsed.getQuery().split("&"))
@@ -159,20 +160,21 @@ public class DatabaseSetupService {
     }
 
     private String databaseTarget(String url) {
-        URI parsed = URI.create(url.substring("jdbc:".length()));
+        URI parsed = URI.create(url.substring(JDBC_PREFIX.length()));
         return parsed.getHost() + ":" + parsed.getPort() + parsed.getPath();
     }
 
     private void validateRepairTarget(Connection connection, String administrativeUrl) throws SQLException {
         try (Statement statement = connection.createStatement(); var result = statement.executeQuery("SELECT current_database(), EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'gtd'), (SELECT environment FROM gtd.database_identity WHERE id = true)")) {
             if (!result.next()) throw new SQLException("database repair target returned no identity");
-            String database = URI.create(administrativeUrl.substring("jdbc:".length())).getPath().substring(1);
+            String database = URI.create(administrativeUrl.substring(JDBC_PREFIX.length())).getPath().substring(1);
             if (!database.equals(result.getString(1))) throw new DatabaseRepairException("database repair database value '" + result.getString(1) + "' is invalid; expected '" + database + "'");
             if (!result.getBoolean(2)) throw new DatabaseRepairException("database repair schema value 'gtd' is invalid; expected existing application schema");
             if (!environment.equals(result.getString(3))) throw new DatabaseRepairException("database identity value '" + result.getString(3) + "' is invalid; expected '" + environment + "'");
         }
     }
 
+    @SuppressWarnings("java:S2077") // PostgreSQL does not permit bind parameters for ALTER ROLE passwords.
     private void rotateApplicationRole(Connection connection, String password) throws SQLException {
         try (Statement statement = connection.createStatement()) {
             statement.execute("ALTER ROLE " + APPLICATION_USER + " PASSWORD " + sqlLiteral(password));
@@ -231,7 +233,23 @@ public class DatabaseSetupService {
         Arrays.fill(request.administrativePassword(), '\0');
     }
 
-    private record RepairData(byte[] original, String previousPassword) {
+    private static final class RepairData {
+
+        private final byte[] original;
+        private final String previousPassword;
+
+        private RepairData(byte[] original, String previousPassword) {
+            this.original = original;
+            this.previousPassword = previousPassword;
+        }
+
+        private byte[] original() {
+            return original;
+        }
+
+        private String previousPassword() {
+            return previousPassword;
+        }
     }
 
     private void provisionDatabase(Connection connection, String password) throws SQLException {

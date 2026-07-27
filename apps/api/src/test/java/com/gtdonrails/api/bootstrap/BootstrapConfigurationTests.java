@@ -85,7 +85,7 @@ class BootstrapConfigurationTests {
     }
 
     @Test
-    void repairFailureKeepsBootstrapAvailable() throws Exception {
+    void repairFailureKeepsBootstrapAvailable() {
         BootstrapConfiguration configuration = configuration();
         configuration.run(new FakeDataSyncService(tempDir));
         configuration.markRepairFailed();
