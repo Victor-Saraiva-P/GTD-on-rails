@@ -4,7 +4,6 @@ import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.verify;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -43,8 +42,9 @@ class StagingDataResetRunnerTests {
     void refusesAnUnexpectedDatabaseBeforeChangingState() {
         doThrow(new IllegalStateException("database identity mismatch"))
             .when(databaseIdentityService).require("STAGING");
+        DefaultApplicationArguments arguments = new DefaultApplicationArguments();
 
-        assertThrows(IllegalStateException.class, () -> stagingDataResetRunner.run(new DefaultApplicationArguments()));
+        assertThrows(IllegalStateException.class, () -> stagingDataResetRunner.run(arguments));
 
         verifyNoInteractions(stagingDataResetService, fileSyncService);
     }
