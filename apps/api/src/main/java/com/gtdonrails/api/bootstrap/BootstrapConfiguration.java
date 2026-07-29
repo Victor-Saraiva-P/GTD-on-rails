@@ -2,7 +2,6 @@ package com.gtdonrails.api.bootstrap;
 
 import java.io.IOException;
 import java.io.BufferedReader;
-import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Properties;
@@ -125,13 +124,7 @@ public class BootstrapConfiguration {
     }
 
     private boolean validDatabaseUrl(String value) {
-        if (!hasText(value) || !value.startsWith("jdbc:postgresql://")) return false;
-        try {
-            URI parsed = URI.create(value.substring("jdbc:".length()));
-            return hasText(parsed.getHost()) && parsed.getPath() != null && parsed.getPath().length() > 1;
-        } catch (RuntimeException exception) {
-            return false;
-        }
+        return DatabaseConnectionUrl.isSupavisorSessionUrl(value);
     }
 
     private boolean hasText(String value) {

@@ -1,7 +1,6 @@
 package com.gtdonrails.api.bootstrap;
 
 import java.io.IOException;
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -25,7 +24,6 @@ import org.springframework.context.annotation.Profile;
 public class DatabaseSetupService {
 
     private static final String APPLICATION_USER = "gtd_app";
-    private static final String JDBC_PREFIX = "jdbc:";
     private static final SecureRandom RANDOM = new SecureRandom();
     private final Path configurationPath;
     private final DataSyncService fileSync;
@@ -111,16 +109,7 @@ public class DatabaseSetupService {
     }
 
     boolean isSupavisorSessionUrl(String url) {
-        try {
-            if (url == null || !url.startsWith(JDBC_PREFIX)) return false;
-            java.net.URI parsed = java.net.URI.create(url.substring(JDBC_PREFIX.length()));
-            return "postgresql".equals(parsed.getScheme()) && parsed.getPort() == 5432
-                && parsed.getHost() != null && parsed.getHost().endsWith(".pooler.supabase.com")
-                && Arrays.stream(parsed.getQuery().split("&"))
-                    .anyMatch(parameter -> parameter.equals("sslmode=verify-full"));
-        } catch (RuntimeException exception) {
-            return false;
-        }
+        return DatabaseConnectionUrl.isSupavisorSessionUrl(url);
     }
 
     private Connection openAdministrativeConnection(DatabaseSetupRequest request) throws SQLException {
@@ -160,14 +149,14 @@ public class DatabaseSetupService {
     }
 
     private String databaseTarget(String url) {
-        URI parsed = URI.create(url.substring(JDBC_PREFIX.length()));
-        return parsed.getHost() + ":" + parsed.getPort() + parsed.getPath();
+        return DatabaseConnectionUrl.target(url);
     }
 
     private void validateRepairTarget(Connection connection, String administrativeUrl) throws SQLException {
         try (Statement statement = connection.createStatement(); var result = statement.executeQuery("SELECT current_database(), EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'gtd'), (SELECT environment FROM gtd.database_identity WHERE id = true)")) {
             if (!result.next()) throw new SQLException("database repair target returned no identity");
-            String database = URI.create(administrativeUrl.substring(JDBC_PREFIX.length())).getPath().substring(1);
+            String target = DatabaseConnectionUrl.target(administrativeUrl);
+            String database = target.substring(target.lastIndexOf('/') + 1);
             if (!database.equals(result.getString(1))) throw new DatabaseRepairException("database repair database value '" + result.getString(1) + "' is invalid; expected '" + database + "'");
             if (!result.getBoolean(2)) throw new DatabaseRepairException("database repair schema value 'gtd' is invalid; expected existing application schema");
             if (!environment.equals(result.getString(3))) throw new DatabaseRepairException("database identity value '" + result.getString(3) + "' is invalid; expected '" + environment + "'");
@@ -223,9 +212,7 @@ public class DatabaseSetupService {
     }
 
     private String redactedUrl(String url) {
-        if (url == null) return "null";
-        int queryStart = url.indexOf('?');
-        return queryStart < 0 ? url : url.substring(0, queryStart) + "?[redacted]";
+        return DatabaseConnectionUrl.redacted(url);
     }
 
     private void clearAdministrativePassword(DatabaseSetupRequest request) {
@@ -285,7 +272,7 @@ public class DatabaseSetupService {
     private void saveConfiguration(String url, String password) throws IOException {
         Files.createDirectories(configurationPath.getParent());
         Properties properties = new Properties();
-        properties.setProperty("spring.datasource.url", url + (url.contains("?") ? "&" : "?") + "currentSchema=gtd");
+        properties.setProperty("spring.datasource.url", DatabaseConnectionUrl.runtimeUrl(url));
         properties.setProperty("spring.datasource.username", APPLICATION_USER);
         properties.setProperty("spring.datasource.password", password);
         properties.setProperty("spring.flyway.placeholders.databaseIdentity", environment);

@@ -48,6 +48,10 @@ public class DatabaseSetupController {
      */
     @PostMapping("/database/repair")
     public ResponseEntity<DatabaseSetupResponse> repair(@RequestBody DatabaseSetupRequest request) {
+        if (!bootstrapConfiguration.repairRequired()) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new DatabaseSetupResponse(bootstrapConfiguration.configurationStatus()));
+        }
         try {
             setupService.repair(request);
             bootstrapConfiguration.markReady();

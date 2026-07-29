@@ -52,6 +52,14 @@ class DatabaseSetupServiceTests {
     }
 
     @Test
+    void rejectsAdministrativeUrlThatContainsCredentials() {
+        assertFalse(service().isSupavisorSessionUrl(
+            "jdbc:postgresql://admin:secret@aws-0-us-east-1.pooler.supabase.com:5432/postgres?sslmode=verify-full"));
+        assertFalse(service().isSupavisorSessionUrl(
+            "jdbc:postgresql://aws-0-us-east-1.pooler.supabase.com:5432/postgres?sslmode=verify-full&password=secret"));
+    }
+
+    @Test
     void provisionStoresLimitedCredentialsAndSynchronizesConfiguration() throws Exception {
         DataSyncService fileSync = mock(DataSyncService.class);
         DatabaseSetupService service = new DatabaseSetupService(tempDir.toString(), fileSync,

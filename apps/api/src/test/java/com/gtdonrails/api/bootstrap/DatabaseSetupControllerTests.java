@@ -23,7 +23,7 @@ class DatabaseSetupControllerTests {
         DatabaseSetupService service = mock(DatabaseSetupService.class);
         doThrow(new DatabaseRepairException("temporary failure"))
             .when(service).repair(any(DatabaseSetupRequest.class));
-        BootstrapConfiguration configuration = configuration();
+        BootstrapConfiguration configuration = repairableConfiguration();
         DatabaseSetupController controller = new DatabaseSetupController(service, configuration);
 
         ResponseEntity<DatabaseSetupResponse> response = controller.repair(request());
@@ -36,7 +36,7 @@ class DatabaseSetupControllerTests {
     @Test
     void successfulRepairMarksBootstrapReady() {
         DatabaseSetupController controller = new DatabaseSetupController(
-            mock(DatabaseSetupService.class), configuration());
+            mock(DatabaseSetupService.class), repairableConfiguration());
 
         ResponseEntity<DatabaseSetupResponse> response = controller.repair(request());
 
@@ -44,12 +44,31 @@ class DatabaseSetupControllerTests {
         assertEquals("READY", response.getBody().status());
     }
 
+    @Test
+    void repairRejectsConfigurationThatDoesNotNeedRepair() {
+        DatabaseSetupService service = mock(DatabaseSetupService.class);
+        BootstrapConfiguration configuration = configuration();
+        DatabaseSetupController controller = new DatabaseSetupController(service, configuration);
+
+        ResponseEntity<DatabaseSetupResponse> response = controller.repair(request());
+
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        assertEquals("FAILED", response.getBody().status());
+    }
+
     private BootstrapConfiguration configuration() {
         return new BootstrapConfiguration(
             new ObjectMapper(), tempDir.toString(), tempDir.resolve("status.json").toString());
     }
 
+    private BootstrapConfiguration repairableConfiguration() {
+        BootstrapConfiguration configuration = configuration();
+        configuration.markRepairFailed();
+        return configuration;
+    }
+
     private DatabaseSetupRequest request() {
         return new DatabaseSetupRequest("jdbc:postgresql://host:5432/postgres", "user", new char[] {'p'});
     }
+
 }
