@@ -52,6 +52,21 @@ class DatabaseSetupServiceTests {
     }
 
     @Test
+    void provisionStoresLimitedCredentialsAndSynchronizesConfiguration() throws Exception {
+        DataSyncService fileSync = mock(DataSyncService.class);
+        DatabaseSetupService service = new DatabaseSetupService(tempDir.toString(), fileSync,
+            new FakeDatabaseConnectionFactory(provisioningConnection()), "PRODUCTION");
+
+        service.provision(request("aws-0-us-east-1.pooler.supabase.com"));
+
+        Properties configuration = readConfiguration();
+        assertEquals("gtd_app", configuration.getProperty("spring.datasource.username"));
+        assertTrue(configuration.getProperty("spring.datasource.password").length() > 20);
+        assertTrue(configuration.getProperty("spring.datasource.url").contains("currentSchema=gtd"));
+        verify(fileSync).syncNow();
+    }
+
+    @Test
     void repairRejectsAnAdministrativeConnectionForAnotherDatabaseBeforeChangingConfiguration() throws Exception {
         Path configuration = tempDir.resolve("database.properties");
         Files.writeString(configuration, runtimeConfiguration("old-secret"));
@@ -174,6 +189,15 @@ class DatabaseSetupServiceTests {
         when(result.getString(1)).thenReturn("postgres", "PRODUCTION");
         when(result.getBoolean(2)).thenReturn(true);
         when(result.getString(3)).thenReturn(environment);
+        return connection;
+    }
+
+    private Connection provisioningConnection() throws Exception {
+        Connection connection = mock(Connection.class);
+        Statement statement = mock(Statement.class);
+        ResultSet result = mock(ResultSet.class);
+        when(connection.createStatement()).thenReturn(statement);
+        when(statement.executeQuery(anyString())).thenReturn(result);
         return connection;
     }
 
