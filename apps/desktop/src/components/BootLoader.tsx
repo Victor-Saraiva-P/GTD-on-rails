@@ -2,7 +2,7 @@ import { useEffect, useState, type PropsWithChildren } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { setRuntimeApiBaseUrl } from "../config/env.ts";
 import { appMetadata } from "../config/appMetadata.ts";
-import { apiJson } from "../lib/api/apiClient.ts";
+import { apiFetch, apiJson } from "../lib/api/apiClient.ts";
 import { isTauriRuntime } from "../lib/tauriRuntime.ts";
 import { DatabaseSetup } from "../features/bootstrap/DatabaseSetup.tsx";
 import { shouldCheckNativeUpdates, startupSteps, type StartupStep } from "./nativeUpdatePolicy.ts";
@@ -28,7 +28,7 @@ type NativeUpdateStatus = {
 
 async function pingBackend(): Promise<"ready" | "setup" | "offline"> {
   try {
-    await apiJson("/sync/status");
+    await apiFetch("/readiness");
     return "ready";
   } catch {
     try {
