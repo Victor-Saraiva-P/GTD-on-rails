@@ -26,6 +26,7 @@ The root `package.json` exposes the main workflows:
 - `pnpm build:prod`: builds the production desktop sidecar release.
 - `pnpm build:staging`: builds the staging desktop sidecar release.
 - `pnpm staging`: builds and launches the staging release binary.
+- `pnpm staging:reset`: explicitly replaces staging rows and assets with the deterministic fake dataset, removes database-backed Google authorization, publishes File Sync, and opens the staging release only after completion.
 
 Tool versions are pinned in `mise.toml`:
 
@@ -110,7 +111,7 @@ This keeps the backend local to the user's machine and avoids a hosted productio
 
 Staging uses the same sidecar flow as production, but with `staging,sidecar` profiles.
 
-Staging uses the repository-local, Git-ignored `staging-gtd-on-rails` root and the dedicated `gdrive:staging-gtd-on-rails` remote. `pnpm staging` sets these values explicitly, then the bootstrap sidecar performs blocking File Sync before connecting to the isolated Supabase PostgreSQL project. It does not reset the database, assets, or Google Integration Configuration; use an explicit reset workflow when one is added.
+Staging uses the repository-local, Git-ignored `staging-gtd-on-rails` root and the dedicated `gdrive:staging-gtd-on-rails` remote. `pnpm staging` sets these values explicitly, then the bootstrap sidecar performs blocking File Sync before connecting to the isolated Supabase PostgreSQL project. It does not reset the database, assets, or Google Integration Configuration. `pnpm staging:reset` uses the additional `staging-reset` profile, verifies the persisted database identity is exactly `STAGING`, recreates rows and assets, removes database-backed Google authorization, preserves configuration files and the sync marker, performs blocking File Sync, and only then publishes desktop readiness.
 
 ---
 

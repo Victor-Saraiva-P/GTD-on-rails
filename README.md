@@ -120,6 +120,7 @@ Useful root commands:
 - `pnpm check`: validates TypeScript and API checks.
 - `pnpm build:prod`: creates the production Tauri build with the backend sidecar.
 - `pnpm build:staging`: creates the staging build using development data defaults.
+- `pnpm staging:reset`: replaces staging with the deterministic fake dataset and opens it after File Sync completes.
 
 Tauri builds generate the binary at `apps/desktop/src-tauri/target/release/desktop`.
 

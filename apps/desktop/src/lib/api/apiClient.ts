@@ -3,6 +3,8 @@ import { isTauriRuntime } from "../tauriRuntime.ts";
 
 type ApiFetchTransport = (input: string, init?: RequestInit) => Promise<Response>;
 
+export const DATABASE_UNAVAILABLE_EVENT = "gtd-database-unavailable";
+
 export class ApiRequestError extends Error {
   readonly status: number;
   readonly responseBody: string;
@@ -25,21 +27,28 @@ export async function apiFetch(
   init: RequestInit = {},
   transport: ApiFetchTransport = tauriHttpFetch
 ): Promise<Response> {
-  const response = await transport(buildApiUrl(pathname), {
-    ...init,
-    headers: {
-      Accept: "application/json",
-      ...init.headers
-    }
-  });
+  let response: Response;
+  try {
+    response = await transport(buildApiUrl(pathname), {
+      ...init,
+      headers: { Accept: "application/json", ...init.headers }
+    });
+  } catch (error) {
+    notifyDatabaseUnavailable();
+    throw error;
+  }
 
   if (!response.ok) {
     const responseBody = await response.text();
-
+    if (response.status === 503) notifyDatabaseUnavailable();
     throw new ApiRequestError(response.status, responseBody);
   }
 
   return response;
+}
+
+function notifyDatabaseUnavailable(): void {
+  if (typeof window !== "undefined") window.dispatchEvent(new Event(DATABASE_UNAVAILABLE_EVENT));
 }
 
 async function tauriHttpFetch(input: string, init?: RequestInit): Promise<Response> {
