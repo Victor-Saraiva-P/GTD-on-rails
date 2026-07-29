@@ -220,23 +220,7 @@ public class DatabaseSetupService {
         Arrays.fill(request.administrativePassword(), '\0');
     }
 
-    private static final class RepairData {
-
-        private final byte[] original;
-        private final String previousPassword;
-
-        private RepairData(byte[] original, String previousPassword) {
-            this.original = original;
-            this.previousPassword = previousPassword;
-        }
-
-        private byte[] original() {
-            return original;
-        }
-
-        private String previousPassword() {
-            return previousPassword;
-        }
+    private record RepairData(byte[] original, String previousPassword) {
     }
 
     private void provisionDatabase(Connection connection, String password) throws SQLException {
