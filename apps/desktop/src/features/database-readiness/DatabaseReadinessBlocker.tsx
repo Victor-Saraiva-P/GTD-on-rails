@@ -12,13 +12,13 @@ export function DatabaseReadinessBlocker({ children }: PropsWithChildren) {
   if (!shouldBlockDatabaseInteraction(isReady, false)) return children;
 
   return (
-    <div aria-modal="true" className="boot-loader connectivity-blocker" role="dialog">
+    <dialog open aria-label="Database connection status" aria-modal="true" className="boot-loader connectivity-blocker">
       <div className="boot-loader__terminal">
         <p className="boot-loader__brand">{appMetadata.name} v{appMetadata.version}</p>
         <p className="boot-loader__line"><span className="boot-loader__status">[DATABASE]</span> PostgreSQL unavailable</p>
         <p className="boot-loader__line connectivity-blocker__message">Waiting for PostgreSQL to restore authoritative application state.</p>
         <p className="boot-loader__line"><span className="boot-loader__status">[WAIT]</span> Checking database connection<span className="boot-loader__cursor">_</span></p>
       </div>
-    </div>
+    </dialog>
   );
 }
