@@ -117,7 +117,7 @@ class BootstrapConfigurationTests {
     @Test
     void resetModeValidatesConfigurationWithoutPullingBeforeIdentityCheck() throws Exception {
         Files.writeString(tempDir.resolve("database.properties"), """
-            spring.datasource.url=jdbc:postgresql://db.example/gtd
+            spring.datasource.url=jdbc:postgresql://aws-0-us-east-1.pooler.supabase.com:5432/postgres?sslmode=verify-full
             spring.datasource.username=gtd_app
             spring.datasource.password=secret
             """);

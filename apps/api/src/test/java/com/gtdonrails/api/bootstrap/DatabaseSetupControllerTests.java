@@ -58,7 +58,7 @@ class DatabaseSetupControllerTests {
 
     private BootstrapConfiguration configuration() {
         return new BootstrapConfiguration(
-            new ObjectMapper(), tempDir.toString(), tempDir.resolve("status.json").toString());
+            new ObjectMapper(), tempDir.toString(), tempDir.resolve("status.json").toString(), false);
     }
 
     private BootstrapConfiguration repairableConfiguration() {
