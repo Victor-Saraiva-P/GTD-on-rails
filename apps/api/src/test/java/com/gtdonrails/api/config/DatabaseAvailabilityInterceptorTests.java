@@ -17,8 +17,11 @@ class DatabaseAvailabilityInterceptorTests {
         DatabaseReadinessService service = mock(DatabaseReadinessService.class);
         when(service.isReady()).thenReturn(false);
         DatabaseAvailabilityInterceptor interceptor = new DatabaseAvailabilityInterceptor(service);
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        HttpServletResponse response = mock(HttpServletResponse.class);
+        Object handler = new Object();
 
         assertThrows(DatabaseUnavailableException.class,
-            () -> interceptor.preHandle(mock(HttpServletRequest.class), mock(HttpServletResponse.class), new Object()));
+            () -> interceptor.preHandle(request, response, handler));
     }
 }
