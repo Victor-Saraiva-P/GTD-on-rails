@@ -85,6 +85,23 @@ public class BootstrapConfiguration {
         return "MISSING".equals(configurationStatus);
     }
 
+    /** Returns whether an existing configuration needs explicit administrative repair.
+     *
+     * <p>Example: {@code bootstrapConfiguration.repairRequired()}.</p>
+     */
+    public boolean repairRequired() {
+        return "INVALID".equals(configurationStatus) || "REPAIR_FAILED".equals(configurationStatus);
+    }
+
+    /** Keeps the bootstrap sidecar available for another repair attempt.
+     *
+     * <p>Example: {@code bootstrapConfiguration.markRepairFailed()}.</p>
+     */
+    public void markRepairFailed() {
+        configurationStatus = "REPAIR_FAILED";
+        writeStatus(configurationStatus);
+    }
+
     public String configurationStatus() {
         return configurationStatus;
     }
@@ -104,10 +121,13 @@ public class BootstrapConfiguration {
     }
 
     private boolean validDatabaseConfiguration(Properties properties) {
-        return hasText(properties.getProperty("spring.datasource.url"))
-            && properties.getProperty("spring.datasource.url").startsWith("jdbc:postgresql://")
-            && hasText(properties.getProperty("spring.datasource.username"))
+        return validDatabaseUrl(properties.getProperty("spring.datasource.url"))
+            && "gtd_app".equals(properties.getProperty("spring.datasource.username"))
             && hasText(properties.getProperty("spring.datasource.password"));
+    }
+
+    private boolean validDatabaseUrl(String value) {
+        return DatabaseConnectionUrl.isSupavisorSessionUrl(value);
     }
 
     private boolean hasText(String value) {

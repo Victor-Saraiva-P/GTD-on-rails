@@ -15,3 +15,7 @@ _Avoid_: on going thing, on going row, active panel item
 **Database Setup**:
 The first-installation flow that provisions a runtime environment's structured persistence after successful File Sync confirms that no Database Connection Configuration exists.
 _Avoid_: Database login, connection screen, Supabase setup
+
+**Database Connection Repair**:
+The explicit bootstrap flow that validates a fresh administrative connection and rotates a broken limited application role without treating an existing configuration as first installation.
+_Avoid_: Database Setup, automatic credential recovery

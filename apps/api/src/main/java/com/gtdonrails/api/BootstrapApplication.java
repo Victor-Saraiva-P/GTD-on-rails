@@ -1,5 +1,8 @@
 package com.gtdonrails.api;
 
+import java.util.function.Function;
+import java.util.function.IntConsumer;
+
 import com.gtdonrails.api.bootstrap.BootstrapConfiguration;
 import com.gtdonrails.api.services.DataSyncService;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
@@ -28,19 +31,38 @@ public class BootstrapApplication {
      * <p>Example: {@code BootstrapApplication.run(args)}.</p>
      */
     public static void run(String[] args) {
-        ConfigurableApplicationContext context = SpringApplication.run(BootstrapApplication.class, args);
-        int exitCode = context.getBean(BootstrapConfiguration.class)
-            .run(context.getBean(DataSyncService.class));
-        if (exitCode == 2 && context.getBean(BootstrapConfiguration.class).setupRequired()) {
-            awaitSetup(context);
-        }
-        int springExitCode = SpringApplication.exit(context);
-        System.exit(Math.max(exitCode, springExitCode));
+        run(args, bootstrapArguments -> SpringApplication.run(BootstrapApplication.class, bootstrapArguments), System::exit);
     }
 
-    private static void awaitSetup(ConfigurableApplicationContext context) {
+    static void run(
+        String[] args,
+        Function<String[], ConfigurableApplicationContext> bootstrapContextStarter,
+        IntConsumer exitProcess
+    ) {
+        ConfigurableApplicationContext context = bootstrapContextStarter.apply(args);
+        exitProcess.accept(applicationExitCode(context));
+    }
+
+    static int applicationExitCode(ConfigurableApplicationContext context) {
+        BootstrapConfiguration bootstrapConfiguration = context.getBean(BootstrapConfiguration.class);
+        int exitCode = bootstrapExitCode(bootstrapConfiguration, context.getBean(DataSyncService.class));
+        int springExitCode = SpringApplication.exit(context);
+        return Math.max(exitCode, springExitCode);
+    }
+
+    static int bootstrapExitCode(BootstrapConfiguration configuration, DataSyncService dataSyncService) {
+        int exitCode = configuration.run(dataSyncService);
+        if (setupCompletionRequired(exitCode, configuration)) awaitSetup(configuration);
+        return exitCode;
+    }
+
+    private static boolean setupCompletionRequired(int exitCode, BootstrapConfiguration configuration) {
+        return exitCode == 2 && (configuration.setupRequired() || configuration.repairRequired());
+    }
+
+    private static void awaitSetup(BootstrapConfiguration configuration) {
         try {
-            context.getBean(BootstrapConfiguration.class).awaitSetupCompletion();
+            configuration.awaitSetupCompletion();
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("database setup wait was interrupted; expected completed setup", exception);

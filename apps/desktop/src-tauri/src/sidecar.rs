@@ -286,8 +286,8 @@ fn continue_after_bootstrap(
     status: BootstrapStatus,
 ) {
     let _ = std::fs::remove_file(status_file);
-    if status.configuration_status == "MISSING" {
-        return expose_setup_until_ready(
+    if exposes_bootstrap_configuration(&status.configuration_status) {
+        return expose_configuration_until_ready(
             app_handle.clone(),
             status_file.to_path_buf(),
             ready_file.to_path_buf(),
@@ -308,7 +308,15 @@ fn continue_after_bootstrap(
     wait_for_ready_file(app_handle.clone(), ready_file);
 }
 
-fn expose_setup_until_ready(app_handle: AppHandle, status_file: PathBuf, ready_file: PathBuf) {
+fn exposes_bootstrap_configuration(status: &str) -> bool {
+    matches!(status, "MISSING" | "INVALID" | "REPAIR_FAILED")
+}
+
+fn expose_configuration_until_ready(
+    app_handle: AppHandle,
+    status_file: PathBuf,
+    ready_file: PathBuf,
+) {
     let Some(payload) = read_ready_payload(&ready_file) else {
         return record_sidecar_error(
             &app_handle,
@@ -331,7 +339,8 @@ fn expose_setup_until_ready(app_handle: AppHandle, status_file: PathBuf, ready_f
                 if status.configuration_status == "FAILED" {
                     return record_sidecar_error(
                         &app_handle,
-                        "database setup failed; expected valid limited configuration".to_string(),
+                        "database bootstrap failed; expected valid limited configuration"
+                            .to_string(),
                     );
                 }
             }
@@ -394,7 +403,8 @@ fn record_sidecar_error(app_handle: &AppHandle, error: String) {
 #[cfg(test)]
 mod tests {
     use super::{
-        backend_exit_message, bootstrap_transition, sidecar_profiles_for, BootstrapStatus,
+        backend_exit_message, bootstrap_transition, exposes_bootstrap_configuration,
+        sidecar_profiles_for, BootstrapStatus,
     };
 
     #[test]
@@ -417,6 +427,13 @@ mod tests {
             bootstrap_transition("INVALID"),
             Err("bootstrap configuration status 'INVALID' is invalid; expected READY".to_string())
         );
+    }
+
+    #[test]
+    fn invalid_bootstrap_status_exposes_repair_without_first_installation_setup() {
+        assert!(exposes_bootstrap_configuration("INVALID"));
+        assert!(exposes_bootstrap_configuration("REPAIR_FAILED"));
+        assert!(exposes_bootstrap_configuration("MISSING"));
     }
 
     #[test]

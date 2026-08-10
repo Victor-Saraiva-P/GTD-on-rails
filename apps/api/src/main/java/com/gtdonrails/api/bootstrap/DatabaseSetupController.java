@@ -1,6 +1,7 @@
 package com.gtdonrails.api.bootstrap;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -39,5 +40,26 @@ public class DatabaseSetupController {
         setupService.provision(request);
         bootstrapConfiguration.markReady();
         return ResponseEntity.ok(new DatabaseSetupResponse("READY"));
+    }
+
+    /** Rotates the limited role after validating a fresh administrative connection.
+     *
+     * <p>Example: {@code POST /bootstrap/database/repair}.</p>
+     */
+    @PostMapping("/database/repair")
+    public ResponseEntity<DatabaseSetupResponse> repair(@RequestBody DatabaseSetupRequest request) {
+        if (!bootstrapConfiguration.repairRequired()) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new DatabaseSetupResponse(bootstrapConfiguration.configurationStatus()));
+        }
+        try {
+            setupService.repair(request);
+            bootstrapConfiguration.markReady();
+            return ResponseEntity.ok(new DatabaseSetupResponse("READY"));
+        } catch (DatabaseRepairException exception) {
+            bootstrapConfiguration.markRepairFailed();
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .body(new DatabaseSetupResponse("REPAIR_FAILED"));
+        }
     }
 }
