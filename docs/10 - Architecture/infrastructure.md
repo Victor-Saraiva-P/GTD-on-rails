@@ -101,6 +101,7 @@ Production is a self-contained local desktop runtime.
 - The Tauri app starts the bundled `gtd-api` sidecar.
 - The sidecar starts Spring Boot with `prod,sidecar` profiles by default.
 - The sidecar runs blocking File Sync before the shared database opens.
+- Packaged startup checks for `pg_dump` and `pg_restore` before starting the sidecar; missing Arch client tools are repaired only after an explicit Polkit-authorized `postgresql-libs` installation.
 - The sidecar binds to `127.0.0.1` on an ephemeral port.
 - The backend writes a readiness file with its selected local base URL.
 - The desktop app reads that readiness file and sends API requests to the sidecar.
@@ -143,6 +144,7 @@ The data root contains:
 - `google.properties`: Google Integration Configuration.
 - `assets`: local item asset files.
 - `gtd-on-rails-sync-check`: synchronized dataset marker and rclone access check file.
+- `backups/`: closed `gtd` logical archives; production keeps the newest 30 archives and publishes a completed archive through File Sync.
 
 Environment variables can override these paths when needed, but the default runtime is optimized for the owner's Arch Linux desktop machines.
 
@@ -155,6 +157,8 @@ Assets, Google Integration Configuration, Database Connection Configuration, cer
 - Production remote: `gdrive:gtd-on-rails`.
 - Development and staging remote: `gdrive:dev-gtd-on-rails`.
 - The backend owns startup data sync, database initialization, sync scheduling, and data integrity.
+
+Production creates a logical `pg_dump` archive before Flyway migrations and once per active day. The archive is written to a temporary file, validated with `pg_restore --list`, atomically closed, and only then added to File Sync. Staging can load a named synchronized archive through `POST /maintenance/backups/restore`; the operation requires the `STAGING` database identity, validates the archive identity before restore, excludes the source identity row, and uses a single transaction.
 
 The app is designed for a single owner using two devices. It does not implement multi-user or concurrent divergent-edit reconciliation beyond the project-specific assumptions described in [Synchronization](synchronization.md).
 

@@ -1,0 +1,206 @@
+package com.gtdonrails.api.maintenance;
+
+import java.io.IOException;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+
+import com.gtdonrails.api.services.FileSyncService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+
+@Service
+public class PostgresBackupService {
+
+    private static final String BACKUP_PREFIX = "gtd-backup-";
+    private static final String BACKUP_SUFFIX = ".dump";
+    private static final int RETENTION_DAYS = 30;
+
+    private final Path backupDirectory;
+    private final PostgresConnection connection;
+    private final FileSyncService fileSyncService;
+    private final Clock clock;
+    private final PostgresCommandRunner commandRunner;
+
+    @Autowired
+    public PostgresBackupService(
+        @Value("${gtd.backup.directory:${gtd.data.root-directory}/backups}") String backupDirectory,
+        @Value("${spring.datasource.url}") String jdbcUrl,
+        @Value("${spring.datasource.username}") String username,
+        @Value("${spring.datasource.password}") String password,
+        FileSyncService fileSyncService,
+        Clock clock,
+        PostgresCommandRunner commandRunner
+    ) {
+        this(Path.of(backupDirectory), new PostgresConnection(jdbcUrl, username, password), fileSyncService, clock, commandRunner);
+    }
+
+    PostgresBackupService(
+        Path backupDirectory,
+        PostgresConnection connection,
+        FileSyncService fileSyncService,
+        Clock clock,
+        PostgresCommandRunner commandRunner
+    ) {
+        this.backupDirectory = backupDirectory.toAbsolutePath().normalize();
+        this.connection = connection;
+        this.fileSyncService = fileSyncService;
+        this.clock = clock;
+        this.commandRunner = commandRunner;
+    }
+
+    /** Creates, validates, closes, and publishes one logical gtd archive.
+     *
+     * <p>Example: {@code backupService.createManualBackup()}.</p>
+     */
+    public BackupResult createManualBackup() {
+        return createBackup("manual");
+    }
+
+    /** Creates a recovery point immediately before Flyway changes the schema.
+     *
+     * <p>Example: {@code backupService.createPreMigrationBackup()}.</p>
+     */
+    public BackupResult createPreMigrationBackup() {
+        return createBackup("pre-migration");
+    }
+
+    /** Creates the daily archive only when the current local day has no archive.
+     *
+     * <p>Example: {@code backupService.createDailyBackupIfMissing()}.</p>
+     */
+    @Scheduled(cron = "${gtd.backup.daily-cron:0 0 2 * * *}")
+    public void createDailyBackupIfMissing() {
+        try {
+            if (!hasBackupForToday()) createBackup("daily");
+        } catch (IOException exception) {
+            logFailure("Daily PostgreSQL backup lookup failed", exception);
+        } catch (RuntimeException exception) {
+            // A scheduled failure must remain observable without stopping future maintenance runs.
+            logFailure("Daily PostgreSQL backup failed", exception);
+        }
+    }
+
+    private BackupResult createBackup(String reason) {
+        Path temporaryArchive = null;
+        try {
+            temporaryArchive = createTemporaryArchive();
+            validateTemporaryArchive(temporaryArchive);
+            Path archive = closeArchive(temporaryArchive, archiveName(reason));
+            fileSyncService.requestSync("PostgreSQL backup created");
+            removeExpiredBackups();
+            return new BackupResult(archive.getFileName().toString(), Files.size(archive), archive);
+        } catch (IOException exception) {
+            deletePartialArchive(temporaryArchive);
+            throw backupFailure(exception);
+        } catch (RuntimeException exception) {
+            deletePartialArchive(temporaryArchive);
+            throw exception;
+        }
+    }
+
+    private Path createTemporaryArchive() throws IOException {
+        Files.createDirectories(backupDirectory);
+        return Files.createTempFile(backupDirectory, ".gtd-backup-", ".partial");
+    }
+
+    private void validateTemporaryArchive(Path temporaryArchive) throws IOException {
+        try (PostgresCommandEnvironment environment = PostgresCommandEnvironment.open(connection, backupDirectory)) {
+            commandRunner.run("pg_dump", connection.dumpArguments(temporaryArchive), environment.environment());
+            requireClosedArchive(temporaryArchive);
+            commandRunner.run("pg_restore", validationArguments(temporaryArchive), environment.environment());
+        }
+    }
+
+    private List<String> validationArguments(Path archive) {
+        return List.of("--list", "--no-password", archive.toString());
+    }
+
+    private IllegalStateException backupFailure(IOException exception) {
+        return new IllegalStateException(
+            "PostgreSQL backup directory value '%s' is invalid; expected completed archive: %s"
+                .formatted(backupDirectory, exception.getMessage()), exception);
+    }
+
+    private void requireClosedArchive(Path archive) throws IOException {
+        if (!Files.isRegularFile(archive) || Files.size(archive) == 0) {
+            throw new IOException("archive value '%s' is invalid; expected non-empty pg_dump output".formatted(archive));
+        }
+    }
+
+    private Path closeArchive(Path temporaryArchive, String fileName) throws IOException {
+        Path archive = backupDirectory.resolve(fileName);
+        Files.move(temporaryArchive, archive, StandardCopyOption.ATOMIC_MOVE);
+        return archive;
+    }
+
+    private String archiveName(String reason) {
+        String timestamp = clock.instant().toString().replace(":", "-");
+        return BACKUP_PREFIX + timestamp + "-" + reason + BACKUP_SUFFIX;
+    }
+
+    private boolean hasBackupForToday() throws IOException {
+        LocalDate today = LocalDate.now(clock);
+        try (DirectoryStream<Path> files = Files.newDirectoryStream(backupDirectory, this::isDailyArchive)) {
+            for (Path file : files) {
+                LocalDate fileDate = archiveDate(file);
+                if (today.equals(fileDate)) return true;
+            }
+        }
+        return false;
+    }
+
+    private LocalDate archiveDate(Path file) {
+        String date = file.getFileName().toString().substring(BACKUP_PREFIX.length(), BACKUP_PREFIX.length() + 10);
+        return LocalDate.parse(date);
+    }
+
+    private void removeExpiredBackups() throws IOException {
+        List<Path> archives = new ArrayList<>();
+        try (DirectoryStream<Path> files = Files.newDirectoryStream(backupDirectory, this::isDailyArchive)) {
+            files.forEach(archives::add);
+        }
+        archives.sort(Comparator.comparing(this::lastModified).reversed());
+        int firstExpired = Math.min(RETENTION_DAYS, archives.size());
+        for (Path archive : archives.subList(firstExpired, archives.size())) Files.deleteIfExists(archive);
+    }
+
+    private boolean isArchive(Path path) {
+        String name = path.getFileName().toString();
+        return Files.isRegularFile(path) && name.startsWith(BACKUP_PREFIX) && name.endsWith(BACKUP_SUFFIX);
+    }
+
+    private boolean isDailyArchive(Path path) {
+        return isArchive(path) && path.getFileName().toString().endsWith("-daily" + BACKUP_SUFFIX);
+    }
+
+    private Instant lastModified(Path path) {
+        try {
+            return Files.getLastModifiedTime(path).toInstant();
+        } catch (IOException exception) {
+            return Instant.MIN;
+        }
+    }
+
+    private void deletePartialArchive(Path archive) {
+        if (archive == null) return;
+        try {
+            Files.deleteIfExists(archive);
+        } catch (IOException ignored) {
+            // The original failure is more actionable than cleanup noise.
+        }
+    }
+
+    private void logFailure(String message, Exception exception) {
+        System.getLogger(PostgresBackupService.class.getName()).log(System.Logger.Level.ERROR, message, exception);
+    }
+}
