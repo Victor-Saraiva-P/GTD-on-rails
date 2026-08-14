@@ -1,6 +1,7 @@
 package com.gtdonrails.api.maintenance;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Files;
@@ -11,6 +12,7 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.IntStream;
 
 import com.gtdonrails.api.config.DataSyncProperties;
 import com.gtdonrails.api.services.DataSyncService;
@@ -71,6 +73,51 @@ class PostgresBackupServiceTests {
         assertTrue(Files.isRegularFile(result.path()));
     }
 
+    @Test
+    void dailyBackupCreatesAtMostOneArchiveForTheCurrentDay() throws Exception {
+        FakeCommandRunner commands = new FakeCommandRunner();
+        PostgresBackupService service = service(commands, new FakeFileSyncService());
+
+        service.createDailyBackupIfMissing();
+        service.createDailyBackupIfMissing();
+
+        assertEquals(1, dailyArchives().size());
+        assertEquals(2, commands.executables.size());
+    }
+
+    @Test
+    void dailyBackupRetainsTheNewestThirtyArchiveDates() throws Exception {
+        createDailyArchives(30);
+        PostgresBackupService service = service(new FakeCommandRunner(), new FakeFileSyncService());
+
+        service.createDailyBackupIfMissing();
+
+        List<String> names = dailyArchives().stream().map(path -> path.getFileName().toString()).toList();
+        assertEquals(30, names.size());
+        assertFalse(names.contains("gtd-backup-2026-07-12T02-00-00Z-daily.dump"));
+        assertTrue(names.contains("gtd-backup-2026-08-11T02-00-00Z-daily.dump"));
+    }
+
+    private void createDailyArchives(int count) throws Exception {
+        Files.createDirectories(backupDirectory());
+        IntStream.rangeClosed(1, count).forEach(daysAgo -> createDailyArchive(daysAgo));
+    }
+
+    private void createDailyArchive(int daysAgo) {
+        String timestamp = NOW.minusSeconds(daysAgo * 86_400L).toString().replace(":", "-");
+        try {
+            Files.writeString(backupDirectory().resolve("gtd-backup-" + timestamp + "-daily.dump"), "archive");
+        } catch (java.io.IOException exception) {
+            throw new IllegalStateException("daily archive value '%s' is invalid; expected writable test archive".formatted(timestamp), exception);
+        }
+    }
+
+    private List<Path> dailyArchives() throws Exception {
+        try (var paths = Files.list(backupDirectory())) {
+            return paths.filter(path -> path.getFileName().toString().endsWith("-daily.dump")).sorted().toList();
+        }
+    }
+
     private PostgresBackupService service(FakeCommandRunner commands, FakeFileSyncService fileSync) {
         return new PostgresBackupService(
             backupDirectory(),
@@ -92,6 +139,7 @@ class PostgresBackupServiceTests {
     private static class FakeCommandRunner implements PostgresCommandRunner {
 
         private final List<String> arguments = new ArrayList<>();
+        private final List<String> executables = new ArrayList<>();
         private String passfileContent = "";
         private Path passfilePath = Path.of(".");
         private Path outputPath = Path.of(".");
@@ -99,6 +147,7 @@ class PostgresBackupServiceTests {
 
         @Override
         public void run(String executable, List<String> commandArguments, Map<String, String> environment) {
+            executables.add(executable);
             arguments.addAll(commandArguments);
             try {
                 passfilePath = Path.of(environment.get("PGPASSFILE"));

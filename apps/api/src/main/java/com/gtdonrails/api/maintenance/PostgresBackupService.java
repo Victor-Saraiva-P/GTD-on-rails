@@ -6,7 +6,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.Clock;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -15,13 +14,12 @@ import java.util.List;
 import com.gtdonrails.api.services.FileSyncService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @Service
-public class PostgresBackupService {
+public class PostgresBackupService implements DailyBackupCreator {
 
     private static final String BACKUP_PREFIX = "gtd-backup-";
     private static final String BACKUP_SUFFIX = ".dump";
@@ -86,7 +84,7 @@ public class PostgresBackupService {
      *
      * <p>Example: {@code backupService.createDailyBackupIfMissing()}.</p>
      */
-    @Scheduled(cron = "${gtd.backup.daily-cron:0 0 2 * * *}")
+    @Override
     public void createDailyBackupIfMissing() {
         try {
             if (!hasBackupForToday()) createBackup("daily");
@@ -170,6 +168,7 @@ public class PostgresBackupService {
     }
 
     private boolean hasBackupForToday() throws IOException {
+        Files.createDirectories(backupDirectory);
         LocalDate today = LocalDate.now(clock);
         try (DirectoryStream<Path> files = Files.newDirectoryStream(backupDirectory, this::isDailyArchive)) {
             for (Path file : files) {
@@ -190,7 +189,7 @@ public class PostgresBackupService {
         try (DirectoryStream<Path> files = Files.newDirectoryStream(backupDirectory, this::isDailyArchive)) {
             files.forEach(archives::add);
         }
-        archives.sort(Comparator.comparing(this::lastModified).reversed());
+        archives.sort(Comparator.comparing(this::archiveDate).reversed());
         int firstExpired = Math.min(RETENTION_DAYS, archives.size());
         for (Path archive : archives.subList(firstExpired, archives.size())) Files.deleteIfExists(archive);
     }
@@ -210,14 +209,6 @@ public class PostgresBackupService {
 
     private boolean isDailyArchive(Path path) {
         return isArchive(path) && path.getFileName().toString().endsWith("-daily" + BACKUP_SUFFIX);
-    }
-
-    private Instant lastModified(Path path) {
-        try {
-            return Files.getLastModifiedTime(path).toInstant();
-        } catch (IOException exception) {
-            return Instant.MIN;
-        }
     }
 
     private void deleteFailedArtifacts(Path temporaryArchive, Path publishedArchive) {
