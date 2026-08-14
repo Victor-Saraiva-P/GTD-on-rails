@@ -11,14 +11,25 @@ record BackupWorkDirectory(Path path) {
     }
 
     static BackupWorkDirectory outsideDataRoot(String dataRoot, String workDirectory) {
-        Path synchronizedRoot = Path.of(dataRoot).toAbsolutePath().normalize();
-        BackupWorkDirectory candidate = new BackupWorkDirectory(Path.of(workDirectory));
-        if (candidate.path.startsWith(synchronizedRoot)) {
+        Path synchronizedRoot = realDirectory(dataRoot, "synchronized data root");
+        Path realWorkDirectory = realDirectory(workDirectory, "backup work directory");
+        if (realWorkDirectory.startsWith(synchronizedRoot)) {
             throw new IllegalArgumentException(
                 "backup work directory value '%s' is invalid; expected path outside synchronized data root '%s'"
-                    .formatted(candidate.path, synchronizedRoot));
+                    .formatted(realWorkDirectory, synchronizedRoot));
         }
-        return candidate;
+        return new BackupWorkDirectory(realWorkDirectory);
+    }
+
+    private static Path realDirectory(String value, String expectedDirectory) {
+        try {
+            Path directory = Path.of(value).toAbsolutePath().normalize();
+            return Files.createDirectories(directory).toRealPath();
+        } catch (IOException exception) {
+            throw new IllegalArgumentException(
+                "%s value '%s' is invalid; expected accessible local directory: %s"
+                    .formatted(expectedDirectory, value, exception.getMessage()), exception);
+        }
     }
 
     Path createBackupFile(Path backupDirectory, String prefix, String suffix) {
