@@ -2,11 +2,11 @@ import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import "./postgres-tools-required.css";
 
-type Props = {
+type Props = Readonly<{
   missingTools: string[];
   manualInstallCommand: string;
   onResolved: () => void;
-};
+}>;
 
 type InstallationResult = {
   available: boolean;

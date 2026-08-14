@@ -124,16 +124,14 @@ function useBackendHealth() {
     let timeout: number;
 
     const checkHealth = async () => {
-      if (isTauriRuntime()) {
-        try {
-          const steps = startupSteps(isTauriRuntime(), import.meta.env.DEV);
-          for (const step of steps) {
-            if (step === "sidecar" && (await checkPostgresTools(setPostgresTools))) return;
-            if (await runStartupStep(step, setUpdateStatus)) return;
-          }
-        } catch (e) {
-          console.error("Failed to check for updates:", e);
+      try {
+        const steps = startupSteps(isTauriRuntime(), import.meta.env.DEV);
+        for (const step of steps) {
+          if (step === "sidecar" && (await checkPostgresTools(setPostgresTools))) return;
+          if (await runStartupStep(step, setUpdateStatus)) return;
         }
+      } catch (e) {
+        console.error("Failed to check for updates:", e);
       }
 
       try {
