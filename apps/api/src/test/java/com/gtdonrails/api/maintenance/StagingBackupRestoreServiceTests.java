@@ -26,8 +26,10 @@ class StagingBackupRestoreServiceTests {
         Files.writeString(archive, "archive");
         FakeCommandRunner commands = new FakeCommandRunner();
         FakeDatabaseIdentityService identity = new FakeDatabaseIdentityService();
+        Path workDirectory = tempDirectory.resolve("local-restore-work");
         StagingBackupRestoreService service = new StagingBackupRestoreService(
             tempDirectory,
+            new BackupWorkDirectory(workDirectory),
             new PostgresConnection("jdbc:postgresql://127.0.0.1:5432/gtd", "gtd_app", "secret"),
             identity,
             commands);
@@ -38,6 +40,8 @@ class StagingBackupRestoreServiceTests {
         assertEquals(List.of("STAGING", "STAGING"), identity.expectedIdentities);
         assertTrue(commands.arguments.stream().anyMatch(argument -> argument.equals("--exclude-table=gtd.database_identity")));
         assertTrue(commands.arguments.stream().noneMatch(argument -> argument.contains("secret")));
+        assertTrue(commands.passfilePath.startsWith(workDirectory));
+        assertTrue(commands.metadataPath.startsWith(workDirectory));
         assertTrue(Files.exists(archive));
     }
 
@@ -46,6 +50,7 @@ class StagingBackupRestoreServiceTests {
         FakeCommandRunner commands = new FakeCommandRunner();
         StagingBackupRestoreService service = new StagingBackupRestoreService(
             tempDirectory,
+            new BackupWorkDirectory(tempDirectory.resolve("local-restore-work")),
             new PostgresConnection("jdbc:postgresql://127.0.0.1:5432/gtd", "gtd_app", "secret"),
             new FakeDatabaseIdentityService(),
             commands);
@@ -57,14 +62,18 @@ class StagingBackupRestoreServiceTests {
     private static class FakeCommandRunner implements PostgresCommandRunner {
 
         private final List<String> arguments = new ArrayList<>();
+        private Path passfilePath = Path.of(".");
+        private Path metadataPath = Path.of(".");
 
         @Override
         public void run(String executable, List<String> commandArguments, Map<String, String> environment) {
             arguments.addAll(commandArguments);
+            passfilePath = Path.of(environment.get("PGPASSFILE"));
             String metadata = commandArguments.stream().filter(argument -> argument.startsWith("--file=")).findFirst().orElse(null);
             if (metadata != null) {
                 try {
-                    Files.writeString(Path.of(metadata.substring(7)), "INSERT INTO gtd.database_identity VALUES ('PRODUCTION');");
+                    metadataPath = Path.of(metadata.substring(7));
+                    Files.writeString(metadataPath, "INSERT INTO gtd.database_identity VALUES ('PRODUCTION');");
                 } catch (java.io.IOException exception) {
                     throw new IllegalStateException("fake restore output value is invalid; expected writable metadata file", exception);
                 }

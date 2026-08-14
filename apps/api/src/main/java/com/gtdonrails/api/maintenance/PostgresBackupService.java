@@ -17,6 +17,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class PostgresBackupService {
@@ -24,8 +26,10 @@ public class PostgresBackupService {
     private static final String BACKUP_PREFIX = "gtd-backup-";
     private static final String BACKUP_SUFFIX = ".dump";
     private static final int RETENTION_DAYS = 30;
+    private static final Logger logger = LoggerFactory.getLogger(PostgresBackupService.class);
 
     private final Path backupDirectory;
+    private final BackupWorkDirectory workDirectory;
     private final PostgresConnection connection;
     private final FileSyncService fileSyncService;
     private final Clock clock;
@@ -34,6 +38,8 @@ public class PostgresBackupService {
     @Autowired
     public PostgresBackupService(
         @Value("${gtd.backup.directory:${gtd.data.root-directory}/backups}") String backupDirectory,
+        @Value("${gtd.backup.work-directory:${user.home}/.cache/gtd-on-rails/backup-work}") String workDirectory,
+        @Value("${gtd.data.root-directory}") String dataRoot,
         @Value("${spring.datasource.url}") String jdbcUrl,
         @Value("${spring.datasource.username}") String username,
         @Value("${spring.datasource.password}") String password,
@@ -41,17 +47,19 @@ public class PostgresBackupService {
         Clock clock,
         PostgresCommandRunner commandRunner
     ) {
-        this(Path.of(backupDirectory), new PostgresConnection(jdbcUrl, username, password), fileSyncService, clock, commandRunner);
+        this(Path.of(backupDirectory), BackupWorkDirectory.outsideDataRoot(dataRoot, workDirectory), new PostgresConnection(jdbcUrl, username, password), fileSyncService, clock, commandRunner);
     }
 
     PostgresBackupService(
         Path backupDirectory,
+        BackupWorkDirectory workDirectory,
         PostgresConnection connection,
         FileSyncService fileSyncService,
         Clock clock,
         PostgresCommandRunner commandRunner
     ) {
         this.backupDirectory = backupDirectory.toAbsolutePath().normalize();
+        this.workDirectory = workDirectory;
         this.connection = connection;
         this.fileSyncService = fileSyncService;
         this.clock = clock;
@@ -83,38 +91,51 @@ public class PostgresBackupService {
         try {
             if (!hasBackupForToday()) createBackup("daily");
         } catch (IOException exception) {
-            logFailure("Daily PostgreSQL backup lookup failed", exception);
+            logFailure("postgres_backup_lookup_failed", "Daily PostgreSQL backup lookup failed", exception);
         } catch (RuntimeException exception) {
             // A scheduled failure must remain observable without stopping future maintenance runs.
-            logFailure("Daily PostgreSQL backup failed", exception);
+            logFailure("postgres_backup_failed", "Daily PostgreSQL backup failed", exception);
         }
     }
 
     private BackupResult createBackup(String reason) {
         Path temporaryArchive = null;
+        Path publishedArchive = null;
         try {
             temporaryArchive = createTemporaryArchive();
             validateTemporaryArchive(temporaryArchive);
-            Path archive = closeArchive(temporaryArchive, archiveName(reason));
-            fileSyncService.requestSync("PostgreSQL backup created");
-            removeExpiredBackups();
-            return new BackupResult(archive.getFileName().toString(), Files.size(archive), archive);
+            long archiveSize = Files.size(temporaryArchive);
+            publishedArchive = closeArchive(temporaryArchive, archiveName(reason));
+            return publishBackup(publishedArchive, archiveSize);
         } catch (IOException exception) {
-            deletePartialArchive(temporaryArchive);
+            deleteFailedArtifacts(temporaryArchive, publishedArchive);
             throw backupFailure(exception);
         } catch (RuntimeException exception) {
-            deletePartialArchive(temporaryArchive);
+            deleteFailedArtifacts(temporaryArchive, publishedArchive);
             throw exception;
         }
     }
 
+    private BackupResult publishBackup(Path archive, long archiveSize) {
+        requestFileSyncSafely();
+        removeExpiredBackupsSafely();
+        return new BackupResult(archive.getFileName().toString(), archiveSize, archive);
+    }
+
+    private void requestFileSyncSafely() {
+        try {
+            fileSyncService.requestSync("PostgreSQL backup created");
+        } catch (RuntimeException exception) {
+            logFailure("postgres_backup_sync_request_failed", "PostgreSQL backup File Sync request failed", exception);
+        }
+    }
+
     private Path createTemporaryArchive() throws IOException {
-        Files.createDirectories(backupDirectory);
-        return Files.createTempFile(backupDirectory, ".gtd-backup-", ".partial");
+        return workDirectory.createBackupFile(backupDirectory, ".gtd-backup-", ".partial");
     }
 
     private void validateTemporaryArchive(Path temporaryArchive) throws IOException {
-        try (PostgresCommandEnvironment environment = PostgresCommandEnvironment.open(connection, backupDirectory)) {
+        try (PostgresCommandEnvironment environment = PostgresCommandEnvironment.open(connection, workDirectory.path())) {
             commandRunner.run("pg_dump", connection.dumpArguments(temporaryArchive), environment.environment());
             requireClosedArchive(temporaryArchive);
             commandRunner.run("pg_restore", validationArguments(temporaryArchive), environment.environment());
@@ -174,6 +195,14 @@ public class PostgresBackupService {
         for (Path archive : archives.subList(firstExpired, archives.size())) Files.deleteIfExists(archive);
     }
 
+    private void removeExpiredBackupsSafely() {
+        try {
+            removeExpiredBackups();
+        } catch (IOException exception) {
+            logFailure("postgres_backup_retention_failed", "PostgreSQL backup retention failed", exception);
+        }
+    }
+
     private boolean isArchive(Path path) {
         String name = path.getFileName().toString();
         return Files.isRegularFile(path) && name.startsWith(BACKUP_PREFIX) && name.endsWith(BACKUP_SUFFIX);
@@ -191,7 +220,12 @@ public class PostgresBackupService {
         }
     }
 
-    private void deletePartialArchive(Path archive) {
+    private void deleteFailedArtifacts(Path temporaryArchive, Path publishedArchive) {
+        deleteArtifact(temporaryArchive);
+        deleteArtifact(publishedArchive);
+    }
+
+    private void deleteArtifact(Path archive) {
         if (archive == null) return;
         try {
             Files.deleteIfExists(archive);
@@ -200,7 +234,11 @@ public class PostgresBackupService {
         }
     }
 
-    private void logFailure(String message, Exception exception) {
-        System.getLogger(PostgresBackupService.class.getName()).log(System.Logger.Level.ERROR, message, exception);
+    private void logFailure(String event, String message, Exception exception) {
+        logger.atError()
+            .addKeyValue("event", event)
+            .addKeyValue("error_message", exception.getMessage())
+            .setCause(exception)
+            .log(message);
     }
 }

@@ -160,6 +160,8 @@ Assets, Google Integration Configuration, Database Connection Configuration, cer
 
 Production creates a logical `pg_dump` archive before Flyway migrations and once per active day. The archive is written to a temporary file, validated with `pg_restore --list`, atomically closed, and only then added to File Sync. Staging can load a named synchronized archive through `POST /maintenance/backups/restore`; the operation requires the `STAGING` database identity, validates the archive identity before restore, excludes the source identity row, and uses a single transaction.
 
+Backup work files and PostgreSQL password files live under the local `gtd.backup.work-directory` cache outside `gtd.data.root-directory`. File Sync can therefore observe only validated archives that have been atomically moved into the synchronized backup directory.
+
 The app is designed for a single owner using two devices. It does not implement multi-user or concurrent divergent-edit reconciliation beyond the project-specific assumptions described in [Synchronization](synchronization.md).
 
 ---
