@@ -15,6 +15,17 @@ class BackupWorkDirectoryTests {
     private Path tempDirectory;
 
     @Test
+    void acceptsRealWorkDirectoryOutsideSynchronizedDataRoot() throws Exception {
+        Path dataRoot = Files.createDirectories(tempDirectory.resolve("synchronized-root"));
+        Path workDirectory = tempDirectory.resolve("local-work");
+
+        BackupWorkDirectory result = BackupWorkDirectory.outsideDataRoot(
+            dataRoot.toString(), workDirectory.toString());
+
+        assertTrue(result.path().equals(workDirectory.toRealPath()));
+    }
+
+    @Test
     void rejectsWorkDirectoryInsideSynchronizedDataRoot() {
         Path dataRoot = tempDirectory.resolve("synchronized-root");
         Path workDirectory = dataRoot.resolve("backup-work");
