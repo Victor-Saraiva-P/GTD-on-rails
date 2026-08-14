@@ -38,6 +38,8 @@ class PostgresBackupServiceTests {
         assertTrue(Files.size(result.path()) > 0);
         assertTrue(commands.arguments.stream().noneMatch(argument -> argument.contains("secret")));
         assertTrue(commands.passfileContent.contains("secret"));
+        assertTrue(commands.outputPath.startsWith(workDirectory()));
+        assertTrue(commands.passfilePath.startsWith(workDirectory()));
         assertTrue(fileSync.reasons.contains("PostgreSQL backup created"));
         assertFalse(Files.list(tempDirectory).anyMatch(path -> path.toString().endsWith(".partial")));
         assertFalse(Files.list(tempDirectory).anyMatch(path -> path.getFileName().toString().startsWith(".gtd-pgpass-")));
@@ -57,31 +59,54 @@ class PostgresBackupServiceTests {
         assertTrue(fileSync.reasons.isEmpty());
     }
 
+    @Test
+    void failedFileSyncRequestRemovesPublishedArchive() throws Exception {
+        FakeCommandRunner commands = new FakeCommandRunner();
+        FakeFileSyncService fileSync = new FakeFileSyncService();
+        fileSync.failRequest = true;
+        PostgresBackupService service = service(commands, fileSync);
+
+        org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class, service::createManualBackup);
+
+        assertFalse(Files.list(backupDirectory()).anyMatch(path -> path.toString().endsWith(".dump")));
+    }
+
     private PostgresBackupService service(FakeCommandRunner commands, FakeFileSyncService fileSync) {
         return new PostgresBackupService(
-            tempDirectory,
+            backupDirectory(),
+            workDirectory(),
             new PostgresConnection("jdbc:postgresql://127.0.0.1:5432/gtd", "gtd_app", "secret"),
             fileSync,
             Clock.fixed(NOW, ZoneOffset.UTC),
             commands);
     }
 
+    private Path backupDirectory() {
+        return tempDirectory.resolve("synchronized-backups");
+    }
+
+    private Path workDirectory() {
+        return tempDirectory.resolve("local-backup-work");
+    }
+
     private static class FakeCommandRunner implements PostgresCommandRunner {
 
         private final List<String> arguments = new ArrayList<>();
         private String passfileContent = "";
+        private Path passfilePath = Path.of(".");
+        private Path outputPath = Path.of(".");
         private boolean failDump;
 
         @Override
         public void run(String executable, List<String> commandArguments, Map<String, String> environment) {
             arguments.addAll(commandArguments);
             try {
-                Path passfile = Path.of(environment.get("PGPASSFILE"));
-                passfileContent = Files.readString(passfile);
+                passfilePath = Path.of(environment.get("PGPASSFILE"));
+                passfileContent = Files.readString(passfilePath);
                 if ("pg_dump".equals(executable) && failDump) throw new IllegalStateException("dump failed");
                 if ("pg_dump".equals(executable)) {
-                    Path output = outputPath(commandArguments);
-                    Files.writeString(output, "closed archive");
+                    outputPath = outputPath(commandArguments);
+                    Files.writeString(outputPath, "closed archive");
                 }
             } catch (java.io.IOException exception) {
                 throw new IllegalStateException("fake PostgreSQL process value is invalid; expected readable passfile", exception);
@@ -96,6 +121,7 @@ class PostgresBackupServiceTests {
     private static class FakeFileSyncService extends FileSyncService {
 
         private final List<String> reasons = new ArrayList<>();
+        private boolean failRequest;
 
         private FakeFileSyncService() {
             super(new DataSyncService(new DataSyncProperties(), new RcloneDataSyncService(new DataSyncProperties()), "."));
@@ -103,6 +129,7 @@ class PostgresBackupServiceTests {
 
         @Override
         public void requestSync(String reason) {
+            if (failRequest) throw new IllegalStateException("file sync request failed");
             reasons.add(reason);
         }
 
