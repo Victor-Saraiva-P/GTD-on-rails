@@ -6,6 +6,7 @@ import { apiFetch, apiJson } from "../lib/api/apiClient.ts";
 import { isTauriRuntime } from "../lib/tauriRuntime.ts";
 import { DatabaseSetup } from "../features/bootstrap/DatabaseSetup.tsx";
 import { DatabaseRepair } from "../features/bootstrap/DatabaseRepair.tsx";
+import { PostgresToolsRequired } from "../features/bootstrap/PostgresToolsRequired.tsx";
 import { bootstrapUiState, type BootstrapUiState } from "../features/bootstrap/databaseBootstrapState.ts";
 import { shouldCheckNativeUpdates, startupSteps, type StartupStep } from "./nativeUpdatePolicy.ts";
 import "../styles/boot-loader.css";
@@ -26,6 +27,12 @@ type NativeUpdateStatus = {
   archiveUrl: string | null;
   checksumName: string | null;
   checksumUrl: string | null;
+};
+
+type PostgresToolsStatus = {
+  available: boolean;
+  missingTools: string[];
+  manualInstallCommand: string;
 };
 
 async function pingBackend(): Promise<"ready" | BootstrapUiState> {
@@ -56,6 +63,18 @@ async function waitForBackendBaseUrl(): Promise<void> {
 
 async function startBackend(): Promise<void> {
   if (isTauriRuntime()) await invoke("start_sidecar_command");
+}
+
+async function checkPostgresTools(
+  setPostgresTools: (status: PostgresToolsStatus) => void
+): Promise<boolean> {
+  if (import.meta.env.DEV) return false;
+
+  const status = await invoke<PostgresToolsStatus>("postgres_tools_status");
+  if (status.available) return false;
+
+  setPostgresTools(status);
+  return true;
 }
 
 async function runStartupStep(
@@ -99,20 +118,20 @@ function useBackendHealth() {
   const [updateStatus, setUpdateStatus] = useState<string | null>(null);
   const [setupRequired, setSetupRequired] = useState(false);
   const [bootstrapState, setBootstrapState] = useState<BootstrapUiState | null>(null);
+  const [postgresTools, setPostgresTools] = useState<PostgresToolsStatus | null>(null);
 
   useEffect(() => {
     let timeout: number;
 
     const checkHealth = async () => {
-      if (isTauriRuntime()) {
-        try {
-          const steps = startupSteps(isTauriRuntime(), import.meta.env.DEV);
-          for (const step of steps) {
-            if (await runStartupStep(step, setUpdateStatus)) return;
-          }
-        } catch (e) {
-          console.error("Failed to check for updates:", e);
+      try {
+        const steps = startupSteps(isTauriRuntime(), import.meta.env.DEV);
+        for (const step of steps) {
+          if (step === "sidecar" && (await checkPostgresTools(setPostgresTools))) return;
+          if (await runStartupStep(step, setUpdateStatus)) return;
         }
+      } catch (e) {
+        console.error("Failed to check for updates:", e);
       }
 
       try {
@@ -152,7 +171,7 @@ function useBackendHealth() {
     return () => window.clearInterval(dotInterval);
   }, [isBooted]);
 
-  return { isBooted, dots, bootError, updateStatus, setupRequired, bootstrapState };
+  return { isBooted, dots, bootError, updateStatus, setupRequired, bootstrapState, postgresTools };
 }
 
 /**
@@ -160,7 +179,7 @@ function useBackendHealth() {
  * Renders a retro terminal loading screen while waiting.
  */
 export function BootLoader({ children }: PropsWithChildren) {
-  const { isBooted, dots, bootError, updateStatus, setupRequired, bootstrapState } = useBackendHealth();
+  const { isBooted, dots, bootError, updateStatus, setupRequired, bootstrapState, postgresTools } = useBackendHealth();
   const [shouldRenderLoader, setShouldRenderLoader] = useState(true);
 
   // Allow time for fade-out animation
@@ -204,6 +223,7 @@ export function BootLoader({ children }: PropsWithChildren) {
       )}
       {bootstrapState === "setup" ? <DatabaseSetup /> : null}
       {bootstrapState === "repair" ? <DatabaseRepair /> : null}
+      {postgresTools ? <PostgresToolsRequired {...postgresTools} onResolved={() => window.location.reload()} /> : null}
       {isBooted && children}
     </>
   );

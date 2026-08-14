@@ -36,3 +36,15 @@ pnpm exec playwright install
 If `pnpm e2e` fails with `Executable doesn't exist` under
 `~/.cache/ms-playwright`, the Playwright browser cache has not been downloaded
 yet or is outdated. Run `pnpm exec playwright install` again.
+
+## PostgreSQL client tools
+
+Packaged production and staging startup checks for `pg_dump` and `pg_restore` before launching the Spring Boot sidecar. If either command is missing, the desktop shows an explicit installation action. The action invokes only the fixed Polkit command for Arch Linux `postgresql-libs`; it does not accept shell text and does not install silently.
+
+If Polkit authorization is cancelled or unavailable, run the displayed manual fallback:
+
+```sh
+sudo pacman -S --needed postgresql-libs
+```
+
+After installation, restart the desktop so the dependency check runs before backup-dependent startup.

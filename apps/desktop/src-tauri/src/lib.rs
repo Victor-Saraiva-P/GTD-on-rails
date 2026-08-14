@@ -6,6 +6,7 @@ use serde::Serialize;
 use tauri::Manager;
 
 mod native_update;
+mod postgres_tools;
 mod sidecar;
 
 #[derive(Serialize)]
@@ -688,6 +689,8 @@ pub fn run() {
             render_pdf_first_page_preview,
             native_update::native_update_check,
             native_update::native_update_install,
+            postgres_tools::postgres_tools_status,
+            postgres_tools::install_postgres_tools,
             sidecar::start_sidecar_command,
             sidecar_backend_status
         ])
