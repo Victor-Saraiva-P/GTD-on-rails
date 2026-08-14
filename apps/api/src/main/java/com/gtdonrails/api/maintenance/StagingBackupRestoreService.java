@@ -16,7 +16,7 @@ import org.springframework.stereotype.Service;
 public class StagingBackupRestoreService {
 
     private final Path backupDirectory;
-    private final Path workDirectory;
+    private final BackupWorkDirectory workDirectory;
     private final PostgresConnection connection;
     private final DatabaseIdentityService databaseIdentityService;
     private final PostgresCommandRunner commandRunner;
@@ -25,24 +25,25 @@ public class StagingBackupRestoreService {
     public StagingBackupRestoreService(
         @Value("${gtd.backup.directory:${gtd.data.root-directory}/backups}") String backupDirectory,
         @Value("${gtd.backup.work-directory:${user.home}/.cache/gtd-on-rails/backup-work}") String workDirectory,
+        @Value("${gtd.data.root-directory}") String dataRoot,
         @Value("${spring.datasource.url}") String jdbcUrl,
         @Value("${spring.datasource.username}") String username,
         @Value("${spring.datasource.password}") String password,
         DatabaseIdentityService databaseIdentityService,
         PostgresCommandRunner commandRunner
     ) {
-        this(Path.of(backupDirectory), Path.of(workDirectory), new PostgresConnection(jdbcUrl, username, password), databaseIdentityService, commandRunner);
+        this(Path.of(backupDirectory), BackupWorkDirectory.outsideDataRoot(dataRoot, workDirectory), new PostgresConnection(jdbcUrl, username, password), databaseIdentityService, commandRunner);
     }
 
     StagingBackupRestoreService(
         Path backupDirectory,
-        Path workDirectory,
+        BackupWorkDirectory workDirectory,
         PostgresConnection connection,
         DatabaseIdentityService databaseIdentityService,
         PostgresCommandRunner commandRunner
     ) {
         this.backupDirectory = backupDirectory.toAbsolutePath().normalize();
-        this.workDirectory = workDirectory.toAbsolutePath().normalize();
+        this.workDirectory = workDirectory;
         this.connection = connection;
         this.databaseIdentityService = databaseIdentityService;
         this.commandRunner = commandRunner;
@@ -63,23 +64,22 @@ public class StagingBackupRestoreService {
 
     private void restoreArchive(Path archive) {
         try {
-            Files.createDirectories(workDirectory);
             restoreWithEnvironment(archive);
-        } catch (IOException exception) {
+        } catch (IOException | RuntimeException exception) {
             throw restoreFailure(archive, exception);
         }
     }
 
     private void restoreWithEnvironment(Path archive) throws IOException {
-        try (PostgresCommandEnvironment environment = PostgresCommandEnvironment.open(connection, workDirectory)) {
+        workDirectory.ensureExists();
+        try (PostgresCommandEnvironment environment = PostgresCommandEnvironment.open(connection, workDirectory.path())) {
             commandRunner.run("pg_restore", List.of("--list", "--no-password", archive.toString()), environment.environment());
             restoreValidatedArchive(archive, environment);
         }
     }
 
     private void restoreValidatedArchive(Path archive, PostgresCommandEnvironment environment) throws IOException {
-        Files.createDirectories(workDirectory);
-        Path metadata = Files.createTempFile(workDirectory, ".gtd-restore-", ".sql");
+        Path metadata = workDirectory.createTemporaryFile(".gtd-restore-", ".sql");
         try {
             commandRunner.run("pg_restore", metadataArguments(archive, metadata), environment.environment());
             requireKnownArchiveIdentity(metadata);
@@ -89,7 +89,7 @@ public class StagingBackupRestoreService {
         }
     }
 
-    private IllegalStateException restoreFailure(Path archive, IOException exception) {
+    private IllegalStateException restoreFailure(Path archive, Exception exception) {
         return new IllegalStateException(
             "staging restore archive value '%s' is invalid; expected readable validated archive: %s"
                 .formatted(archive, exception.getMessage()), exception);

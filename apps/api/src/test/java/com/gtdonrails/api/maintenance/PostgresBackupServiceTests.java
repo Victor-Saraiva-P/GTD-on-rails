@@ -60,21 +60,21 @@ class PostgresBackupServiceTests {
     }
 
     @Test
-    void failedFileSyncRequestRemovesPublishedArchive() throws Exception {
+    void failedFileSyncRequestKeepsCompletedArchiveSuccessful() throws Exception {
         FakeCommandRunner commands = new FakeCommandRunner();
         FakeFileSyncService fileSync = new FakeFileSyncService();
         fileSync.failRequest = true;
         PostgresBackupService service = service(commands, fileSync);
 
-        org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class, service::createManualBackup);
+        BackupResult result = service.createManualBackup();
 
-        assertFalse(Files.list(backupDirectory()).anyMatch(path -> path.toString().endsWith(".dump")));
+        assertTrue(Files.isRegularFile(result.path()));
     }
 
     private PostgresBackupService service(FakeCommandRunner commands, FakeFileSyncService fileSync) {
         return new PostgresBackupService(
             backupDirectory(),
-            workDirectory(),
+            new BackupWorkDirectory(workDirectory()),
             new PostgresConnection("jdbc:postgresql://127.0.0.1:5432/gtd", "gtd_app", "secret"),
             fileSync,
             Clock.fixed(NOW, ZoneOffset.UTC),

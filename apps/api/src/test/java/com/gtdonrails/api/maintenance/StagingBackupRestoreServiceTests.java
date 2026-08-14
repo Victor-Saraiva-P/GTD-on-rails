@@ -29,7 +29,7 @@ class StagingBackupRestoreServiceTests {
         Path workDirectory = tempDirectory.resolve("local-restore-work");
         StagingBackupRestoreService service = new StagingBackupRestoreService(
             tempDirectory,
-            workDirectory,
+            new BackupWorkDirectory(workDirectory),
             new PostgresConnection("jdbc:postgresql://127.0.0.1:5432/gtd", "gtd_app", "secret"),
             identity,
             commands);
@@ -50,7 +50,7 @@ class StagingBackupRestoreServiceTests {
         FakeCommandRunner commands = new FakeCommandRunner();
         StagingBackupRestoreService service = new StagingBackupRestoreService(
             tempDirectory,
-            tempDirectory.resolve("local-restore-work"),
+            new BackupWorkDirectory(tempDirectory.resolve("local-restore-work")),
             new PostgresConnection("jdbc:postgresql://127.0.0.1:5432/gtd", "gtd_app", "secret"),
             new FakeDatabaseIdentityService(),
             commands);

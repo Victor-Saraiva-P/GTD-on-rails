@@ -29,7 +29,7 @@ public class PostgresBackupService {
     private static final Logger logger = LoggerFactory.getLogger(PostgresBackupService.class);
 
     private final Path backupDirectory;
-    private final Path workDirectory;
+    private final BackupWorkDirectory workDirectory;
     private final PostgresConnection connection;
     private final FileSyncService fileSyncService;
     private final Clock clock;
@@ -39,6 +39,7 @@ public class PostgresBackupService {
     public PostgresBackupService(
         @Value("${gtd.backup.directory:${gtd.data.root-directory}/backups}") String backupDirectory,
         @Value("${gtd.backup.work-directory:${user.home}/.cache/gtd-on-rails/backup-work}") String workDirectory,
+        @Value("${gtd.data.root-directory}") String dataRoot,
         @Value("${spring.datasource.url}") String jdbcUrl,
         @Value("${spring.datasource.username}") String username,
         @Value("${spring.datasource.password}") String password,
@@ -46,19 +47,19 @@ public class PostgresBackupService {
         Clock clock,
         PostgresCommandRunner commandRunner
     ) {
-        this(Path.of(backupDirectory), Path.of(workDirectory), new PostgresConnection(jdbcUrl, username, password), fileSyncService, clock, commandRunner);
+        this(Path.of(backupDirectory), BackupWorkDirectory.outsideDataRoot(dataRoot, workDirectory), new PostgresConnection(jdbcUrl, username, password), fileSyncService, clock, commandRunner);
     }
 
     PostgresBackupService(
         Path backupDirectory,
-        Path workDirectory,
+        BackupWorkDirectory workDirectory,
         PostgresConnection connection,
         FileSyncService fileSyncService,
         Clock clock,
         PostgresCommandRunner commandRunner
     ) {
         this.backupDirectory = backupDirectory.toAbsolutePath().normalize();
-        this.workDirectory = workDirectory.toAbsolutePath().normalize();
+        this.workDirectory = workDirectory;
         this.connection = connection;
         this.fileSyncService = fileSyncService;
         this.clock = clock;
@@ -116,19 +117,25 @@ public class PostgresBackupService {
     }
 
     private BackupResult publishBackup(Path archive, long archiveSize) {
-        fileSyncService.requestSync("PostgreSQL backup created");
+        requestFileSyncSafely();
         removeExpiredBackupsSafely();
         return new BackupResult(archive.getFileName().toString(), archiveSize, archive);
     }
 
+    private void requestFileSyncSafely() {
+        try {
+            fileSyncService.requestSync("PostgreSQL backup created");
+        } catch (RuntimeException exception) {
+            logFailure("postgres_backup_sync_request_failed", "PostgreSQL backup File Sync request failed", exception);
+        }
+    }
+
     private Path createTemporaryArchive() throws IOException {
-        Files.createDirectories(backupDirectory);
-        Files.createDirectories(workDirectory);
-        return Files.createTempFile(workDirectory, ".gtd-backup-", ".partial");
+        return workDirectory.createBackupFile(backupDirectory, ".gtd-backup-", ".partial");
     }
 
     private void validateTemporaryArchive(Path temporaryArchive) throws IOException {
-        try (PostgresCommandEnvironment environment = PostgresCommandEnvironment.open(connection, workDirectory)) {
+        try (PostgresCommandEnvironment environment = PostgresCommandEnvironment.open(connection, workDirectory.path())) {
             commandRunner.run("pg_dump", connection.dumpArguments(temporaryArchive), environment.environment());
             requireClosedArchive(temporaryArchive);
             commandRunner.run("pg_restore", validationArguments(temporaryArchive), environment.environment());
