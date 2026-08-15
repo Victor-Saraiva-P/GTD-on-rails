@@ -52,6 +52,17 @@ class RcloneFileSyncServiceTests {
         assertFalse(service.command().contains("--check-access"));
     }
 
+    @Test
+    void rejectsBlankRemoteWithOffendingValue() {
+        FileSyncProperties properties = properties();
+        properties.getRclone().setRemote("  ");
+        RecordingRcloneFileSyncService service = new RecordingRcloneFileSyncService(properties);
+
+        org.junit.jupiter.api.Assertions.assertThrows(
+            IllegalStateException.class,
+            () -> service.bisync(Path.of("/home/victor/Documents/gtd-on-rails")));
+    }
+
     private RecordingRcloneFileSyncService newService() {
         return new RecordingRcloneFileSyncService(properties());
     }
