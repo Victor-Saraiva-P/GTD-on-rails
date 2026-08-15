@@ -47,7 +47,7 @@ async function createDevelopmentAsset(sandbox) {
 }
 
 function runDevelopmentScript(sandbox, developmentRoot) {
-  return runScriptUntilLogContains(devScript, developmentScriptEnvironment(sandbox, developmentRoot), path.join(path.dirname(developmentRoot), "pnpm.log"), "@gtd-on-rails/desktop dev");
+  return runScriptUntilLogContains(devScript, developmentScriptEnvironment(sandbox, developmentRoot), path.join(path.dirname(developmentRoot), "pnpm.log"), ["@gtd-on-rails/api dev", "@gtd-on-rails/desktop dev"]);
 }
 
 function developmentScriptEnvironment(sandbox, developmentRoot) {

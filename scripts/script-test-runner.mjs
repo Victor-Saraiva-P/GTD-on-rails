@@ -45,11 +45,19 @@ export function runScriptUntilLogContains(scriptPath, environment, logPath, expe
 async function pollLog(childProcess, logPath, expectedText, onMatch, onError) {
   if (childProcess.killed) return;
   try {
-    if ((await readFile(logPath, "utf8")).includes(expectedText)) return onMatch();
+    const content = await readFile(logPath, "utf8");
+    if (matchesExpectedText(content, expectedText)) return onMatch();
   } catch (error) {
     if (error.code !== "ENOENT") return onError(error);
   }
   setTimeout(() => pollLog(childProcess, logPath, expectedText, onMatch, onError), 25);
+}
+
+function matchesExpectedText(content, expectedText) {
+  if (Array.isArray(expectedText)) {
+    return expectedText.every((text) => content.includes(text));
+  }
+  return content.includes(expectedText);
 }
 
 function stopScriptProcessGroup(processId) {
