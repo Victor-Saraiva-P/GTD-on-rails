@@ -168,7 +168,7 @@ test("processes stuff into a recurring calendar template with keyboard", async (
   await page.keyboard.press("]");
   await page.keyboard.press("]");
   await expect(page.locator(".inbox-pane .list-pane__title").nth(0)).toHaveText("Recurring");
-  await expect(page.getByText(title)).toBeVisible();
+  await expect(page.locator(".inbox-pane").nth(0).getByRole("button", { name: title, exact: false })).toBeVisible();
 });
 
 async function confirmNextActionProcessing(page: Page): Promise<void> {

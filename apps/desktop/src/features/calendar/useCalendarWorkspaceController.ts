@@ -34,7 +34,10 @@ import {
   selectedRecurringCalendarTemplate,
   selectedRecurringCalendarTemplateIndex
 } from "../recurring-calendar-templates/recurringCalendarTemplateSelection";
-import type { RecurringCalendarTemplate } from "../recurring-calendar-templates/types";
+import type {
+  RecurringCalendarTemplate,
+  RecurringCalendarTemplateConversionPayload
+} from "../recurring-calendar-templates/types";
 
 type CalendarEditState = ReturnType<typeof useCalendarEditState>;
 type CalendarModel = ReturnType<typeof useCalendarWorkspaceModel>;
@@ -51,7 +54,17 @@ function useCalendarSelection(items: Calendar[]) {
   const selectedItem = selectedCalendar(items, selectedId);
   const selectedIndex = selectedCalendarIndex(items, selectedItem);
   const cursor = { items, selectedIndex, setSelectedId };
-  return { items, selectedId, selectedIndex, selectedItem, setSelectedId, selectFirst: () => selectCalendarBoundary(cursor, "first"), selectLast: () => selectCalendarBoundary(cursor, "last"), selectNext: () => moveCalendarSelection(cursor, 1), selectPrevious: () => moveCalendarSelection(cursor, -1) };
+  return {
+    items,
+    selectedId,
+    selectedIndex,
+    selectedItem,
+    setSelectedId,
+    selectFirst: () => selectCalendarBoundary(cursor, "first"),
+    selectLast: () => selectCalendarBoundary(cursor, "last"),
+    selectNext: () => moveCalendarSelection(cursor, 1),
+    selectPrevious: () => moveCalendarSelection(cursor, -1)
+  };
 }
 
 function useRecurringCalendarTemplateSelection(templates: RecurringCalendarTemplate[]) {
@@ -60,7 +73,10 @@ function useRecurringCalendarTemplateSelection(templates: RecurringCalendarTempl
   const selectedIndex = selectedRecurringCalendarTemplateIndex(templates, selectedItem);
   const cursor = { templates, selectedIndex, setSelectedId };
   return {
-    selectedId, selectedIndex, selectedItem, setSelectedId,
+    selectedId,
+    selectedIndex,
+    selectedItem,
+    setSelectedId,
     selectFirst: () => selectRecurringCalendarTemplateBoundary(cursor, "first"),
     selectLast: () => selectRecurringCalendarTemplateBoundary(cursor, "last"),
     selectNext: () => moveRecurringCalendarTemplateSelection(cursor, 1),
@@ -89,6 +105,7 @@ function clearRecurringTemplateBodyEdit(edit: CalendarEditState): void {
 function clearCalendarEditing(edit: CalendarEditState): void {
   clearCalendarTitleEdit(edit);
   clearCalendarBodyEdit(edit);
+  clearRecurringTemplateBodyEdit(edit);
 }
 
 function hasVisibleCalendar(model: CalendarModel, id: string): boolean {
@@ -146,10 +163,19 @@ function useCalendarWorkspaceModel() {
   const edit = useCalendarEditState();
   const zone = useActiveZone();
   const history = useUndoRedoHistory<Calendar>();
-  return { edit, query, recurringSelection, selection, view, zone, history };
+  const recurringHistory = useUndoRedoHistory<RecurringCalendarTemplate>();
+  return { edit, query, recurringSelection, selection, view, zone, history, recurringHistory };
 }
 
 function startCalendarTitleEdit(model: CalendarModel): void {
+  if (model.view.activeSubview === "recurring") {
+    const template = model.recurringSelection.selectedItem;
+    if (!template) return;
+    model.edit.setEditingId(template.id);
+    model.edit.setEditingTitle(template.title);
+    model.edit.setEditingTitleError(null);
+    return;
+  }
   const item = model.selection.selectedItem;
   if (!item) return;
   model.edit.setEditingId(item.id);
@@ -158,6 +184,9 @@ function startCalendarTitleEdit(model: CalendarModel): void {
 }
 
 async function commitCalendarTitleEdit(model: CalendarModel): Promise<void> {
+  if (model.view.activeSubview === "recurring") {
+    return commitRecurringTemplateTitleEdit(model);
+  }
   const item = model.selection.selectedItem;
   if (!item || model.edit.editingId !== item.id) return;
   const title = model.edit.editingTitle.trim();
@@ -165,6 +194,31 @@ async function commitCalendarTitleEdit(model: CalendarModel): Promise<void> {
   try {
     const updated = title === item.title ? item : await model.query.updateTitle(item, title);
     model.selection.setSelectedId(updated.id);
+    clearCalendarTitleEdit(model.edit);
+  } catch (error: unknown) {
+    model.edit.setEditingTitleError(calendarTitleErrorMessage(error));
+    throw error;
+  }
+}
+
+async function commitRecurringTemplateTitleEdit(model: CalendarModel): Promise<void> {
+  const template = model.recurringSelection.selectedItem;
+  if (!template || model.edit.editingId !== template.id) return;
+  const title = model.edit.editingTitle.trim();
+  if (!title) { clearCalendarTitleEdit(model.edit); return; }
+  try {
+    if (title !== template.title) {
+      const updated = await model.query.updateRecurringTemplate(template, {
+        title,
+        startDate: template.startDate,
+        scheduledTime: template.scheduledTime,
+        intervalValue: template.intervalValue,
+        recurrenceUnit: template.recurrenceUnit,
+        weeklyWeekdays: template.weeklyWeekdays,
+        endDate: template.endDate
+      });
+      model.recurringSelection.setSelectedId(updated.id);
+    }
     clearCalendarTitleEdit(model.edit);
   } catch (error: unknown) {
     model.edit.setEditingTitleError(calendarTitleErrorMessage(error));
@@ -189,7 +243,6 @@ function startRecurringTemplateBodyEdit(model: CalendarModel): void {
   model.zone.setActiveZone("calendar-detail");
   model.edit.setRecurringEditingBodyId(template.id);
 }
-
 
 async function commitCalendarBodyEdit(model: CalendarModel, body: ItemBody): Promise<void> {
   const item = model.selection.selectedItem;
@@ -224,6 +277,20 @@ async function updateSelectedCalendarSchedule(model: CalendarModel, patch: Calen
   clearCalendarEditing(model.edit);
 }
 
+async function updateRecurringTemplateScheduleAction(
+  model: CalendarModel,
+  patch: RecurringCalendarTemplateConversionPayload
+): Promise<void> {
+  const template = model.recurringSelection.selectedItem;
+  if (!template) return;
+  const updated = await model.query.updateRecurringTemplate(template, {
+    ...patch,
+    title: template.title
+  });
+  model.recurringSelection.setSelectedId(updated.id);
+  clearCalendarEditing(model.edit);
+}
+
 async function runSelectedCalendarMutation(
   model: CalendarModel,
   action: (id: string) => Promise<void>
@@ -238,10 +305,8 @@ async function runSelectedCalendarMutation(
 async function deleteSelectedCalendarAction(model: CalendarModel): Promise<void> {
   const item = model.selection.selectedItem;
   if (!item) return;
-  
   await model.query.deleteItem(item.id);
   model.history.pushUndo({ type: "DELETE", payload: item });
-  
   clearCalendarEditing(model.edit);
   model.zone.setActiveZone(calendarListZoneForPanel(model.view.activePanel));
 }
@@ -250,14 +315,17 @@ async function deleteSelectedRecurringTemplateAction(model: CalendarModel): Prom
   const template = model.recurringSelection.selectedItem;
   if (!template) return;
   await model.query.deleteRecurringTemplate(template.id);
+  model.recurringHistory.pushUndo({ type: "DELETE", payload: template });
   clearRecurringTemplateBodyEdit(model.edit);
   model.zone.setActiveZone("calendar-recurring-panel");
 }
 
 async function undoCalendarAction(model: CalendarModel) {
+  if (model.view.activeSubview === "recurring") {
+    return undoRecurringTemplateAction(model);
+  }
   const action = model.history.popUndo();
   if (!action) return;
-
   if (action.type === "DELETE") {
     await model.query.recoverDeleted(action.payload.id);
     model.selection.setSelectedId(action.payload.id);
@@ -266,15 +334,39 @@ async function undoCalendarAction(model: CalendarModel) {
   }
 }
 
+async function undoRecurringTemplateAction(model: CalendarModel) {
+  const action = model.recurringHistory.popUndo();
+  if (!action) return;
+  if (action.type === "DELETE") {
+    const restored = await model.query.restoreRecurringTemplate(action.payload.id);
+    model.recurringSelection.setSelectedId(restored.id);
+  } else {
+    await model.query.deleteRecurringTemplate(action.payload.id);
+  }
+}
+
 async function redoCalendarAction(model: CalendarModel) {
+  if (model.view.activeSubview === "recurring") {
+    return redoRecurringTemplateAction(model);
+  }
   const action = model.history.popRedo();
   if (!action) return;
-
   if (action.type === "RESTORE") {
     await model.query.deleteItem(action.payload.id);
   } else {
     await model.query.recoverDeleted(action.payload.id);
     model.selection.setSelectedId(action.payload.id);
+  }
+}
+
+async function redoRecurringTemplateAction(model: CalendarModel) {
+  const action = model.recurringHistory.popRedo();
+  if (!action) return;
+  if (action.type === "RESTORE") {
+    await model.query.deleteRecurringTemplate(action.payload.id);
+  } else {
+    const restored = await model.query.restoreRecurringTemplate(action.payload.id);
+    model.recurringSelection.setSelectedId(restored.id);
   }
 }
 
@@ -371,8 +463,11 @@ function useCalendarWorkspaceActions(model: CalendarModel) {
     switchToNextSubview: () => switchCalendarSubview(model, "next"),
     switchToPreviousSubview: () => switchCalendarSubview(model, "previous"),
     updateSchedule: (patch: CalendarPatch) => updateSelectedCalendarSchedule(model, patch),
+    updateRecurringTemplateSchedule: (patch: RecurringCalendarTemplateConversionPayload) => updateRecurringTemplateScheduleAction(model, patch),
     undo: () => undoCalendarAction(model),
-    redo: () => redoCalendarAction(model)
+    redo: () => redoCalendarAction(model),
+    undoRecurringTemplate: () => undoRecurringTemplateAction(model),
+    redoRecurringTemplate: () => redoRecurringTemplateAction(model)
   };
 }
 

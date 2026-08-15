@@ -19,7 +19,7 @@ const weeklyDayOrder: WeeklyDayPanel[] = ["mon", "tue", "wed", "thu", "fri", "sa
  * Resolves h/l column navigation for the weekly view (REQ-02, REQ-03, REQ-04).
  * Returns an inner shift or a boundary-crossing shift with the week offset delta.
  *
- * @example resolveWeeklyColumnShift("mon", "left") // { kind: "boundary", panel: "sun", weekOffsetDelta: -1 }
+ * @example resolveWeeklyColumnShift("mon", "left")
  */
 export function resolveWeeklyColumnShift(
   currentDay: WeeklyDayPanel,
@@ -31,7 +31,6 @@ export function resolveWeeklyColumnShift(
   if (nextIndex >= 0 && nextIndex < weeklyDayOrder.length) {
     return { kind: "inner", panel: weeklyDayOrder[nextIndex] };
   }
-  // Boundary crossing: left from Monday → previous week Sunday, right from Sunday → next week Monday
   return { kind: "boundary", panel: weeklyDayOrder[nextIndex < 0 ? 6 : 0], weekOffsetDelta: offset };
 }
 
@@ -43,6 +42,11 @@ export type CalendarSelectionCursor = {
   setSelectedId: (id: string | null) => void;
 };
 
+/**
+ * Returns calendars belonging to the given active panel.
+ *
+ * @example calendarItemsForPanel(due, doneToday, completed, deleted, weekly, "due")
+ */
 export function calendarItemsForPanel(
   dueCalendars: Calendar[],
   doneTodayCalendars: Calendar[],
@@ -96,6 +100,11 @@ export function calendarTodayDoneListAfterDone(items: Calendar[], updated: Calen
   return [...withoutUpdated, updated];
 }
 
+/**
+ * Returns the selected calendar or falls back to the first item.
+ *
+ * @example selectedCalendar(items, "calendar-1")
+ */
 export function selectedCalendar(
   items: Calendar[],
   selectedId: string | null
@@ -103,6 +112,11 @@ export function selectedCalendar(
   return items.find((item) => item.id === selectedId) ?? items[0] ?? null;
 }
 
+/**
+ * Returns the 0-based index of the selected calendar.
+ *
+ * @example selectedCalendarIndex(items, item)
+ */
 export function selectedCalendarIndex(
   items: Calendar[],
   item: Calendar | null
@@ -110,6 +124,11 @@ export function selectedCalendarIndex(
   return item ? items.findIndex((candidate) => candidate.id === item.id) : -1;
 }
 
+/**
+ * Computes a clamped index offset for calendar selection navigation.
+ *
+ * @example calendarSelectionOffsetIndex(cursor, 1)
+ */
 export function calendarSelectionOffsetIndex(
   cursor: Pick<CalendarSelectionCursor, "items" | "selectedIndex">,
   offset: number
@@ -118,6 +137,11 @@ export function calendarSelectionOffsetIndex(
   return Math.min(Math.max(cursor.selectedIndex + offset, 0), cursor.items.length - 1);
 }
 
+/**
+ * Moves calendar selection by an offset, clamping at list boundaries.
+ *
+ * @example moveCalendarSelection(cursor, 1)
+ */
 export function moveCalendarSelection(
   cursor: CalendarSelectionCursor,
   offset: number
@@ -127,6 +151,11 @@ export function moveCalendarSelection(
   cursor.setSelectedId(cursor.items[nextIndex].id);
 }
 
+/**
+ * Selects the first or last calendar in the active list.
+ *
+ * @example selectCalendarBoundary(cursor, "first")
+ */
 export function selectCalendarBoundary(
   cursor: CalendarSelectionCursor,
   boundary: "first" | "last"
@@ -136,6 +165,11 @@ export function selectCalendarBoundary(
   cursor.setSelectedId(cursor.items[index].id);
 }
 
+/**
+ * Returns the default panel for a given subview.
+ *
+ * @example defaultCalendarPanelForSubview("today")
+ */
 export function defaultCalendarPanelForSubview(subview: CalendarSubview): CalendarPanel {
   if (subview === "weekly") return "mon";
   if (subview === "recurring") return "recurring";
@@ -144,6 +178,11 @@ export function defaultCalendarPanelForSubview(subview: CalendarSubview): Calend
   return "due";
 }
 
+/**
+ * Returns the next/previous subview and its initial focus panel.
+ *
+ * @example calendarSubviewTarget("today", "next")
+ */
 export function calendarSubviewTarget(
   current: CalendarSubview,
   direction: CalendarSubviewDirection
@@ -155,6 +194,11 @@ export function calendarSubviewTarget(
   return { panel: defaultCalendarPanelForSubview(subview), subview };
 }
 
+/**
+ * Returns valid keyboard focus zones for a given calendar subview.
+ *
+ * @example calendarSubviewFocusZones("recurring")
+ */
 export function calendarSubviewFocusZones(subview: CalendarSubview): FocusZoneId[] {
   if (subview === "completed") return ["calendar-completed-panel", "calendar-detail"];
   if (subview === "deleted") return ["calendar-deleted-panel", "calendar-detail"];

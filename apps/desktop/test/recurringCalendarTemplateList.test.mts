@@ -4,7 +4,8 @@ import test, { describe } from "node:test";
 import {
   recurringCalendarTemplateListWithoutItem,
   recurringTemplateDetailMetadata,
-  recurringTemplateRecurrenceLabel
+  recurringTemplateRecurrenceLabel,
+  weekdayName
 } from "../src/features/recurring-calendar-templates/recurringCalendarTemplateDisplay.ts";
 import {
   moveRecurringCalendarTemplateSelection,
@@ -66,6 +67,12 @@ describe("recurring calendar template list", () => {
     selectRecurringCalendarTemplateBoundary(cursor, "last");
 
     assert.deepEqual(selectedIds, ["template-2", "template-1", "template-2"]);
+  });
+
+  test("derives weekday name from iso date", () => {
+    assert.equal(weekdayName("2026-05-21"), "THURSDAY");
+    assert.equal(weekdayName("2026-05-22"), "FRIDAY");
+    assert.equal(weekdayName("invalid"), "MONDAY");
   });
 });
 

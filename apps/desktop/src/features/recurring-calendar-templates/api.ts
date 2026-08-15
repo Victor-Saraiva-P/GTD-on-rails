@@ -46,6 +46,11 @@ export async function patchRecurringCalendarTemplate(
   return toRecurringCalendarTemplate(response);
 }
 
+/**
+ * Updates the markdown body for a Recurring Calendar Template.
+ *
+ * @example await updateRecurringCalendarTemplateBody(template, body)
+ */
 export function updateRecurringCalendarTemplateBody(
   template: RecurringCalendarTemplate,
   body: ItemBody

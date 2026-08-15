@@ -31,6 +31,11 @@ export type RecurringCalendarTemplateResponse = Omit<RecurringCalendarTemplate, 
   body: ItemBody | string | null;
 };
 
+/**
+ * Normalizes an API response into a RecurringCalendarTemplate model.
+ *
+ * @example toRecurringCalendarTemplate(response)
+ */
 export function toRecurringCalendarTemplate(
   item: RecurringCalendarTemplateResponse
 ): RecurringCalendarTemplate {

@@ -9,10 +9,7 @@ export type ProcessingStep =
   | "set-time"
   | "set-calendar-date"
   | "set-calendar-time"
-  | "set-recurring-start-date"
-  | "set-recurring-interval"
-  | "set-recurring-time"
-  | "set-recurring-end-date";
+  | "recurring-wizard";
 
 export type ProcessingInitialChoice = "next-action" | "calendar" | "recurring-calendar";
 export type SegmentedCalendarDateSegment = "day" | "month" | "year";
@@ -25,34 +22,56 @@ export type SegmentedCalendarDateState = {
   activeDigitCount: number;
 };
 
+/**
+ * Returns the target step after selecting an item type on the initial step.
+ *
+ * @example stepAfterInitialChoice("calendar")
+ */
 export function stepAfterInitialChoice(choice: ProcessingInitialChoice): ProcessingStep {
-  if (choice === "recurring-calendar") return "set-recurring-start-date";
+  if (choice === "recurring-calendar") return "recurring-wizard";
   return choice === "calendar" ? "set-calendar-date" : "set-deadline";
 }
 
+/**
+ * Returns the previous step when moving back in processing.
+ *
+ * @example previousProcessingStep("set-time")
+ */
 export function previousProcessingStep(step: ProcessingStep): ProcessingStep {
   if (step === "set-time") return "set-energy";
   if (step === "set-energy") return "select-context";
   if (step === "select-context") return "set-deadline";
   if (step === "set-calendar-time") return "set-calendar-date";
-  if (step === "set-recurring-end-date") return "set-recurring-time";
-  if (step === "set-recurring-time") return "set-recurring-interval";
-  if (step === "set-recurring-interval") return "set-recurring-start-date";
   return "initial";
 }
 
+/**
+ * Appends a digit to the clock time draft if valid.
+ *
+ * @example nextClockTimeDigits("09", "3")
+ */
 export function nextClockTimeDigits(currentDigits: string, digit: string): string {
   const nextDigits = `${currentDigits}${digit}`;
   if (!/^\d{1,4}$/.test(nextDigits)) return currentDigits;
   return isValidClockTimeDigits(nextDigits) ? nextDigits : currentDigits;
 }
 
+/**
+ * Formats entered digits as HH:mm clock time.
+ *
+ * @example clockTimeDisplayValue("0930")
+ */
 export function clockTimeDisplayValue(digits: string): string {
   if (!digits) return "";
   const paddedDigits = digits.padStart(4, "0");
   return `${paddedDigits.slice(0, 2)}:${paddedDigits.slice(2)}`;
 }
 
+/**
+ * Initializes segmented date state using a date.
+ *
+ * @example initialSegmentedCalendarDateState(new Date())
+ */
 export function initialSegmentedCalendarDateState(currentDate: Date = new Date()): SegmentedCalendarDateState {
   return {
     day: paddedDatePart(currentDate.getDate(), 2),
@@ -63,6 +82,11 @@ export function initialSegmentedCalendarDateState(currentDate: Date = new Date()
   };
 }
 
+/**
+ * Returns an empty segmented calendar date state.
+ *
+ * @example blankSegmentedCalendarDateState()
+ */
 export function blankSegmentedCalendarDateState(): SegmentedCalendarDateState {
   return {
     day: "",
@@ -73,6 +97,11 @@ export function blankSegmentedCalendarDateState(): SegmentedCalendarDateState {
   };
 }
 
+/**
+ * Appends a digit to the active segment in date input state.
+ *
+ * @example nextSegmentedCalendarDateDigit(state, "5")
+ */
 export function nextSegmentedCalendarDateDigit(state: SegmentedCalendarDateState, digit: string): SegmentedCalendarDateState {
   if (!/^\d$/.test(digit)) return state;
   const maxLength = segmentLength(state.activeSegment);
@@ -81,19 +110,39 @@ export function nextSegmentedCalendarDateDigit(state: SegmentedCalendarDateState
   return withSegmentValue(state, nextValue, nextCount);
 }
 
+/**
+ * Moves segment focus left or right.
+ *
+ * @example moveSegmentedCalendarDateFocus(state, "l")
+ */
 export function moveSegmentedCalendarDateFocus(state: SegmentedCalendarDateState, direction: "h" | "l"): SegmentedCalendarDateState {
   const activeSegment = direction === "h" ? previousDateSegment(state.activeSegment) : nextDateSegment(state.activeSegment);
   return { ...state, activeSegment, activeDigitCount: 0 };
 }
 
+/**
+ * Returns the segmented date display string.
+ *
+ * @example segmentedCalendarDateDisplayValue(state)
+ */
 export function segmentedCalendarDateDisplayValue(state: SegmentedCalendarDateState): string {
   return `${displayDateSegment(state.day, 2)}/${displayDateSegment(state.month, 2)}/${displayDateSegment(state.year, 4)}`;
 }
 
+/**
+ * Checks whether segmented date state represents a valid date.
+ *
+ * @example isSegmentedCalendarDateValid(state)
+ */
 export function isSegmentedCalendarDateValid(state: SegmentedCalendarDateState): boolean {
   return segmentedCalendarDateIsoValue(state) !== null;
 }
 
+/**
+ * Converts segmented calendar date state to ISO YYYY-MM-DD string.
+ *
+ * @example segmentedCalendarDateIsoValue(state)
+ */
 export function segmentedCalendarDateIsoValue(state: SegmentedCalendarDateState): string | null {
   if (!hasCompleteCalendarDateSegments(state)) return null;
   const day = parseInt(state.day, 10);
@@ -103,6 +152,11 @@ export function segmentedCalendarDateIsoValue(state: SegmentedCalendarDateState)
   return `${state.year}-${state.month}-${state.day}`;
 }
 
+/**
+ * Restores segmented calendar date state from ISO YYYY-MM-DD string.
+ *
+ * @example segmentedCalendarDateStateFromIsoValue("2026-05-21")
+ */
 export function segmentedCalendarDateStateFromIsoValue(value: string): SegmentedCalendarDateState | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
   const [year, month, day] = value.split("-");
@@ -110,6 +164,11 @@ export function segmentedCalendarDateStateFromIsoValue(value: string): Segmented
   return isSegmentedCalendarDateValid(state) ? state : null;
 }
 
+/**
+ * Builds the CalendarConversionPayload from date and time digits.
+ *
+ * @example buildCalendarPayload("2026-05-21", "0930")
+ */
 export function buildCalendarPayload(scheduledDate: string, timeDigits: string): CalendarConversionPayload {
   return {
     scheduledDate,
@@ -117,6 +176,11 @@ export function buildCalendarPayload(scheduledDate: string, timeDigits: string):
   };
 }
 
+/**
+ * Builds the RecurringCalendarTemplateConversionPayload from wizard choices.
+ *
+ * @example buildRecurringCalendarTemplatePayload("2026-05-21", "0930", 1, "day", [], null)
+ */
 export function buildRecurringCalendarTemplatePayload(
   startDate: string,
   timeDigits: string,

@@ -22,7 +22,7 @@ describe("processing flow", () => {
   test("initial keyboard choices branch to next actions or calendar", () => {
     assert.equal(stepAfterInitialChoice("next-action"), "set-deadline");
     assert.equal(stepAfterInitialChoice("calendar"), "set-calendar-date");
-    assert.equal(stepAfterInitialChoice("recurring-calendar"), "set-recurring-start-date");
+    assert.equal(stepAfterInitialChoice("recurring-calendar"), "recurring-wizard");
   });
 
   test("escape goes back after the initial step", () => {
@@ -32,10 +32,7 @@ describe("processing flow", () => {
     assert.equal(previousProcessingStep("set-time"), "set-energy");
     assert.equal(previousProcessingStep("set-calendar-date"), "initial");
     assert.equal(previousProcessingStep("set-calendar-time"), "set-calendar-date");
-    assert.equal(previousProcessingStep("set-recurring-start-date"), "initial");
-    assert.equal(previousProcessingStep("set-recurring-interval"), "set-recurring-start-date");
-    assert.equal(previousProcessingStep("set-recurring-time"), "set-recurring-interval");
-    assert.equal(previousProcessingStep("set-recurring-end-date"), "set-recurring-time");
+    assert.equal(previousProcessingStep("recurring-wizard"), "initial");
   });
 
   test("calendar time keyboard input preserves valid HH:mm digits", () => {

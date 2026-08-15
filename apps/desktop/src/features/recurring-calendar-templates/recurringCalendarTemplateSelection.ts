@@ -6,6 +6,11 @@ export type RecurringCalendarTemplateSelectionCursor = {
   setSelectedId: (id: string | null) => void;
 };
 
+/**
+ * Returns the currently selected recurring template or falls back to the first template.
+ *
+ * @example selectedRecurringCalendarTemplate(templates, "id-1")
+ */
 export function selectedRecurringCalendarTemplate(
   templates: RecurringCalendarTemplate[],
   selectedId: string | null
@@ -13,6 +18,11 @@ export function selectedRecurringCalendarTemplate(
   return templates.find((template) => template.id === selectedId) ?? templates[0] ?? null;
 }
 
+/**
+ * Returns the 0-based index of the selected recurring template.
+ *
+ * @example selectedRecurringCalendarTemplateIndex(templates, template)
+ */
 export function selectedRecurringCalendarTemplateIndex(
   templates: RecurringCalendarTemplate[],
   template: RecurringCalendarTemplate | null
@@ -20,6 +30,11 @@ export function selectedRecurringCalendarTemplateIndex(
   return template ? templates.findIndex((candidate) => candidate.id === template.id) : -1;
 }
 
+/**
+ * Computes a clamped index offset for recurring template selection navigation.
+ *
+ * @example recurringCalendarTemplateSelectionOffsetIndex(cursor, 1)
+ */
 export function recurringCalendarTemplateSelectionOffsetIndex(
   cursor: Pick<RecurringCalendarTemplateSelectionCursor, "templates" | "selectedIndex">,
   offset: number
@@ -28,6 +43,11 @@ export function recurringCalendarTemplateSelectionOffsetIndex(
   return Math.min(Math.max(cursor.selectedIndex + offset, 0), cursor.templates.length - 1);
 }
 
+/**
+ * Moves recurring template selection by an offset, clamping at list boundaries.
+ *
+ * @example moveRecurringCalendarTemplateSelection(cursor, 1)
+ */
 export function moveRecurringCalendarTemplateSelection(
   cursor: RecurringCalendarTemplateSelectionCursor,
   offset: number
@@ -37,6 +57,11 @@ export function moveRecurringCalendarTemplateSelection(
   cursor.setSelectedId(cursor.templates[nextIndex].id);
 }
 
+/**
+ * Selects the first or last recurring template in the list.
+ *
+ * @example selectRecurringCalendarTemplateBoundary(cursor, "first")
+ */
 export function selectRecurringCalendarTemplateBoundary(
   cursor: RecurringCalendarTemplateSelectionCursor,
   boundary: "first" | "last"

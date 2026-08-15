@@ -18,6 +18,7 @@ import { calendarsListTheme, deletedCalendarsListTheme, doneCalendarsListTheme, 
 import { getMondayForOffset } from "../features/calendar/calendarDateUtils";
 import { RecurringCalendarTemplateList } from "../features/recurring-calendar-templates/RecurringCalendarTemplateList";
 import { RecurringCalendarTemplateDetails } from "../features/recurring-calendar-templates/RecurringCalendarTemplateDetails";
+import { RecurringCalendarTemplateEditDialog } from "../features/recurring-calendar-templates/RecurringCalendarTemplateEditDialog";
 
 type CalendarPageProps = Readonly<{
   controller: CalendarWorkspaceController;
@@ -86,7 +87,13 @@ function openCalendarScheduleDialog(controller: CalendarWorkspaceController, ope
   if (canEditCalendar(controller)) openScheduleEdit();
 }
 
-function buildPanelBindings(controller: CalendarWorkspaceController, setActiveScreen: (screen: ScreenId) => void, openScheduleEdit: () => void, selectOnGoingCalendar: (id: string) => void): KeybindDefinition[] {
+function buildPanelBindings(
+  controller: CalendarWorkspaceController,
+  setActiveScreen: (screen: ScreenId) => void,
+  openScheduleEdit: () => void,
+  openRecurringScheduleEdit: () => void,
+  selectOnGoingCalendar: (id: string) => void
+): KeybindDefinition[] {
   if (controller.activeSubview === "completed") {
     return [
       calendarBinding("calendars.move-completed-down", "j", "Move down", "calendar-completed-panel", () => moveCalendarSelection(controller, "next")),
@@ -115,7 +122,7 @@ function buildPanelBindings(controller: CalendarWorkspaceController, setActiveSc
     ];
   }
   if (controller.activeSubview === "recurring") {
-    return recurringCalendarBindings(controller);
+    return recurringCalendarBindings(controller, openRecurringScheduleEdit);
   }
   if (controller.activeSubview === "weekly") {
     const bindings: KeybindDefinition[] = [];
@@ -124,8 +131,6 @@ function buildPanelBindings(controller: CalendarWorkspaceController, setActiveSc
     
     days.forEach((day, i) => {
       const zone = zones[i];
-      // Note: we don't bind 1..7 directly in the zone because the user might want to press 2 while in zone 1 to switch!
-      // But wait, the switch bindings need to be in ALL zones!
       days.forEach((targetDay, j) => {
         bindings.push(
           calendarBinding(`calendars.focus-${targetDay}-from-${day}`, String(j + 1), `Focus ${targetDay} panel`, zone, () => focusCalendarPanel(controller, targetDay))
@@ -158,15 +163,20 @@ function buildPanelBindings(controller: CalendarWorkspaceController, setActiveSc
   ];
 }
 
-function recurringCalendarBindings(controller: CalendarWorkspaceController): KeybindDefinition[] {
+function recurringCalendarBindings(
+  controller: CalendarWorkspaceController,
+  openRecurringScheduleEdit: () => void
+): KeybindDefinition[] {
   return [
     calendarBinding("calendars.move-recurring-down", "j", "Move down", "calendar-recurring-panel", controller.selectNextRecurringTemplate),
     calendarBinding("calendars.move-recurring-up", "k", "Move up", "calendar-recurring-panel", controller.selectPreviousRecurringTemplate),
     calendarBinding("calendars.move-recurring-first", "g", "Move to first template", "calendar-recurring-panel", controller.selectFirstRecurringTemplate, false, ["g", "g"]),
     calendarBinding("calendars.move-recurring-last", "G", "Move to last template", "calendar-recurring-panel", controller.selectLastRecurringTemplate),
-    calendarBinding("calendars.edit-recurring-body", "l", "Edit recurring body", "calendar-recurring-panel", () => canEditRecurringTemplate(controller) && controller.startRecurringTemplateBodyEdit()),
+    calendarBinding("calendars.edit-recurring-title", "Enter", "Edit recurring title", "calendar-recurring-panel", () => canEditRecurringTemplate(controller) && controller.startTitleEdit()),
+    calendarBinding("calendars.edit-recurring-schedule", "E", "Edit recurring schedule", "calendar-recurring-panel", () => canEditRecurringTemplate(controller) && openRecurringScheduleEdit()),
     calendarBinding("calendars.delete-recurring-template", "d", "Delete recurring template", "calendar-recurring-panel", () => runCalendarAction(canEditRecurringTemplate(controller), controller.deleteSelectedRecurringTemplate, "Failed to delete recurring template")),
-    calendarBinding("calendars.reload-recurring", "r", "Reload recurring templates", "calendar-recurring-panel", controller.reload)
+    calendarBinding("calendars.undo-recurring", "u", "Undo last action", "calendar-recurring-panel", controller.undoRecurringTemplate),
+    { ...calendarBinding("calendars.redo-recurring", "r", "Redo last action", "calendar-recurring-panel", controller.redoRecurringTemplate), ctrl: true }
   ];
 }
 
@@ -259,13 +269,20 @@ function activePanelZone(panel: CalendarPanel): FocusZoneId {
   return "calendar-today-due-panel";
 }
 
-function useCalendarBindings(controller: CalendarWorkspaceController, openLink: () => void, openAsset: () => void, openScheduleEdit: () => void, selectOnGoingCalendar: (id: string) => void): void {
+function useCalendarBindings(
+  controller: CalendarWorkspaceController,
+  openLink: () => void,
+  openAsset: () => void,
+  openScheduleEdit: () => void,
+  openRecurringScheduleEdit: () => void,
+  selectOnGoingCalendar: (id: string) => void
+): void {
   const { setActiveScreen } = useActiveScreen();
   const bindings = useMemo(() => [
     ...buildSubviewBindings(controller),
-    ...buildPanelBindings(controller, setActiveScreen, openScheduleEdit, selectOnGoingCalendar),
+    ...buildPanelBindings(controller, setActiveScreen, openScheduleEdit, openRecurringScheduleEdit, selectOnGoingCalendar),
     ...buildDetailBindings(controller, openLink, openAsset)
-  ], [controller.activeSubview, controller, setActiveScreen, openLink, openAsset, openScheduleEdit, selectOnGoingCalendar]);
+  ], [controller.activeSubview, controller, setActiveScreen, openLink, openAsset, openScheduleEdit, openRecurringScheduleEdit, selectOnGoingCalendar]);
   useRegisterKeybinds(bindings);
 }
 
@@ -421,6 +438,14 @@ function RecurringCalendarPanelBody({ controller }: CalendarControllerProps) {
       onSelect={controller.setSelectedRecurringTemplateId}
       selectedId={controller.selectedRecurringTemplate?.id ?? ""}
       templates={controller.recurringCalendarTemplates}
+      editingId={controller.editingId}
+      editingTitle={controller.editingTitle}
+      editingTitleError={controller.editingTitleError}
+      onEditingTitleChange={controller.setEditingTitle}
+      onCommitEditing={controller.commitTitle}
+      onCommitEditingAndContinue={controller.commitTitle}
+      onCancelEditing={controller.cancelTitleEdit}
+      onStartEditing={controller.startTitleEdit}
     />
   );
 }
@@ -576,14 +601,16 @@ export function CalendarPage({ controller, selectOnGoingCalendar }: CalendarPage
   const [isLinkOpen, setIsLinkOpen] = useState(false);
   const [isAssetOpen, setIsAssetOpen] = useState(false);
   const [isScheduleEditOpen, setIsScheduleEditOpen] = useState(false);
+  const [isRecurringScheduleEditOpen, setIsRecurringScheduleEditOpen] = useState(false);
   const openLink = useCallback(() => setIsLinkOpen(true), []);
   const openAsset = useCallback(() => setIsAssetOpen(true), []);
   const openScheduleEdit = useCallback(() => setIsScheduleEditOpen(true), []);
+  const openRecurringScheduleEdit = useCallback(() => setIsRecurringScheduleEditOpen(true), []);
   const bodyItemId = selectedCalendarBodyItemId(controller);
   useKeybindScreen("calendars");
   useCalendarZone(controller);
   useCalendarAssetPreload(controller);
-  useCalendarBindings(controller, openLink, openAsset, openScheduleEdit, selectOnGoingCalendar);
+  useCalendarBindings(controller, openLink, openAsset, openScheduleEdit, openRecurringScheduleEdit, selectOnGoingCalendar);
 
   return (
     <ListWorkspace theme={calendarWorkspaceTheme(controller.activeSubview)} currentLabel="Calendars" modeLabel={controller.vimMode ?? undefined}>
@@ -593,6 +620,13 @@ export function CalendarPage({ controller, selectOnGoingCalendar }: CalendarPage
         {isLinkOpen ? <LazyMarkdownLinkComboDialog onClose={() => setIsLinkOpen(false)} /> : null}
         {isAssetOpen && bodyItemId ? <LazyMarkdownAssetComboDialog itemId={bodyItemId} onClose={() => setIsAssetOpen(false)} /> : null}
         {isScheduleEditOpen && controller.selectedItem ? <CalendarScheduleEditDialog item={controller.selectedItem} onClose={() => setIsScheduleEditOpen(false)} onSave={controller.updateSchedule} /> : null}
+        {isRecurringScheduleEditOpen && controller.selectedRecurringTemplate ? (
+          <RecurringCalendarTemplateEditDialog
+            template={controller.selectedRecurringTemplate}
+            onClose={() => setIsRecurringScheduleEditOpen(false)}
+            onSave={controller.updateRecurringTemplateSchedule}
+          />
+        ) : null}
       </Suspense>
     </ListWorkspace>
   );
