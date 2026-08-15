@@ -12,7 +12,7 @@ The infrastructure that hosts these sync processes is described in [Infrastructu
 
 The system has two synchronization channels.
 
-- File Sync uses `rclone bisync` to move file-backed state under the trusted data root between machines and Google Drive. It never moves a live PostgreSQL database. `DataSync*` remains a compatibility alias for existing consumers during the PostgreSQL migration.
+- File Sync uses `rclone bisync` to move file-backed state under the trusted data root between machines and Google Drive. It never moves a live PostgreSQL database.
 - Google Calendar sync mirrors GTD items to external agendas after local domain changes.
 
 The backend owns both channels. The frontend observes status and can request manual File Sync.
@@ -64,7 +64,7 @@ ${gtd.data.root-directory}/google.properties
 
 ## 3. File Sync Flow
 
-File Sync is exposed by `FileSyncService`; `DataSyncService` and `RcloneDataSyncService` remain compatibility implementation aliases until final contraction.
+File Sync is exposed by `FileSyncService`.
 
 Startup behavior:
 
@@ -75,10 +75,10 @@ Startup behavior:
 
 Runtime behavior:
 
-- Application services request File Sync after committed domain changes.
+- File-backed mutations (such as item assets, context icons, backups, and configuration saves) request File Sync after commit. Structured-only domain changes are persisted directly to PostgreSQL and do not trigger File Sync.
 - Google Integration Configuration saves write `google.properties` locally and request asynchronous File Sync.
 - Scheduled File Sync runs every `gtd.sync.interval-ms`.
-- Manual File Sync enqueues work through `POST /sync/files`. The compatibility endpoint `POST /sync/data` remains available for existing consumers.
+- Manual File Sync enqueues work through `POST /sync/files`.
 - File Sync runs in a single-thread executor and coalesces pending requests while one sync is already running.
 
 ---
@@ -149,8 +149,7 @@ GET /sync/status
 
 The response contains:
 
-- `file`: canonical File Sync status.
-- `data`: legacy File Sync status alias. It has the same state and timestamps as `file` while compatibility aliases remain active.
+- `file`: File Sync status.
 - `googleCalendar`: Google Calendar sync status.
 
 File Sync status includes:
@@ -169,7 +168,7 @@ Manual File Sync is requested at:
 POST /sync/files
 ```
 
-The endpoint enqueues sync and returns `202 Accepted` with the current File Sync status. Existing clients may continue using `POST /sync/data`.
+The endpoint enqueues sync and returns `202 Accepted` with the current File Sync status.
 
 The desktop footer renders one File Sync indicator and one Google Calendar sync indicator.
 
@@ -202,6 +201,6 @@ GTD on Rails currently synchronizes data with:
 
 - `rclone bisync` over file-backed state under `${gtd.data.root-directory}`.
 - Blocking startup File Sync before PostgreSQL opens.
-- Async coalesced runtime File Sync after domain changes.
+- Async coalesced runtime File Sync after file-backed changes.
 - Async Google Integration Configuration sync after local save.
 - UI sync indicators backed by `/sync/status`.

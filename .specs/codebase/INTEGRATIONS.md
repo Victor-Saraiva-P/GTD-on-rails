@@ -1,25 +1,27 @@
 # Integrations
 
-## Persistence Git Sync
+## PostgreSQL Persistence
 
-Structured application data is stored in SQLite inside a private Git repository. The backend bootstraps the repository when the database is missing and syncs committed domain changes with Git.
+Structured application data is stored in PostgreSQL (local Compose PostgreSQL in development, isolated Supabase in staging, and shared Supabase in production). The backend manages schema migrations, database setup, repair, and identity verification.
 
-Production uses the `main` persistence branch. Development and staging use the `dev` branch.
+## File Sync
 
-## Asset Sync
-
-File assets sync separately from structured persistence through `rclone bisync`.
+File assets, configuration files, database backups, and the sync marker synchronize through `rclone bisync`.
 
 - Production remote: `gdrive:gtd-on-rails`.
 - Development and staging remote: `gdrive:dev-gtd-on-rails`.
-- Asset sync state lives under the data root.
+- File sync state lives under the data root.
 - The backend queues startup, scheduled, and requested sync work.
+
+## Google Calendar Integration
+
+The backend synchronizes calendar and time-bound next action items with Google Calendar via OAuth2 integration.
 
 ## Tauri Native Layer
 
 The desktop app uses Tauri for the native Linux shell, sidecar startup, filesystem access, HTTP access, clipboard/drop local-file paths, and native update behavior.
 
-Local-file asset sources from Tauri should call `POST /items/{id}/assets/local-file`. Byte-backed sources should call multipart `POST /items/{id}/assets`.
+Local-file asset sources from Tauri call `POST /items/{id}/assets/local-file`. Byte-backed sources call multipart `POST /items/{id}/assets`.
 
 ## API Surface
 
@@ -31,10 +33,6 @@ GitHub Actions run CI, quality, and release workflows.
 
 - CI installs dependencies, Playwright browsers, runs tests/checks, verifies native desktop build behavior, and packages native Linux tarballs.
 - Release workflow builds the production-like sidecar app and uploads `.tar.gz` plus `.sha256` assets.
-
-## Optional Local Infrastructure
-
-`infra/compose.yaml` defines optional local Postgres/API infrastructure for development experiments. It is not the canonical production runtime.
 
 Canonical sources:
 

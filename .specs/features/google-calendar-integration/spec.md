@@ -10,7 +10,7 @@ The GTD-on-Rails app needs to integrate with Google Calendar so that GTD element
 - [ ] Allow the user to configure Google OAuth client credentials from the UI
 - [ ] Implement OAuth2 authorization flow for installed desktop apps
 - [ ] Create four GTD-mapped Google Calendars with colors matching existing page themes
-- [ ] Store OAuth tokens in the SQLite database so they sync between devices
+- [ ] Store OAuth tokens encrypted in the PostgreSQL database
 
 ## Out of Scope
 
@@ -19,7 +19,6 @@ Explicitly excluded. Documented to prevent scope creep.
 | Feature                              | Reason                                           |
 | ------------------------------------ | ------------------------------------------------ |
 | GTD element ↔ Google Calendar sync   | Phase 2 — requires this infrastructure first     |
-| Credential encryption at rest        | Same private repo holds unencrypted SQLite DB     |
 | Multi-user support                   | Single-owner app per project rules                |
 | Cross-platform OAuth (Windows/macOS) | Arch Linux only per project rules                 |
 | Google Calendar event CRUD           | Phase 2 — this phase only creates calendars       |
@@ -85,7 +84,7 @@ Explicitly excluded. Documented to prevent scope creep.
 1. WHEN the user presses `c` on the integration page with credentials configured THEN the backend SHALL generate a Google OAuth2 authorization URL with the `https://www.googleapis.com/auth/calendar` scope
 2. WHEN the authorization URL is generated THEN the app SHALL open the user's default browser to that URL
 3. WHEN Google redirects back to `http://127.0.0.1:{sidecar-port}/oauth/google/callback` with an authorization code THEN the backend SHALL exchange it for access and refresh tokens
-4. WHEN tokens are received THEN the backend SHALL store them in the `google_credentials` SQLite table (access_token, refresh_token, token_type, expires_at, scope)
+4. WHEN tokens are received THEN the backend SHALL store them in the `google_credentials` PostgreSQL table (access_token, refresh_token, token_type, expires_at, scope)
 5. WHEN tokens are stored THEN the Connection Status on the integration page SHALL update to "Connected"
 6. WHEN the user presses `c` but credentials are not configured THEN the app SHALL show a message directing the user to configure credentials first
 7. WHEN the OAuth flow fails (user denies, network error) THEN the app SHALL display the error and remain on the integration page
@@ -169,4 +168,4 @@ Explicitly excluded. Documented to prevent scope creep.
 - [ ] User can connect to Google via OAuth2 with a single keybind press
 - [ ] Access tokens refresh automatically without user intervention
 - [ ] Four GTD calendars exist in the user's Google Calendar with correct names and approximate colors
-- [ ] Integration state syncs between both machines via existing Git persistence
+- [ ] Integration state syncs between both machines via PostgreSQL and File Sync

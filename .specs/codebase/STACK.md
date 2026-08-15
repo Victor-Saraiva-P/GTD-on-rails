@@ -31,7 +31,7 @@
 - Runtime: Java 21.
 - Framework: Spring Boot 4.
 - Build tool: Gradle.
-- Persistence: Spring Data JPA, Hibernate, SQLite.
+- Persistence: Spring Data JPA, Hibernate, PostgreSQL.
 - Migrations: Flyway.
 - Test framework: Gradle/JUnit.
 
