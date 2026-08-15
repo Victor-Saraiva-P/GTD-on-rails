@@ -1,11 +1,8 @@
 package com.gtdonrails.api.maintenance;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -21,12 +18,8 @@ import com.gtdonrails.api.config.DataSyncProperties;
 import com.gtdonrails.api.services.DataSyncService;
 import com.gtdonrails.api.services.FileSyncService;
 import com.gtdonrails.api.services.RcloneDataSyncService;
-import org.flywaydb.core.Flyway;
-import org.flywaydb.core.api.MigrationInfo;
-import org.flywaydb.core.api.MigrationInfoService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.springframework.boot.flyway.autoconfigure.FlywayMigrationStrategy;
 
 class BackupMigrationConfigurationTests {
 
@@ -37,9 +30,9 @@ class BackupMigrationConfigurationTests {
     void pendingMigrationRunsOnlyAfterSuccessfulFreshBackup() {
         List<String> events = new ArrayList<>();
         RecordingCommandRunner recordingCommandRunner = new RecordingCommandRunner(events, false);
-        FakeFlywayScenario flywayScenario = FakeFlywayScenario.withPendingMigration(events);
+        RecordingSchemaMigration schemaMigration = RecordingSchemaMigration.pending(events);
 
-        strategy(recordingCommandRunner).migrate(flywayScenario.flyway());
+        migrationGate(recordingCommandRunner).migrate(schemaMigration);
 
         assertTrue(events.indexOf("pg_restore") < events.indexOf("flyway"));
         assertTrue(backupNames().stream().anyMatch(name -> name.endsWith("-pre-migration.dump")));
@@ -49,31 +42,31 @@ class BackupMigrationConfigurationTests {
     void backupFailureBlocksPendingMigrationAndStartup() {
         List<String> events = new ArrayList<>();
         RecordingCommandRunner recordingCommandRunner = new RecordingCommandRunner(events, true);
-        FakeFlywayScenario flywayScenario = FakeFlywayScenario.withPendingMigration(events);
+        RecordingSchemaMigration schemaMigration = RecordingSchemaMigration.pending(events);
 
         IllegalStateException failure = assertThrows(
-            IllegalStateException.class, () -> strategy(recordingCommandRunner).migrate(flywayScenario.flyway()));
+            IllegalStateException.class, () -> migrationGate(recordingCommandRunner).migrate(schemaMigration));
 
         assertTrue(failure.getMessage().contains("pg_dump failed"));
-        flywayScenario.verifyMigrationSkipped();
+        assertFalse(schemaMigration.migrated);
     }
 
     @Test
     void currentSchemaMigratesWithoutCreatingABackup() {
-        FakeFlywayScenario flywayScenario = FakeFlywayScenario.withCurrentSchema();
+        RecordingSchemaMigration schemaMigration = RecordingSchemaMigration.current();
 
-        strategy(new RecordingCommandRunner(new ArrayList<>(), false)).migrate(flywayScenario.flyway());
+        migrationGate(new RecordingCommandRunner(new ArrayList<>(), false)).migrate(schemaMigration);
 
-        flywayScenario.verifyMigrationCompleted();
+        assertTrue(schemaMigration.migrated);
         assertTrue(backupNames().isEmpty());
     }
 
-    private FlywayMigrationStrategy strategy(RecordingCommandRunner recordingCommandRunner) {
+    private BackupMigrationGate migrationGate(RecordingCommandRunner recordingCommandRunner) {
         PostgresBackupService backupService = new PostgresBackupService(
             backupDirectory(), new BackupWorkDirectory(workDirectory()),
             new PostgresConnection("jdbc:postgresql://127.0.0.1:5432/gtd", "gtd_app", "secret"),
             new NoOpFileSyncService(), Clock.fixed(Instant.parse("2026-08-11T02:00:00Z"), ZoneOffset.UTC), recordingCommandRunner);
-        return new BackupMigrationConfiguration().backupBeforeFlyway(backupService);
+        return new BackupMigrationGate(backupService);
     }
 
     private List<String> backupNames() {
@@ -120,39 +113,34 @@ class BackupMigrationConfigurationTests {
         }
     }
 
-    private static class FakeFlywayScenario {
+    private static class RecordingSchemaMigration implements SchemaMigration {
 
-        private final Flyway flyway;
+        private final boolean pending;
+        private final List<String> events;
+        private boolean migrated;
 
-        private FakeFlywayScenario(int pendingCount, List<String> events) {
-            flyway = mock(Flyway.class);
-            MigrationInfoService migrationInfo = mock(MigrationInfoService.class);
-            when(flyway.info()).thenReturn(migrationInfo);
-            when(migrationInfo.pending()).thenReturn(new MigrationInfo[pendingCount]);
-            when(flyway.migrate()).thenAnswer(invocation -> {
-                events.add("flyway");
-                return null;
-            });
+        private RecordingSchemaMigration(boolean pending, List<String> events) {
+            this.pending = pending;
+            this.events = events;
         }
 
-        private static FakeFlywayScenario withPendingMigration(List<String> events) {
-            return new FakeFlywayScenario(1, events);
+        private static RecordingSchemaMigration pending(List<String> events) {
+            return new RecordingSchemaMigration(true, events);
         }
 
-        private static FakeFlywayScenario withCurrentSchema() {
-            return new FakeFlywayScenario(0, new ArrayList<>());
+        private static RecordingSchemaMigration current() {
+            return new RecordingSchemaMigration(false, new ArrayList<>());
         }
 
-        private Flyway flyway() {
-            return flyway;
+        @Override
+        public boolean hasPendingMigrations() {
+            return pending;
         }
 
-        private void verifyMigrationSkipped() {
-            verify(flyway, never()).migrate();
-        }
-
-        private void verifyMigrationCompleted() {
-            verify(flyway).migrate();
+        @Override
+        public void migrate() {
+            migrated = true;
+            events.add("flyway");
         }
     }
 
