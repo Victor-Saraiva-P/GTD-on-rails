@@ -1,6 +1,8 @@
 package com.gtdonrails.api.maintenance;
 
-interface SchemaMigration {
+public interface SchemaMigration {
+
+    boolean isUpgradeable();
 
     boolean hasPendingMigrations();
 

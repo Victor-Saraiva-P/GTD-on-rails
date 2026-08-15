@@ -2,12 +2,13 @@ import { useEffect, useState, type PropsWithChildren } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { setRuntimeApiBaseUrl } from "../config/env.ts";
 import { appMetadata } from "../config/appMetadata.ts";
-import { apiFetch, apiJson } from "../lib/api/apiClient.ts";
+import { apiFetch, apiJson, ApiRequestError } from "../lib/api/apiClient.ts";
 import { isTauriRuntime } from "../lib/tauriRuntime.ts";
 import { DatabaseSetup } from "../features/bootstrap/DatabaseSetup.tsx";
 import { DatabaseRepair } from "../features/bootstrap/DatabaseRepair.tsx";
 import { PostgresToolsRequired } from "../features/bootstrap/PostgresToolsRequired.tsx";
 import { bootstrapUiState, type BootstrapUiState } from "../features/bootstrap/databaseBootstrapState.ts";
+import { parseReadinessResponse } from "../features/database-readiness/databaseReadiness.ts";
 import { shouldCheckNativeUpdates, startupSteps, type StartupStep } from "./nativeUpdatePolicy.ts";
 import "../styles/boot-loader.css";
 
@@ -35,11 +36,14 @@ type PostgresToolsStatus = {
   manualInstallCommand: string;
 };
 
-async function pingBackend(): Promise<"ready" | BootstrapUiState> {
+async function pingBackend(): Promise<"ready" | "update-required" | BootstrapUiState> {
   try {
     await apiFetch("/readiness");
     return "ready";
-  } catch {
+  } catch (error) {
+    if (error instanceof ApiRequestError && parseReadinessResponse(error.responseBody) === "update-required") {
+      return "update-required";
+    }
     try {
       const status = await apiJson<{ status: string }>("/bootstrap/status");
       return bootstrapUiState(status.status);
@@ -145,6 +149,8 @@ function useBackendHealth() {
         setSetupRequired(false);
         setBootstrapState(null);
         setIsBooted(true);
+      } else if (backendState === "update-required") {
+        setUpdateStatus("Application update required: this installation is incompatible with the shared database schema. Please update the application.");
       } else if (backendState === "setup" || backendState === "repair") {
         setSetupRequired(true);
         setBootstrapState(backendState);

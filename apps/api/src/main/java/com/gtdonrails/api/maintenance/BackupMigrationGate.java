@@ -9,6 +9,7 @@ final class BackupMigrationGate {
     }
 
     void migrate(SchemaMigration schemaMigration) {
+        if (!schemaMigration.isUpgradeable()) return;
         if (schemaMigration.hasPendingMigrations()) backupService.createPreMigrationBackup();
         schemaMigration.migrate();
     }

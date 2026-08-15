@@ -62,6 +62,16 @@ class BackupMigrationConfigurationTests {
         assertTrue(backupNames().isEmpty());
     }
 
+    @Test
+    void incompatibleSchemaSkipsMigrationAndBackup() {
+        RecordingSchemaMigration schemaMigration = RecordingSchemaMigration.incompatible();
+
+        migrationGate(new RecordingCommandRunner(new ArrayList<>(), false)).migrate(schemaMigration);
+
+        assertFalse(schemaMigration.migrated);
+        assertTrue(backupNames().isEmpty());
+    }
+
     private BackupMigrationGate migrationGate(RecordingCommandRunner recordingCommandRunner) {
         PostgresBackupService backupService = new PostgresBackupService(
             backupDirectory(), new BackupWorkDirectory(workDirectory()),
@@ -116,21 +126,32 @@ class BackupMigrationConfigurationTests {
 
     private static class RecordingSchemaMigration implements SchemaMigration {
 
+        private final boolean upgradeable;
         private final boolean pending;
         private final List<String> events;
         private boolean migrated;
 
-        private RecordingSchemaMigration(boolean pending, List<String> events) {
+        private RecordingSchemaMigration(boolean upgradeable, boolean pending, List<String> events) {
+            this.upgradeable = upgradeable;
             this.pending = pending;
             this.events = events;
         }
 
         private static RecordingSchemaMigration pending(List<String> events) {
-            return new RecordingSchemaMigration(true, events);
+            return new RecordingSchemaMigration(true, true, events);
         }
 
         private static RecordingSchemaMigration current() {
-            return new RecordingSchemaMigration(false, new ArrayList<>());
+            return new RecordingSchemaMigration(true, false, new ArrayList<>());
+        }
+
+        private static RecordingSchemaMigration incompatible() {
+            return new RecordingSchemaMigration(false, false, new ArrayList<>());
+        }
+
+        @Override
+        public boolean isUpgradeable() {
+            return upgradeable;
         }
 
         @Override

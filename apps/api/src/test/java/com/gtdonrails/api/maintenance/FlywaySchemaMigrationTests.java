@@ -7,6 +7,7 @@ import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationFilter;
 import org.flywaydb.core.api.MigrationInfo;
 import org.flywaydb.core.api.MigrationInfoService;
+import org.flywaydb.core.api.MigrationVersion;
 import org.flywaydb.core.api.output.InfoResult;
 import org.flywaydb.core.api.output.MigrateResult;
 import org.junit.jupiter.api.Test;
@@ -15,17 +16,48 @@ class FlywaySchemaMigrationTests {
 
     @Test
     void reportsWhetherFlywayHasPendingMigrations() {
-        assertTrue(new FlywaySchemaMigration(new FakeFlyway(1)).hasPendingMigrations());
-        assertFalse(new FlywaySchemaMigration(new FakeFlyway(0)).hasPendingMigrations());
+        FlywaySchemaRange range = new FlywaySchemaRange(1, 2);
+
+        assertTrue(new FlywaySchemaMigration(new FakeFlyway(1, "1"), range).hasPendingMigrations());
+        assertFalse(new FlywaySchemaMigration(new FakeFlyway(0, "2"), range).hasPendingMigrations());
     }
 
     @Test
-    void delegatesMigrationToFlyway() {
-        FakeFlyway flyway = new FakeFlyway(0);
+    void delegatesMigrationToFlywayWhenUpgradeable() {
+        FlywaySchemaRange range = new FlywaySchemaRange(1, 2);
+        FakeFlyway flyway = new FakeFlyway(1, "1");
 
-        new FlywaySchemaMigration(flyway).migrate();
+        FlywaySchemaMigration migration = new FlywaySchemaMigration(flyway, range);
+        assertTrue(migration.isUpgradeable());
+        migration.migrate();
 
         assertTrue(flyway.migrated);
+    }
+
+    @Test
+    void refusesMigrationWhenSchemaVersionIsNewerThanSupported() {
+        FlywaySchemaRange range = new FlywaySchemaRange(1, 2);
+        FakeFlyway flyway = new FakeFlyway(0, "3");
+
+        FlywaySchemaMigration migration = new FlywaySchemaMigration(flyway, range);
+        assertFalse(migration.isUpgradeable());
+        assertFalse(migration.hasPendingMigrations());
+        migration.migrate();
+
+        assertFalse(flyway.migrated);
+    }
+
+    @Test
+    void refusesMigrationWhenSchemaVersionIsBelowMinimumSupported() {
+        FlywaySchemaRange range = new FlywaySchemaRange(2, 3);
+        FakeFlyway flyway = new FakeFlyway(1, "1");
+
+        FlywaySchemaMigration migration = new FlywaySchemaMigration(flyway, range);
+        assertFalse(migration.isUpgradeable());
+        assertFalse(migration.hasPendingMigrations());
+        migration.migrate();
+
+        assertFalse(flyway.migrated);
     }
 
     private static class FakeFlyway extends Flyway {
@@ -33,9 +65,9 @@ class FlywaySchemaMigrationTests {
         private final MigrationInfoService migrationInfo;
         private boolean migrated;
 
-        private FakeFlyway(int pendingCount) {
+        private FakeFlyway(int pendingCount, String currentVersion) {
             super(Flyway.configure());
-            migrationInfo = new FakeMigrationInfoService(pendingCount);
+            migrationInfo = new FakeMigrationInfoService(pendingCount, currentVersion);
         }
 
         @Override
@@ -53,9 +85,11 @@ class FlywaySchemaMigrationTests {
     private static class FakeMigrationInfoService implements MigrationInfoService {
 
         private final MigrationInfo[] pending;
+        private final String currentVersion;
 
-        private FakeMigrationInfoService(int pendingCount) {
-            pending = new MigrationInfo[pendingCount];
+        private FakeMigrationInfoService(int pendingCount, String currentVersion) {
+            this.pending = new MigrationInfo[pendingCount];
+            this.currentVersion = currentVersion;
         }
 
         @Override
@@ -75,7 +109,8 @@ class FlywaySchemaMigrationTests {
 
         @Override
         public MigrationInfo current() {
-            return null;
+            if (currentVersion == null) return null;
+            return new FakeMigrationInfo(MigrationVersion.fromVersion(currentVersion));
         }
 
         @Override
@@ -91,6 +126,80 @@ class FlywaySchemaMigrationTests {
         @Override
         public InfoResult getInfoResult(MigrationFilter filter) {
             return null;
+        }
+    }
+
+    private static class FakeMigrationInfo implements MigrationInfo {
+
+        private final MigrationVersion version;
+
+        private FakeMigrationInfo(MigrationVersion version) {
+            this.version = version;
+        }
+
+        @Override
+        public org.flywaydb.core.extensibility.MigrationType getType() {
+            return null;
+        }
+
+        @Override
+        public String getPhysicalLocation() {
+            return null;
+        }
+
+        @Override
+        public int compareVersion(MigrationInfo other) {
+            return 0;
+        }
+
+        @Override
+        public Integer getChecksum() {
+            return null;
+        }
+
+        @Override
+        public MigrationVersion getVersion() {
+            return version;
+        }
+
+        @Override
+        public String getDescription() {
+            return null;
+        }
+
+        @Override
+        public String getScript() {
+            return null;
+        }
+
+        @Override
+        public org.flywaydb.core.api.MigrationState getState() {
+            return null;
+        }
+
+        @Override
+        public java.util.Date getInstalledOn() {
+            return null;
+        }
+
+        @Override
+        public String getInstalledBy() {
+            return null;
+        }
+
+        @Override
+        public Integer getInstalledRank() {
+            return null;
+        }
+
+        @Override
+        public Integer getExecutionTime() {
+            return null;
+        }
+
+        @Override
+        public int compareTo(MigrationInfo other) {
+            return 0;
         }
     }
 }

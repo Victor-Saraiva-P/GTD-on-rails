@@ -7,35 +7,43 @@ import {
   useRef,
   useState
 } from "react";
-import { DATABASE_UNAVAILABLE_EVENT } from "../../lib/api/apiClient";
+import { ApiRequestError, DATABASE_UNAVAILABLE_EVENT } from "../../lib/api/apiClient";
 import { fetchDatabaseReadiness } from "./api";
-import { shouldReloadAfterDatabaseRecovery } from "./databaseReadiness";
+import { parseReadinessResponse, shouldReloadAfterDatabaseRecovery, type DatabaseReadinessStatus } from "./databaseReadiness";
 
 const READINESS_POLL_INTERVAL_MS = 2000;
 
-type DatabaseReadinessContextValue = { isReady: boolean };
+export type DatabaseReadinessContextValue = {
+  isReady: boolean;
+  status: DatabaseReadinessStatus;
+};
 
 const DatabaseReadinessContext = createContext<DatabaseReadinessContextValue | null>(null);
 
 function useDatabaseReadinessState() {
-  const [isReady, setIsReady] = useState(true);
+  const [status, setStatus] = useState<DatabaseReadinessStatus>("ready");
   const wasBlocked = useRef(false);
 
-  const markUnavailable = useCallback(() => {
+  const markUnavailable = useCallback((newStatus: DatabaseReadinessStatus = "unavailable") => {
     wasBlocked.current = true;
-    setIsReady(false);
+    setStatus(newStatus);
   }, []);
 
   const refreshReadiness = useCallback(async () => {
     try {
       await fetchDatabaseReadiness();
+      setStatus("ready");
       if (shouldReloadAfterDatabaseRecovery(wasBlocked.current, true)) window.location.reload();
-    } catch {
-      markUnavailable();
+    } catch (error) {
+      if (error instanceof ApiRequestError) {
+        markUnavailable(parseReadinessResponse(error.responseBody));
+        return;
+      }
+      markUnavailable("unavailable");
     }
   }, [markUnavailable]);
 
-  return { isReady, markUnavailable, refreshReadiness };
+  return { isReady: status === "ready", status, markUnavailable, refreshReadiness };
 }
 
 function useReadinessPolling(refreshReadiness: () => Promise<void>) {
@@ -45,18 +53,19 @@ function useReadinessPolling(refreshReadiness: () => Promise<void>) {
   }, [refreshReadiness]);
 }
 
-function useUnavailableRequestListener(markUnavailable: () => void) {
+function useUnavailableRequestListener(markUnavailable: (status?: DatabaseReadinessStatus) => void) {
   useEffect(() => {
-    window.addEventListener(DATABASE_UNAVAILABLE_EVENT, markUnavailable);
-    return () => window.removeEventListener(DATABASE_UNAVAILABLE_EVENT, markUnavailable);
+    const listener = () => markUnavailable("unavailable");
+    window.addEventListener(DATABASE_UNAVAILABLE_EVENT, listener);
+    return () => window.removeEventListener(DATABASE_UNAVAILABLE_EVENT, listener);
   }, [markUnavailable]);
 }
 
 function useDatabaseReadinessValue(): DatabaseReadinessContextValue {
-  const { isReady, markUnavailable, refreshReadiness } = useDatabaseReadinessState();
+  const { isReady, status, markUnavailable, refreshReadiness } = useDatabaseReadinessState();
   useReadinessPolling(refreshReadiness);
   useUnavailableRequestListener(markUnavailable);
-  return { isReady };
+  return { isReady, status };
 }
 
 /** Provides global PostgreSQL availability and authoritative recovery behavior.
@@ -69,7 +78,7 @@ export function DatabaseReadinessProvider({ children }: PropsWithChildren) {
 
 /** Reads whether the desktop can safely interact with PostgreSQL-backed state.
  *
- * @example const { isReady } = useDatabaseReadiness()
+ * @example const { isReady, status } = useDatabaseReadiness()
  */
 export function useDatabaseReadiness(): DatabaseReadinessContextValue {
   const context = useContext(DatabaseReadinessContext);

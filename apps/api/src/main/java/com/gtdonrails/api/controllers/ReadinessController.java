@@ -1,6 +1,8 @@
 package com.gtdonrails.api.controllers;
 
+import com.gtdonrails.api.services.DatabaseReadinessResponse;
 import com.gtdonrails.api.services.DatabaseReadinessService;
+import com.gtdonrails.api.services.DatabaseReadinessState;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,9 +22,16 @@ public class ReadinessController {
      * <p>Example: {@code GET /readiness}.</p>
      */
     @GetMapping("/readiness")
-    public ResponseEntity<Void> readiness() {
-        return readinessService.isReady()
-            ? ResponseEntity.ok().build()
-            : ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
+    public ResponseEntity<DatabaseReadinessResponse> readiness() {
+        DatabaseReadinessState state = readinessService.readinessState();
+        if (state == DatabaseReadinessState.READY) {
+            return ResponseEntity.ok(new DatabaseReadinessResponse("READY", "authoritative PostgreSQL ready"));
+        }
+        if (state == DatabaseReadinessState.UPDATE_REQUIRED) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(new DatabaseReadinessResponse("UPDATE_REQUIRED", "An application update is required to access the shared database schema."));
+        }
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+            .body(new DatabaseReadinessResponse("UNAVAILABLE", "PostgreSQL unavailable"));
     }
 }
