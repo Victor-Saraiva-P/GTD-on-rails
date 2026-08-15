@@ -4,7 +4,6 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
-import java.util.Locale;
 
 import com.gtdonrails.api.dtos.calendar.CalendarRequestDates;
 import com.gtdonrails.api.enums.RecurringCalendarIntervalUnit;
@@ -25,35 +24,48 @@ public record UpdateRecurringCalendarTemplateRequestDto(
     String endDate
 ) {
 
+    /**
+     * Returns the parsed required start date.
+     *
+     * <p>Example: {@code request.toStartDate()}.</p>
+     */
     public LocalDate toStartDate() {
         return CalendarRequestDates.parseRequiredDate(startDate);
     }
 
+    /**
+     * Returns the parsed optional scheduled time.
+     *
+     * <p>Example: {@code request.toScheduledTime()}.</p>
+     */
     public LocalTime toScheduledTime() {
         return CalendarRequestDates.parseOptionalTime(scheduledTime);
     }
 
+    /**
+     * Returns the parsed recurrence interval unit.
+     *
+     * <p>Example: {@code request.toRecurrenceUnit()}.</p>
+     */
     public RecurringCalendarIntervalUnit toRecurrenceUnit() {
         return RecurringCalendarIntervalUnit.fromWire(recurrenceUnit);
     }
 
+    /**
+     * Returns the parsed weekly weekdays list.
+     *
+     * <p>Example: {@code request.toWeeklyWeekdays()}.</p>
+     */
     public List<DayOfWeek> toWeeklyWeekdays() {
-        if (weeklyWeekdays == null) return List.of();
-        return weeklyWeekdays.stream().map(this::parseWeekday).distinct().toList();
+        return RecurringCalendarRequestValues.parseWeeklyWeekdays(weeklyWeekdays);
     }
 
+    /**
+     * Returns the parsed optional end date.
+     *
+     * <p>Example: {@code request.toEndDate()}.</p>
+     */
     public LocalDate toEndDate() {
-        if (endDate == null || endDate.isBlank()) return null;
-        return LocalDate.parse(endDate);
-    }
-
-    private DayOfWeek parseWeekday(String value) {
-        try {
-            return DayOfWeek.valueOf(value.trim().toUpperCase(Locale.ROOT));
-        } catch (RuntimeException exception) {
-            throw new IllegalArgumentException(
-                "weeklyWeekday value '" + value + "' is invalid; expected Monday through Sunday",
-                exception);
-        }
+        return RecurringCalendarRequestValues.parseOptionalEndDate(endDate);
     }
 }

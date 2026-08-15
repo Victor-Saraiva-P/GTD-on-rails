@@ -175,6 +175,17 @@ public class Calendar extends AuditableEntity {
         personalizedOccurrence = true;
     }
 
+    /**
+     * Reports whether this calendar is an unpersonalized default occurrence scheduled for today or later.
+     *
+     * <p>Example: {@code calendar.isFutureDefaultOccurrence(LocalDate.now())}.</p>
+     */
+    public boolean isFutureDefaultOccurrence(LocalDate today) {
+        if (personalizedOccurrence) return false;
+        if (status != CalendarStatus.CALENDAR) return false;
+        return originalScheduledDate != null && !originalScheduledDate.isBefore(today);
+    }
+
     @PrePersist
     void prePersist() {
         initializeAuditTimestamps();

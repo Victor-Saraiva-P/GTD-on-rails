@@ -38,7 +38,18 @@ public class RecurringCalendarOccurrencePlanner {
         LocalDate start,
         LocalDate end
     ) {
-        return start.datesUntil(end.plusDays(1), Period.ofDays(template.getIntervalValue())).toList();
+        LocalDate firstDate = alignedDailyStartDate(template, start);
+        if (firstDate.isAfter(end)) return List.of();
+        return firstDate.datesUntil(end.plusDays(1), Period.ofDays(template.getIntervalValue())).toList();
+    }
+
+    private LocalDate alignedDailyStartDate(RecurringCalendarTemplate template, LocalDate start) {
+        if (!start.isAfter(template.getStartDate())) return template.getStartDate();
+        long daysBetween = ChronoUnit.DAYS.between(template.getStartDate(), start);
+        int interval = template.getIntervalValue();
+        long remainder = daysBetween % interval;
+        if (remainder == 0) return start;
+        return start.plusDays(interval - remainder);
     }
 
     private List<LocalDate> weeklyOccurrenceDates(

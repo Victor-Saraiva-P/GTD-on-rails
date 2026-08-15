@@ -215,14 +215,8 @@ public class RecurringCalendarTemplateService {
     private void propagateTemplateToOccurrences(RecurringCalendarTemplate template) {
         calendarRepository.findAllByRecurringCalendarTemplate_ItemId(template.getItemId())
             .stream()
-            .filter(this::canPropagateTemplateToOccurrence)
+            .filter(calendar -> calendar.isFutureDefaultOccurrence(LocalDate.now(clock)))
             .forEach(calendar -> applyTemplateToOccurrence(template, calendar));
-    }
-
-    private boolean canPropagateTemplateToOccurrence(Calendar calendar) {
-        if (calendar.isPersonalizedOccurrence()) return false;
-        if (calendar.getStatus() != CalendarStatus.CALENDAR) return false;
-        return !calendar.getOriginalScheduledDate().isBefore(LocalDate.now(clock));
     }
 
     private void applyTemplateToOccurrence(RecurringCalendarTemplate template, Calendar calendar) {
@@ -230,20 +224,16 @@ public class RecurringCalendarTemplateService {
         calendar.getItem().setBody(template.getItem().getBody());
         calendar.setScheduledTime(template.getScheduledTime());
         calendar.markRecurringOccurrence(template, calendar.getOriginalScheduledDate(), template.getScheduledTime());
-        requestGoogleCalendarEventSyncAfterCommit(calendar.getItemId());
+        if (calendar.getItem().getDeletedAt() == null) {
+            requestGoogleCalendarEventSyncAfterCommit(calendar.getItemId());
+        }
     }
 
     private void deleteFutureDefaultOccurrences(RecurringCalendarTemplate template) {
         calendarRepository.findAllByRecurringCalendarTemplate_ItemId(template.getItemId())
             .stream()
-            .filter(this::canHardDeleteFutureDefaultOccurrence)
+            .filter(calendar -> calendar.isFutureDefaultOccurrence(LocalDate.now(clock)))
             .forEach(this::hardDeleteOccurrence);
-    }
-
-    private boolean canHardDeleteFutureDefaultOccurrence(Calendar calendar) {
-        if (calendar.isPersonalizedOccurrence()) return false;
-        if (calendar.getStatus() != CalendarStatus.CALENDAR) return false;
-        return !calendar.getOriginalScheduledDate().isBefore(LocalDate.now(clock));
     }
 
     private void hardDeleteOccurrence(Calendar calendar) {
