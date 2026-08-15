@@ -101,7 +101,7 @@ public class RcloneFileSyncService {
     private String remote() {
         String remote = fileSyncProperties.getRclone().getRemote();
         if (!StringUtils.hasText(remote)) {
-            throw new IllegalStateException("Missing gtd.sync.rclone.remote");
+            throw new IllegalStateException("gtd.sync.rclone.remote is '%s'; expected non-empty remote string".formatted(remote));
         }
 
         return remote;

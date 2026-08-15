@@ -25,7 +25,7 @@ public class SyncController {
     }
 
     /**
-     * Handles sync status requests for data and Google Calendar.
+     * Handles sync status requests for file sync and Google Calendar.
      *
      * <p>Example: {@code GET /sync/status}.</p>
      */
