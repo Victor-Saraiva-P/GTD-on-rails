@@ -1,5 +1,7 @@
 package com.gtdonrails.api.services;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -31,7 +33,7 @@ class ContextIconAssetServiceTests {
     private AssetStorageService assetStorageService;
 
     @Mock
-    private DataSyncService dataSyncService;
+    private FileSyncService fileSyncService;
 
     @Mock
     private ContextMapper contextMapper;
@@ -44,7 +46,7 @@ class ContextIconAssetServiceTests {
             contextRepository,
             contextIconAssetRepository,
             assetStorageService,
-            new FileSyncService(dataSyncService),
+            fileSyncService,
             new AfterCommitExecutor(),
             contextMapper);
     }
@@ -56,7 +58,7 @@ class ContextIconAssetServiceTests {
 
         contextIconAssetService.updateContextIcon(context.getId(), file);
 
-        verify(dataSyncService, times(1)).requestSync("context icon updated");
+        verify(fileSyncService, times(1)).requestSyncAfterCommit(any(AfterCommitExecutor.class), eq("context icon updated"));
     }
 
     @Test
@@ -65,7 +67,7 @@ class ContextIconAssetServiceTests {
 
         contextIconAssetService.deleteContextIcon(context.getId());
 
-        verify(dataSyncService, times(1)).requestSync("context icon deleted");
+        verify(fileSyncService, times(1)).requestSyncAfterCommit(any(AfterCommitExecutor.class), eq("context icon deleted"));
     }
 
     private Context contextWithNoIcon() {

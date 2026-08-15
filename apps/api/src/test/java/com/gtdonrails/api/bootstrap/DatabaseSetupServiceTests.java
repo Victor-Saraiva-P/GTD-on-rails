@@ -22,9 +22,9 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Properties;
 
-import com.gtdonrails.api.config.DataSyncProperties;
-import com.gtdonrails.api.services.DataSyncService;
-import com.gtdonrails.api.services.RcloneDataSyncService;
+import com.gtdonrails.api.config.FileSyncProperties;
+import com.gtdonrails.api.services.FileSyncService;
+import com.gtdonrails.api.services.RcloneFileSyncService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -61,7 +61,7 @@ class DatabaseSetupServiceTests {
 
     @Test
     void provisionStoresLimitedCredentialsAndSynchronizesConfiguration() throws Exception {
-        DataSyncService fileSync = mock(DataSyncService.class);
+        FileSyncService fileSync = mock(FileSyncService.class);
         DatabaseSetupService service = new DatabaseSetupService(tempDir.toString(), fileSync,
             new FakeDatabaseConnectionFactory(provisioningConnection()), "PRODUCTION");
 
@@ -77,7 +77,7 @@ class DatabaseSetupServiceTests {
     @Test
     void provisionRecordsAwaitingLegacyImportWhenLegacySqliteExistsInProduction() throws Exception {
         Files.createFile(tempDir.resolve("gtd-on-rails.db"));
-        DataSyncService fileSync = mock(DataSyncService.class);
+        FileSyncService fileSync = mock(FileSyncService.class);
         Connection connection = provisioningConnection();
         Statement statement = connection.createStatement();
         DatabaseSetupService service = new DatabaseSetupService(tempDir.toString(), fileSync,
@@ -91,7 +91,7 @@ class DatabaseSetupServiceTests {
 
     @Test
     void provisionRecordsReadyWhenSqliteDoesNotExistInProduction() throws Exception {
-        DataSyncService fileSync = mock(DataSyncService.class);
+        FileSyncService fileSync = mock(FileSyncService.class);
         Connection connection = provisioningConnection();
         Statement statement = connection.createStatement();
         DatabaseSetupService service = new DatabaseSetupService(tempDir.toString(), fileSync,
@@ -189,9 +189,9 @@ class DatabaseSetupServiceTests {
     }
 
     private DatabaseSetupService service(DatabaseConnectionFactory factory) {
-        DataSyncProperties properties = new DataSyncProperties();
-        DataSyncService fileSync = new DataSyncService(
-            properties, new RcloneDataSyncService(properties), tempDir.toString());
+        FileSyncProperties properties = new FileSyncProperties();
+        FileSyncService fileSync = new FileSyncService(
+            properties, new RcloneFileSyncService(properties), tempDir.toString());
         return new DatabaseSetupService(tempDir.toString(), fileSync, factory, "PRODUCTION");
     }
 

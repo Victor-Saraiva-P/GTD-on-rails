@@ -34,9 +34,9 @@ class SyncControllerTests {
     void reportsCombinedSyncStatus() throws Exception {
         mockMvc.perform(get("/sync/status"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.data.state").value("DISABLED"))
             .andExpect(jsonPath("$.file.state").value("DISABLED"))
             .andExpect(jsonPath("$.googleCalendar.state").exists())
+            .andExpect(jsonPath("$.data").doesNotExist())
             .andExpect(jsonPath("$.persistence").doesNotExist())
             .andExpect(jsonPath("$.assets").doesNotExist());
     }
@@ -54,10 +54,9 @@ class SyncControllerTests {
     }
 
     @Test
-    void acceptsManualDataSyncRequest() throws Exception {
+    void removesDataSyncEndpoint() throws Exception {
         mockMvc.perform(post("/sync/data"))
-            .andExpect(status().isAccepted())
-            .andExpect(jsonPath("$.state").value("DISABLED"));
+            .andExpect(status().is4xxClientError());
     }
 
     @Test

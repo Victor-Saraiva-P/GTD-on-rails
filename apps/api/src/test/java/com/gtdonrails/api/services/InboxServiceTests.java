@@ -55,9 +55,6 @@ class InboxServiceTests {
     private StuffMapper stuffMapper;
 
     @Mock
-    private DataSyncService dataSyncService;
-
-    @Mock
     private GoogleCalendarEventQueueService googleCalendarEventQueueService;
 
     @Captor
@@ -72,7 +69,6 @@ class InboxServiceTests {
             contextRepository,
             stuffMapper,
             new ItemTextNormalizer(),
-            new FileSyncService(dataSyncService),
             googleCalendarEventQueueService,
             new AfterCommitExecutor());
     }
@@ -129,7 +125,6 @@ class InboxServiceTests {
         verify(itemRepository).save(itemCaptor.capture());
         assertEquals("Capture idea later", itemCaptor.getValue().getTitle().value());
         assertEquals(expectedResponse, response);
-        verify(dataSyncService).requestSync("stuff created");
     }
 
     @Test
@@ -150,7 +145,6 @@ class InboxServiceTests {
         assertEquals(LocalDate.parse("2028-02-29"), stuff.getNextAction().getDeadline());
         assertEquals(context, stuff.getNextAction().getContexts().iterator().next());
         verify(googleCalendarEventQueueService).requestUpsert(stuffId);
-        verify(dataSyncService).requestSync("stuff converted to next action");
     }
 
     @Test

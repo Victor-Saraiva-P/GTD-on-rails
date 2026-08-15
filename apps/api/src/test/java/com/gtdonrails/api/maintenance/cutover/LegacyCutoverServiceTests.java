@@ -18,8 +18,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
-import com.gtdonrails.api.services.DataSyncService;
 import com.gtdonrails.api.services.DatabaseIdentityService;
+import com.gtdonrails.api.services.FileSyncService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -39,7 +39,7 @@ class LegacyCutoverServiceTests {
     @Mock
     private DatabaseIdentityService identityService;
     @Mock
-    private DataSyncService dataSyncService;
+    private FileSyncService fileSyncService;
     @Mock
     private LegacySqliteBackupService backupService;
     @Mock
@@ -59,7 +59,7 @@ class LegacyCutoverServiceTests {
         Files.writeString(sqlitePath, "test-sqlite-data");
         backupDir = tempDir.resolve("backups");
         service = new LegacyDatabaseCutoverService(
-            jdbcTemplate, identityService, dataSyncService, backupService,
+            jdbcTemplate, identityService, fileSyncService, backupService,
             reader, importer, validator, tempDir.toString(), backupDir.toString());
     }
 
@@ -77,7 +77,7 @@ class LegacyCutoverServiceTests {
 
         assertEquals("READY", result.state());
         verify(identityService).require("PRODUCTION");
-        verify(dataSyncService).syncNow();
+        verify(fileSyncService).syncNow();
         verify(backupService).createBackup(sqlitePath, backupDir);
         verify(jdbcTemplate).update(contains("UPDATE gtd.database_cutover SET state = ?"), eq("IMPORTING"));
         verify(importer).clearApplicationTables();
@@ -95,7 +95,7 @@ class LegacyCutoverServiceTests {
         assertEquals("READY", result.state());
         assertEquals(0, result.importedRecords());
         verify(identityService).require("PRODUCTION");
-        verify(dataSyncService, never()).syncNow();
+        verify(fileSyncService, never()).syncNow();
         verify(backupService, never()).createBackup(any(), any());
         verify(importer, never()).importDataset(any());
     }

@@ -19,10 +19,9 @@ import java.util.concurrent.Future;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import com.gtdonrails.api.config.DataSyncProperties;
-import com.gtdonrails.api.services.DataSyncService;
+import com.gtdonrails.api.config.FileSyncProperties;
 import com.gtdonrails.api.services.FileSyncService;
-import com.gtdonrails.api.services.RcloneDataSyncService;
+import com.gtdonrails.api.services.RcloneFileSyncService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -252,7 +251,7 @@ class PostgresBackupServiceTests {
         private boolean failRequest;
 
         private FakeFileSyncService() {
-            super(new DataSyncService(new DataSyncProperties(), new RcloneDataSyncService(new DataSyncProperties()), "."));
+            super(new FileSyncProperties(), new RcloneFileSyncService(new FileSyncProperties()), ".");
         }
 
         @Override

@@ -14,7 +14,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 import com.gtdonrails.api.bootstrap.BootstrapConfiguration;
-import com.gtdonrails.api.services.DataSyncService;
+import com.gtdonrails.api.services.FileSyncService;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.springframework.boot.SpringApplication;
@@ -25,10 +25,10 @@ class BootstrapApplicationTests {
     @Test
     void returnsSuccessfulBootstrapExitCodeWithoutWaitingForSetup() throws InterruptedException {
         BootstrapConfiguration bootstrapConfiguration = mock(BootstrapConfiguration.class);
-        DataSyncService dataSyncService = mock(DataSyncService.class);
-        when(bootstrapConfiguration.run(dataSyncService)).thenReturn(0);
+        FileSyncService fileSyncService = mock(FileSyncService.class);
+        when(bootstrapConfiguration.run(fileSyncService)).thenReturn(0);
 
-        int exitCode = BootstrapApplication.bootstrapExitCode(bootstrapConfiguration, dataSyncService);
+        int exitCode = BootstrapApplication.bootstrapExitCode(bootstrapConfiguration, fileSyncService);
 
         assertEquals(0, exitCode);
         verify(bootstrapConfiguration, never()).awaitSetupCompletion();
@@ -37,11 +37,11 @@ class BootstrapApplicationTests {
     @Test
     void returnsTheHighestExitCodeFromBootstrapAndSpring() {
         BootstrapConfiguration bootstrapConfiguration = mock(BootstrapConfiguration.class);
-        DataSyncService dataSyncService = mock(DataSyncService.class);
+        FileSyncService fileSyncService = mock(FileSyncService.class);
         ConfigurableApplicationContext context = mock(ConfigurableApplicationContext.class);
         when(context.getBean(BootstrapConfiguration.class)).thenReturn(bootstrapConfiguration);
-        when(context.getBean(DataSyncService.class)).thenReturn(dataSyncService);
-        when(bootstrapConfiguration.run(dataSyncService)).thenReturn(0);
+        when(context.getBean(FileSyncService.class)).thenReturn(fileSyncService);
+        when(bootstrapConfiguration.run(fileSyncService)).thenReturn(0);
 
         try (MockedStatic<SpringApplication> springApplication = mockStatic(SpringApplication.class)) {
             springApplication.when(() -> SpringApplication.exit(context)).thenReturn(1);
@@ -53,11 +53,11 @@ class BootstrapApplicationTests {
     @Test
     void startsBootstrapAndExitsWithItsResult() {
         BootstrapConfiguration bootstrapConfiguration = mock(BootstrapConfiguration.class);
-        DataSyncService dataSyncService = mock(DataSyncService.class);
+        FileSyncService fileSyncService = mock(FileSyncService.class);
         ConfigurableApplicationContext context = mock(ConfigurableApplicationContext.class);
         when(context.getBean(BootstrapConfiguration.class)).thenReturn(bootstrapConfiguration);
-        when(context.getBean(DataSyncService.class)).thenReturn(dataSyncService);
-        when(bootstrapConfiguration.run(dataSyncService)).thenReturn(0);
+        when(context.getBean(FileSyncService.class)).thenReturn(fileSyncService);
+        when(bootstrapConfiguration.run(fileSyncService)).thenReturn(0);
         AtomicInteger exitCode = new AtomicInteger();
 
         try (MockedStatic<SpringApplication> springApplication = mockStatic(SpringApplication.class)) {
@@ -82,15 +82,15 @@ class BootstrapApplicationTests {
     @Test
     void preservesInterruptStatusWhenSetupWaitIsInterrupted() throws InterruptedException {
         BootstrapConfiguration bootstrapConfiguration = mock(BootstrapConfiguration.class);
-        DataSyncService dataSyncService = mock(DataSyncService.class);
-        when(bootstrapConfiguration.run(dataSyncService)).thenReturn(2);
+        FileSyncService fileSyncService = mock(FileSyncService.class);
+        when(bootstrapConfiguration.run(fileSyncService)).thenReturn(2);
         when(bootstrapConfiguration.setupRequired()).thenReturn(true);
         doThrow(new InterruptedException("test interruption"))
             .when(bootstrapConfiguration).awaitSetupCompletion();
 
         try {
             assertThrows(IllegalStateException.class,
-                () -> BootstrapApplication.bootstrapExitCode(bootstrapConfiguration, dataSyncService));
+                () -> BootstrapApplication.bootstrapExitCode(bootstrapConfiguration, fileSyncService));
             assertTrue(Thread.currentThread().isInterrupted());
         } finally {
             Thread.interrupted();
@@ -99,11 +99,11 @@ class BootstrapApplicationTests {
 
     private void assertSetupWaits(Consumer<BootstrapConfiguration> setupRequirement) throws InterruptedException {
         BootstrapConfiguration bootstrapConfiguration = mock(BootstrapConfiguration.class);
-        DataSyncService dataSyncService = mock(DataSyncService.class);
-        when(bootstrapConfiguration.run(dataSyncService)).thenReturn(2);
+        FileSyncService fileSyncService = mock(FileSyncService.class);
+        when(bootstrapConfiguration.run(fileSyncService)).thenReturn(2);
         setupRequirement.accept(bootstrapConfiguration);
 
-        int exitCode = BootstrapApplication.bootstrapExitCode(bootstrapConfiguration, dataSyncService);
+        int exitCode = BootstrapApplication.bootstrapExitCode(bootstrapConfiguration, fileSyncService);
 
         assertEquals(2, exitCode);
         verify(bootstrapConfiguration).awaitSetupCompletion();

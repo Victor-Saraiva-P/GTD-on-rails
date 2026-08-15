@@ -7,9 +7,9 @@ import java.nio.file.Path;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.gtdonrails.api.config.DataSyncProperties;
-import com.gtdonrails.api.services.DataSyncService;
-import com.gtdonrails.api.services.RcloneDataSyncService;
+import com.gtdonrails.api.config.FileSyncProperties;
+import com.gtdonrails.api.services.FileSyncService;
+import com.gtdonrails.api.services.RcloneFileSyncService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.api.Tag;
@@ -24,7 +24,7 @@ class BootstrapConfigurationTests {
     void reportsMissingConfigurationWithoutStartingNormalRuntime() throws Exception {
         BootstrapConfiguration configuration = configuration();
 
-        int exitCode = configuration.run(new FakeDataSyncService(tempDir));
+        int exitCode = configuration.run(new FakeFileSyncService(tempDir));
 
         assertEquals(2, exitCode);
         assertEquals("MISSING", status().get("configurationStatus").asText());
@@ -39,7 +39,7 @@ class BootstrapConfigurationTests {
             """);
         BootstrapConfiguration configuration = configuration();
 
-        int exitCode = configuration.run(new FakeDataSyncService(tempDir));
+        int exitCode = configuration.run(new FakeFileSyncService(tempDir));
 
         assertEquals(0, exitCode);
         assertEquals("READY", status().get("configurationStatus").asText());
@@ -51,7 +51,7 @@ class BootstrapConfigurationTests {
             "spring.datasource.url=jdbc:sqlite:legacy.db\n");
 
         BootstrapConfiguration configuration = configuration();
-        int exitCode = configuration.run(new FakeDataSyncService(tempDir));
+        int exitCode = configuration.run(new FakeFileSyncService(tempDir));
 
         assertEquals(2, exitCode);
         assertEquals("INVALID", status().get("configurationStatus").asText());
@@ -67,7 +67,7 @@ class BootstrapConfigurationTests {
             """);
 
         BootstrapConfiguration configuration = configuration();
-        int exitCode = configuration.run(new FakeDataSyncService(tempDir));
+        int exitCode = configuration.run(new FakeFileSyncService(tempDir));
 
         assertEquals(2, exitCode);
         assertEquals("INVALID", configuration.configurationStatus());
@@ -82,7 +82,7 @@ class BootstrapConfigurationTests {
             spring.datasource.password=secret
             """);
 
-        assertEquals(2, configuration().run(new FakeDataSyncService(tempDir)));
+        assertEquals(2, configuration().run(new FakeFileSyncService(tempDir)));
         assertEquals("INVALID", status().get("configurationStatus").asText());
     }
 
@@ -90,7 +90,7 @@ class BootstrapConfigurationTests {
     void invalidConfigurationIsRepairableButNeverSetup() throws Exception {
         Files.writeString(tempDir.resolve("database.properties"), "spring.datasource.url=broken\n");
         BootstrapConfiguration configuration = configuration();
-        configuration.run(new FakeDataSyncService(tempDir));
+        configuration.run(new FakeFileSyncService(tempDir));
 
         assertEquals(false, configuration.setupRequired());
         assertEquals(true, configuration.repairRequired());
@@ -99,7 +99,7 @@ class BootstrapConfigurationTests {
     @Test
     void repairFailureKeepsBootstrapAvailable() {
         BootstrapConfiguration configuration = configuration();
-        configuration.run(new FakeDataSyncService(tempDir));
+        configuration.run(new FakeFileSyncService(tempDir));
         configuration.markRepairFailed();
 
         assertEquals("REPAIR_FAILED", configuration.configurationStatus());
@@ -108,7 +108,7 @@ class BootstrapConfigurationTests {
 
     @Test
     void reportsSyncFailureWithoutTreatingItAsFirstInstallation() throws Exception {
-        int exitCode = configuration().run(new FailingDataSyncService(tempDir));
+        int exitCode = configuration().run(new FailingFileSyncService(tempDir));
 
         assertEquals(1, exitCode);
         assertEquals("FAILED", status().get("configurationStatus").asText());
@@ -121,7 +121,7 @@ class BootstrapConfigurationTests {
             spring.datasource.username=gtd_app
             spring.datasource.password=secret
             """);
-        CountingDataSyncService sync = new CountingDataSyncService(tempDir);
+        CountingFileSyncService sync = new CountingFileSyncService(tempDir);
 
         assertEquals(0, resetConfiguration().run(sync));
         assertEquals(0, sync.startupCalls);
@@ -147,10 +147,10 @@ class BootstrapConfigurationTests {
         return new ObjectMapper().readTree(Files.readString(tempDir.resolve("bootstrap-status.json")));
     }
 
-    private static class FakeDataSyncService extends DataSyncService {
+    private static class FakeFileSyncService extends FileSyncService {
 
-        protected FakeDataSyncService(Path dataRoot) {
-            super(new DataSyncProperties(), new RcloneDataSyncService(new DataSyncProperties()), dataRoot.toString());
+        protected FakeFileSyncService(Path dataRoot) {
+            super(new FileSyncProperties(), new RcloneFileSyncService(new FileSyncProperties()), dataRoot.toString());
         }
 
         @Override
@@ -158,9 +158,9 @@ class BootstrapConfigurationTests {
         }
     }
 
-    private static class FailingDataSyncService extends FakeDataSyncService {
+    private static class FailingFileSyncService extends FakeFileSyncService {
 
-        private FailingDataSyncService(Path dataRoot) {
+        private FailingFileSyncService(Path dataRoot) {
             super(dataRoot);
         }
 
@@ -170,11 +170,11 @@ class BootstrapConfigurationTests {
         }
     }
 
-    private static class CountingDataSyncService extends FakeDataSyncService {
+    private static class CountingFileSyncService extends FakeFileSyncService {
 
         private int startupCalls;
 
-        private CountingDataSyncService(Path dataRoot) {
+        private CountingFileSyncService(Path dataRoot) {
             super(dataRoot);
         }
 

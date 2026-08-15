@@ -22,7 +22,7 @@ import com.gtdonrails.api.config.GoogleProperties;
 import com.gtdonrails.api.entities.GoogleCalendar;
 import com.gtdonrails.api.entities.GoogleCredential;
 import com.gtdonrails.api.repositories.GoogleCalendarRepository;
-import com.gtdonrails.api.services.DataSyncService;
+import com.gtdonrails.api.services.FileSyncService;
 import com.gtdonrails.api.services.GoogleCalendarService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
@@ -55,7 +55,7 @@ class GoogleCalendarControllerTests {
     private String dataRoot;
 
     @MockitoBean
-    private DataSyncService dataSyncService;
+    private FileSyncService fileSyncService;
 
     @MockitoBean
     private GoogleCalendarService googleCalendarService;
@@ -133,7 +133,7 @@ class GoogleCalendarControllerTests {
             .andExpect(status().isOk());
 
         assert googleProperties.getClientId().equals("new-client");
-        verify(dataSyncService).requestSync("integration credentials updated");
+        verify(fileSyncService).requestSync("integration credentials updated");
     }
 
     @Test
