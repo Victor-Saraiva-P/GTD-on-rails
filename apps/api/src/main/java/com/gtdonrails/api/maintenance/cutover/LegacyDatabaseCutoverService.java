@@ -2,8 +2,8 @@ package com.gtdonrails.api.maintenance.cutover;
 
 import java.nio.file.Path;
 
-import com.gtdonrails.api.services.DataSyncService;
 import com.gtdonrails.api.services.DatabaseIdentityService;
+import com.gtdonrails.api.services.FileSyncService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -13,7 +13,7 @@ public class LegacyDatabaseCutoverService {
 
     private final JdbcTemplate jdbcTemplate;
     private final DatabaseIdentityService databaseIdentityService;
-    private final DataSyncService dataSyncService;
+    private final FileSyncService fileSyncService;
     private final LegacySqliteBackupService backupService;
     private final LegacySqliteReader reader;
     private final LegacyDatasetImporter importer;
@@ -23,14 +23,14 @@ public class LegacyDatabaseCutoverService {
 
     public LegacyDatabaseCutoverService(
         JdbcTemplate jdbcTemplate, DatabaseIdentityService databaseIdentityService,
-        DataSyncService dataSyncService, LegacySqliteBackupService backupService,
+        FileSyncService fileSyncService, LegacySqliteBackupService backupService,
         LegacySqliteReader reader, LegacyDatasetImporter importer, LegacyCutoverValidator validator,
         @Value("${gtd.data.root-directory}") String dataRoot,
         @Value("${gtd.backup.directory:${gtd.data.root-directory}/backups}") String backupDirectory
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.databaseIdentityService = databaseIdentityService;
-        this.dataSyncService = dataSyncService;
+        this.fileSyncService = fileSyncService;
         this.backupService = backupService;
         this.reader = reader;
         this.importer = importer;
@@ -77,7 +77,7 @@ public class LegacyDatabaseCutoverService {
 
     private void syncFiles() {
         try {
-            dataSyncService.syncNow();
+            fileSyncService.syncNow();
         } catch (java.io.IOException exception) {
             throw new IllegalStateException("file sync failed during cutover", exception);
         }

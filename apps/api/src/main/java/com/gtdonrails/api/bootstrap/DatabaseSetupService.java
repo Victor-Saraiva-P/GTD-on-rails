@@ -14,7 +14,7 @@ import java.util.Base64;
 import java.util.EnumSet;
 import java.util.Properties;
 
-import com.gtdonrails.api.services.DataSyncService;
+import com.gtdonrails.api.services.FileSyncService;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
@@ -26,13 +26,13 @@ public class DatabaseSetupService {
     private static final String APPLICATION_USER = "gtd_app";
     private static final SecureRandom RANDOM = new SecureRandom();
     private final Path configurationPath;
-    private final DataSyncService fileSync;
+    private final FileSyncService fileSync;
     private final DatabaseConnectionFactory connectionFactory;
     private final String environment;
 
     public DatabaseSetupService(
         @Value("${gtd.data.root-directory}") String dataRoot,
-        DataSyncService fileSync,
+        FileSyncService fileSync,
         DatabaseConnectionFactory connectionFactory,
         @Value("${gtd.database.environment:PRODUCTION}") String environment
     ) {

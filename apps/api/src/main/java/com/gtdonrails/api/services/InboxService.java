@@ -30,7 +30,6 @@ public class InboxService {
     private final ContextRepository contextRepository;
     private final StuffMapper stuffMapper;
     private final ItemTextNormalizer itemTextNormalizer;
-    private final FileSyncService fileSyncService;
     private final GoogleCalendarEventQueueService googleCalendarEventQueueService;
     private final AfterCommitExecutor afterCommitExecutor;
 
@@ -39,7 +38,6 @@ public class InboxService {
         ContextRepository contextRepository,
         StuffMapper stuffMapper,
         ItemTextNormalizer itemTextNormalizer,
-        FileSyncService fileSyncService,
         GoogleCalendarEventQueueService googleCalendarEventQueueService,
         AfterCommitExecutor afterCommitExecutor
     ) {
@@ -47,7 +45,6 @@ public class InboxService {
         this.contextRepository = contextRepository;
         this.stuffMapper = stuffMapper;
         this.itemTextNormalizer = itemTextNormalizer;
-        this.fileSyncService = fileSyncService;
         this.googleCalendarEventQueueService = googleCalendarEventQueueService;
         this.afterCommitExecutor = afterCommitExecutor;
     }
@@ -98,9 +95,7 @@ public class InboxService {
         Title title = new Title(itemTextNormalizer.normalizeTitle(request.title()));
         Item item = new Item(title, null);
         item.markAsStuff();
-        StuffResponseDto response = stuffMapper.toResponse(itemRepository.save(item));
-        fileSyncService.requestSyncAfterCommit(afterCommitExecutor, "stuff created");
-        return response;
+        return stuffMapper.toResponse(itemRepository.save(item));
     }
 
     /**
@@ -116,7 +111,6 @@ public class InboxService {
         nextAction.setDeadline(request.deadline());
         itemRepository.save(item);
         requestGoogleCalendarEventSyncAfterCommit(id);
-        fileSyncService.requestSyncAfterCommit(afterCommitExecutor, "stuff converted to next action");
     }
 
     /**
@@ -130,7 +124,6 @@ public class InboxService {
         item.convertToCalendar(request.toScheduledDate(), request.toScheduledTime());
         itemRepository.save(item);
         requestGoogleCalendarEventSyncAfterCommit(id);
-        fileSyncService.requestSyncAfterCommit(afterCommitExecutor, "stuff converted to calendar");
     }
 
     private Item findStuff(UUID id) {

@@ -5,16 +5,16 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.gtdonrails.api.config.DataSyncProperties;
+import com.gtdonrails.api.config.FileSyncProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 @Service
-public class RcloneDataSyncService {
+public class RcloneFileSyncService {
 
-    private static final Logger logger = LoggerFactory.getLogger(RcloneDataSyncService.class);
+    private static final Logger logger = LoggerFactory.getLogger(RcloneFileSyncService.class);
     private static final List<String> COMMON_FLAGS = List.of(
         "--compare",
         "size,modtime,checksum",
@@ -36,25 +36,25 @@ public class RcloneDataSyncService {
         "2m"
     );
 
-    private final DataSyncProperties dataSyncProperties;
+    private final FileSyncProperties fileSyncProperties;
 
-    public RcloneDataSyncService(DataSyncProperties dataSyncProperties) {
-        this.dataSyncProperties = dataSyncProperties;
+    public RcloneFileSyncService(FileSyncProperties fileSyncProperties) {
+        this.fileSyncProperties = fileSyncProperties;
     }
 
     /**
-     * Reports whether rclone data synchronization is configured on.
+     * Reports whether rclone file synchronization is configured on.
      *
-     * <p>Example: {@code rcloneDataSyncService.isEnabled()}.</p>
+     * <p>Example: {@code rcloneFileSyncService.isEnabled()}.</p>
      */
     public boolean isEnabled() {
-        return dataSyncProperties.getRclone().isEnabled();
+        return fileSyncProperties.getRclone().isEnabled();
     }
 
     /**
      * Runs an incremental rclone bisync for the local data root.
      *
-     * <p>Example: {@code rcloneDataSyncService.bisync(dataRoot)}.</p>
+     * <p>Example: {@code rcloneFileSyncService.bisync(dataRoot)}.</p>
      */
     public void bisync(Path dataRoot) {
         if (!isEnabled()) return;
@@ -62,14 +62,14 @@ public class RcloneDataSyncService {
         List<String> arguments = baseBisyncArguments(dataRoot, true);
         arguments.add("--check-access");
         arguments.add("--check-filename");
-        arguments.add(dataSyncProperties.getSyncCheckFilename());
+        arguments.add(fileSyncProperties.getSyncCheckFilename());
         runRclone(arguments);
     }
 
     /**
      * Runs a bisync that can publish the sync check file before access checks are safe.
      *
-     * <p>Example: {@code rcloneDataSyncService.publishBootstrapSyncCheck(dataRoot)}.</p>
+     * <p>Example: {@code rcloneFileSyncService.publishBootstrapSyncCheck(dataRoot)}.</p>
      */
     public void publishBootstrapSyncCheck(Path dataRoot) {
         if (!isEnabled()) return;
@@ -80,7 +80,7 @@ public class RcloneDataSyncService {
     /**
      * Runs the initial rclone bisync resync from remote path to local path.
      *
-     * <p>Example: {@code rcloneDataSyncService.bootstrapBisync(dataRoot)}.</p>
+     * <p>Example: {@code rcloneFileSyncService.bootstrapBisync(dataRoot)}.</p>
      */
     public void bootstrapBisync(Path dataRoot) {
         if (!isEnabled()) return;
@@ -92,14 +92,14 @@ public class RcloneDataSyncService {
 
     private List<String> baseBisyncArguments(Path dataRoot, boolean includeFinalFlags) {
         List<String> arguments = new ArrayList<>(List.of("bisync", remote(), dataRoot.toString()));
-        if (dataSyncProperties.isForce()) arguments.add("--force");
+        if (fileSyncProperties.isForce()) arguments.add("--force");
         arguments.addAll(COMMON_FLAGS);
         if (includeFinalFlags) arguments.addAll(FINAL_FLAGS);
         return arguments;
     }
 
     private String remote() {
-        String remote = dataSyncProperties.getRclone().getRemote();
+        String remote = fileSyncProperties.getRclone().getRemote();
         if (!StringUtils.hasText(remote)) {
             throw new IllegalStateException("Missing gtd.sync.rclone.remote");
         }
@@ -109,7 +109,7 @@ public class RcloneDataSyncService {
 
     private void runRclone(List<String> arguments) {
         List<String> command = new ArrayList<>();
-        command.add(dataSyncProperties.getRclone().getCommand());
+        command.add(fileSyncProperties.getRclone().getCommand());
         command.addAll(arguments);
         executeRcloneCommand(command);
         logger.atInfo()

@@ -37,20 +37,6 @@ public class SyncController {
     }
 
     /**
-     * Handles the legacy manual data sync request and reports the File Sync status.
-     *
-     * <p>Example: {@code POST /sync/data}.</p>
-     */
-    @PostMapping("/sync/data")
-    public ResponseEntity<FileSyncStatusDto> requestDataSync() {
-        fileSyncService.requestManualSync();
-
-        return ResponseEntity
-            .status(HttpStatus.ACCEPTED)
-            .body(fileSyncService.status());
-    }
-
-    /**
      * Handles canonical manual File Sync requests.
      *
      * <p>Example: {@code POST /sync/files}.</p>

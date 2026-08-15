@@ -8,9 +8,9 @@ import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.gtdonrails.api.config.DataSyncProperties;
-import com.gtdonrails.api.services.DataSyncService;
-import com.gtdonrails.api.services.RcloneDataSyncService;
+import com.gtdonrails.api.config.FileSyncProperties;
+import com.gtdonrails.api.services.FileSyncService;
+import com.gtdonrails.api.services.RcloneFileSyncService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -19,7 +19,7 @@ import org.springframework.context.annotation.Profile;
 
 @Configuration
 @Profile("bootstrap")
-@EnableConfigurationProperties(DataSyncProperties.class)
+@EnableConfigurationProperties(FileSyncProperties.class)
 public class BootstrapConfiguration {
 
     private final ObjectMapper objectMapper;
@@ -42,26 +42,26 @@ public class BootstrapConfiguration {
     }
 
     @Bean
-    RcloneDataSyncService rcloneDataSyncService(DataSyncProperties properties) {
-        return new RcloneDataSyncService(properties);
+    RcloneFileSyncService rcloneFileSyncService(FileSyncProperties properties) {
+        return new RcloneFileSyncService(properties);
     }
 
     @Bean
-    DataSyncService dataSyncService(
-        DataSyncProperties properties,
-        RcloneDataSyncService rcloneDataSyncService
+    FileSyncService fileSyncService(
+        FileSyncProperties properties,
+        RcloneFileSyncService rcloneFileSyncService
     ) {
-        return new DataSyncService(properties, rcloneDataSyncService, dataRoot.toString());
+        return new FileSyncService(properties, rcloneFileSyncService, dataRoot.toString());
     }
 
     /**
      * Performs File Sync and publishes the configuration status for the desktop host.
      *
-     * <p>Example: {@code bootstrapConfiguration.run(dataSyncService)}.</p>
+     * <p>Example: {@code bootstrapConfiguration.run(fileSyncService)}.</p>
      */
-    public int run(DataSyncService dataSyncService) {
+    public int run(FileSyncService fileSyncService) {
         try {
-            if (!stagingReset) dataSyncService.syncOnStartup();
+            if (!stagingReset) fileSyncService.syncOnStartup();
             configurationStatus = databaseConfigurationStatus();
             writeStatus(configurationStatus);
             return "READY".equals(configurationStatus) ? 0 : 2;

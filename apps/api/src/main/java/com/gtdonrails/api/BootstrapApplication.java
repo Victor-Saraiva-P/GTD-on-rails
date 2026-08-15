@@ -4,7 +4,7 @@ import java.util.function.Function;
 import java.util.function.IntConsumer;
 
 import com.gtdonrails.api.bootstrap.BootstrapConfiguration;
-import com.gtdonrails.api.services.DataSyncService;
+import com.gtdonrails.api.services.FileSyncService;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.SpringApplication;
 import org.springframework.context.annotation.ComponentScan;
@@ -45,13 +45,13 @@ public class BootstrapApplication {
 
     static int applicationExitCode(ConfigurableApplicationContext context) {
         BootstrapConfiguration bootstrapConfiguration = context.getBean(BootstrapConfiguration.class);
-        int exitCode = bootstrapExitCode(bootstrapConfiguration, context.getBean(DataSyncService.class));
+        int exitCode = bootstrapExitCode(bootstrapConfiguration, context.getBean(FileSyncService.class));
         int springExitCode = SpringApplication.exit(context);
         return Math.max(exitCode, springExitCode);
     }
 
-    static int bootstrapExitCode(BootstrapConfiguration configuration, DataSyncService dataSyncService) {
-        int exitCode = configuration.run(dataSyncService);
+    static int bootstrapExitCode(BootstrapConfiguration configuration, FileSyncService fileSyncService) {
+        int exitCode = configuration.run(fileSyncService);
         if (setupCompletionRequired(exitCode, configuration)) awaitSetup(configuration);
         return exitCode;
     }
