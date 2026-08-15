@@ -1,6 +1,6 @@
 import type { PropsWithChildren } from "react";
 import { appMetadata } from "../../config/appMetadata";
-import { shouldBlockDatabaseInteraction } from "./databaseReadiness";
+import { buildDatabaseReadinessBlockerModel, shouldBlockDatabaseInteraction } from "./databaseReadiness";
 import { useDatabaseReadiness } from "./DatabaseReadinessProvider";
 
 /** Blocks every desktop interaction until PostgreSQL can serve authoritative state.
@@ -8,16 +8,23 @@ import { useDatabaseReadiness } from "./DatabaseReadinessProvider";
  * @example <DatabaseReadinessBlocker><AppShell /></DatabaseReadinessBlocker>
  */
 export function DatabaseReadinessBlocker({ children }: PropsWithChildren) {
-  const { isReady } = useDatabaseReadiness();
+  const { isReady, status } = useDatabaseReadiness();
   if (!shouldBlockDatabaseInteraction(isReady, false)) return children;
 
+  const model = buildDatabaseReadinessBlockerModel(status);
+
   return (
-    <dialog open aria-label="Database connection status" aria-modal="true" className="boot-loader connectivity-blocker">
+    <dialog open aria-label={model.title} aria-modal="true" className="boot-loader connectivity-blocker">
       <div className="boot-loader__terminal">
         <p className="boot-loader__brand">{appMetadata.name} v{appMetadata.version}</p>
-        <p className="boot-loader__line"><span className="boot-loader__status">[DATABASE]</span> PostgreSQL unavailable</p>
-        <p className="boot-loader__line connectivity-blocker__message">Waiting for PostgreSQL to restore authoritative application state.</p>
-        <p className="boot-loader__line"><span className="boot-loader__status">[WAIT]</span> Checking database connection<span className="boot-loader__cursor">_</span></p>
+        <p className="boot-loader__line">
+          <span className="boot-loader__status">[{model.statusLabel}]</span> {model.title}
+        </p>
+        <p className="boot-loader__line connectivity-blocker__message">{model.message}</p>
+        <p className="boot-loader__line">
+          <span className="boot-loader__status">[{status === "update-required" ? "INFO" : "WAIT"}]</span> {model.actionText}
+          <span className="boot-loader__cursor">_</span>
+        </p>
       </div>
     </dialog>
   );

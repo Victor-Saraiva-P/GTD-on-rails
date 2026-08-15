@@ -10,8 +10,11 @@ import org.springframework.boot.flyway.autoconfigure.FlywayMigrationStrategy;
 public class BackupMigrationConfiguration {
 
     @Bean
-    FlywayMigrationStrategy backupBeforeFlyway(PostgresBackupService backupService) {
+    FlywayMigrationStrategy backupBeforeFlyway(
+        PostgresBackupService backupService,
+        FlywaySchemaRange supportedSchemaRange
+    ) {
         BackupMigrationGate migrationGate = new BackupMigrationGate(backupService);
-        return flyway -> migrationGate.migrate(new FlywaySchemaMigration(flyway));
+        return flyway -> migrationGate.migrate(new FlywaySchemaMigration(flyway, supportedSchemaRange));
     }
 }
