@@ -1,97 +1,137 @@
 package com.gtdonrails.api.services;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 
-import com.gtdonrails.api.config.DataSyncProperties;
-import com.gtdonrails.api.dtos.sync.DataSyncState;
-import com.gtdonrails.api.dtos.sync.DataSyncStatusDto;
+import com.gtdonrails.api.config.FileSyncProperties;
 import com.gtdonrails.api.dtos.sync.FileSyncState;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+@Tag("unit")
 class FileSyncServiceTests {
 
     @TempDir
     private Path tempDir;
 
-    private FakeDataSyncService dataSyncService;
+    private FileSyncService service;
 
     @AfterEach
     void tearDown() {
-        if (dataSyncService != null) dataSyncService.shutdown();
+        if (service != null) service.shutdown();
     }
 
     @Test
-    void forwardsStartupAndRequestsToCompatibilityService() throws IOException {
-        dataSyncService = new FakeDataSyncService(tempDir);
-        FileSyncService fileSyncService = new FileSyncService(dataSyncService);
+    void staysDisabledWhenRcloneIsDisabled() throws Exception {
+        FakeRcloneFileSyncService rcloneFileSyncService = new FakeRcloneFileSyncService();
+        service = new FileSyncService(properties(), rcloneFileSyncService, tempDir.toString());
 
-        fileSyncService.syncOnStartup();
-        fileSyncService.requestSync("item updated");
-        fileSyncService.requestManualSync();
+        rcloneFileSyncService.enabled = false;
 
-        assertEquals(1, dataSyncService.startupCalls);
-        assertEquals("item updated", dataSyncService.lastReason);
-        assertEquals(1, dataSyncService.manualCalls);
+        service.syncOnStartup();
+
+        assertEquals(FileSyncState.DISABLED, service.status().state());
     }
 
     @Test
-    void mapsCompatibilityStatusToCanonicalStatus() {
-        dataSyncService = new FakeDataSyncService(tempDir);
-        FileSyncService fileSyncService = new FileSyncService(dataSyncService);
+    void bootstrapsFromRemoteWhenSyncCheckIsMissing() throws Exception {
+        FakeRcloneFileSyncService rcloneFileSyncService = new FakeRcloneFileSyncService();
+        service = new FileSyncService(properties(), rcloneFileSyncService, tempDir.toString());
 
-        assertEquals(FileSyncState.DISABLED, fileSyncService.status().state());
+        rcloneFileSyncService.enabled = true;
+
+        service.syncOnStartup();
+
+        assertEquals(tempDir.toAbsolutePath().normalize(), rcloneFileSyncService.bootstrapBisyncDirectory);
+        assertEquals(tempDir.toAbsolutePath().normalize(), rcloneFileSyncService.bootstrapPublishDirectory);
+        assertEquals(FileSyncState.SYNCED, service.status().state());
+        assertTrue(Files.exists(syncCheckFile()));
+    }
+
+    @Test
+    void runsNormalBisyncWhenSyncCheckExists() throws Exception {
+        Files.writeString(syncCheckFile(), "ready");
+        FakeRcloneFileSyncService rcloneFileSyncService = new FakeRcloneFileSyncService();
+        service = new FileSyncService(properties(), rcloneFileSyncService, tempDir.toString());
+
+        rcloneFileSyncService.enabled = true;
+
+        service.syncOnStartup();
+
+        assertEquals(tempDir.toAbsolutePath().normalize(), rcloneFileSyncService.bisyncDirectory);
+        assertEquals(null, rcloneFileSyncService.bootstrapBisyncDirectory);
+        assertEquals(null, rcloneFileSyncService.bootstrapPublishDirectory);
+        assertEquals(FileSyncState.SYNCED, service.status().state());
+    }
+
+    @Test
+    void syncNowRunsBlockingBisyncEvenWhenSyncCheckExists() throws Exception {
+        Files.writeString(syncCheckFile(), "ready");
+        FakeRcloneFileSyncService rcloneFileSyncService = new FakeRcloneFileSyncService();
+        service = new FileSyncService(properties(), rcloneFileSyncService, tempDir.toString());
+        rcloneFileSyncService.enabled = true;
+
+        service.syncNow();
+
+        assertEquals(tempDir.toAbsolutePath().normalize(), rcloneFileSyncService.bisyncDirectory);
+        assertEquals(FileSyncState.SYNCED, service.status().state());
     }
 
     @Test
     void queuesFileSyncAfterCommit() {
-        dataSyncService = new FakeDataSyncService(tempDir);
-        FileSyncService fileSyncService = new FileSyncService(dataSyncService);
+        FakeRcloneFileSyncService rcloneFileSyncService = new FakeRcloneFileSyncService();
+        service = new FileSyncService(properties(), rcloneFileSyncService, tempDir.toString());
+        rcloneFileSyncService.enabled = true;
 
-        fileSyncService.requestSyncAfterCommit(new AfterCommitExecutor(), "item updated");
+        service.requestSyncAfterCommit(new AfterCommitExecutor(), "asset updated");
 
-        assertEquals("item updated", dataSyncService.lastReason);
+        assertTrue(service.status().pending() || service.status().running() || service.status().state() == FileSyncState.SYNCED);
     }
 
-    private static class FakeDataSyncService extends DataSyncService {
+    private FileSyncProperties properties() {
+        FileSyncProperties properties = new FileSyncProperties();
+        properties.setSyncCheckFilename("gtd-on-rails-sync-check");
+        return properties;
+    }
 
-        private int startupCalls;
-        private int manualCalls;
-        private String lastReason;
+    private Path syncCheckFile() {
+        return tempDir.resolve("gtd-on-rails-sync-check");
+    }
 
-        private FakeDataSyncService(Path dataRoot) {
-            super(new DataSyncProperties(), new RcloneDataSyncService(new DataSyncProperties()), dataRoot.toString());
+    private static class FakeRcloneFileSyncService extends RcloneFileSyncService {
+
+        private boolean enabled;
+        private Path bisyncDirectory;
+        private Path bootstrapBisyncDirectory;
+        private Path bootstrapPublishDirectory;
+
+        private FakeRcloneFileSyncService() {
+            super(new FileSyncProperties());
         }
 
         @Override
-        public void syncOnStartup() {
-            startupCalls++;
+        public boolean isEnabled() {
+            return enabled;
         }
 
         @Override
-        public void requestSync(String reason) {
-            lastReason = reason;
+        public void bisync(Path dataRoot) {
+            bisyncDirectory = dataRoot;
         }
 
         @Override
-        public void requestManualSync() {
-            manualCalls++;
+        public void bootstrapBisync(Path dataRoot) {
+            bootstrapBisyncDirectory = dataRoot;
         }
 
         @Override
-        public DataSyncStatusDto status() {
-            return new DataSyncStatusDto(
-                DataSyncState.DISABLED,
-                false,
-                false,
-                null,
-                null,
-                null,
-                null);
+        public void publishBootstrapSyncCheck(Path dataRoot) {
+            bootstrapPublishDirectory = dataRoot;
         }
     }
 }

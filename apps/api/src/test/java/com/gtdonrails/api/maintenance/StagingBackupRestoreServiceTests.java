@@ -10,7 +10,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import com.gtdonrails.api.config.DataSyncProperties;
 import com.gtdonrails.api.services.DatabaseIdentityService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;

@@ -25,7 +25,7 @@ public class SyncController {
     }
 
     /**
-     * Handles sync status requests for data and Google Calendar.
+     * Handles sync status requests for file sync and Google Calendar.
      *
      * <p>Example: {@code GET /sync/status}.</p>
      */
@@ -34,20 +34,6 @@ public class SyncController {
         return new SyncStatusDto(
             fileSyncService.status(),
             googleCalendarEventQueueService.status());
-    }
-
-    /**
-     * Handles the legacy manual data sync request and reports the File Sync status.
-     *
-     * <p>Example: {@code POST /sync/data}.</p>
-     */
-    @PostMapping("/sync/data")
-    public ResponseEntity<FileSyncStatusDto> requestDataSync() {
-        fileSyncService.requestManualSync();
-
-        return ResponseEntity
-            .status(HttpStatus.ACCEPTED)
-            .body(fileSyncService.status());
     }
 
     /**

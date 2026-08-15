@@ -32,6 +32,3 @@ export type SyncStatus = {
   file: FileSyncStatus;
   googleCalendar: GoogleCalendarSyncStatus;
 };
-
-export type DataSyncState = FileSyncState;
-export type DataSyncStatus = FileSyncStatus;

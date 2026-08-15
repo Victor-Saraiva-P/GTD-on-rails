@@ -38,9 +38,6 @@ class CalendarServiceTests {
     private CalendarRepository calendarRepository;
 
     @Mock
-    private DataSyncService dataSyncService;
-
-    @Mock
     private GoogleCalendarEventQueueService googleCalendarEventQueueService;
 
     private CalendarService calendarService;
@@ -55,7 +52,6 @@ class CalendarServiceTests {
             calendarRepository,
             new CalendarMapper(),
             CLOCK,
-            new FileSyncService(dataSyncService),
             googleCalendarEventQueueService,
             new AfterCommitExecutor());
         when(calendarRepository.findById(calendarId)).thenReturn(Optional.of(calendar));
@@ -68,7 +64,7 @@ class CalendarServiceTests {
 
         assertEquals(LocalDate.parse("2026-05-22"), calendar.getScheduledDate());
         assertEquals(LocalTime.parse("10:15"), calendar.getScheduledTime());
-        verifyGoogleCalendarAndDataSync("calendar updated");
+        verifyGoogleCalendarSync();
     }
 
     @Test
@@ -76,7 +72,7 @@ class CalendarServiceTests {
         calendarService.markOnGoing(calendarId);
 
         assertEquals(CalendarStatus.ONGOING, calendar.getStatus());
-        verifyGoogleCalendarAndDataSync("calendar marked ongoing");
+        verifyGoogleCalendarSync();
     }
 
     @Test
@@ -84,7 +80,7 @@ class CalendarServiceTests {
         calendarService.markDone(calendarId);
 
         assertEquals(CalendarStatus.DONE, calendar.getStatus());
-        verifyGoogleCalendarAndDataSync("calendar marked done");
+        verifyGoogleCalendarSync();
     }
 
     @Test
@@ -94,7 +90,7 @@ class CalendarServiceTests {
         calendarService.resetCalendarStatus(calendarId);
 
         assertEquals(CalendarStatus.CALENDAR, calendar.getStatus());
-        verifyGoogleCalendarAndDataSync("calendar status restored");
+        verifyGoogleCalendarSync();
     }
 
     @Test
@@ -103,12 +99,11 @@ class CalendarServiceTests {
 
         calendarService.recoverCalendar(calendarId);
 
-        verifyGoogleCalendarAndDataSync("calendar recovered");
+        verifyGoogleCalendarSync();
     }
 
-    private void verifyGoogleCalendarAndDataSync(String reason) {
+    private void verifyGoogleCalendarSync() {
         verify(googleCalendarEventQueueService).requestUpsert(calendarId);
-        verify(dataSyncService).requestSync(reason);
     }
 
     private Calendar calendar(UUID id) {

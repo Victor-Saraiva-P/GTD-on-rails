@@ -16,10 +16,10 @@ Establish the Google Calendar connection infrastructure: credential configuratio
 
 ### Credential Architecture (Two-Layer Model)
 
-- **Client credentials** (`client_id`, `client_secret`): Stored in `{data-root}/config/google.properties` — a plain-text properties file in the private persistence repo (`~/Documents/gtd-on-rails/config/`). Syncs between machines via existing Git persistence. Not committed to the public code repo.
-- **User tokens** (`access_token`, `refresh_token`, `expires_at`): Stored in the SQLite database in a new `google_credentials` table. Syncs between machines via existing Git persistence.
-- **No encryption at rest**: The same private repo already holds the unencrypted SQLite database. Encrypting just this file would be inconsistent. Full data-directory encryption is a separate future feature if ever needed.
-- **Rationale**: Google treats installed-app `client_secret` as non-confidential. The private persistence repo provides sufficient access control for a single-owner setup.
+- **Client credentials** (`client_id`, `client_secret`): Stored in `{data-root}/google.properties`. Syncs between machines via rclone File Sync. Not committed to the public code repo.
+- **User tokens** (`access_token`, `refresh_token`, `expires_at`): Stored encrypted in the PostgreSQL database in the `google_credentials` table.
+- **Encryption at rest**: Token values are encrypted using AES-GCM before database storage.
+- **Rationale**: Google treats installed-app `client_secret` as non-confidential. File Sync and PostgreSQL credentials provide secure storage across machines.
 
 ### Configuration Pattern
 

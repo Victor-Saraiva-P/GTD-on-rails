@@ -8,16 +8,16 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.gtdonrails.api.config.DataSyncProperties;
+import com.gtdonrails.api.config.FileSyncProperties;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 @Tag("unit")
-class RcloneDataSyncServiceTests {
+class RcloneFileSyncServiceTests {
 
     @Test
     void runsNormalBisyncWithScriptAlignedFlags() {
-        RecordingRcloneDataSyncService service = newService();
+        RecordingRcloneFileSyncService service = newService();
 
         service.bisync(Path.of("/home/victor/Documents/gtd-on-rails"));
 
@@ -29,7 +29,7 @@ class RcloneDataSyncServiceTests {
 
     @Test
     void runsBootstrapBisyncWithoutCheckAccess() {
-        RecordingRcloneDataSyncService service = newService();
+        RecordingRcloneFileSyncService service = newService();
 
         service.bootstrapBisync(Path.of("/home/victor/Documents/gtd-on-rails"));
 
@@ -42,7 +42,7 @@ class RcloneDataSyncServiceTests {
 
     @Test
     void publishesBootstrapSyncCheckWithoutCheckAccess() {
-        RecordingRcloneDataSyncService service = newService();
+        RecordingRcloneFileSyncService service = newService();
 
         service.publishBootstrapSyncCheck(Path.of("/home/victor/Documents/gtd-on-rails"));
 
@@ -52,12 +52,23 @@ class RcloneDataSyncServiceTests {
         assertFalse(service.command().contains("--check-access"));
     }
 
-    private RecordingRcloneDataSyncService newService() {
-        return new RecordingRcloneDataSyncService(properties());
+    @Test
+    void rejectsBlankRemoteWithOffendingValue() {
+        FileSyncProperties properties = properties();
+        properties.getRclone().setRemote("  ");
+        RecordingRcloneFileSyncService service = new RecordingRcloneFileSyncService(properties);
+
+        org.junit.jupiter.api.Assertions.assertThrows(
+            IllegalStateException.class,
+            () -> service.bisync(Path.of("/home/victor/Documents/gtd-on-rails")));
     }
 
-    private DataSyncProperties properties() {
-        DataSyncProperties properties = new DataSyncProperties();
+    private RecordingRcloneFileSyncService newService() {
+        return new RecordingRcloneFileSyncService(properties());
+    }
+
+    private FileSyncProperties properties() {
+        FileSyncProperties properties = new FileSyncProperties();
         properties.getRclone().setEnabled(true);
         properties.getRclone().setRemote("gdrive:gtd-on-rails");
         properties.setSyncCheckFilename("gtd-on-rails-sync-check");
@@ -96,12 +107,12 @@ class RcloneDataSyncServiceTests {
         assertTrue(command.contains("gtd-on-rails-sync-check"));
     }
 
-    private static class RecordingRcloneDataSyncService extends RcloneDataSyncService {
+    private static class RecordingRcloneFileSyncService extends RcloneFileSyncService {
 
         private List<String> command = List.of();
 
-        private RecordingRcloneDataSyncService(DataSyncProperties dataSyncProperties) {
-            super(dataSyncProperties);
+        private RecordingRcloneFileSyncService(FileSyncProperties fileSyncProperties) {
+            super(fileSyncProperties);
         }
 
         @Override

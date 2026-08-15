@@ -13,7 +13,7 @@ describe("sync-status API", () => {
 
   test("fetchSyncStatus returns current status", async () => {
     const mockResponse: SyncStatus = {
-      data: {
+      file: {
         state: "SYNCED",
         pending: false,
         running: false,

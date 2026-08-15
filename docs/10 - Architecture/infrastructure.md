@@ -75,7 +75,7 @@ jdbc:postgresql://127.0.0.1:5432/gtd_on_rails
 
 Flyway initializes new development databases with the baseline in schema `gtd` and records the `DEVELOPMENT` database identity.
 
-The PostgreSQL baseline migration lives under `apps/api/src/main/resources/db/postgresql-migration`. Legacy SQLite migrations are not selected by normal runtime startup and remain available for the one-time cutover implementation.
+The PostgreSQL baseline migration lives under `apps/api/src/main/resources/db/postgresql-migration`. Legacy SQLite migrations have been contracted from active runtime resources.
 
 ---
 
@@ -150,13 +150,13 @@ Environment variables can override these paths when needed, but the default runt
 
 ---
 
-## 5. Data Synchronization
+## 5. File Synchronization
 
 Assets, Google Integration Configuration, Database Connection Configuration, certificates, backups, and the File Sync marker are synchronized by `rclone`. Structured GTD data is never synchronized as a live database file; it is stored in the configured PostgreSQL environment.
 
 - Production remote: `gdrive:gtd-on-rails`.
 - Development and staging remote: `gdrive:dev-gtd-on-rails`.
-- The backend owns startup data sync, database initialization, sync scheduling, and data integrity.
+- The backend owns startup File Sync, database initialization, sync scheduling, and data integrity.
 
 Production creates a logical `pg_dump` archive before Flyway migrations and once per active day. The archive is written to a temporary file, validated with `pg_restore --list`, atomically closed, and only then added to File Sync. Staging can load a named synchronized archive through `POST /maintenance/backups/restore`; the operation requires the `STAGING` database identity, validates the archive identity before restore, excludes the source identity row, and uses a single transaction.
 
@@ -176,7 +176,7 @@ Item assets are stored as files plus database metadata.
 
 The backend owns final asset storage, metadata creation, validation, and sync scheduling.
 
-Assets are synchronized as part of data sync because the asset directory lives under the synchronized data root.
+Assets are synchronized as part of File Sync because the asset directory lives under the synchronized data root.
 
 The body model that references these assets is described in [Body Content](../20%20-%20GTD/shared/Body%20Content.md).
 

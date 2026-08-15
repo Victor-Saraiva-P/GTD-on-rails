@@ -60,9 +60,6 @@ class ContextServiceTests {
     @Mock
     private ContextIconAssetService contextIconAssetService;
 
-    @Mock
-    private DataSyncService dataSyncService;
-
     @Captor
     private ArgumentCaptor<Context> contextCaptor;
 
@@ -76,9 +73,7 @@ class ContextServiceTests {
             contextMapper,
             itemMapper,
             new ContextNameNormalizer(),
-            contextIconAssetService,
-            new FileSyncService(dataSyncService),
-            new AfterCommitExecutor());
+            contextIconAssetService);
     }
 
     @Test
@@ -153,7 +148,6 @@ class ContextServiceTests {
 
         verify(contextRepository).save(contextCaptor.capture());
         assertEquals("home office", contextCaptor.getValue().getName());
-        verify(dataSyncService).requestSync("context created");
     }
 
     @Test
@@ -170,7 +164,6 @@ class ContextServiceTests {
 
         assertEquals(expectedResponse, response);
         assertEquals("office", context.getName());
-        verify(dataSyncService).requestSync("context updated");
     }
 
     @Test
@@ -203,7 +196,6 @@ class ContextServiceTests {
 
         assertFalse(context.isDeleted());
         verify(contextRepository).save(contextCaptor.capture());
-        verify(dataSyncService).requestSync("context restored");
     }
 
     private NextAction nextAction(String title, Context context) {

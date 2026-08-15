@@ -18,8 +18,8 @@ import java.util.Map;
 import java.util.UUID;
 
 import com.gtdonrails.api.persistence.converters.CryptoConverter;
-import com.gtdonrails.api.services.DataSyncService;
 import com.gtdonrails.api.services.DatabaseIdentityService;
+import com.gtdonrails.api.services.FileSyncService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -44,7 +44,7 @@ class LegacyCutoverIntegrationTests {
     private CryptoConverter cryptoConverter;
 
     @Autowired
-    private DataSyncService dataSyncService;
+    private FileSyncService fileSyncService;
 
     private Path sqlitePath;
     private Path backupDir;
@@ -64,7 +64,7 @@ class LegacyCutoverIntegrationTests {
         DatabaseIdentityService identityService = new DatabaseIdentityService(jdbcTemplate);
 
         cutoverService = new LegacyDatabaseCutoverService(
-            jdbcTemplate, identityService, dataSyncService, backupService,
+            jdbcTemplate, identityService, fileSyncService, backupService,
             reader, importer, validator, tempDir.toString(), backupDir.toString()
         );
 
