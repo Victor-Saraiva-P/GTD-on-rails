@@ -149,7 +149,7 @@ class PostgresBackupServiceTests {
 
     private void createDailyArchives(int count) throws Exception {
         Files.createDirectories(backupDirectory());
-        IntStream.rangeClosed(1, count).forEach(daysAgo -> createDailyArchive(daysAgo));
+        IntStream.rangeClosed(1, count).forEach(this::createDailyArchive);
     }
 
     private void createDailyArchive(int daysAgo) {

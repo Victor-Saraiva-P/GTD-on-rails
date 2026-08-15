@@ -43,9 +43,10 @@ class BackupMigrationConfigurationTests {
         List<String> events = new ArrayList<>();
         RecordingCommandRunner recordingCommandRunner = new RecordingCommandRunner(events, true);
         RecordingSchemaMigration schemaMigration = RecordingSchemaMigration.pending(events);
+        BackupMigrationGate migrationGate = migrationGate(recordingCommandRunner);
 
         IllegalStateException failure = assertThrows(
-            IllegalStateException.class, () -> migrationGate(recordingCommandRunner).migrate(schemaMigration));
+            IllegalStateException.class, () -> migrationGate.migrate(schemaMigration));
 
         assertTrue(failure.getMessage().contains("pg_dump failed"));
         assertFalse(schemaMigration.migrated);
