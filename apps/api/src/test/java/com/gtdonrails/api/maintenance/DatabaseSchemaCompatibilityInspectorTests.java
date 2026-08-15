@@ -9,8 +9,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import java.sql.SQLException;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -19,7 +17,7 @@ class DatabaseSchemaCompatibilityInspectorTests {
     @Test
     void reportsCompatibleWhenDatabaseSchemaMatchesMaxSupported() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        when(jdbcTemplate.queryForObject(eq(DatabaseSchemaCompatibilityInspector.LATEST_SCHEMA_VERSION_QUERY), eq(String.class)))
+        when(jdbcTemplate.queryForObject(DatabaseSchemaCompatibilityInspector.LATEST_SCHEMA_VERSION_QUERY, String.class))
             .thenReturn("2");
 
         DatabaseSchemaCompatibilityInspector inspector = new DatabaseSchemaCompatibilityInspector(
@@ -34,7 +32,7 @@ class DatabaseSchemaCompatibilityInspectorTests {
     @Test
     void reportsUpgradeableWhenDatabaseSchemaIsOlderThanMaxSupported() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        when(jdbcTemplate.queryForObject(eq(DatabaseSchemaCompatibilityInspector.LATEST_SCHEMA_VERSION_QUERY), eq(String.class)))
+        when(jdbcTemplate.queryForObject(DatabaseSchemaCompatibilityInspector.LATEST_SCHEMA_VERSION_QUERY, String.class))
             .thenReturn("1");
 
         DatabaseSchemaCompatibilityInspector inspector = new DatabaseSchemaCompatibilityInspector(
@@ -48,7 +46,7 @@ class DatabaseSchemaCompatibilityInspectorTests {
     @Test
     void reportsUpdateRequiredWhenDatabaseSchemaIsNewerThanMaxSupported() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        when(jdbcTemplate.queryForObject(eq(DatabaseSchemaCompatibilityInspector.LATEST_SCHEMA_VERSION_QUERY), eq(String.class)))
+        when(jdbcTemplate.queryForObject(DatabaseSchemaCompatibilityInspector.LATEST_SCHEMA_VERSION_QUERY, String.class))
             .thenReturn("3");
 
         DatabaseSchemaCompatibilityInspector inspector = new DatabaseSchemaCompatibilityInspector(
@@ -62,7 +60,7 @@ class DatabaseSchemaCompatibilityInspectorTests {
     @Test
     void reportsUnsupportedWhenDatabaseSchemaIsOlderThanMinSupported() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        when(jdbcTemplate.queryForObject(eq(DatabaseSchemaCompatibilityInspector.LATEST_SCHEMA_VERSION_QUERY), eq(String.class)))
+        when(jdbcTemplate.queryForObject(DatabaseSchemaCompatibilityInspector.LATEST_SCHEMA_VERSION_QUERY, String.class))
             .thenReturn("1");
 
         DatabaseSchemaCompatibilityInspector inspector = new DatabaseSchemaCompatibilityInspector(
@@ -76,7 +74,7 @@ class DatabaseSchemaCompatibilityInspectorTests {
     @Test
     void reportsUpgradeableWhenDatabaseSchemaHistoryIsEmpty() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        when(jdbcTemplate.queryForObject(eq(DatabaseSchemaCompatibilityInspector.LATEST_SCHEMA_VERSION_QUERY), eq(String.class)))
+        when(jdbcTemplate.queryForObject(DatabaseSchemaCompatibilityInspector.LATEST_SCHEMA_VERSION_QUERY, String.class))
             .thenThrow(new EmptyResultDataAccessException(1));
 
         DatabaseSchemaCompatibilityInspector inspector = new DatabaseSchemaCompatibilityInspector(
@@ -91,7 +89,7 @@ class DatabaseSchemaCompatibilityInspectorTests {
     @Test
     void reportsUpgradeableWhenSchemaHistoryTableDoesNotExistYet() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        when(jdbcTemplate.queryForObject(eq(DatabaseSchemaCompatibilityInspector.LATEST_SCHEMA_VERSION_QUERY), eq(String.class)))
+        when(jdbcTemplate.queryForObject(DatabaseSchemaCompatibilityInspector.LATEST_SCHEMA_VERSION_QUERY, String.class))
             .thenThrow(new BadSqlGrammarException("query", "select ...", new SQLException("relation does not exist")));
 
         DatabaseSchemaCompatibilityInspector inspector = new DatabaseSchemaCompatibilityInspector(
@@ -106,7 +104,7 @@ class DatabaseSchemaCompatibilityInspectorTests {
     @Test
     void reportsUnsupportedWhenDatabaseQueryFailsDueToConnectionException() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        when(jdbcTemplate.queryForObject(eq(DatabaseSchemaCompatibilityInspector.LATEST_SCHEMA_VERSION_QUERY), eq(String.class)))
+        when(jdbcTemplate.queryForObject(DatabaseSchemaCompatibilityInspector.LATEST_SCHEMA_VERSION_QUERY, String.class))
             .thenThrow(new DataRetrievalFailureException("connection refused"));
 
         DatabaseSchemaCompatibilityInspector inspector = new DatabaseSchemaCompatibilityInspector(
