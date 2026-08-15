@@ -12,7 +12,12 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import com.gtdonrails.api.config.DataSyncProperties;
 import com.gtdonrails.api.services.DataSyncService;
@@ -98,6 +103,50 @@ class PostgresBackupServiceTests {
         assertTrue(names.contains("gtd-backup-2026-08-11T02-00-00Z-daily.dump"));
     }
 
+    @Test
+    void overlappingDailyBackupRequestsCreateOneArchive() throws Exception {
+        BlockingCommandRunner commands = new BlockingCommandRunner();
+        PostgresBackupService service = service(commands, new FakeFileSyncService());
+        try (ExecutorService requests = Executors.newVirtualThreadPerTaskExecutor()) {
+            Future<?> first = requests.submit(service::createDailyBackupIfMissing);
+            commands.awaitDumpStart();
+            Future<?> second = requests.submit(service::createDailyBackupIfMissing);
+            commands.releaseDump();
+            first.get();
+            second.get();
+        }
+        assertEquals(1, dailyArchives().size());
+        assertEquals(2, commands.executables.size());
+    }
+
+    @Test
+    void malformedDailyArchiveNameDoesNotBlockTodaysBackup() throws Exception {
+        Files.createDirectories(backupDirectory());
+        Files.writeString(backupDirectory().resolve("gtd-backup-invalid-daily.dump"), "stray archive");
+
+        service(new FakeCommandRunner(), new FakeFileSyncService()).createDailyBackupIfMissing();
+
+        assertTrue(dailyArchives().stream().anyMatch(path -> path.getFileName().toString().startsWith("gtd-backup-2026-08-11")));
+    }
+
+    @Test
+    void retentionBreaksSameDateTiesByArchiveName() throws Exception {
+        createDailyArchives(29);
+        writeNamedArchive("gtd-backup-2026-07-13T01-00-00Z-daily.dump");
+        writeNamedArchive("gtd-backup-2026-07-13T03-00-00Z-daily.dump");
+
+        service(new FakeCommandRunner(), new FakeFileSyncService()).createDailyBackupIfMissing();
+
+        List<String> names = dailyArchives().stream().map(path -> path.getFileName().toString()).toList();
+        assertEquals(30, names.size());
+        assertTrue(names.contains("gtd-backup-2026-07-13T03-00-00Z-daily.dump"));
+        assertFalse(names.contains("gtd-backup-2026-07-13T02-00-00Z-daily.dump"));
+    }
+
+    private void writeNamedArchive(String name) throws Exception {
+        Files.writeString(backupDirectory().resolve(name), "archive");
+    }
+
     private void createDailyArchives(int count) throws Exception {
         Files.createDirectories(backupDirectory());
         IntStream.rangeClosed(1, count).forEach(daysAgo -> createDailyArchive(daysAgo));
@@ -113,7 +162,7 @@ class PostgresBackupServiceTests {
     }
 
     private List<Path> dailyArchives() throws Exception {
-        try (var paths = Files.list(backupDirectory())) {
+        try (Stream<Path> paths = Files.list(backupDirectory())) {
             return paths.filter(path -> path.getFileName().toString().endsWith("-daily.dump")).sorted().toList();
         }
     }
@@ -139,7 +188,7 @@ class PostgresBackupServiceTests {
     private static class FakeCommandRunner implements PostgresCommandRunner {
 
         private final List<String> arguments = new ArrayList<>();
-        private final List<String> executables = new ArrayList<>();
+        protected final List<String> executables = new ArrayList<>();
         private String passfileContent = "";
         private Path passfilePath = Path.of(".");
         private Path outputPath = Path.of(".");
@@ -164,6 +213,36 @@ class PostgresBackupServiceTests {
 
         private Path outputPath(List<String> commandArguments) {
             return Path.of(commandArguments.stream().filter(argument -> argument.startsWith("--file=")).findFirst().orElseThrow().substring(7));
+        }
+    }
+
+    private static class BlockingCommandRunner extends FakeCommandRunner {
+
+        private final CountDownLatch dumpStarted = new CountDownLatch(1);
+        private final CountDownLatch releaseDump = new CountDownLatch(1);
+
+        @Override
+        public void run(String executable, List<String> arguments, Map<String, String> environment) {
+            if ("pg_dump".equals(executable)) awaitRelease();
+            super.run(executable, arguments, environment);
+        }
+
+        private void awaitRelease() {
+            dumpStarted.countDown();
+            try {
+                releaseDump.await();
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException("backup process was interrupted; expected released fake process", exception);
+            }
+        }
+
+        private void awaitDumpStart() throws InterruptedException {
+            dumpStarted.await();
+        }
+
+        private void releaseDump() {
+            releaseDump.countDown();
         }
     }
 

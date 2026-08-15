@@ -15,6 +15,7 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import com.gtdonrails.api.config.DataSyncProperties;
 import com.gtdonrails.api.services.DataSyncService;
@@ -35,10 +36,10 @@ class BackupMigrationConfigurationTests {
     @Test
     void pendingMigrationRunsOnlyAfterSuccessfulFreshBackup() {
         List<String> events = new ArrayList<>();
-        RecordingCommandRunner commands = new RecordingCommandRunner(events, false);
-        Flyway flyway = flywayWithPendingMigration(events);
+        RecordingCommandRunner recordingCommandRunner = new RecordingCommandRunner(events, false);
+        FakeFlywayScenario flywayScenario = FakeFlywayScenario.withPendingMigration(events);
 
-        strategy(commands).migrate(flyway);
+        strategy(recordingCommandRunner).migrate(flywayScenario.flyway());
 
         assertTrue(events.indexOf("pg_restore") < events.indexOf("flyway"));
         assertTrue(backupNames().stream().anyMatch(name -> name.endsWith("-pre-migration.dump")));
@@ -47,57 +48,37 @@ class BackupMigrationConfigurationTests {
     @Test
     void backupFailureBlocksPendingMigrationAndStartup() {
         List<String> events = new ArrayList<>();
-        RecordingCommandRunner commands = new RecordingCommandRunner(events, true);
-        Flyway flyway = flywayWithPendingMigration(events);
+        RecordingCommandRunner recordingCommandRunner = new RecordingCommandRunner(events, true);
+        FakeFlywayScenario flywayScenario = FakeFlywayScenario.withPendingMigration(events);
 
-        IllegalStateException failure = assertThrows(IllegalStateException.class, () -> strategy(commands).migrate(flyway));
+        IllegalStateException failure = assertThrows(
+            IllegalStateException.class, () -> strategy(recordingCommandRunner).migrate(flywayScenario.flyway()));
 
         assertTrue(failure.getMessage().contains("pg_dump failed"));
-        verify(flyway, never()).migrate();
+        flywayScenario.verifyMigrationSkipped();
     }
 
     @Test
     void currentSchemaMigratesWithoutCreatingABackup() {
-        Flyway flyway = flywayWithoutPendingMigration();
+        FakeFlywayScenario flywayScenario = FakeFlywayScenario.withCurrentSchema();
 
-        strategy(new RecordingCommandRunner(new ArrayList<>(), false)).migrate(flyway);
+        strategy(new RecordingCommandRunner(new ArrayList<>(), false)).migrate(flywayScenario.flyway());
 
-        verify(flyway).migrate();
+        flywayScenario.verifyMigrationCompleted();
         assertTrue(backupNames().isEmpty());
     }
 
-    private FlywayMigrationStrategy strategy(RecordingCommandRunner commands) {
+    private FlywayMigrationStrategy strategy(RecordingCommandRunner recordingCommandRunner) {
         PostgresBackupService backupService = new PostgresBackupService(
             backupDirectory(), new BackupWorkDirectory(workDirectory()),
             new PostgresConnection("jdbc:postgresql://127.0.0.1:5432/gtd", "gtd_app", "secret"),
-            new NoOpFileSyncService(), Clock.fixed(Instant.parse("2026-08-11T02:00:00Z"), ZoneOffset.UTC), commands);
+            new NoOpFileSyncService(), Clock.fixed(Instant.parse("2026-08-11T02:00:00Z"), ZoneOffset.UTC), recordingCommandRunner);
         return new BackupMigrationConfiguration().backupBeforeFlyway(backupService);
-    }
-
-    private Flyway flywayWithPendingMigration(List<String> events) {
-        Flyway flyway = flywayWithPendingCount(1);
-        when(flyway.migrate()).thenAnswer(invocation -> {
-            events.add("flyway");
-            return null;
-        });
-        return flyway;
-    }
-
-    private Flyway flywayWithoutPendingMigration() {
-        return flywayWithPendingCount(0);
-    }
-
-    private Flyway flywayWithPendingCount(int count) {
-        Flyway flyway = mock(Flyway.class);
-        MigrationInfoService migrationInfo = mock(MigrationInfoService.class);
-        when(flyway.info()).thenReturn(migrationInfo);
-        when(migrationInfo.pending()).thenReturn(new MigrationInfo[count]);
-        return flyway;
     }
 
     private List<String> backupNames() {
         if (!Files.isDirectory(backupDirectory())) return List.of();
-        try (var paths = Files.list(backupDirectory())) {
+        try (Stream<Path> paths = Files.list(backupDirectory())) {
             return paths.map(path -> path.getFileName().toString()).toList();
         } catch (java.io.IOException exception) {
             throw new IllegalStateException("backup directory value '%s' is invalid; expected readable test directory".formatted(backupDirectory()), exception);
@@ -136,6 +117,42 @@ class BackupMigrationConfigurationTests {
             } catch (java.io.IOException exception) {
                 throw new IllegalStateException("archive value '%s' is invalid; expected writable fake output".formatted(output), exception);
             }
+        }
+    }
+
+    private static class FakeFlywayScenario {
+
+        private final Flyway flyway;
+
+        private FakeFlywayScenario(int pendingCount, List<String> events) {
+            flyway = mock(Flyway.class);
+            MigrationInfoService migrationInfo = mock(MigrationInfoService.class);
+            when(flyway.info()).thenReturn(migrationInfo);
+            when(migrationInfo.pending()).thenReturn(new MigrationInfo[pendingCount]);
+            when(flyway.migrate()).thenAnswer(invocation -> {
+                events.add("flyway");
+                return null;
+            });
+        }
+
+        private static FakeFlywayScenario withPendingMigration(List<String> events) {
+            return new FakeFlywayScenario(1, events);
+        }
+
+        private static FakeFlywayScenario withCurrentSchema() {
+            return new FakeFlywayScenario(0, new ArrayList<>());
+        }
+
+        private Flyway flyway() {
+            return flyway;
+        }
+
+        private void verifyMigrationSkipped() {
+            verify(flyway, never()).migrate();
+        }
+
+        private void verifyMigrationCompleted() {
+            verify(flyway).migrate();
         }
     }
 

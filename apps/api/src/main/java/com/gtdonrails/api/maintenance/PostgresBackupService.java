@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -85,7 +86,7 @@ public class PostgresBackupService implements DailyBackupCreator {
      * <p>Example: {@code backupService.createDailyBackupIfMissing()}.</p>
      */
     @Override
-    public void createDailyBackupIfMissing() {
+    public synchronized void createDailyBackupIfMissing() {
         try {
             if (!hasBackupForToday()) createBackup("daily");
         } catch (IOException exception) {
@@ -189,7 +190,7 @@ public class PostgresBackupService implements DailyBackupCreator {
         try (DirectoryStream<Path> files = Files.newDirectoryStream(backupDirectory, this::isDailyArchive)) {
             files.forEach(archives::add);
         }
-        archives.sort(Comparator.comparing(this::archiveDate).reversed());
+        archives.sort(Comparator.comparing(this::archiveDate).thenComparing(this::archiveFileName).reversed());
         int firstExpired = Math.min(RETENTION_DAYS, archives.size());
         for (Path archive : archives.subList(firstExpired, archives.size())) Files.deleteIfExists(archive);
     }
@@ -208,7 +209,17 @@ public class PostgresBackupService implements DailyBackupCreator {
     }
 
     private boolean isDailyArchive(Path path) {
-        return isArchive(path) && path.getFileName().toString().endsWith("-daily" + BACKUP_SUFFIX);
+        if (!isArchive(path) || !path.getFileName().toString().endsWith("-daily" + BACKUP_SUFFIX)) return false;
+        try {
+            archiveDate(path);
+            return true;
+        } catch (DateTimeParseException | IndexOutOfBoundsException exception) {
+            return false;
+        }
+    }
+
+    private String archiveFileName(Path archive) {
+        return archive.getFileName().toString();
     }
 
     private void deleteFailedArtifacts(Path temporaryArchive, Path publishedArchive) {
