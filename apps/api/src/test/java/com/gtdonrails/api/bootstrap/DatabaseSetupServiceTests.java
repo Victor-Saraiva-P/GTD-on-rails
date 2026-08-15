@@ -75,6 +75,35 @@ class DatabaseSetupServiceTests {
     }
 
     @Test
+    void provisionRecordsAwaitingLegacyImportWhenLegacySqliteExistsInProduction() throws Exception {
+        Files.createFile(tempDir.resolve("gtd-on-rails.db"));
+        DataSyncService fileSync = mock(DataSyncService.class);
+        Connection connection = provisioningConnection();
+        Statement statement = connection.createStatement();
+        DatabaseSetupService service = new DatabaseSetupService(tempDir.toString(), fileSync,
+            new FakeDatabaseConnectionFactory(connection), "PRODUCTION");
+
+        service.provision(request("aws-0-us-east-1.pooler.supabase.com"));
+
+        verify(statement).execute("INSERT INTO gtd.database_cutover (state) VALUES ('AWAITING_LEGACY_IMPORT') ON CONFLICT (id) DO NOTHING");
+        verify(statement).execute("GRANT SELECT, INSERT, UPDATE ON gtd.database_identity, gtd.database_cutover TO gtd_app");
+    }
+
+    @Test
+    void provisionRecordsReadyWhenSqliteDoesNotExistInProduction() throws Exception {
+        DataSyncService fileSync = mock(DataSyncService.class);
+        Connection connection = provisioningConnection();
+        Statement statement = connection.createStatement();
+        DatabaseSetupService service = new DatabaseSetupService(tempDir.toString(), fileSync,
+            new FakeDatabaseConnectionFactory(connection), "PRODUCTION");
+
+        service.provision(request("aws-0-us-east-1.pooler.supabase.com"));
+
+        verify(statement).execute("INSERT INTO gtd.database_cutover (state) VALUES ('READY') ON CONFLICT (id) DO NOTHING");
+        verify(statement).execute("GRANT SELECT, INSERT, UPDATE ON gtd.database_identity, gtd.database_cutover TO gtd_app");
+    }
+
+    @Test
     void repairRejectsAnAdministrativeConnectionForAnotherDatabaseBeforeChangingConfiguration() throws Exception {
         Path configuration = tempDir.resolve("database.properties");
         Files.writeString(configuration, runtimeConfiguration("old-secret"));

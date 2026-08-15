@@ -11,6 +11,7 @@
     "agent:driver": "pnpm --filter @gtd-on-rails/desktop run agent:driver",
     "staging": "node scripts/staging.mjs",
     "staging:reset": "node scripts/staging-reset.mjs",
+    "cutover": "node scripts/cutover.mjs",
     "test": "node scripts/test.mjs",
     "frontend:coverage": "pnpm --filter @gtd-on-rails/desktop run coverage",
     "e2e": "turbo run e2e",
