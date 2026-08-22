@@ -22,7 +22,9 @@ export function findApiJarPath(rootDir = repositoryRoot) {
       return path.join(libsDir, files[0]);
     }
   }
-  return path.join(libsDir, "api-1.4.1.jar");
+  const versionFile = path.join(rootDir, "VERSION");
+  const version = fs.existsSync(versionFile) ? fs.readFileSync(versionFile, "utf8").trim() : "1.5.0";
+  return path.join(libsDir, `api-${version}.jar`);
 }
 
 /**

@@ -1,6 +1,6 @@
 [package]
 name = "desktop"
-version = "1.4.1"
+version = "1.5.0"
 description = "Desktop shell for GTD on Rails"
 edition = "2021"
 

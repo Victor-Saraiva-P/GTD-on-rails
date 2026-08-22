@@ -212,5 +212,10 @@ public class FileSyncService {
     @PreDestroy
     void shutdown() {
         executorService.shutdownNow();
+        try {
+            executorService.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+        }
     }
 }
