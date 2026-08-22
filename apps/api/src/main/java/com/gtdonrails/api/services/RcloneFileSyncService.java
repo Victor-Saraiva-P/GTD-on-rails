@@ -85,9 +85,14 @@ public class RcloneFileSyncService {
     public void bootstrapBisync(Path dataRoot) {
         if (!isEnabled()) return;
 
+        ensureRemoteDirectory();
         List<String> arguments = baseBisyncArguments(dataRoot, false);
         arguments.add("--resync");
         runRclone(arguments);
+    }
+
+    private void ensureRemoteDirectory() {
+        runRclone(List.of("mkdir", remote()));
     }
 
     private List<String> baseBisyncArguments(Path dataRoot, boolean includeFinalFlags) {
