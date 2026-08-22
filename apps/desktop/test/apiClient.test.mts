@@ -16,6 +16,16 @@ test("ApiRequestError respects custom message", () => {
   assert.equal(error.message, "Custom error message");
 });
 
+test("ApiRequestError extracts ProblemDetail detail property", () => {
+  const error = new ApiRequestError(400, '{"title":"Invalid data","detail":"Invalid URL parameter"}');
+  assert.equal(error.message, "Invalid URL parameter");
+});
+
+test("ApiRequestError extracts JSON message property", () => {
+  const error = new ApiRequestError(500, '{"message":"Database connection refused"}');
+  assert.equal(error.message, "Database connection refused");
+});
+
 describe("apiFetch", () => {
   test("apiFetch succeeds when response is ok", async () => {
     const fetchTransport = mock.fn(async () => {

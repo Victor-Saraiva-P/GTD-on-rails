@@ -5,15 +5,17 @@ import java.util.function.IntConsumer;
 
 import com.gtdonrails.api.bootstrap.BootstrapConfiguration;
 import com.gtdonrails.api.services.FileSyncService;
+import com.gtdonrails.api.sidecar.SidecarReadyFilePublisher;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.SpringApplication;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Profile;
 
 /** Runs the pre-persistence startup checks without constructing the normal API. */
-@Configuration
+@Configuration(proxyBeanMethods = false)
 @Profile("bootstrap")
 @EnableAutoConfiguration(
     excludeName = {
@@ -22,7 +24,13 @@ import org.springframework.context.annotation.Profile;
         "org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration",
         "org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration"
     })
-@ComponentScan(basePackageClasses = BootstrapConfiguration.class)
+// WHY @Import instead of @ComponentScan for these two: they live in com.gtdonrails.api,
+// and scanning that package would pull in ApiApplication with a duplicate clock @Bean.
+@Import({GlobalExceptionHandler.class, ProblemDetailFactory.class})
+@ComponentScan(basePackageClasses = {
+    BootstrapConfiguration.class,
+    SidecarReadyFilePublisher.class
+})
 public class BootstrapApplication {
 
     /**

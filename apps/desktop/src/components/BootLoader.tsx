@@ -115,6 +115,22 @@ function requiredNativeUpdate(update: NativeUpdateStatus) {
   return update;
 }
 
+async function executeStartupSteps(
+  setPostgresTools: (status: PostgresToolsStatus) => void,
+  setUpdateStatus: (status: string) => void
+): Promise<boolean> {
+  const steps = startupSteps(isTauriRuntime(), import.meta.env.DEV);
+  for (const step of steps) {
+    try {
+      if (step === "sidecar" && (await checkPostgresTools(setPostgresTools))) return true;
+      if (await runStartupStep(step, setUpdateStatus)) return true;
+    } catch (stepError) {
+      console.error(`Startup step '${step}' failed:`, stepError);
+    }
+  }
+  return false;
+}
+
 function useBackendHealth() {
   const [isBooted, setIsBooted] = useState(false);
   const [dots, setDots] = useState("");
@@ -128,37 +144,31 @@ function useBackendHealth() {
     let timeout: number;
 
     const checkHealth = async () => {
-      try {
-        const steps = startupSteps(isTauriRuntime(), import.meta.env.DEV);
-        for (const step of steps) {
-          if (step === "sidecar" && (await checkPostgresTools(setPostgresTools))) return;
-          if (await runStartupStep(step, setUpdateStatus)) return;
-        }
-      } catch (e) {
-        console.error("Failed to check for updates:", e);
-      }
-
+      if (await executeStartupSteps(setPostgresTools, setUpdateStatus)) return;
       try {
         await waitForBackendBaseUrl();
       } catch (error) {
         setBootError((error as Error).message);
         return;
       }
-      const backendState = await pingBackend();
+      applyBackendState(await pingBackend());
+    };
+
+    function applyBackendState(backendState: "ready" | "update-required" | BootstrapUiState) {
       if (backendState === "ready") {
         setSetupRequired(false);
         setBootstrapState(null);
         setIsBooted(true);
       } else if (backendState === "update-required") {
         setUpdateStatus("Application update required: this installation is incompatible with the shared database schema. Please update the application.");
-      } else if (backendState === "setup" || backendState === "repair") {
-        setSetupRequired(true);
-        setBootstrapState(backendState);
-        timeout = window.setTimeout(() => void checkHealth(), PING_INTERVAL_MS);
       } else {
+        if (backendState === "setup" || backendState === "repair") {
+          setSetupRequired(true);
+          setBootstrapState(backendState);
+        }
         timeout = window.setTimeout(() => void checkHealth(), PING_INTERVAL_MS);
       }
-    };
+    }
 
     void checkHealth();
 

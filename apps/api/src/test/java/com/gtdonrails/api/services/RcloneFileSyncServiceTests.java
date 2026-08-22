@@ -33,6 +33,7 @@ class RcloneFileSyncServiceTests {
 
         service.bootstrapBisync(Path.of("/home/victor/Documents/gtd-on-rails"));
 
+        assertEquals(List.of("rclone", "mkdir", "gdrive:gtd-on-rails"), service.commands().get(0));
         assertStartsWithRemoteThenLocal(service.command());
         assertContainsCommonScriptFlags(service.command());
         assertTrue(service.command().contains("--resync"));
@@ -109,6 +110,7 @@ class RcloneFileSyncServiceTests {
 
     private static class RecordingRcloneFileSyncService extends RcloneFileSyncService {
 
+        private final List<List<String>> commands = new ArrayList<>();
         private List<String> command = List.of();
 
         private RecordingRcloneFileSyncService(FileSyncProperties fileSyncProperties) {
@@ -117,7 +119,12 @@ class RcloneFileSyncServiceTests {
 
         @Override
         protected void executeRcloneCommand(List<String> command) {
+            this.commands.add(new ArrayList<>(command));
             this.command = new ArrayList<>(command);
+        }
+
+        private List<List<String>> commands() {
+            return commands;
         }
 
         private List<String> command() {

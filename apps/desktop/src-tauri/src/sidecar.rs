@@ -70,6 +70,10 @@ impl SidecarBackendState {
         self.error.lock().unwrap().replace(error);
     }
 
+    fn clear_error(&self) {
+        self.error.lock().unwrap().take();
+    }
+
     fn set_child(&self, child: CommandChild) {
         self.child.lock().unwrap().replace(child);
     }
@@ -103,9 +107,15 @@ pub fn start_sidecar(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> 
 
     let ready_file = bootstrap_file_path();
     remove_stale_ready_file(&ready_file);
-    let (rx, child) = spawn_backend(app, &ready_file, true)?;
+    let (rx, child) = match spawn_backend(app, &ready_file, true) {
+        Ok(result) => result,
+        Err(error) => {
+            record_sidecar_error(app, error.to_string());
+            return Err(error);
+        }
+    };
     app.state::<SidecarBackendState>().set_child(child);
-    drop(rx);
+    monitor_sidecar_events(app.clone(), rx, true);
     wait_for_bootstrap(
         app.clone(),
         ready_file.with_extension("status.json"),
@@ -192,17 +202,11 @@ fn sidecar_profiles() -> String {
 }
 
 fn ready_file_path() -> PathBuf {
-    std::env::temp_dir().join(format!(
-        "gtd-on-rails-sidecar-{}-ready.json",
-        std::process::id()
-    ))
+    std::env::temp_dir().join(format!("gtd-on-rails-sidecar-{}-ready.json", std::process::id()))
 }
 
 fn bootstrap_file_path() -> PathBuf {
-    std::env::temp_dir().join(format!(
-        "gtd-on-rails-sidecar-{}-bootstrap.json",
-        std::process::id()
-    ))
+    std::env::temp_dir().join(format!("gtd-on-rails-sidecar-{}-bootstrap.json", std::process::id()))
 }
 
 fn remove_stale_ready_file(ready_file: &Path) {
@@ -214,17 +218,38 @@ fn remove_stale_ready_file(ready_file: &Path) {
 fn monitor_sidecar_events(
     app_handle: AppHandle,
     mut rx: tauri::async_runtime::Receiver<CommandEvent>,
+    is_bootstrap: bool,
 ) {
     tauri::async_runtime::spawn(async move {
         while let Some(event) = rx.recv().await {
-            if let CommandEvent::Terminated(payload) = event {
+            handle_sidecar_event(&app_handle, event, is_bootstrap);
+        }
+    });
+}
+
+fn handle_sidecar_event(app_handle: &AppHandle, event: CommandEvent, is_bootstrap: bool) {
+    match event {
+        CommandEvent::Stdout(line) => print!("{}", String::from_utf8_lossy(&line)),
+        CommandEvent::Stderr(line) => eprint!("{}", String::from_utf8_lossy(&line)),
+        CommandEvent::Terminated(payload) => {
+            if should_record_termination(is_bootstrap, payload.code) {
                 record_sidecar_error(
-                    &app_handle,
+                    app_handle,
                     backend_exit_message(payload.code, &sidecar_profiles()),
                 );
             }
         }
-    });
+        _ => {}
+    }
+}
+
+fn should_record_termination(is_bootstrap: bool, code: Option<i32>) -> bool {
+    // WHY: The bootstrap process cleanly exits with code 0 once configuration is ready or
+    // setup finishes, immediately before the runtime application backend is spawned.
+    if is_bootstrap && code == Some(0) {
+        return false;
+    }
+    true
 }
 
 fn backend_exit_message(code: Option<i32>, profiles: &str) -> String {
@@ -304,7 +329,7 @@ fn continue_after_bootstrap(
         Err(error) => return record_sidecar_error(app_handle, error.to_string()),
     };
     app_handle.state::<SidecarBackendState>().set_child(child);
-    monitor_sidecar_events(app_handle.clone(), rx);
+    monitor_sidecar_events(app_handle.clone(), rx, false);
     wait_for_ready_file(app_handle.clone(), ready_file);
 }
 
@@ -387,9 +412,9 @@ fn validate_ready_payload(payload: ReadyPayload) -> Result<String, String> {
 }
 
 fn record_sidecar_base_url(app_handle: &AppHandle, base_url: String) {
-    app_handle
-        .state::<SidecarBackendState>()
-        .set_base_url(base_url.clone());
+    let state = app_handle.state::<SidecarBackendState>();
+    state.set_base_url(base_url.clone());
+    state.clear_error();
     let _ = app_handle.emit("backend-ready", base_url);
 }
 
@@ -404,7 +429,7 @@ fn record_sidecar_error(app_handle: &AppHandle, error: String) {
 mod tests {
     use super::{
         backend_exit_message, bootstrap_transition, exposes_bootstrap_configuration,
-        sidecar_profiles_for, BootstrapStatus,
+        should_record_termination, sidecar_profiles_for, BootstrapStatus, SidecarBackendState,
     };
 
     #[test]
@@ -446,5 +471,28 @@ mod tests {
     fn production_backend_failure_keeps_generic_error() {
         let message = backend_exit_message(Some(1), "prod,sidecar");
         assert!(!message.contains("Supabase"));
+    }
+
+    #[test]
+    fn bootstrap_clean_exit_is_not_recorded_as_error() {
+        assert!(!should_record_termination(true, Some(0)));
+        assert!(should_record_termination(true, Some(1)));
+        assert!(should_record_termination(true, None));
+    }
+
+    #[test]
+    fn runtime_backend_exit_is_always_recorded_as_error() {
+        assert!(should_record_termination(false, Some(0)));
+        assert!(should_record_termination(false, Some(1)));
+        assert!(should_record_termination(false, None));
+    }
+
+    #[test]
+    fn clear_error_removes_stale_error_from_state() {
+        let state = SidecarBackendState::new(true);
+        state.set_error("previous error".to_string());
+        assert_eq!(state.status().error.as_deref(), Some("previous error"));
+        state.clear_error();
+        assert_eq!(state.status().error, None);
     }
 }

@@ -104,6 +104,18 @@ class DatabaseSetupServiceTests {
     }
 
     @Test
+    void provisionFailsWithUnderlyingCauseMessageWhenConnectionFails() {
+        FakeDatabaseConnectionFactory factory = new FakeDatabaseConnectionFactory();
+        factory.failure = new SQLException("password authentication failed for user postgres");
+        DatabaseSetupService service = service(factory);
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+            () -> service.provision(request("aws-0-us-east-1.pooler.supabase.com")));
+
+        assertTrue(exception.getMessage().contains("password authentication failed for user postgres"));
+    }
+
+    @Test
     void repairRejectsAnAdministrativeConnectionForAnotherDatabaseBeforeChangingConfiguration() throws Exception {
         Path configuration = tempDir.resolve("database.properties");
         Files.writeString(configuration, runtimeConfiguration("old-secret"));

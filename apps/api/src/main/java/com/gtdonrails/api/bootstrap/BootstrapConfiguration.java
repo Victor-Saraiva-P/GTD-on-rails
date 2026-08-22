@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.BufferedReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 
@@ -11,6 +12,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gtdonrails.api.config.FileSyncProperties;
 import com.gtdonrails.api.services.FileSyncService;
 import com.gtdonrails.api.services.RcloneFileSyncService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -22,6 +26,8 @@ import org.springframework.context.annotation.Profile;
 @EnableConfigurationProperties(FileSyncProperties.class)
 public class BootstrapConfiguration {
 
+    private static final Logger logger = LoggerFactory.getLogger(BootstrapConfiguration.class);
+
     private final ObjectMapper objectMapper;
     private final Path dataRoot;
     private final Path statusFile;
@@ -29,16 +35,34 @@ public class BootstrapConfiguration {
     private String configurationStatus = "FAILED";
     private final CountDownLatch setupCompletion = new CountDownLatch(1);
 
+    @Autowired
     public BootstrapConfiguration(
-        ObjectMapper objectMapper,
         @Value("${gtd.data.root-directory}") String dataRoot,
         @Value("${gtd.bootstrap.status-file}") String statusFile,
         @Value("${gtd.staging.reset:false}") boolean stagingReset
     ) {
-        this.objectMapper = objectMapper;
+        this(new ObjectMapper(), dataRoot, statusFile, stagingReset);
+    }
+
+    BootstrapConfiguration(
+        ObjectMapper objectMapper,
+        String dataRoot,
+        String statusFile,
+        boolean stagingReset
+    ) {
+        this.objectMapper = objectMapper != null ? objectMapper : new ObjectMapper();
         this.dataRoot = Path.of(dataRoot).toAbsolutePath().normalize();
         this.statusFile = Path.of(statusFile).toAbsolutePath().normalize();
         this.stagingReset = stagingReset;
+    }
+
+    /** Returns the system default clock for bootstrap timestamps.
+     *
+     * <p>Example: {@code configuration.clock()}.</p>
+     */
+    @Bean
+    public Clock clock() {
+        return Clock.systemDefaultZone();
     }
 
     @Bean
@@ -66,6 +90,10 @@ public class BootstrapConfiguration {
             writeStatus(configurationStatus);
             return "READY".equals(configurationStatus) ? 0 : 2;
         } catch (RuntimeException | IOException exception) {
+            logger.atError()
+                .addKeyValue("event", "bootstrap_configuration_failed")
+                .setCause(exception)
+                .log("Bootstrap configuration failed");
             writeStatus("FAILED");
             return 1;
         }
@@ -122,8 +150,14 @@ public class BootstrapConfiguration {
 
     private boolean validDatabaseConfiguration(Properties properties) {
         return validDatabaseUrl(properties.getProperty("spring.datasource.url"))
-            && "gtd_app".equals(properties.getProperty("spring.datasource.username"))
+            && isApplicationUser(properties.getProperty("spring.datasource.username"))
             && hasText(properties.getProperty("spring.datasource.password"));
+    }
+
+    /** Accepts "gtd_app" or "gtd_app.PROJECT_REF" (Supavisor tenant routing). */
+    private boolean isApplicationUser(String username) {
+        if (username == null) return false;
+        return username.equals("gtd_app") || username.startsWith("gtd_app.");
     }
 
     private boolean validDatabaseUrl(String value) {
