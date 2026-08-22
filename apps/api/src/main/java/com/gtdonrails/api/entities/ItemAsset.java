@@ -20,7 +20,7 @@ public class ItemAsset extends AuditableEntity {
 
     @Id
     @Column(nullable = false, updatable = false)
-    private final UUID id = UUID.randomUUID();
+    private UUID id = UUID.randomUUID();
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "item_id", nullable = false)

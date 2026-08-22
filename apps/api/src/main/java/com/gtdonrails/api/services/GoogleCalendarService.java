@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.util.StringUtils;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import com.google.api.client.http.HttpRequestInitializer;
@@ -61,6 +62,15 @@ public class GoogleCalendarService {
     @Transactional
     public void exchangeCodeForTokens(String code, String redirectUri) {
         credentialsStore.loadConfiguredCredentials();
+        HttpEntity<MultiValueMap<String, String>> request = buildAuthCodeRequest(code, redirectUri);
+        ResponseEntity<Map<String, Object>> response = tokenRequest(request);
+        Map<String, Object> data = response.getBody();
+        if (data != null && data.containsKey("access_token")) {
+            saveExchangedCredential(data);
+        }
+    }
+
+    private HttpEntity<MultiValueMap<String, String>> buildAuthCodeRequest(String code, String redirectUri) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
@@ -71,24 +81,20 @@ public class GoogleCalendarService {
         body.add("grant_type", "authorization_code");
         body.add("redirect_uri", redirectUri);
 
-        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
+        return new HttpEntity<>(body, headers);
+    }
 
-        ResponseEntity<Map<String, Object>> response = tokenRequest(request);
-
-        Map<String, Object> data = response.getBody();
-        if (data != null && data.containsKey("access_token")) {
-            GoogleCredential cred = credentialRepository.findAll().stream().findFirst().orElse(new GoogleCredential());
-            cred.setAccessToken((String) data.get("access_token"));
-            if (data.containsKey("refresh_token")) {
-                cred.setRefreshToken((String) data.get("refresh_token"));
-            }
-            cred.setTokenType((String) data.get("token_type"));
-            int expiresIn = ((Number) data.get("expires_in")).intValue();
-            cred.setExpiresAt(Instant.now().plusSeconds(expiresIn));
-            cred.setScope((String) data.get("scope"));
-            
-            credentialRepository.save(cred);
+    private void saveExchangedCredential(Map<String, Object> data) {
+        GoogleCredential cred = credentialRepository.findAll().stream().findFirst().orElse(new GoogleCredential());
+        cred.setAccessToken((String) data.get("access_token"));
+        if (data.containsKey("refresh_token")) {
+            cred.setRefreshToken((String) data.get("refresh_token"));
         }
+        cred.setTokenType((String) data.get("token_type"));
+        int expiresIn = ((Number) data.get("expires_in")).intValue();
+        cred.setExpiresAt(Instant.now().plusSeconds(expiresIn));
+        cred.setScope((String) data.get("scope"));
+        credentialRepository.save(cred);
     }
 
     @Transactional
@@ -114,6 +120,21 @@ public class GoogleCalendarService {
     private GoogleCredential refreshAccessToken(GoogleCredential cred) {
         credentialsStore.loadConfiguredCredentials();
         requireRefreshToken(cred);
+        HttpEntity<MultiValueMap<String, String>> request = buildRefreshTokenRequest(cred);
+
+        try {
+            return executeRefreshTokenRequest(cred, request);
+        } catch (HttpClientErrorException e) {
+            log.warn("Google Calendar refresh token is invalid or revoked ({}); clearing stored credentials", e.getMessage());
+            credentialRepository.deleteAll();
+            return null;
+        } catch (Exception e) {
+            log.warn("Failed to refresh Google Calendar token: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    private HttpEntity<MultiValueMap<String, String>> buildRefreshTokenRequest(GoogleCredential cred) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
@@ -123,21 +144,20 @@ public class GoogleCalendarService {
         body.add("refresh_token", cred.getRefreshToken());
         body.add("grant_type", "refresh_token");
 
-        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
+        return new HttpEntity<>(body, headers);
+    }
 
-        try {
-            ResponseEntity<Map<String, Object>> response = tokenRequest(request);
-            Map<String, Object> data = response.getBody();
-            if (data != null && data.containsKey("access_token")) {
-                cred.setAccessToken((String) data.get("access_token"));
-                int expiresIn = ((Number) data.get("expires_in")).intValue();
-                cred.setExpiresAt(Instant.now().plusSeconds(expiresIn));
-                return credentialRepository.save(cred);
-            }
-        } catch (Exception e) {
-            log.error("Failed to refresh token", e);
+    private GoogleCredential executeRefreshTokenRequest(GoogleCredential cred, HttpEntity<MultiValueMap<String, String>> request) {
+        ResponseEntity<Map<String, Object>> response = tokenRequest(request);
+        Map<String, Object> data = response.getBody();
+        if (data == null || !data.containsKey("access_token")) {
+            return null;
         }
-        return cred;
+
+        cred.setAccessToken((String) data.get("access_token"));
+        int expiresIn = ((Number) data.get("expires_in")).intValue();
+        cred.setExpiresAt(Instant.now().plusSeconds(expiresIn));
+        return credentialRepository.save(cred);
     }
 
     private ResponseEntity<Map<String, Object>> tokenRequest(HttpEntity<MultiValueMap<String, String>> request) {
