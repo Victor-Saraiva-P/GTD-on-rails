@@ -52,7 +52,21 @@ public record PostgresConnection(String jdbcUrl, String username, String passwor
     }
 
     public String postgresUrl() {
-        return jdbcUrl.substring(JDBC_PREFIX.length());
+        String raw = jdbcUrl.substring(JDBC_PREFIX.length());
+        int queryIndex = raw.indexOf('?');
+        if (queryIndex < 0) return raw;
+
+        String baseUrl = raw.substring(0, queryIndex);
+        String queryString = raw.substring(queryIndex + 1);
+        String filteredQuery = filterLibpqQuery(queryString);
+        return filteredQuery.isEmpty() ? baseUrl : baseUrl + "?" + filteredQuery;
+    }
+
+    private static String filterLibpqQuery(String query) {
+        // WHY: libpq rejects unrecognized query parameters such as JDBC's currentSchema.
+        return java.util.Arrays.stream(query.split("&"))
+            .filter(param -> !param.isBlank() && !param.startsWith("currentSchema="))
+            .collect(java.util.stream.Collectors.joining("&"));
     }
 
     public String passfileEntry() {

@@ -142,6 +142,36 @@ class PostgresBackupServiceTests {
         assertFalse(names.contains("gtd-backup-2026-07-13T02-00-00Z-daily.dump"));
     }
 
+    @Test
+    void postgresConnectionStripsCurrentSchemaForLibpqCompatibility() {
+        PostgresConnection connection = new PostgresConnection(
+            "jdbc:postgresql://aws-1-sa-east-1.pooler.supabase.com:5432/postgres?sslmode=verify-full&currentSchema=gtd",
+            "gtd_app",
+            "secret");
+
+        assertEquals("postgresql://aws-1-sa-east-1.pooler.supabase.com:5432/postgres?sslmode=verify-full", connection.postgresUrl());
+    }
+
+    @Test
+    void postgresConnectionWithoutOtherQueryParametersStripsTrailingQuestionMark() {
+        PostgresConnection connection = new PostgresConnection(
+            "jdbc:postgresql://127.0.0.1:5432/gtd_on_rails?currentSchema=gtd",
+            "gtd_app",
+            "secret");
+
+        assertEquals("postgresql://127.0.0.1:5432/gtd_on_rails", connection.postgresUrl());
+    }
+
+    @Test
+    void postgresConnectionWithoutQueryParametersPreservesCleanUrl() {
+        PostgresConnection connection = new PostgresConnection(
+            "jdbc:postgresql://127.0.0.1:5432/gtd_on_rails",
+            "gtd_app",
+            "secret");
+
+        assertEquals("postgresql://127.0.0.1:5432/gtd_on_rails", connection.postgresUrl());
+    }
+
     private void writeNamedArchive(String name) throws Exception {
         Files.writeString(backupDirectory().resolve(name), "archive");
     }

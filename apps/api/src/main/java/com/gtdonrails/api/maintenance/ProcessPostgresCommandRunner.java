@@ -19,9 +19,12 @@ public class ProcessPostgresCommandRunner implements PostgresCommandRunner {
             ProcessBuilder builder = new ProcessBuilder(command).redirectErrorStream(true);
             builder.environment().putAll(environment);
             Process process = builder.start();
-            process.getInputStream().readAllBytes();
+            byte[] outputBytes = process.getInputStream().readAllBytes();
             int exitCode = process.waitFor();
-            if (exitCode != 0) throw failedCommand(executable, exitCode);
+            if (exitCode != 0) {
+                String output = new String(outputBytes, java.nio.charset.StandardCharsets.UTF_8).trim();
+                throw failedCommand(executable, exitCode, output);
+            }
         } catch (IOException exception) {
             throw new IllegalStateException("PostgreSQL command value '%s' is invalid; expected installed client executable: %s".formatted(executable, exception.getMessage()), exception);
         } catch (InterruptedException exception) {
@@ -30,7 +33,8 @@ public class ProcessPostgresCommandRunner implements PostgresCommandRunner {
         }
     }
 
-    private IllegalStateException failedCommand(String executable, int exitCode) {
-        return new IllegalStateException("PostgreSQL command value '%s' failed with exit code %d; expected success".formatted(executable, exitCode));
+    private IllegalStateException failedCommand(String executable, int exitCode, String output) {
+        String detail = output.isBlank() ? "" : ": " + output;
+        return new IllegalStateException("PostgreSQL command value '%s' failed with exit code %d%s; expected success".formatted(executable, exitCode, detail));
     }
 }
