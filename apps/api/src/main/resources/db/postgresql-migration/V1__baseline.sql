@@ -1,5 +1,5 @@
-create schema if not exists gtd;
-set search_path to gtd;
+-- Schema creation and search_path are handled by bootstrap provisioning and
+-- spring.flyway.schemas=gtd / currentSchema=gtd in the JDBC URL.
 
 create table if not exists database_identity (
     id boolean primary key default true check (id),

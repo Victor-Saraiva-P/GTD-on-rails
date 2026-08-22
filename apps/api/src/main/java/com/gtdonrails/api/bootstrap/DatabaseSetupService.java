@@ -53,11 +53,11 @@ public class DatabaseSetupService {
             try (Connection connection = connectionFactory.open(
                 request.administrativeUrl(), request.administrativeUsername(), request.administrativePassword())) {
                 provisionDatabase(connection, password);
-                saveConfiguration(request.administrativeUrl(), password);
+                saveConfiguration(request.administrativeUrl(), request.administrativeUsername(), password);
                 fileSync.syncNow();
             }
         } catch (SQLException | IOException exception) {
-            throw new IllegalStateException("database setup failed for administrative URL '" + redactedUrl(request.administrativeUrl()) + "'", exception);
+            throw new IllegalStateException("database setup failed for administrative URL '" + redactedUrl(request.administrativeUrl()) + "'; expected successful database provisioning (" + exception.getMessage() + ")", exception);
         } finally {
             clearAdministrativePassword(request);
         }
@@ -93,8 +93,8 @@ public class DatabaseSetupService {
     private void executeRepair(DatabaseSetupRequest request, String password, RepairData repairData) throws SQLException, IOException {
         try (Connection connection = openAdministrativeConnection(request)) {
             validateRepairTarget(connection, request.administrativeUrl());
-            rotateAndVerifyRole(connection, request.administrativeUrl(), password, repairData.previousPassword());
-            replaceAndSyncConfiguration(repairData.original(), request.administrativeUrl(), password, connection, repairData.previousPassword());
+            rotateAndVerifyRole(connection, request.administrativeUrl(), request.administrativeUsername(), password, repairData.previousPassword());
+            replaceAndSyncConfiguration(repairData.original(), request.administrativeUrl(), request.administrativeUsername(), password, connection, repairData.previousPassword());
         }
     }
 
@@ -170,19 +170,19 @@ public class DatabaseSetupService {
         }
     }
 
-    private void rotateAndVerifyRole(Connection connection, String url, String password, String previousPassword) throws SQLException {
+    private void rotateAndVerifyRole(Connection connection, String url, String administrativeUsername, String password, String previousPassword) throws SQLException {
         rotateApplicationRole(connection, password);
         try {
-            verifyLimitedConnection(url, password);
+            verifyLimitedConnection(url, administrativeUsername, password);
         } catch (SQLException | RuntimeException exception) {
             rotateApplicationRole(connection, previousPassword);
             throw exception;
         }
     }
 
-    private void replaceAndSyncConfiguration(byte[] original, String url, String password, Connection connection, String previousPassword) throws IOException, SQLException {
+    private void replaceAndSyncConfiguration(byte[] original, String url, String administrativeUsername, String password, Connection connection, String previousPassword) throws IOException, SQLException {
         try {
-            saveConfiguration(url, password);
+            saveConfiguration(url, administrativeUsername, password);
             fileSync.syncNow();
         } catch (IOException | RuntimeException exception) {
             restoreConfiguration(original);
@@ -191,8 +191,9 @@ public class DatabaseSetupService {
         }
     }
 
-    private void verifyLimitedConnection(String url, String password) throws SQLException {
-        try (Connection connection = connectionFactory.open(url, APPLICATION_USER, password.toCharArray()); Statement statement = connection.createStatement(); var result = statement.executeQuery("SELECT environment FROM gtd.database_identity WHERE id = true")) {
+    private void verifyLimitedConnection(String url, String administrativeUsername, String password) throws SQLException {
+        String runtimeUser = supavisorUsername(administrativeUsername);
+        try (Connection connection = connectionFactory.open(url, runtimeUser, password.toCharArray()); Statement statement = connection.createStatement(); var result = statement.executeQuery("SELECT environment FROM gtd.database_identity WHERE id = true")) {
             if (!result.next() || !environment.equals(result.getString(1))) throw new DatabaseRepairException("database identity value is invalid; expected '" + environment + "'");
         }
     }
@@ -226,13 +227,31 @@ public class DatabaseSetupService {
     private void provisionDatabase(Connection connection, String password) throws SQLException {
         try (Statement statement = connection.createStatement()) {
             statement.execute("CREATE SCHEMA IF NOT EXISTS gtd");
-            statement.execute("CREATE ROLE " + APPLICATION_USER + " LOGIN PASSWORD '" + password + "'");
+            provisionApplicationRole(statement, password);
+            // WHY: Supabase's CREATEROLE doesn't auto-grant membership in the created role,
+            // so the admin user can't SET ROLE gtd_app (needed by ALTER SCHEMA ... OWNER TO).
+            grantApplicationRoleToCurrentUser(statement);
             statement.execute("ALTER SCHEMA gtd OWNER TO " + APPLICATION_USER);
             statement.execute("GRANT USAGE, CREATE ON SCHEMA gtd TO " + APPLICATION_USER);
             statement.execute("REVOKE ALL ON SCHEMA public FROM " + APPLICATION_USER);
-            statement.execute("ALTER ROLE " + APPLICATION_USER + " NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS");
             provisionEnvironmentIdentity(statement);
         }
+    }
+
+    private void grantApplicationRoleToCurrentUser(Statement statement) throws SQLException {
+        statement.execute("GRANT " + APPLICATION_USER + " TO CURRENT_USER");
+    }
+
+    private void provisionApplicationRole(Statement statement, String password) throws SQLException {
+        statement.execute("DO $$\n"
+            + "BEGIN\n"
+            + "    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '" + APPLICATION_USER + "') THEN\n"
+            + "        CREATE ROLE " + APPLICATION_USER + " LOGIN PASSWORD " + sqlLiteral(password) + " NOCREATEDB NOCREATEROLE NOREPLICATION;\n"
+            + "    ELSE\n"
+            + "        ALTER ROLE " + APPLICATION_USER + " WITH LOGIN PASSWORD " + sqlLiteral(password) + " NOCREATEDB NOCREATEROLE NOREPLICATION;\n"
+            + "    END IF;\n"
+            + "END\n"
+            + "$$;");
     }
 
     private void provisionEnvironmentIdentity(Statement statement) throws SQLException {
@@ -262,11 +281,13 @@ public class DatabaseSetupService {
         return "PRODUCTION".equals(value) || "STAGING".equals(value);
     }
 
-    private void saveConfiguration(String url, String password) throws IOException {
+    private void saveConfiguration(String url, String administrativeUsername, String password) throws IOException {
         Files.createDirectories(configurationPath.getParent());
         Properties properties = new Properties();
         properties.setProperty("spring.datasource.url", DatabaseConnectionUrl.runtimeUrl(url));
-        properties.setProperty("spring.datasource.username", APPLICATION_USER);
+        // WHY: Supavisor requires the project ref suffix on every username for tenant routing.
+        // The admin username is "postgres.PROJECT_REF"; we reuse the same suffix for gtd_app.
+        properties.setProperty("spring.datasource.username", supavisorUsername(administrativeUsername));
         properties.setProperty("spring.datasource.password", password);
         properties.setProperty("spring.flyway.placeholders.databaseIdentity", environment);
         Path temporary = Files.createTempFile(configurationPath.getParent(), "database", ".properties");
@@ -276,6 +297,16 @@ public class DatabaseSetupService {
         } finally {
             Files.deleteIfExists(temporary);
         }
+    }
+
+    /** Builds a Supavisor-routable username from the administrative username's project ref.
+     *
+     * <p>Example: {@code supavisorUsername("postgres.abc123")} returns {@code "gtd_app.abc123"}.</p>
+     */
+    private String supavisorUsername(String administrativeUsername) {
+        int dot = administrativeUsername.indexOf('.');
+        if (dot < 0) return APPLICATION_USER;
+        return APPLICATION_USER + administrativeUsername.substring(dot);
     }
 
     private void writeLimitedConfiguration(Path temporary, Properties properties) throws IOException {

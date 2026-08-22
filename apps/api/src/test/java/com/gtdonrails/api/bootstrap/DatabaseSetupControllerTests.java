@@ -19,6 +19,19 @@ class DatabaseSetupControllerTests {
     private Path tempDir;
 
     @Test
+    void setupProvisionsDatabaseAndMarksReady() {
+        DatabaseSetupService service = mock(DatabaseSetupService.class);
+        BootstrapConfiguration configuration = configuration();
+        DatabaseSetupController controller = new DatabaseSetupController(service, configuration);
+
+        ResponseEntity<DatabaseSetupResponse> response = controller.setup(request());
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals("READY", response.getBody().status());
+        assertEquals("READY", configuration.configurationStatus());
+    }
+
+    @Test
     void repairFailureKeepsTheBootstrapEndpointAvailableForRetry() {
         DatabaseSetupService service = mock(DatabaseSetupService.class);
         doThrow(new DatabaseRepairException("temporary failure"))
