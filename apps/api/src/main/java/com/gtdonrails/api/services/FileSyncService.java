@@ -27,6 +27,7 @@ public class FileSyncService {
     private final RcloneFileSyncService rcloneFileSyncService;
     private final Path dataRoot;
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
+    private final Object syncLock = new Object();
     private final AtomicBoolean running = new AtomicBoolean(false);
     private final AtomicBoolean pending = new AtomicBoolean(false);
 
@@ -166,9 +167,11 @@ public class FileSyncService {
     }
 
     private void performSyncAttempt(boolean bootstrap) {
-        runRcloneSync(bootstrap);
-        if (bootstrap) publishMissingSyncCheckAfterBootstrap();
-        markSyncSucceeded();
+        synchronized (syncLock) {
+            runRcloneSync(bootstrap);
+            if (bootstrap) publishMissingSyncCheckAfterBootstrap();
+            markSyncSucceeded();
+        }
     }
 
     private void runRcloneSync(boolean bootstrap) {

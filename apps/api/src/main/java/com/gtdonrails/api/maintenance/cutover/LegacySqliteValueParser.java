@@ -63,6 +63,9 @@ public final class LegacySqliteValueParser {
     }
 
     private static Instant parseInstantString(String string, String column) {
+        if (string.matches("^\\d+$")) {
+            return Instant.ofEpochMilli(Long.parseLong(string));
+        }
         try {
             return Instant.parse(string);
         } catch (DateTimeParseException parseException) {
@@ -87,11 +90,22 @@ public final class LegacySqliteValueParser {
     public static LocalDate readLocalDate(ResultSet rs, String column) throws SQLException {
         String string = rs.getString(column);
         if (string == null || string.isBlank()) return null;
+        if (string.matches("^\\d+$")) {
+            return Instant.ofEpochMilli(Long.parseLong(string)).atZone(java.time.ZoneOffset.UTC).toLocalDate();
+        }
         try {
             return LocalDate.parse(string);
         } catch (DateTimeParseException exception) {
+            return parseFallbackLocalDate(string, column, exception);
+        }
+    }
+
+    private static LocalDate parseFallbackLocalDate(String string, String column, DateTimeParseException original) {
+        try {
+            return Instant.parse(string).atZone(java.time.ZoneOffset.UTC).toLocalDate();
+        } catch (DateTimeParseException ignored) {
             throw new IllegalArgumentException(
-                "SQLite column '%s' date string '%s' is invalid; expected ISO-8601 LocalDate".formatted(column, string), exception);
+                "SQLite column '%s' date string '%s' is invalid; expected ISO-8601 LocalDate".formatted(column, string), original);
         }
     }
 
@@ -103,11 +117,22 @@ public final class LegacySqliteValueParser {
     public static LocalTime readLocalTime(ResultSet rs, String column) throws SQLException {
         String string = rs.getString(column);
         if (string == null || string.isBlank()) return null;
+        if (string.matches("^\\d+$")) {
+            return Instant.ofEpochMilli(Long.parseLong(string)).atZone(java.time.ZoneOffset.UTC).toLocalTime();
+        }
         try {
             return LocalTime.parse(string);
         } catch (DateTimeParseException exception) {
+            return parseFallbackLocalTime(string, column, exception);
+        }
+    }
+
+    private static LocalTime parseFallbackLocalTime(String string, String column, DateTimeParseException original) {
+        try {
+            return Instant.parse(string).atZone(java.time.ZoneOffset.UTC).toLocalTime();
+        } catch (DateTimeParseException ignored) {
             throw new IllegalArgumentException(
-                "SQLite column '%s' time string '%s' is invalid; expected ISO-8601 LocalTime".formatted(column, string), exception);
+                "SQLite column '%s' time string '%s' is invalid; expected ISO-8601 LocalTime".formatted(column, string), original);
         }
     }
 

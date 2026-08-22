@@ -2,6 +2,7 @@ package com.gtdonrails.api.maintenance.cutover;
 
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
@@ -10,9 +11,11 @@ import org.springframework.stereotype.Component;
 public class LegacyCutoverRunner implements ApplicationRunner {
 
     private final LegacyDatabaseCutoverService cutoverService;
+    private final ConfigurableApplicationContext context;
 
-    public LegacyCutoverRunner(LegacyDatabaseCutoverService cutoverService) {
+    public LegacyCutoverRunner(LegacyDatabaseCutoverService cutoverService, ConfigurableApplicationContext context) {
         this.cutoverService = cutoverService;
+        this.context = context;
     }
 
     /**
@@ -23,5 +26,6 @@ public class LegacyCutoverRunner implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) {
         cutoverService.executeCutover();
+        context.close();
     }
 }
