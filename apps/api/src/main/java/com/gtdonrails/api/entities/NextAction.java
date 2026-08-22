@@ -68,7 +68,7 @@ public class NextAction extends AuditableEntity {
     private LocalDate deadline;
 
     @Embedded
-    private final ScheduleWindow schedule = ScheduleWindow.unscheduled();
+    private ScheduleWindow schedule = ScheduleWindow.unscheduled();
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
@@ -80,7 +80,7 @@ public class NextAction extends AuditableEntity {
         joinColumns = @JoinColumn(name = "next_action_id"),
         inverseJoinColumns = @JoinColumn(name = "context_id")
     )
-    private final Set<Context> contexts = new HashSet<>();
+    private Set<Context> contexts = new HashSet<>();
 
     public NextAction() {
     }

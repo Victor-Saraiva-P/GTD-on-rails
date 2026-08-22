@@ -49,7 +49,7 @@ public class Calendar extends AuditableEntity {
     private LocalTime scheduledTime;
 
     @Embedded
-    private final ScheduleWindow schedule = ScheduleWindow.unscheduled();
+    private ScheduleWindow schedule = ScheduleWindow.unscheduled();
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
