@@ -41,7 +41,7 @@ public class GoogleCalendarController {
         boolean repairFailed = !repairLegacyConfigurationIfNeeded();
         boolean credentialsConfigured = credentialsStore.loadConfiguredCredentials();
         GoogleIntegrationConfigurationHealth configurationHealth = configurationHealth(repairFailed);
-        GoogleCredential cred = googleCalendarService.getValidCredential();
+        GoogleCredential cred = safeGetCredential();
         boolean connected = cred != null;
         List<GoogleCalendar> calendars = calendarRepository.findAll();
 
@@ -57,6 +57,15 @@ public class GoogleCalendarController {
         )).collect(Collectors.toList()));
 
         return ResponseEntity.ok(status);
+    }
+
+    private GoogleCredential safeGetCredential() {
+        try {
+            return googleCalendarService.getValidCredential();
+        } catch (Exception exception) {
+            log.warn("Failed to retrieve valid Google credential: {}", exception.getMessage());
+            return null;
+        }
     }
 
     private boolean repairLegacyConfigurationIfNeeded() {
