@@ -1,13 +1,13 @@
 {
   "name": "@gtd-on-rails/desktop",
   "private": true,
-  "version": "1.5.1",
+  "version": "1.5.2",
   "scripts": {
     "agent:driver": "node scripts/agent-driver/server.mjs",
     "dev": "tauri dev",
     "dev:web": "vite --host 127.0.0.1 --port 1420 --strictPort",
     "build": "pnpm run build:web",
-    "build:sidecar": "pnpm --filter @gtd-on-rails/api run bootJar && mkdir -p src-tauri/binaries && cp ../api/build/libs/api-1.5.1.jar src-tauri/binaries/gtd-api.jar",
+    "build:sidecar": "pnpm --filter @gtd-on-rails/api run bootJar && mkdir -p src-tauri/binaries && cp ../api/build/libs/api-1.5.2.jar src-tauri/binaries/gtd-api.jar",
     "build:web": "tsc && vite build",
     "desktop:build:ci": "GTD_SIDECAR_PROFILES=ci,sidecar tauri build --no-bundle",
     "desktop:build:prod": "GTD_SIDECAR_PROFILES=prod,sidecar tauri build --no-bundle",

@@ -54,6 +54,27 @@ class LegacySqliteValueParserTests {
     }
 
     @Test
+    void parsesEpochMillisAndIsoStringsForDatesAndTimes() throws SQLException {
+        ResultSet rs = mock(ResultSet.class);
+        when(rs.getString("epoch_num")).thenReturn("1813028400000");
+        when(rs.getString("epoch_str")).thenReturn("1813028400000");
+        when(rs.getObject("epoch_str")).thenReturn("1813028400000");
+        when(rs.getString("iso_instant_date")).thenReturn("2026-08-15T12:00:00Z");
+        when(rs.getString("iso_instant_time")).thenReturn("2026-08-15T14:30:00Z");
+
+        LocalDate expectedDate = Instant.ofEpochMilli(1813028400000L).atZone(java.time.ZoneOffset.UTC).toLocalDate();
+        LocalTime expectedTime = Instant.ofEpochMilli(1813028400000L).atZone(java.time.ZoneOffset.UTC).toLocalTime();
+
+        assertEquals(expectedDate, LegacySqliteValueParser.readLocalDate(rs, "epoch_num"));
+        assertEquals(expectedDate, LegacySqliteValueParser.readLocalDate(rs, "epoch_str"));
+        assertEquals(LocalDate.of(2026, 8, 15), LegacySqliteValueParser.readLocalDate(rs, "iso_instant_date"));
+        assertEquals(expectedTime, LegacySqliteValueParser.readLocalTime(rs, "epoch_num"));
+        assertEquals(expectedTime, LegacySqliteValueParser.readLocalTime(rs, "epoch_str"));
+        assertEquals(LocalTime.of(14, 30, 0), LegacySqliteValueParser.readLocalTime(rs, "iso_instant_time"));
+        assertEquals(Instant.ofEpochMilli(1813028400000L), LegacySqliteValueParser.readInstant(rs, "epoch_str"));
+    }
+
+    @Test
     void returnsNullOnNullOrEmptyInput() throws SQLException {
         ResultSet rs = mock(ResultSet.class);
         when(rs.getObject("null_col")).thenReturn(null);
