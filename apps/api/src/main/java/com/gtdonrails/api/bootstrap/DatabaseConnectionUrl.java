@@ -30,8 +30,9 @@ final class DatabaseConnectionUrl {
 
     static String runtimeUrl(String administrativeUrl) {
         URI parsed = parse(administrativeUrl);
+        // WHY: tcpKeepAlive prevents cloud middleboxes from silently dropping idle sockets.
         return JDBC_PREFIX + parsed.getScheme() + "://" + parsed.getHost() + ":" + parsed.getPort()
-            + parsed.getPath() + "?sslmode=verify-full&currentSchema=gtd";
+            + parsed.getPath() + "?sslmode=verify-full&currentSchema=gtd&tcpKeepAlive=true";
     }
 
     static String redacted(String value) {

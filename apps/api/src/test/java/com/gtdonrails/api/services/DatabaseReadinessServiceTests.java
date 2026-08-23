@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 import com.gtdonrails.api.maintenance.DatabaseSchemaCompatibilityInspector;
 import com.gtdonrails.api.maintenance.SchemaCompatibilityStatus;
@@ -92,5 +94,22 @@ class DatabaseReadinessServiceTests {
 
         assertFalse(service.isReady());
         assertEquals(DatabaseReadinessState.UNAVAILABLE, service.readinessState());
+    }
+
+    @Test
+    void isReadyReturnsCachedResultWithoutRequeryingDatabase() {
+        when(compatibilityInspector.inspectCompatibility()).thenReturn(SchemaCompatibilityStatus.COMPATIBLE);
+        when(jdbcTemplate.queryForObject(DatabaseReadinessService.READINESS_QUERY, String.class))
+            .thenReturn("PRODUCTION|READY");
+
+        DatabaseReadinessService service = new DatabaseReadinessService(
+            jdbcTemplate, compatibilityInspector, "PRODUCTION");
+
+        service.readinessState();
+        assertTrue(service.isReady());
+        assertTrue(service.isReady());
+
+        verify(jdbcTemplate, times(1)).queryForObject(
+            DatabaseReadinessService.READINESS_QUERY, String.class);
     }
 }

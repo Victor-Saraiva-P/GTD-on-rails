@@ -143,9 +143,9 @@ class PostgresBackupServiceTests {
     }
 
     @Test
-    void postgresConnectionStripsCurrentSchemaForLibpqCompatibility() {
+    void postgresConnectionStripsJdbcOnlyParametersForLibpqCompatibility() {
         PostgresConnection connection = new PostgresConnection(
-            "jdbc:postgresql://aws-1-sa-east-1.pooler.supabase.com:5432/postgres?sslmode=verify-full&currentSchema=gtd",
+            "jdbc:postgresql://aws-1-sa-east-1.pooler.supabase.com:5432/postgres?sslmode=verify-full&currentSchema=gtd&tcpKeepAlive=true",
             "gtd_app",
             "secret");
 
