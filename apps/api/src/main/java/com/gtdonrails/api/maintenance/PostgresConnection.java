@@ -63,9 +63,9 @@ public record PostgresConnection(String jdbcUrl, String username, String passwor
     }
 
     private static String filterLibpqQuery(String query) {
-        // WHY: libpq rejects unrecognized query parameters such as JDBC's currentSchema.
+        // WHY: libpq rejects unrecognized query parameters such as JDBC's currentSchema and tcpKeepAlive.
         return java.util.Arrays.stream(query.split("&"))
-            .filter(param -> !param.isBlank() && !param.startsWith("currentSchema="))
+            .filter(param -> !param.isBlank() && !param.startsWith("currentSchema=") && !param.startsWith("tcpKeepAlive="))
             .collect(java.util.stream.Collectors.joining("&"));
     }
 

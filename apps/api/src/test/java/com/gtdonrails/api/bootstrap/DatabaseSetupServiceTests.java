@@ -215,7 +215,7 @@ class DatabaseSetupServiceTests {
     }
 
     private String runtimeConfiguration(String password) {
-        return "spring.datasource.url=jdbc:postgresql://aws-0-us-east-1.pooler.supabase.com:5432/postgres?sslmode=verify-full&currentSchema=gtd\n"
+        return "spring.datasource.url=jdbc:postgresql://aws-0-us-east-1.pooler.supabase.com:5432/postgres?sslmode=verify-full&currentSchema=gtd&tcpKeepAlive=true\n"
             + "spring.datasource.username=gtd_app\n"
             + "spring.datasource.password=" + password + "\n";
     }

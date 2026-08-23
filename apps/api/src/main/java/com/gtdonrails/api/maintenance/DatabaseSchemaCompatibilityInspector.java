@@ -4,9 +4,13 @@ import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.BadSqlGrammarException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Component
 public class DatabaseSchemaCompatibilityInspector {
+
+    private static final Logger logger = LoggerFactory.getLogger(DatabaseSchemaCompatibilityInspector.class);
 
     public static final String LATEST_SCHEMA_VERSION_QUERY =
         "select version from gtd.flyway_schema_history where success = true order by installed_rank desc limit 1";
@@ -31,6 +35,10 @@ public class DatabaseSchemaCompatibilityInspector {
         try {
             return supportedSchemaRange.evaluate(currentDatabaseSchemaVersion());
         } catch (RuntimeException exception) {
+            logger.atWarn()
+                .addKeyValue("event", "schema_compatibility_check_failed")
+                .setCause(exception)
+                .log("Schema compatibility check failed; reporting as unsupported");
             return SchemaCompatibilityStatus.UNSUPPORTED;
         }
     }
