@@ -43,6 +43,7 @@ class BootstrapConfigurationTests {
 
         assertEquals(0, exitCode);
         assertEquals("READY", status().get("configurationStatus").asText());
+        assertEquals(true, Files.isRegularFile(tempDir.resolve("root.crt")));
     }
 
     @Test

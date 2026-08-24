@@ -71,6 +71,7 @@ class DatabaseSetupServiceTests {
         assertEquals("gtd_app", configuration.getProperty("spring.datasource.username"));
         assertTrue(configuration.getProperty("spring.datasource.password").length() > 20);
         assertTrue(configuration.getProperty("spring.datasource.url").contains("currentSchema=gtd"));
+        assertTrue(Files.isRegularFile(tempDir.resolve("root.crt")));
         verify(fileSync).syncNow();
     }
 
