@@ -32,6 +32,7 @@ public class BootstrapConfiguration {
     private final Path dataRoot;
     private final Path statusFile;
     private final boolean stagingReset;
+    private final DatabaseTrustCertificateProvisioner certificateProvisioner;
     private String configurationStatus = "FAILED";
     private final CountDownLatch setupCompletion = new CountDownLatch(1);
 
@@ -41,7 +42,7 @@ public class BootstrapConfiguration {
         @Value("${gtd.bootstrap.status-file}") String statusFile,
         @Value("${gtd.staging.reset:false}") boolean stagingReset
     ) {
-        this(new ObjectMapper(), dataRoot, statusFile, stagingReset);
+        this(new ObjectMapper(), dataRoot, statusFile, stagingReset, new DatabaseTrustCertificateProvisioner());
     }
 
     BootstrapConfiguration(
@@ -50,10 +51,21 @@ public class BootstrapConfiguration {
         String statusFile,
         boolean stagingReset
     ) {
+        this(objectMapper, dataRoot, statusFile, stagingReset, new DatabaseTrustCertificateProvisioner());
+    }
+
+    BootstrapConfiguration(
+        ObjectMapper objectMapper,
+        String dataRoot,
+        String statusFile,
+        boolean stagingReset,
+        DatabaseTrustCertificateProvisioner certificateProvisioner
+    ) {
         this.objectMapper = objectMapper != null ? objectMapper : new ObjectMapper();
         this.dataRoot = Path.of(dataRoot).toAbsolutePath().normalize();
         this.statusFile = Path.of(statusFile).toAbsolutePath().normalize();
         this.stagingReset = stagingReset;
+        this.certificateProvisioner = certificateProvisioner != null ? certificateProvisioner : new DatabaseTrustCertificateProvisioner();
     }
 
     /** Returns the system default clock for bootstrap timestamps.
@@ -63,6 +75,11 @@ public class BootstrapConfiguration {
     @Bean
     public Clock clock() {
         return Clock.systemDefaultZone();
+    }
+
+    @Bean
+    DatabaseTrustCertificateProvisioner databaseTrustCertificateProvisioner() {
+        return certificateProvisioner;
     }
 
     @Bean
@@ -86,6 +103,7 @@ public class BootstrapConfiguration {
     public int run(FileSyncService fileSyncService) {
         try {
             if (!stagingReset) fileSyncService.syncOnStartup();
+            certificateProvisioner.ensureCertificate(dataRoot);
             configurationStatus = databaseConfigurationStatus();
             writeStatus(configurationStatus);
             return "READY".equals(configurationStatus) ? 0 : 2;

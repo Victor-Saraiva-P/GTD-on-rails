@@ -7,7 +7,7 @@ plugins {
 }
 
 group = 'com.gtdonrails'
-version = '1.5.4'
+version = '1.5.5'
 
 springBoot {
 	mainClass = 'com.gtdonrails.api.ApiApplication'
