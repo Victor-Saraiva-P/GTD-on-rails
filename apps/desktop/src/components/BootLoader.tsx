@@ -2,9 +2,14 @@ import { useEffect, useState, type PropsWithChildren } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { setRuntimeApiBaseUrl } from "../config/env.ts";
 import { appMetadata } from "../config/appMetadata.ts";
-import { apiJson } from "../lib/api/apiClient.ts";
+import { apiFetch, apiJson, ApiRequestError } from "../lib/api/apiClient.ts";
 import { isTauriRuntime } from "../lib/tauriRuntime.ts";
-import { shouldCheckNativeUpdates } from "./nativeUpdatePolicy.ts";
+import { DatabaseSetup } from "../features/bootstrap/DatabaseSetup.tsx";
+import { DatabaseRepair } from "../features/bootstrap/DatabaseRepair.tsx";
+import { PostgresToolsRequired } from "../features/bootstrap/PostgresToolsRequired.tsx";
+import { bootstrapUiState, type BootstrapUiState } from "../features/bootstrap/databaseBootstrapState.ts";
+import { parseReadinessResponse } from "../features/database-readiness/databaseReadiness.ts";
+import { shouldCheckNativeUpdates, startupSteps, type StartupStep } from "./nativeUpdatePolicy.ts";
 import "../styles/boot-loader.css";
 
 const PING_INTERVAL_MS = 1000;
@@ -25,12 +30,26 @@ type NativeUpdateStatus = {
   checksumUrl: string | null;
 };
 
-async function pingBackend(): Promise<boolean> {
+type PostgresToolsStatus = {
+  available: boolean;
+  missingTools: string[];
+  manualInstallCommand: string;
+};
+
+async function pingBackend(): Promise<"ready" | "update-required" | BootstrapUiState> {
   try {
-    await apiJson("/sync/status");
-    return true;
-  } catch {
-    return false;
+    await apiFetch("/readiness");
+    return "ready";
+  } catch (error) {
+    if (error instanceof ApiRequestError && parseReadinessResponse(error.responseBody) === "update-required") {
+      return "update-required";
+    }
+    try {
+      const status = await apiJson<{ status: string }>("/bootstrap/status");
+      return bootstrapUiState(status.status);
+    } catch {
+      return "offline";
+    }
   }
 }
 
@@ -44,6 +63,31 @@ async function waitForBackendBaseUrl(): Promise<void> {
     if (status.baseUrl) return setRuntimeApiBaseUrl(status.baseUrl);
     await delay(SIDECAR_STATUS_INTERVAL_MS);
   }
+}
+
+async function startBackend(): Promise<void> {
+  if (isTauriRuntime()) await invoke("start_sidecar_command");
+}
+
+async function checkPostgresTools(
+  setPostgresTools: (status: PostgresToolsStatus) => void
+): Promise<boolean> {
+  if (import.meta.env.DEV) return false;
+
+  const status = await invoke<PostgresToolsStatus>("postgres_tools_status");
+  if (status.available) return false;
+
+  setPostgresTools(status);
+  return true;
+}
+
+async function runStartupStep(
+  step: StartupStep,
+  setUpdateStatus: (status: string) => void
+): Promise<boolean> {
+  if (step === "native-update") return installNativeUpdate(setUpdateStatus);
+  await startBackend();
+  return false;
 }
 
 function delay(milliseconds: number): Promise<void> {
@@ -71,37 +115,60 @@ function requiredNativeUpdate(update: NativeUpdateStatus) {
   return update;
 }
 
+async function executeStartupSteps(
+  setPostgresTools: (status: PostgresToolsStatus) => void,
+  setUpdateStatus: (status: string) => void
+): Promise<boolean> {
+  const steps = startupSteps(isTauriRuntime(), import.meta.env.DEV);
+  for (const step of steps) {
+    try {
+      if (step === "sidecar" && (await checkPostgresTools(setPostgresTools))) return true;
+      if (await runStartupStep(step, setUpdateStatus)) return true;
+    } catch (stepError) {
+      console.error(`Startup step '${step}' failed:`, stepError);
+    }
+  }
+  return false;
+}
+
 function useBackendHealth() {
   const [isBooted, setIsBooted] = useState(false);
   const [dots, setDots] = useState("");
   const [bootError, setBootError] = useState<string | null>(null);
   const [updateStatus, setUpdateStatus] = useState<string | null>(null);
+  const [setupRequired, setSetupRequired] = useState(false);
+  const [bootstrapState, setBootstrapState] = useState<BootstrapUiState | null>(null);
+  const [postgresTools, setPostgresTools] = useState<PostgresToolsStatus | null>(null);
 
   useEffect(() => {
     let timeout: number;
 
     const checkHealth = async () => {
-      if (isTauriRuntime()) {
-        try {
-          if (await installNativeUpdate(setUpdateStatus)) return;
-        } catch (e) {
-          console.error("Failed to check for updates:", e);
-        }
-      }
-
+      if (await executeStartupSteps(setPostgresTools, setUpdateStatus)) return;
       try {
         await waitForBackendBaseUrl();
       } catch (error) {
         setBootError((error as Error).message);
         return;
       }
-      const isOnline = await pingBackend();
-      if (isOnline) {
+      applyBackendState(await pingBackend());
+    };
+
+    function applyBackendState(backendState: "ready" | "update-required" | BootstrapUiState) {
+      if (backendState === "ready") {
+        setSetupRequired(false);
+        setBootstrapState(null);
         setIsBooted(true);
+      } else if (backendState === "update-required") {
+        setUpdateStatus("Application update required: this installation is incompatible with the shared database schema. Please update the application.");
       } else {
+        if (backendState === "setup" || backendState === "repair") {
+          setSetupRequired(true);
+          setBootstrapState(backendState);
+        }
         timeout = window.setTimeout(() => void checkHealth(), PING_INTERVAL_MS);
       }
-    };
+    }
 
     void checkHealth();
 
@@ -120,7 +187,7 @@ function useBackendHealth() {
     return () => window.clearInterval(dotInterval);
   }, [isBooted]);
 
-  return { isBooted, dots, bootError, updateStatus };
+  return { isBooted, dots, bootError, updateStatus, setupRequired, bootstrapState, postgresTools };
 }
 
 /**
@@ -128,7 +195,7 @@ function useBackendHealth() {
  * Renders a retro terminal loading screen while waiting.
  */
 export function BootLoader({ children }: PropsWithChildren) {
-  const { isBooted, dots, bootError, updateStatus } = useBackendHealth();
+  const { isBooted, dots, bootError, updateStatus, setupRequired, bootstrapState, postgresTools } = useBackendHealth();
   const [shouldRenderLoader, setShouldRenderLoader] = useState(true);
 
   // Allow time for fade-out animation
@@ -141,7 +208,7 @@ export function BootLoader({ children }: PropsWithChildren) {
 
   return (
     <>
-      {shouldRenderLoader && (
+      {shouldRenderLoader && !setupRequired && (
         <div className={`boot-loader ${isBooted ? "boot-loader--fade-out" : ""}`}>
           <div className="boot-loader__terminal">
             <p className="boot-loader__brand">{appMetadata.name} v{appMetadata.version}</p>
@@ -170,6 +237,9 @@ export function BootLoader({ children }: PropsWithChildren) {
           </div>
         </div>
       )}
+      {bootstrapState === "setup" ? <DatabaseSetup /> : null}
+      {bootstrapState === "repair" ? <DatabaseRepair /> : null}
+      {postgresTools ? <PostgresToolsRequired {...postgresTools} onResolved={() => window.location.reload()} /> : null}
       {isBooted && children}
     </>
   );

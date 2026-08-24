@@ -17,10 +17,10 @@ export function startupObservationDeadline(startedAt: number): number {
  * @example isSettledSyncStatus(status)
  */
 export function isSettledSyncStatus(status: SyncStatus): boolean {
-  const dataSettled = status.data.state === "SYNCED" || status.data.state === "DISABLED" || status.data.state === "FAILED";
+  const fileSettled = status.file.state === "SYNCED" || status.file.state === "DISABLED" || status.file.state === "FAILED";
   const googleSettled = status.googleCalendar.state === "SYNCED" || status.googleCalendar.state === "DISABLED" || status.googleCalendar.state === "FAILED";
 
-  return dataSettled && googleSettled;
+  return fileSettled && googleSettled;
 }
 
 /**

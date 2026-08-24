@@ -2,7 +2,7 @@
 
 This document describes the current technical infrastructure of GTD on Rails: repository layout, runtime topology, persistence, synchronization, release packaging, and CI/CD.
 
-The application is desktop-first. The production runtime is a native Linux desktop app that starts a bundled local backend sidecar and stores data on the user's machine.
+The application is desktop-first. The production runtime is a native Linux desktop app that starts a bundled local backend sidecar and stores file-backed state locally while shared structured state lives in PostgreSQL.
 
 ---
 
@@ -19,12 +19,14 @@ The project is a `pnpm` monorepo orchestrated with Turbo.
 The root `package.json` exposes the main workflows:
 
 - `pnpm dev`: runs the development tasks through Turbo.
+- `pnpm dev:reset`: safely recreates the development database and assets before starting development.
 - `pnpm build`: builds the workspace.
 - `pnpm test`: runs unit, integration, and e2e tests.
 - `pnpm check`: runs static checks.
 - `pnpm build:prod`: builds the production desktop sidecar release.
 - `pnpm build:staging`: builds the staging desktop sidecar release.
 - `pnpm staging`: builds and launches the staging release binary.
+- `pnpm staging:reset`: explicitly replaces staging rows and assets with the deterministic fake dataset, removes database-backed Google authorization, publishes File Sync, and opens the staging release only after completion.
 
 Tool versions are pinned in `mise.toml`:
 
@@ -57,23 +59,23 @@ The backend lives in `apps/api`.
 - Gradle builds, tests, and packages the backend.
 - Flyway manages database migrations.
 - Spring Data JPA and Hibernate persist application entities.
-- SQLite is the application database for the normal runtime.
+- PostgreSQL is the application database for development and shared environments.
 
 The backend package scripts wrap Gradle commands so workspace workflows can call it through `pnpm --filter @gtd-on-rails/api ...`.
 
 ### Database
 
-The normal application database is SQLite.
+The development application database is PostgreSQL in the persistent local Compose volume.
 
-The default JDBC URL points to:
+The development JDBC URL defaults to:
 
 ```text
-${gtd.data.root-directory}/gtd-on-rails.db
+jdbc:postgresql://127.0.0.1:5432/gtd_on_rails
 ```
 
-The backend creates an empty SQLite file when startup data sync succeeds but the database is still missing. Flyway then initializes the schema.
+Flyway initializes new development databases with the baseline in schema `gtd` and records the `DEVELOPMENT` database identity.
 
-Flyway migrations live under `apps/api/src/main/resources/db/migration`.
+The PostgreSQL baseline migration lives under `apps/api/src/main/resources/db/postgresql-migration`. Legacy SQLite migrations have been contracted from active runtime resources.
 
 ---
 
@@ -81,11 +83,15 @@ Flyway migrations live under `apps/api/src/main/resources/db/migration`.
 
 ### Development Runtime
 
-During development, the desktop frontend and backend can run as separate local processes.
+`pnpm dev` starts or reuses PostgreSQL, waits for its health check, and then starts the desktop frontend and Spring Boot API as native host processes. Compose contains PostgreSQL infrastructure only.
 
 - The desktop dev server runs on `127.0.0.1:1420`.
 - The API runs through Gradle with the `dev` Spring profile.
 - CORS allows the local desktop dev origin.
+- Development data and assets live in the Git-ignored repository-local `dev-gtd-on-rails` directory.
+- Development rclone File Sync is disabled by default.
+
+`pnpm dev:reset` first confirms the persistent database identity is exactly `DEVELOPMENT`. A mismatch restores a previously stopped PostgreSQL container and stops before changing the PostgreSQL volume or development assets. A development database must first be initialized through `pnpm dev`; a missing container fails without starting one. After a successful check, the command recreates both state stores and starts the normal development workflow; the dev profile seeds its deterministic fake dataset and representative PDF asset on startup.
 
 ### Production Runtime
 
@@ -94,7 +100,8 @@ Production is a self-contained local desktop runtime.
 - The user launches the native Linux desktop binary.
 - The Tauri app starts the bundled `gtd-api` sidecar.
 - The sidecar starts Spring Boot with `prod,sidecar` profiles by default.
-- The sidecar runs blocking rclone data sync before SQLite opens.
+- The sidecar runs blocking File Sync before the shared database opens.
+- Packaged startup checks for `pg_dump` and `pg_restore` before starting the sidecar; missing Arch client tools are repaired only after an explicit Polkit-authorized `postgresql-libs` installation.
 - The sidecar binds to `127.0.0.1` on an ephemeral port.
 - The backend writes a readiness file with its selected local base URL.
 - The desktop app reads that readiness file and sends API requests to the sidecar.
@@ -105,7 +112,7 @@ This keeps the backend local to the user's machine and avoids a hosted productio
 
 Staging uses the same sidecar flow as production, but with `staging,sidecar` profiles.
 
-Staging intentionally points to development data defaults so the production data remote is not touched while testing release behavior.
+Staging uses the repository-local, Git-ignored `staging-gtd-on-rails` root and the dedicated `gdrive:staging-gtd-on-rails` remote. `pnpm staging` sets these values explicitly, then the bootstrap sidecar performs blocking File Sync before connecting to the isolated Supabase PostgreSQL project. It does not reset the database, assets, or Google Integration Configuration. `pnpm staging:reset` uses the additional `staging-reset` profile, verifies the persisted database identity is exactly `STAGING`, recreates rows and assets, removes database-backed Google authorization, preserves configuration files and the sync marker, performs blocking File Sync, and only then publishes desktop readiness.
 
 ---
 
@@ -119,30 +126,41 @@ Production defaults to:
 ~/Documents/gtd-on-rails
 ```
 
-Development and staging default to:
+Staging defaults to:
 
 ```text
 ~/Documents/dev-gtd-on-rails
 ```
 
+Development defaults to the repository-local directory:
+
+```text
+dev-gtd-on-rails
+```
+
 The data root contains:
 
-- `gtd-on-rails.db`: SQLite database file.
+- PostgreSQL structured data: persistent local Compose volume during development or the configured Supabase project in staging and production.
 - `google.properties`: Google Integration Configuration.
 - `assets`: local item asset files.
 - `gtd-on-rails-sync-check`: synchronized dataset marker and rclone access check file.
+- `backups/`: closed `gtd` logical archives; production keeps the newest 30 archives and publishes a completed archive through File Sync.
 
 Environment variables can override these paths when needed, but the default runtime is optimized for the owner's Arch Linux desktop machines.
 
 ---
 
-## 5. Data Synchronization
+## 5. File Synchronization
 
-Structured data, Google Integration Configuration, and assets are synchronized by `rclone` over the whole `gtd.data.root-directory`.
+Assets, Google Integration Configuration, Database Connection Configuration, certificates, backups, and the File Sync marker are synchronized by `rclone`. Structured GTD data is never synchronized as a live database file; it is stored in the configured PostgreSQL environment.
 
 - Production remote: `gdrive:gtd-on-rails`.
 - Development and staging remote: `gdrive:dev-gtd-on-rails`.
-- The backend owns startup data sync, database initialization, sync scheduling, and data integrity.
+- The backend owns startup File Sync, database initialization, sync scheduling, and data integrity.
+
+Production creates a logical `pg_dump` archive before Flyway migrations and once per active day. The archive is written to a temporary file, validated with `pg_restore --list`, atomically closed, and only then added to File Sync. Staging can load a named synchronized archive through `POST /maintenance/backups/restore`; the operation requires the `STAGING` database identity, validates the archive identity before restore, excludes the source identity row, and uses a single transaction.
+
+Backup work files and PostgreSQL password files live under the local `gtd.backup.work-directory` cache outside `gtd.data.root-directory`. File Sync can therefore observe only validated archives that have been atomically moved into the synchronized backup directory.
 
 The app is designed for a single owner using two devices. It does not implement multi-user or concurrent divergent-edit reconciliation beyond the project-specific assumptions described in [Synchronization](synchronization.md).
 
@@ -152,23 +170,23 @@ The app is designed for a single owner using two devices. It does not implement 
 
 Item assets are stored as files plus database metadata.
 
-- Asset metadata lives in SQLite.
+- Asset metadata lives in PostgreSQL.
 - Asset files live under `gtd.assets.local-directory`.
 - The default asset directory is `${gtd.data.root-directory}/assets`.
 
 The backend owns final asset storage, metadata creation, validation, and sync scheduling.
 
-Assets are synchronized as part of data sync because the asset directory lives under the synchronized data root.
+Assets are synchronized as part of File Sync because the asset directory lives under the synchronized data root.
 
 The body model that references these assets is described in [Body Content](../20%20-%20GTD/shared/Body%20Content.md).
 
 ---
 
-## 7. Optional Local Infrastructure
+## 7. Local Development Infrastructure
 
-`infra/compose.yaml` defines a local Postgres and API container setup.
+`infra/compose.yaml` defines the persistent local PostgreSQL service used by `pnpm dev`.
 
-This compose file is optional development infrastructure. It is not the production desktop runtime and should not be treated as the canonical persistence topology unless the project explicitly moves away from the SQLite sidecar model.
+It intentionally contains no API or desktop container. Native Spring Boot and Tauri processes connect through localhost.
 
 ---
 
@@ -251,9 +269,9 @@ It performs:
 The normal runtime is local-first.
 
 - The backend binds to localhost in sidecar mode.
-- The SQLite database is protected by operating-system file permissions.
-- Data sync remote access is outside the application database.
-- Data sync depends on the local `rclone` configuration.
+- Database Connection Configuration is protected by owner-only operating-system file permissions.
+- File Sync remote access is outside the application database.
+- File Sync depends on the local `rclone` configuration.
 - GitHub release publishing uses GitHub Actions permissions and repository secrets when needed.
 
 ---
@@ -265,8 +283,8 @@ GTD on Rails currently uses:
 - a `pnpm` and Turbo monorepo.
 - a Tauri 2 desktop app with React, Vite, TypeScript, and Rust.
 - a Spring Boot 4 backend with Java 21 and Gradle.
-- SQLite for normal application persistence.
-- rclone-based data synchronization.
+- PostgreSQL for normal application persistence.
+- rclone-based File Sync for file-backed state.
 - filesystem-backed assets under the synchronized data root.
 - native Linux `.tar.gz` production packaging.
 - GitHub Actions for CI and release automation.

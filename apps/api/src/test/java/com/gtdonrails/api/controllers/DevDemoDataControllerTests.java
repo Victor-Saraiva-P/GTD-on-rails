@@ -2,6 +2,7 @@ package com.gtdonrails.api.controllers;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -12,9 +13,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import com.gtdonrails.api.config.AssetsProperties;
+import com.gtdonrails.api.entities.Context;
 import com.gtdonrails.api.entities.GoogleCalendar;
+import com.gtdonrails.api.repositories.ContextRepository;
 import com.gtdonrails.api.repositories.GoogleCalendarRepository;
 import com.gtdonrails.api.repositories.ItemAssetRepository;
+import com.gtdonrails.api.services.DevelopmentDataCleaner;
+import com.gtdonrails.api.services.DemoDataSeedService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -26,13 +31,12 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
 @SpringBootTest(properties = {
-    "spring.datasource.url=jdbc:sqlite:./build/dev-demo-controller-test.db",
     "gtd.assets.local-directory=./build/dev-demo-controller-assets",
     "gtd.sync.rclone.enabled=false",
     "gtd.cleanup.enabled=false",
     "gtd.google.token-encryption-key=MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
 })
-@ActiveProfiles("dev")
+@ActiveProfiles({"dev", "test"})
 @Tag("integration")
 class DevDemoDataControllerTests {
 
@@ -46,7 +50,16 @@ class DevDemoDataControllerTests {
     private GoogleCalendarRepository googleCalendarRepository;
 
     @Autowired
+    private DemoDataSeedService demoDataSeedService;
+
+    @Autowired
+    private ContextRepository contextRepository;
+
+    @Autowired
     private ItemAssetRepository itemAssetRepository;
+
+    @Autowired
+    private DevelopmentDataCleaner developmentDataCleaner;
 
     private MockMvc mockMvc;
 
@@ -68,6 +81,15 @@ class DevDemoDataControllerTests {
         assertSeededDataVisible();
         assertPdfAssetCopied();
         assertEquals(1, googleCalendarRepository.count());
+    }
+
+    @Test
+    void preservesAContextOnlyDevelopmentDatabase() {
+        demoDataSeedService.resetDemoData();
+        developmentDataCleaner.deleteAll();
+        contextRepository.save(new Context("Preserved context"));
+
+        assertFalse(demoDataSeedService.isDatabaseEmpty());
     }
 
     private void assertSeededDataVisible() throws Exception {

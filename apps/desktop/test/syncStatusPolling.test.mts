@@ -9,10 +9,10 @@ import {
 } from "../src/features/sync-status/syncStatusPolling.ts";
 import type { SyncStatus } from "../src/features/sync-status/types.ts";
 
-function syncStatus(dataState: SyncStatus["data"]["state"]): SyncStatus {
+function syncStatus(fileState: SyncStatus["file"]["state"]): SyncStatus {
   return {
-    data: {
-      state: dataState,
+    file: {
+      state: fileState,
       pending: false,
       running: false,
       lastStartedAt: null,

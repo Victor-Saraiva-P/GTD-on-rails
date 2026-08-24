@@ -46,9 +46,6 @@ class ItemServiceTests {
     @Mock
     private ItemAssetService itemAssetService;
 
-    @Mock
-    private DataSyncService dataSyncService;
-
     @Captor
     private ArgumentCaptor<Item> itemCaptor;
 
@@ -65,7 +62,6 @@ class ItemServiceTests {
             new ItemTextNormalizer(),
             new ItemBodyNormalizer(),
             itemAssetService,
-            dataSyncService,
             googleCalendarEventQueueService,
             new AfterCommitExecutor());
     }
@@ -83,7 +79,6 @@ class ItemServiceTests {
 
         assertEquals("New title", capturedSavedItem().getTitle().value());
         assertEquals(expectedResponse, response);
-        verify(dataSyncService).requestSync("item title updated");
     }
 
     @Test
@@ -159,7 +154,6 @@ class ItemServiceTests {
 
         assertTrue(item.isDeleted());
         verify(itemAssetService).softDeleteActiveItemAssets(itemId);
-        verify(dataSyncService).requestSync("item deleted");
         verify(googleCalendarEventQueueService).requestDelete(itemId);
     }
 
@@ -189,7 +183,6 @@ class ItemServiceTests {
 
         assertFalse(item.isDeleted());
         verify(itemAssetService).reconcileBodyAssetReferences(itemId, item.getBody());
-        verify(dataSyncService).requestSync("item restored");
         verify(googleCalendarEventQueueService).requestUpsert(itemId);
     }
 

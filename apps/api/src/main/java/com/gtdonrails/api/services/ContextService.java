@@ -29,8 +29,6 @@ public class ContextService {
     private final ItemMapper itemMapper;
     private final ContextNameNormalizer contextNameNormalizer;
     private final ContextIconAssetService contextIconAssetService;
-    private final DataSyncService dataSyncService;
-    private final AfterCommitExecutor afterCommitExecutor;
 
     public ContextService(
         ContextRepository contextRepository,
@@ -38,9 +36,7 @@ public class ContextService {
         ContextMapper contextMapper,
         ItemMapper itemMapper,
         ContextNameNormalizer contextNameNormalizer,
-        ContextIconAssetService contextIconAssetService,
-        DataSyncService dataSyncService,
-        AfterCommitExecutor afterCommitExecutor
+        ContextIconAssetService contextIconAssetService
     ) {
         this.contextRepository = contextRepository;
         this.nextActionRepository = nextActionRepository;
@@ -48,8 +44,6 @@ public class ContextService {
         this.itemMapper = itemMapper;
         this.contextNameNormalizer = contextNameNormalizer;
         this.contextIconAssetService = contextIconAssetService;
-        this.dataSyncService = dataSyncService;
-        this.afterCommitExecutor = afterCommitExecutor;
     }
 
     /**
@@ -111,9 +105,7 @@ public class ContextService {
     public ContextResponseDto createContext(CreateContextRequestDto request) {
         String normalizedName = contextNameNormalizer.normalize(request.name());
         Context context = new Context(normalizedName);
-        ContextResponseDto response = contextMapper.toResponse(contextRepository.save(context));
-        requestDataSyncAfterCommit("context created");
-        return response;
+        return contextMapper.toResponse(contextRepository.save(context));
     }
 
     /**
@@ -127,9 +119,7 @@ public class ContextService {
         String normalizedName = contextNameNormalizer.normalize(request.name());
 
         context.setName(normalizedName);
-        ContextResponseDto response = contextMapper.toResponse(contextRepository.save(context));
-        requestDataSyncAfterCommit("context updated");
-        return response;
+        return contextMapper.toResponse(contextRepository.save(context));
     }
 
     /**
@@ -144,11 +134,10 @@ public class ContextService {
         contextIconAssetService.deleteContextIconAsset(context);
         context.softDelete();
         contextRepository.save(context);
-        requestDataSyncAfterCommit("context deleted");
     }
 
     /**
-     * Restores a soft-deleted context and schedules data sync after commit.
+     * Restores a soft-deleted context and schedules File Sync after commit.
      *
      * <p>Example: {@code contextService.restoreContext(contextId)}.</p>
      */
@@ -158,7 +147,6 @@ public class ContextService {
             .orElseThrow(() -> new ContextNotFoundException("context not found"));
         context.restore();
         contextRepository.save(context);
-        requestDataSyncAfterCommit("context restored");
     }
 
     private Context findContext(UUID id) {
@@ -166,7 +154,4 @@ public class ContextService {
             .orElseThrow(() -> new ContextNotFoundException("context not found"));
     }
 
-    private void requestDataSyncAfterCommit(String reason) {
-        afterCommitExecutor.run(() -> dataSyncService.requestSync(reason));
-    }
 }

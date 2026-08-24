@@ -32,9 +32,6 @@ class ProjectServiceTests {
     private ProjectRepository projectRepository;
 
     @Mock
-    private DataSyncService dataSyncService;
-
-    @Mock
     private GoogleCalendarEventQueueService googleCalendarEventQueueService;
 
     private ProjectService projectService;
@@ -47,7 +44,6 @@ class ProjectServiceTests {
             projectRepository,
             new ProjectMapper(),
             new ItemTextNormalizer(),
-            dataSyncService,
             googleCalendarEventQueueService,
             new AfterCommitExecutor(),
             Clock.fixed(Instant.parse("2026-05-21T12:34:56Z"), ZoneId.of("UTC")));
@@ -66,7 +62,6 @@ class ProjectServiceTests {
         projectService.markDone(projectId);
 
         verify(googleCalendarEventQueueService).requestUpsert(projectId);
-        verify(dataSyncService).requestSync("project marked done");
     }
 
     @Test
@@ -77,7 +72,6 @@ class ProjectServiceTests {
         projectService.patchProject(projectId, new PatchProjectRequestDto("Launch public beta", null, null));
 
         verify(googleCalendarEventQueueService).requestUpsert(projectId);
-        verify(dataSyncService).requestSync("project updated");
     }
 
     @Test
@@ -89,7 +83,6 @@ class ProjectServiceTests {
         projectService.resetStatus(projectId);
 
         verify(googleCalendarEventQueueService).requestUpsert(projectId);
-        verify(dataSyncService).requestSync("project status restored");
     }
 
     @Test
@@ -99,7 +92,6 @@ class ProjectServiceTests {
         projectService.deleteProject(projectId);
 
         verify(googleCalendarEventQueueService).requestDelete(projectId);
-        verify(dataSyncService).requestSync("project deleted");
     }
 
     @Test
@@ -110,6 +102,5 @@ class ProjectServiceTests {
         projectService.recoverProject(projectId);
 
         verify(googleCalendarEventQueueService).requestUpsert(projectId);
-        verify(dataSyncService).requestSync("project recovered");
     }
 }

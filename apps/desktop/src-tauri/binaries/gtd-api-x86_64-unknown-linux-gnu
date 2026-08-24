@@ -8,7 +8,11 @@ fi
 
 if [ -z "${GTD_API_JAR_PATH:-}" ]; then
   script_dir="$(dirname "$(readlink -f "$0")")"
-  GTD_API_JAR_PATH="$script_dir/gtd-api.jar"
+  if [ -f "$script_dir/binaries/gtd-api.jar" ]; then
+    GTD_API_JAR_PATH="$script_dir/binaries/gtd-api.jar"
+  else
+    GTD_API_JAR_PATH="$script_dir/gtd-api.jar"
+  fi
 fi
 
 if [ ! -f "$GTD_API_JAR_PATH" ]; then
@@ -16,4 +20,9 @@ if [ ! -f "$GTD_API_JAR_PATH" ]; then
   exit 1
 fi
 
-exec java -jar "$GTD_API_JAR_PATH" "$@"
+args=()
+if [ -n "${GTD_SIDECAR_PROFILES:-}" ]; then
+  args+=("--spring.profiles.active=${GTD_SIDECAR_PROFILES}")
+fi
+
+exec java -jar "$GTD_API_JAR_PATH" "${args[@]}" "$@"

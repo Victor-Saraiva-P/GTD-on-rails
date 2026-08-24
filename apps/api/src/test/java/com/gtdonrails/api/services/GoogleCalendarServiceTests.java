@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -35,7 +36,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 @ExtendWith(MockitoExtension.class)
@@ -95,7 +98,7 @@ class GoogleCalendarServiceTests {
     }
 
     @Test
-    void getValidCredentialRefreshesWhenExpiresAtIsMissing() {
+    void getValidCredentialReturnsNullWhenRefreshThrowsTransientError() {
         GoogleCredential cred = new GoogleCredential();
         cred.setAccessToken("token");
         cred.setRefreshToken("refresh-token");
@@ -103,9 +106,35 @@ class GoogleCalendarServiceTests {
         when(restTemplate.exchange(eq("https://oauth2.googleapis.com/token"), eq(HttpMethod.POST), any(), anyTokenResponseType()))
             .thenThrow(new RuntimeException("network disabled in unit test"));
 
-        assertEquals(cred, service.getValidCredential());
+        assertNull(service.getValidCredential());
 
         verify(restTemplate).exchange(eq("https://oauth2.googleapis.com/token"), eq(HttpMethod.POST), any(), anyTokenResponseType());
+        verify(credentialRepository, never()).deleteAll();
+    }
+
+    @Test
+    void getValidCredentialClearsCredentialsWhenRefreshTokenIsRevoked() {
+        GoogleCredential cred = expiredCredential("old-token", "revoked-refresh-token");
+        when(credentialRepository.findAll()).thenReturn(List.of(cred));
+        when(restTemplate.exchange(eq("https://oauth2.googleapis.com/token"), eq(HttpMethod.POST), any(), anyTokenResponseType()))
+            .thenThrow(new HttpClientErrorException(HttpStatus.BAD_REQUEST, "invalid_grant"));
+
+        assertNull(service.getValidCredential());
+
+        verify(credentialRepository).deleteAll();
+    }
+
+    @Test
+    void getValidCredentialReturnsNullWhenResponseBodyHasNoAccessToken() {
+        GoogleCredential cred = expiredCredential("old-token", "refresh-token");
+        when(credentialRepository.findAll()).thenReturn(List.of(cred));
+        when(restTemplate.exchange(eq("https://oauth2.googleapis.com/token"), eq(HttpMethod.POST), any(), anyTokenResponseType()))
+            .thenReturn(ResponseEntity.ok(Map.of("error", "missing_token")));
+
+        assertNull(service.getValidCredential());
+
+        verify(credentialRepository, never()).deleteAll();
+        verify(credentialRepository, never()).save(any());
     }
 
     @Test

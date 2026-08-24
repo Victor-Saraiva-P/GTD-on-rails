@@ -7,3 +7,16 @@ export function shouldCheckNativeUpdates(isTauri: boolean, isDevMode: boolean): 
   if (!isTauri) return false;
   return !isDevMode;
 }
+
+export type StartupStep = "native-update" | "sidecar";
+
+/**
+ * Returns the ordered packaged startup phases.
+ *
+ * @example startupSteps(true, false)
+ */
+export function startupSteps(isTauri: boolean, isDevMode: boolean): StartupStep[] {
+  if (!isTauri) return [];
+  if (isDevMode) return ["sidecar"];
+  return ["native-update", "sidecar"];
+}

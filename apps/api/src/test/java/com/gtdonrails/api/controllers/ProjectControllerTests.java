@@ -2,7 +2,6 @@ package com.gtdonrails.api.controllers;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.nullValue;
-import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -21,7 +20,6 @@ import com.gtdonrails.api.entities.Project;
 import com.gtdonrails.api.repositories.ItemRepository;
 import com.gtdonrails.api.repositories.ProjectItemRepository;
 import com.gtdonrails.api.repositories.ProjectRepository;
-import com.gtdonrails.api.services.DataSyncService;
 import com.gtdonrails.api.types.Title;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
@@ -33,7 +31,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
@@ -56,9 +53,6 @@ class ProjectControllerTests {
 
     @Autowired
     private ItemRepository itemRepository;
-
-    @MockitoBean
-    private DataSyncService dataSyncService;
 
     private MockMvc mockMvc;
 
@@ -188,8 +182,6 @@ class ProjectControllerTests {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$", hasSize(1)))
             .andExpect(jsonPath("$[0].title").value("Buy thermal paste"));
-
-        verify(dataSyncService).requestSync("project stuff created");
     }
 
     @Test

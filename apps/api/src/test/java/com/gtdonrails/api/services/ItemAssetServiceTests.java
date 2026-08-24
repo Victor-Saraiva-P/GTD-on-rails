@@ -45,7 +45,7 @@ class ItemAssetServiceTests {
     private AssetStorageService assetStorageService;
 
     @Mock
-    private DataSyncService dataSyncService;
+    private FileSyncService fileSyncService;
 
     private ItemAssetService itemAssetService;
 
@@ -55,12 +55,12 @@ class ItemAssetServiceTests {
             itemRepository,
             itemAssetRepository,
             assetStorageService,
-            dataSyncService,
+            fileSyncService,
             new AfterCommitExecutor());
     }
 
     @Test
-    void storeLocalItemAssetCopiesFileAndRequestsDataSync() {
+    void storeLocalItemAssetCopiesFileAndRequestsFileSync() {
         UUID itemId = UUID.randomUUID();
         Path sourcePath = Path.of("/home/victor/Downloads/report.pdf");
 
@@ -75,7 +75,7 @@ class ItemAssetServiceTests {
         assertEquals("application/pdf", response.contentType());
         verify(assetStorageService).copyLocalItemAsset(any(String.class), eq(sourcePath));
         verify(itemAssetRepository).save(any());
-        verify(dataSyncService).requestSync("local item asset copied");
+        verify(fileSyncService).requestSyncAfterCommit(any(AfterCommitExecutor.class), eq("local item asset copied"));
     }
 
     @Test

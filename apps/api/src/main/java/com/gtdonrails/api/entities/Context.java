@@ -34,10 +34,10 @@ public class Context extends AuditableEntity {
     private String name;
 
     @ManyToMany(mappedBy = "contexts")
-    private final Set<NextAction> nextActions = new HashSet<>();
+    private Set<NextAction> nextActions = new HashSet<>();
 
     @OneToMany(mappedBy = "context", cascade = CascadeType.REMOVE, orphanRemoval = true)
-    private final Set<ContextIconAsset> iconAssets = new HashSet<>();
+    private Set<ContextIconAsset> iconAssets = new HashSet<>();
 
     public Context() {
     }

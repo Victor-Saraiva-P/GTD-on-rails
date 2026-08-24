@@ -1,6 +1,6 @@
 # Synchronization
 
-This document describes the current GTD on Rails synchronization model for structured data, Google integration configuration, and file assets.
+This document describes the current GTD on Rails synchronization model for PostgreSQL-backed structured data, Google integration configuration, and file assets.
 
 The application is built for one owner using two trusted Arch Linux desktop machines. The expected operating discipline is simple: let one device finish syncing before editing the same persistence state on the other device. The app does not implement multi-user merge resolution or concurrent divergent-edit reconciliation.
 
@@ -12,16 +12,16 @@ The infrastructure that hosts these sync processes is described in [Infrastructu
 
 The system has two synchronization channels.
 
-- Data sync uses `rclone bisync` to move the whole `gtd.data.root-directory` between trusted machines and Google Drive.
+- File Sync uses `rclone bisync` to move file-backed state under the trusted data root between machines and Google Drive. It never moves a live PostgreSQL database.
 - Google Calendar sync mirrors GTD items to external agendas after local domain changes.
 
-The backend owns both channels. The frontend observes status and can request manual data sync.
+The backend owns both channels. The frontend observes status and can request manual File Sync.
 
 ---
 
 ## 2. Data Root
 
-Structured data, integration configuration, assets, and the dataset marker live under:
+File-backed state, integration configuration, assets, and the dataset marker live under:
 
 ```text
 ${gtd.data.root-directory}
@@ -42,16 +42,10 @@ Development and staging default to:
 The data root contains:
 
 ```text
-gtd-on-rails.db
 google.properties
+database.properties
 assets/
 gtd-on-rails-sync-check
-```
-
-The SQLite database path is:
-
-```text
-${gtd.data.root-directory}/gtd-on-rails.db
 ```
 
 Asset files live under:
@@ -68,25 +62,24 @@ ${gtd.data.root-directory}/google.properties
 
 ---
 
-## 3. Data Sync Flow
+## 3. File Sync Flow
 
-Data sync is handled by `DataSyncService` and `RcloneDataSyncService`.
+File Sync is exposed by `FileSyncService`.
 
 Startup behavior:
 
 - The backend creates the data root directory when needed.
-- If rclone data sync is enabled, startup runs blocking data sync before SQLite opens.
+- If rclone File Sync is enabled, startup runs blocking File Sync before PostgreSQL opens.
 - If `gtd-on-rails-sync-check` is missing, startup runs bootstrap sync from remote to local.
-- If the SQLite database is still missing after successful startup sync, the backend creates an empty database file and Flyway initializes the schema.
-- When a new empty database was created, the backend queues asynchronous data sync after application startup so the migrated schema is uploaded.
+- After successful startup sync, the backend validates Database Connection Configuration and connects to the configured PostgreSQL environment.
 
 Runtime behavior:
 
-- Application services request data sync after committed domain changes.
-- Google Integration Configuration saves write `google.properties` locally and request asynchronous data sync.
-- Scheduled data sync runs every `gtd.sync.interval-ms`.
-- Manual data sync enqueues work through `POST /sync/data`.
-- Data sync runs in a single-thread executor and coalesces pending requests while one sync is already running.
+- File-backed mutations (such as item assets, context icons, backups, and configuration saves) request File Sync after commit. Structured-only domain changes are persisted directly to PostgreSQL and do not trigger File Sync.
+- Google Integration Configuration saves write `google.properties` locally and request asynchronous File Sync.
+- Scheduled File Sync runs every `gtd.sync.interval-ms`.
+- Manual File Sync enqueues work through `POST /sync/files`.
+- File Sync runs in a single-thread executor and coalesces pending requests while one sync is already running.
 
 ---
 
@@ -112,7 +105,7 @@ rclone bisync <remote> <data-root> --resync
 
 If the marker is still missing after a successful bootstrap, the backend creates it locally and runs one bisync without `--check-access` to publish the marker.
 
-First publication or migration of local data to the remote is manual. The automatic bootstrap path always treats the remote as source.
+First publication or migration of local file-backed state to the remote is manual. The automatic bootstrap path always treats the remote as source.
 
 ---
 
@@ -124,7 +117,7 @@ Current rclone remotes are profile-specific:
 - `dev`: `gdrive:dev-gtd-on-rails`
 - `staging`: `gdrive:dev-gtd-on-rails`
 
-Current data sync defaults are profile-specific:
+Current File Sync defaults are profile-specific:
 
 - `prod` and `staging`: rclone enabled by default
 - `dev`, `ci`, and `test`: rclone disabled by default
@@ -156,10 +149,10 @@ GET /sync/status
 
 The response contains:
 
-- `data`: data sync status.
+- `file`: File Sync status.
 - `googleCalendar`: Google Calendar sync status.
 
-Data status includes:
+File Sync status includes:
 
 - `state`: `DISABLED`, `BOOTSTRAPPING`, `SYNCED`, `PENDING`, `SYNCING`, or `FAILED`.
 - `pending`
@@ -169,25 +162,25 @@ Data status includes:
 - `lastSuccessfulSyncAt`
 - `lastError`
 
-Manual data sync is requested at:
+Manual File Sync is requested at:
 
 ```text
-POST /sync/data
+POST /sync/files
 ```
 
-The endpoint enqueues sync and returns `202 Accepted` with the current data sync status.
+The endpoint enqueues sync and returns `202 Accepted` with the current File Sync status.
 
-The desktop footer renders one Data sync indicator and one Google Calendar sync indicator.
+The desktop footer renders one File Sync indicator and one Google Calendar sync indicator.
 
 ---
 
 ## 7. Failure Behavior
 
-Startup data sync is blocking when enabled. In production and staging, a startup rclone failure prevents the API from becoming ready.
+Startup File Sync is blocking when enabled. In production and staging, a startup rclone failure prevents the API from becoming ready.
 
-Runtime data sync failures do not block local editing. The data sync state becomes `FAILED`, the footer exposes the error state, and later scheduled, manual, or mutation-triggered sync can recover.
+Runtime File Sync failures do not block local editing. The File Sync state becomes `FAILED`, the footer exposes the error state, and later scheduled, manual, or mutation-triggered sync can recover.
 
-Google Integration Configuration saves do not roll back when data sync fails later. They are local writes followed by asynchronous data sync.
+Google Integration Configuration saves do not roll back when File Sync fails later. They are local writes followed by asynchronous File Sync.
 
 ---
 
@@ -195,10 +188,10 @@ Google Integration Configuration saves do not roll back when data sync fails lat
 
 Because the project targets one owner and trusted machines, the synchronization model depends on these rules:
 
-- Do not edit the same persistence state on two devices before the first device has synced and the second device has synced.
+- Do not edit the same PostgreSQL environment on two devices at the same time.
 - Keep `rclone` configured for the expected Google Drive remotes.
 - Treat `FAILED` sync states as operational issues to resolve before continuing long editing sessions.
-- Do not manually edit the SQLite database, `google.properties`, assets, or sync marker while the app is running.
+- Do not manually edit `database.properties`, `google.properties`, assets, or the sync marker while the app is running.
 
 ---
 
@@ -206,8 +199,8 @@ Because the project targets one owner and trusted machines, the synchronization 
 
 GTD on Rails currently synchronizes data with:
 
-- `rclone bisync` over `${gtd.data.root-directory}`.
-- Blocking startup sync before SQLite opens.
-- Async coalesced runtime data sync after domain changes.
+- `rclone bisync` over file-backed state under `${gtd.data.root-directory}`.
+- Blocking startup File Sync before PostgreSQL opens.
+- Async coalesced runtime File Sync after file-backed changes.
 - Async Google Integration Configuration sync after local save.
 - UI sync indicators backed by `/sync/status`.

@@ -17,13 +17,12 @@
 - `enums`: domain status values.
 - `exceptions`: business and not-found/conflict exception types.
 - `mappers`: conversion between entities and DTOs.
-- `normalizers`: text, body, path, and context normalization.
-- `persistence`: bootstrap, sync, converters, and SQLite-related helpers.
+- `persistence`: schema initialization, converters, and database utilities.
 - `repositories`: Spring Data repository interfaces.
 - `services`: domain behavior, asset storage/sync, cleanup, and after-commit execution.
 - `sidecar`: sidecar readiness payload and file publishing.
 - `types`: value objects and body-content model types.
-- `src/main/resources/db/migration`: Flyway SQL migrations.
+- `src/main/resources/db/postgresql-migration`: Flyway PostgreSQL schema migrations.
 
 ## Desktop Layout
 

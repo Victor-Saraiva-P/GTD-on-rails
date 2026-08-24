@@ -7,7 +7,11 @@ plugins {
 }
 
 group = 'com.gtdonrails'
-version = '1.4.1'
+version = '1.5.5'
+
+springBoot {
+	mainClass = 'com.gtdonrails.api.ApiApplication'
+}
 
 java {
 	sourceCompatibility = JavaVersion.VERSION_21
@@ -26,9 +30,10 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-flyway'
+	implementation 'org.flywaydb:flyway-database-postgresql'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.xerial:sqlite-jdbc'
-	implementation 'org.hibernate.orm:hibernate-community-dialects'
+	runtimeOnly 'org.postgresql:postgresql'
 
 	implementation 'com.google.api-client:google-api-client:2.8.0'
 	implementation 'com.google.apis:google-api-services-calendar:v3-rev20260517-2.0.0'

@@ -21,7 +21,6 @@ public class ProjectService {
     private final ProjectRepository projectRepository;
     private final ProjectMapper projectMapper;
     private final ItemTextNormalizer itemTextNormalizer;
-    private final DataSyncService dataSyncService;
     private final GoogleCalendarEventQueueService googleCalendarEventQueueService;
     private final AfterCommitExecutor afterCommitExecutor;
     private final Clock clock;
@@ -30,7 +29,6 @@ public class ProjectService {
         ProjectRepository projectRepository,
         ProjectMapper projectMapper,
         ItemTextNormalizer itemTextNormalizer,
-        DataSyncService dataSyncService,
         GoogleCalendarEventQueueService googleCalendarEventQueueService,
         AfterCommitExecutor afterCommitExecutor,
         Clock clock
@@ -38,7 +36,6 @@ public class ProjectService {
         this.projectRepository = projectRepository;
         this.projectMapper = projectMapper;
         this.itemTextNormalizer = itemTextNormalizer;
-        this.dataSyncService = dataSyncService;
         this.googleCalendarEventQueueService = googleCalendarEventQueueService;
         this.afterCommitExecutor = afterCommitExecutor;
         this.clock = clock;
@@ -67,7 +64,6 @@ public class ProjectService {
         project.markDone(clock);
         ProjectResponseDto response = projectMapper.toResponse(projectRepository.save(project));
         requestGoogleCalendarEventUpsertAfterCommit(id);
-        requestDataSyncAfterCommit("project marked done");
         return response;
     }
 
@@ -106,7 +102,6 @@ public class ProjectService {
         project.resetStatus();
         ProjectResponseDto response = projectMapper.toResponse(projectRepository.save(project));
         requestGoogleCalendarEventUpsertAfterCommit(id);
-        requestDataSyncAfterCommit("project status restored");
         return response;
     }
 
@@ -122,7 +117,6 @@ public class ProjectService {
         applyDeadlinePatch(project, request);
         ProjectResponseDto response = projectMapper.toResponse(projectRepository.save(project));
         requestGoogleCalendarEventUpsertAfterCommit(id);
-        requestDataSyncAfterCommit("project updated");
         return response;
     }
 
@@ -137,7 +131,6 @@ public class ProjectService {
         project.getItem().softDelete();
         projectRepository.save(project);
         requestGoogleCalendarEventDeleteAfterCommit(id);
-        requestDataSyncAfterCommit("project deleted");
     }
 
     /**
@@ -151,7 +144,6 @@ public class ProjectService {
         project.getItem().restore();
         ProjectResponseDto response = projectMapper.toResponse(projectRepository.save(project));
         requestGoogleCalendarEventUpsertAfterCommit(id);
-        requestDataSyncAfterCommit("project recovered");
         return response;
     }
 
@@ -173,10 +165,6 @@ public class ProjectService {
     private Project findAnyProject(UUID id) {
         return projectRepository.findById(id)
             .orElseThrow(() -> new ItemNotFoundException("project not found"));
-    }
-
-    private void requestDataSyncAfterCommit(String reason) {
-        afterCommitExecutor.run(() -> dataSyncService.requestSync(reason));
     }
 
     private void requestGoogleCalendarEventUpsertAfterCommit(UUID itemId) {

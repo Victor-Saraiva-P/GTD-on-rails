@@ -249,7 +249,10 @@ public class GoogleClientCredentialsStore {
     }
 
     private Path credentialsPath() {
-        return dataRoot.resolve("google.properties");
+        Path primary = dataRoot.resolve("google.properties");
+        if (Files.exists(primary)) return primary;
+        Path legacy = dataRoot.resolve("persistence/config/google.properties");
+        return Files.exists(legacy) ? legacy : primary;
     }
 
     private String readFileIfExists(Path path) throws IOException {

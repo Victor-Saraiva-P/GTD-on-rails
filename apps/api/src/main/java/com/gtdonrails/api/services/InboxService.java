@@ -31,7 +31,6 @@ public class InboxService {
     private final ContextRepository contextRepository;
     private final StuffMapper stuffMapper;
     private final ItemTextNormalizer itemTextNormalizer;
-    private final DataSyncService dataSyncService;
     private final GoogleCalendarEventQueueService googleCalendarEventQueueService;
     private final AfterCommitExecutor afterCommitExecutor;
 
@@ -40,7 +39,6 @@ public class InboxService {
         ContextRepository contextRepository,
         StuffMapper stuffMapper,
         ItemTextNormalizer itemTextNormalizer,
-        DataSyncService dataSyncService,
         GoogleCalendarEventQueueService googleCalendarEventQueueService,
         AfterCommitExecutor afterCommitExecutor
     ) {
@@ -48,7 +46,6 @@ public class InboxService {
         this.contextRepository = contextRepository;
         this.stuffMapper = stuffMapper;
         this.itemTextNormalizer = itemTextNormalizer;
-        this.dataSyncService = dataSyncService;
         this.googleCalendarEventQueueService = googleCalendarEventQueueService;
         this.afterCommitExecutor = afterCommitExecutor;
     }
@@ -99,9 +96,7 @@ public class InboxService {
         Title title = new Title(itemTextNormalizer.normalizeTitle(request.title()));
         Item item = new Item(title, null);
         item.markAsStuff();
-        StuffResponseDto response = stuffMapper.toResponse(itemRepository.save(item));
-        requestDataSyncAfterCommit("stuff created");
-        return response;
+        return stuffMapper.toResponse(itemRepository.save(item));
     }
 
     /**
@@ -117,7 +112,6 @@ public class InboxService {
         nextAction.setDeadline(request.deadline());
         itemRepository.save(item);
         requestGoogleCalendarEventSyncAfterCommit(id);
-        requestDataSyncAfterCommit("stuff converted to next action");
     }
 
     /**
@@ -131,7 +125,6 @@ public class InboxService {
         item.convertToCalendar(request.toScheduledDate(), request.toScheduledTime());
         itemRepository.save(item);
         requestGoogleCalendarEventSyncAfterCommit(id);
-        requestDataSyncAfterCommit("stuff converted to calendar");
     }
 
     /**
@@ -145,7 +138,6 @@ public class InboxService {
         item.convertToProject(request.deadline());
         itemRepository.save(item);
         requestGoogleCalendarEventSyncAfterCommit(id);
-        requestDataSyncAfterCommit("stuff converted to project");
     }
 
     private Item findStuff(UUID id) {
@@ -165,10 +157,6 @@ public class InboxService {
             throw new ContextNotFoundException("context not found");
         }
         return new HashSet<>(contexts);
-    }
-
-    private void requestDataSyncAfterCommit(String reason) {
-        afterCommitExecutor.run(() -> dataSyncService.requestSync(reason));
     }
 
     private void requestGoogleCalendarEventSyncAfterCommit(UUID itemId) {

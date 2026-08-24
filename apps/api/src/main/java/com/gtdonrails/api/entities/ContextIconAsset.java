@@ -20,7 +20,7 @@ public class ContextIconAsset extends AuditableEntity {
 
     @Id
     @Column(nullable = false, updatable = false)
-    private final UUID id = UUID.randomUUID();
+    private UUID id = UUID.randomUUID();
 
     @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "context_id", nullable = false)

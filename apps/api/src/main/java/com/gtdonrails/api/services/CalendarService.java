@@ -21,7 +21,6 @@ public class CalendarService {
     private final CalendarRepository calendarRepository;
     private final CalendarMapper calendarMapper;
     private final Clock clock;
-    private final DataSyncService dataSyncService;
     private final GoogleCalendarEventQueueService googleCalendarEventQueueService;
     private final AfterCommitExecutor afterCommitExecutor;
 
@@ -29,14 +28,12 @@ public class CalendarService {
         CalendarRepository calendarRepository,
         CalendarMapper calendarMapper,
         Clock clock,
-        DataSyncService dataSyncService,
         GoogleCalendarEventQueueService googleCalendarEventQueueService,
         AfterCommitExecutor afterCommitExecutor
     ) {
         this.calendarRepository = calendarRepository;
         this.calendarMapper = calendarMapper;
         this.clock = clock;
-        this.dataSyncService = dataSyncService;
         this.googleCalendarEventQueueService = googleCalendarEventQueueService;
         this.afterCommitExecutor = afterCommitExecutor;
     }
@@ -125,7 +122,6 @@ public class CalendarService {
         Calendar savedCalendar = calendarRepository.save(calendar);
         CalendarResponseDto response = calendarMapper.toResponse(savedCalendar);
         requestGoogleCalendarEventSyncAfterCommit(savedCalendar.getItemId());
-        requestDataSyncAfterCommit("calendar updated");
         return response;
     }
 
@@ -138,7 +134,7 @@ public class CalendarService {
     public CalendarResponseDto markOnGoing(UUID id) {
         Calendar calendar = findCalendar(id);
         calendar.markOnGoing(clock);
-        return saveWithSync(calendar, "calendar marked ongoing");
+        return saveAndSyncCalendar(calendar);
     }
 
     /**
@@ -150,7 +146,7 @@ public class CalendarService {
     public CalendarResponseDto markDone(UUID id) {
         Calendar calendar = findCalendar(id);
         calendar.markDone(clock);
-        return saveWithSync(calendar, "calendar marked done");
+        return saveAndSyncCalendar(calendar);
     }
 
     /**
@@ -162,7 +158,7 @@ public class CalendarService {
     public CalendarResponseDto resetCalendarStatus(UUID id) {
         Calendar calendar = findCalendar(id);
         calendar.resetStatus();
-        return saveWithSync(calendar, "calendar status restored");
+        return saveAndSyncCalendar(calendar);
     }
 
     /**
@@ -174,7 +170,7 @@ public class CalendarService {
     public CalendarResponseDto recoverCalendar(UUID id) {
         Calendar calendar = findCalendar(id);
         calendar.getItem().restore();
-        return saveWithSync(calendar, "calendar recovered");
+        return saveAndSyncCalendar(calendar);
     }
 
     private void applyPatch(Calendar calendar, PatchCalendarRequestDto request) {
@@ -186,11 +182,10 @@ public class CalendarService {
         }
     }
 
-    private CalendarResponseDto saveWithSync(Calendar calendar, String reason) {
+    private CalendarResponseDto saveAndSyncCalendar(Calendar calendar) {
         Calendar savedCalendar = calendarRepository.save(calendar);
         CalendarResponseDto response = calendarMapper.toResponse(savedCalendar);
         requestGoogleCalendarEventSyncAfterCommit(savedCalendar.getItemId());
-        requestDataSyncAfterCommit(reason);
         return response;
     }
 
@@ -201,10 +196,6 @@ public class CalendarService {
 
     private List<CalendarResponseDto> mapCalendars(List<Calendar> calendars) {
         return calendars.stream().map(calendarMapper::toResponse).toList();
-    }
-
-    private void requestDataSyncAfterCommit(String reason) {
-        afterCommitExecutor.run(() -> dataSyncService.requestSync(reason));
     }
 
     private void requestGoogleCalendarEventSyncAfterCommit(UUID itemId) {

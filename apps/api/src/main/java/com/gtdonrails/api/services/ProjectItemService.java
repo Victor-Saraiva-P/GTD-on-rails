@@ -29,16 +29,17 @@ public class ProjectItemService {
     private final ProjectItemRepository projectItemRepository;
     private final ItemRepository itemRepository;
     private final ItemTextNormalizer itemTextNormalizer;
-    private final DataSyncService dataSyncService;
-    private final AfterCommitExecutor afterCommitExecutor;
 
-    public ProjectItemService(ProjectRepository projectRepository, ProjectItemRepository projectItemRepository, ItemRepository itemRepository, ItemTextNormalizer itemTextNormalizer, DataSyncService dataSyncService, AfterCommitExecutor afterCommitExecutor) {
+    public ProjectItemService(
+        ProjectRepository projectRepository,
+        ProjectItemRepository projectItemRepository,
+        ItemRepository itemRepository,
+        ItemTextNormalizer itemTextNormalizer
+    ) {
         this.projectRepository = projectRepository;
         this.projectItemRepository = projectItemRepository;
         this.itemRepository = itemRepository;
         this.itemTextNormalizer = itemTextNormalizer;
-        this.dataSyncService = dataSyncService;
-        this.afterCommitExecutor = afterCommitExecutor;
     }
 
     /**
@@ -53,7 +54,6 @@ public class ProjectItemService {
         item.markAsStuff();
         Item savedItem = itemRepository.saveAndFlush(item);
         projectItemRepository.insertProjectItem(project.getItemId(), savedItem.getId());
-        requestDataSyncAfterCommit("project stuff created");
         return toResponse(new ProjectItem(project, savedItem));
     }
 
@@ -118,9 +118,5 @@ public class ProjectItemService {
     private ProjectItemResponseDto toResponse(ProjectItem projectItem) {
         Item item = projectItem.getItem();
         return new ProjectItemResponseDto(projectItem.getProject().getItemId(), item.getId(), item.getStatus().name(), item.getTitle().value(), item.getBody(), item.getCreatedAt(), calendarDate(projectItem), calendarTime(projectItem), nextActionDeadline(projectItem));
-    }
-
-    private void requestDataSyncAfterCommit(String reason) {
-        afterCommitExecutor.run(() -> dataSyncService.requestSync(reason));
     }
 }

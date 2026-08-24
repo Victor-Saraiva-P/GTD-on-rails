@@ -24,24 +24,24 @@ export function buildConnectivityBlockerModel(isBrowserOnline: boolean, syncStat
   return {
     isBlocked: !isBrowserOnline,
     title: isBrowserOnline ? "Connection active" : "No internet connection",
-    message: "The affected features are Data sync via rclone and Google Calendar.",
+    message: "The affected features are File Sync via rclone and Google Calendar.",
     rows: buildSyncRows(syncStatus)
   };
 }
 
 function buildSyncRows(syncStatus: SyncStatus | null): ConnectivitySyncRow[] {
-  return [buildDataRow(syncStatus), buildGoogleCalendarRow(syncStatus)];
+  return [buildFileRow(syncStatus), buildGoogleCalendarRow(syncStatus)];
 }
 
-function buildDataRow(syncStatus: SyncStatus | null): ConnectivitySyncRow {
-  const data = syncStatus?.data;
+function buildFileRow(syncStatus: SyncStatus | null): ConnectivitySyncRow {
+  const file = syncStatus?.file;
 
   return {
-    label: "DATA",
-    state: data?.state ?? "UNKNOWN",
-    pendingText: pendingText(Boolean(data?.pending || data?.running || data?.state === "FAILED")),
-    lastSuccessfulSyncAt: data?.lastSuccessfulSyncAt ?? "Never synced",
-    lastError: data?.lastError ?? null
+    label: "FILES",
+    state: file?.state ?? "UNKNOWN",
+    pendingText: pendingText(Boolean(file?.pending || file?.running || file?.state === "FAILED")),
+    lastSuccessfulSyncAt: file?.lastSuccessfulSyncAt ?? "Never synced",
+    lastError: file?.lastError ?? null
   };
 }
 

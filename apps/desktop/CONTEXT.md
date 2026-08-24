@@ -35,3 +35,12 @@ _Avoid_: Completed Project, concluded project
 **Deleted Project**:
 A project removed from active operational use but kept as a recoverable project record. Recovering a deleted project returns it to the project state it had before deletion.
 _Avoid_: Removed project, trashed project
+
+**Database Setup**:
+The first-installation flow that provisions a runtime environment's structured persistence after successful File Sync confirms that no Database Connection Configuration exists.
+_Avoid_: Database login, connection screen, Supabase setup
+
+**Database Connection Repair**:
+The explicit bootstrap flow that validates a fresh administrative connection and rotates a broken limited application role without treating an existing configuration as first installation.
+_Avoid_: Database Setup, automatic credential recovery
+

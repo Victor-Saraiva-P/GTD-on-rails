@@ -8,25 +8,25 @@ The sidecar binds to localhost on an ephemeral port, writes a readiness file wit
 
 ## Persistence
 
-The normal application database is SQLite. The database file lives inside a Git-backed persistence clone under the data root.
+The normal application database is PostgreSQL. Structured persistence connects directly to the configured environment (local Compose PostgreSQL in development, isolated Supabase in staging, and shared Supabase in production).
 
-The backend owns database bootstrapping, Flyway migration, data integrity, and persistence sync scheduling. Application services request sync after committed domain changes.
+The backend owns database bootstrapping, Flyway migrations, database identity guards, and schema integrity. Structured-only domain changes are persisted directly to PostgreSQL without triggering file sync.
 
 ## Assets
 
 Item assets are files plus database metadata.
 
-- Metadata lives in SQLite.
+- Metadata lives in PostgreSQL.
 - Files live under the configured local asset directory.
 - Body content references assets through markdown tokens and `blockEntities`.
 - The backend owns final storage, metadata creation, validation, URL generation, and sync scheduling.
 
 ## Synchronization
 
-Structured persistence and file assets use separate channels.
+The system maintains two synchronization channels.
 
-- Persistence sync uses Git with `git pull --ff-only` and push.
-- Asset sync uses `rclone bisync`.
+- File Sync uses `rclone bisync` to synchronize files (assets, configuration, backups, sync marker) under `${gtd.data.root-directory}`.
+- Google Calendar sync mirrors GTD items to Google Calendar after local domain changes.
 - The app intentionally avoids automatic merge commits, SQL-level merge flows, and force-push conflict recovery.
 
 ## Release Runtime

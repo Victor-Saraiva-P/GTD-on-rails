@@ -62,7 +62,7 @@ public class Item extends AuditableEntity {
     private Project project;
 
     @OneToMany(mappedBy = "item", cascade = CascadeType.REMOVE, orphanRemoval = true)
-    private final Set<ItemAsset> assets = new HashSet<>();
+    private Set<ItemAsset> assets = new HashSet<>();
 
     public Item() {
     }

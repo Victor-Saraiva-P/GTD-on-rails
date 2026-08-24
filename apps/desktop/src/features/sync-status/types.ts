@@ -1,4 +1,4 @@
-export type DataSyncState =
+export type FileSyncState =
   | "DISABLED"
   | "BOOTSTRAPPING"
   | "SYNCED"
@@ -8,8 +8,8 @@ export type DataSyncState =
 
 export type GoogleCalendarSyncState = "DISABLED" | "SYNCED" | "PENDING" | "SYNCING" | "FAILED";
 
-export type DataSyncStatus = {
-  state: DataSyncState;
+export type FileSyncStatus = {
+  state: FileSyncState;
   pending: boolean;
   running: boolean;
   lastStartedAt: string | null;
@@ -29,6 +29,6 @@ export type GoogleCalendarSyncStatus = {
 };
 
 export type SyncStatus = {
-  data: DataSyncStatus;
+  file: FileSyncStatus;
   googleCalendar: GoogleCalendarSyncStatus;
 };

@@ -12,10 +12,12 @@ command -v java >/dev/null 2>&1 || { echo "java is invalid; expected Java 21 ins
 mkdir -p "$install_dir/binaries" "$bin_dir" "$desktop_dir"
 cp "$source_dir/gtd-on-rails" "$install_dir/gtd-on-rails"
 cp "$source_dir/gtd-api" "$install_dir/gtd-api"
+cp "$source_dir/gtd-cutover" "$install_dir/gtd-cutover"
 cp "$source_dir/binaries/gtd-api.jar" "$install_dir/binaries/gtd-api.jar"
 cp "$source_dir/icon.png" "$install_dir/icon.png"
-chmod +x "$install_dir/gtd-on-rails" "$install_dir/gtd-api"
+chmod +x "$install_dir/gtd-on-rails" "$install_dir/gtd-api" "$install_dir/gtd-cutover"
 ln -sf "$install_dir/gtd-on-rails" "$bin_dir/gtd-on-rails"
+ln -sf "$install_dir/gtd-cutover" "$bin_dir/gtd-cutover"
 
 printf '%s\n' \
   '[Desktop Entry]' \

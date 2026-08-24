@@ -29,10 +29,20 @@ jobs:
           java-version: 21
           cache: gradle
 
+      - name: Start PostgreSQL for tests
+        run: docker compose -f infra/compose.test.yaml -p gtd-on-rails-test up -d --wait
+
       - name: Run tests, coverage, and SonarCloud analysis
         working-directory: apps/api
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_USER_HOME: /tmp/sonar-home
+          GTD_TEST_DB_URL: jdbc:postgresql://127.0.0.1:55432/gtd_integration?currentSchema=gtd
+          GTD_TEST_DB_USERNAME: gtd_test
+          GTD_TEST_DB_PASSWORD: gtd_test
         run: ./gradlew test jacocoTestReport sonar -Dsonar.token="$SONAR_TOKEN"
+
+      - name: Stop PostgreSQL for tests
+        if: always()
+        run: docker compose -f infra/compose.test.yaml -p gtd-on-rails-test down --volumes --remove-orphans

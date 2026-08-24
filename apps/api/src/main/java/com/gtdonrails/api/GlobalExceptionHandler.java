@@ -4,6 +4,7 @@ import com.gtdonrails.api.exceptions.context.ContextNotFoundException;
 import com.gtdonrails.api.exceptions.item.ItemNotFoundException;
 import com.gtdonrails.api.exceptions.shared.BusinessException;
 import com.gtdonrails.api.exceptions.shared.ConflictException;
+import com.gtdonrails.api.exceptions.shared.DatabaseUnavailableException;
 
 import jakarta.validation.ConstraintViolation;
 import org.jspecify.annotations.NonNull;
@@ -36,6 +37,15 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     public GlobalExceptionHandler(ProblemDetailFactory problemDetailFactory) {
         this.problemDetailFactory = problemDetailFactory;
+    }
+
+    @ExceptionHandler(DatabaseUnavailableException.class)
+    public ResponseEntity<Object> handleDatabaseUnavailableException(
+        DatabaseUnavailableException exception, WebRequest request) {
+        HttpStatus status = HttpStatus.SERVICE_UNAVAILABLE;
+        ProblemDetail detail = problemDetailFactory.create(
+            status, "Database unavailable", "/database-unavailable", exception.getMessage(), request);
+        return handleExceptionInternal(exception, detail, new HttpHeaders(), status, request);
     }
 
     /**

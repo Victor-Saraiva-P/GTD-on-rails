@@ -27,10 +27,8 @@ Canonical sources:
 - The production app is a native Linux `.tar.gz` installation under `~/.local/share/gtd-on-rails`.
 - The only production desktop environment target is the owner's Arch Linux and Hyprland setup.
 - The Tauri desktop app starts a bundled Spring Boot sidecar API.
-- The sidecar binds to localhost and stores data on the user's machine.
-- SQLite is the application database.
-- Structured persistence sync uses a private Git repository.
-- File asset sync uses rclone and Google Drive remotes.
+- PostgreSQL is the application database (local in dev, Supabase in staging/prod).
+- File sync (assets, configs, backups) uses rclone and Google Drive remotes.
 
 ## Core Workflow
 

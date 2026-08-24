@@ -6,7 +6,7 @@ import type { SyncStatus } from "../src/features/sync-status/types.ts";
 
 function syncStatus(): SyncStatus {
   return {
-    data: {
+    file: {
       state: "SYNCED",
       pending: false,
       running: false,
@@ -33,13 +33,13 @@ describe("connectivity blocker", () => {
     assert.equal(buildConnectivityBlockerModel(true, failedSyncStatus()).isBlocked, false);
   });
 
-  test("reports pending data sync", () => {
+  test("reports pending file sync", () => {
     const status = syncStatus();
-    status.data.pending = true;
+    status.file.pending = true;
 
     const model = buildConnectivityBlockerModel(false, status);
 
-    assert.equal(model.rows[0].label, "DATA");
+    assert.equal(model.rows[0].label, "FILES");
     assert.equal(model.rows[0].pendingText, "yes");
   });
 
@@ -56,7 +56,7 @@ describe("connectivity blocker", () => {
 
 function failedSyncStatus(): SyncStatus {
   const status = syncStatus();
-  status.data.state = "FAILED";
+  status.file.state = "FAILED";
   status.googleCalendar.state = "FAILED";
   return status;
 }
