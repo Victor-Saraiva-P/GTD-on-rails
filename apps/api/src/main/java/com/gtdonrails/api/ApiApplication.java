@@ -2,6 +2,7 @@ package com.gtdonrails.api;
 
 import java.time.Clock;
 
+import com.gtdonrails.api.bootstrap.DatabaseTrustCertificateProvisioner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
@@ -19,6 +20,7 @@ public class ApiApplication {
             BootstrapApplication.run(args);
             return;
         }
+        new DatabaseTrustCertificateProvisioner().ensureCertificate();
         SpringApplication.run(ApiApplication.class, args);
     }
 

@@ -15,6 +15,7 @@ import java.util.EnumSet;
 import java.util.Properties;
 
 import com.gtdonrails.api.services.FileSyncService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
@@ -29,17 +30,30 @@ public class DatabaseSetupService {
     private final FileSyncService fileSync;
     private final DatabaseConnectionFactory connectionFactory;
     private final String environment;
+    private final DatabaseTrustCertificateProvisioner certificateProvisioner;
 
+    @Autowired
     public DatabaseSetupService(
         @Value("${gtd.data.root-directory}") String dataRoot,
         FileSyncService fileSync,
         DatabaseConnectionFactory connectionFactory,
         @Value("${gtd.database.environment:PRODUCTION}") String environment
     ) {
+        this(dataRoot, fileSync, connectionFactory, environment, new DatabaseTrustCertificateProvisioner());
+    }
+
+    public DatabaseSetupService(
+        String dataRoot,
+        FileSyncService fileSync,
+        DatabaseConnectionFactory connectionFactory,
+        String environment,
+        DatabaseTrustCertificateProvisioner certificateProvisioner
+    ) {
         configurationPath = Path.of(dataRoot).toAbsolutePath().normalize().resolve("database.properties");
         this.fileSync = fileSync;
         this.connectionFactory = connectionFactory;
         this.environment = environment;
+        this.certificateProvisioner = certificateProvisioner != null ? certificateProvisioner : new DatabaseTrustCertificateProvisioner();
     }
 
     /** Provisions the limited application role and saves its connection details.
@@ -49,6 +63,7 @@ public class DatabaseSetupService {
     public void provision(DatabaseSetupRequest request) {
         try {
             validate(request);
+            certificateProvisioner.ensureCertificate(configurationPath.getParent());
             String password = generatedPassword();
             try (Connection connection = connectionFactory.open(
                 request.administrativeUrl(), request.administrativeUsername(), request.administrativePassword())) {
@@ -70,6 +85,7 @@ public class DatabaseSetupService {
     public void repair(DatabaseSetupRequest request) {
         try {
             validate(request);
+            certificateProvisioner.ensureCertificate(configurationPath.getParent());
             RepairData repairData = loadRepairData(request);
             String password = generatedPassword();
             executeRepair(request, password, repairData);
@@ -283,6 +299,7 @@ public class DatabaseSetupService {
 
     private void saveConfiguration(String url, String administrativeUsername, String password) throws IOException {
         Files.createDirectories(configurationPath.getParent());
+        certificateProvisioner.ensureCertificate(configurationPath.getParent());
         Properties properties = new Properties();
         properties.setProperty("spring.datasource.url", DatabaseConnectionUrl.runtimeUrl(url));
         // WHY: Supavisor requires the project ref suffix on every username for tenant routing.
