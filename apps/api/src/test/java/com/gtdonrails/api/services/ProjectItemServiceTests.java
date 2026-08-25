@@ -77,7 +77,7 @@ class ProjectItemServiceTests {
 
         assertEquals("Task 1", response.title());
         verify(projectItemRepository).insertProjectItem(any(), any());
-        verify(cacheInvalidationService).evictProjectMutation();
+        verify(cacheInvalidationService).evictItemMutation();
     }
 
     @Test

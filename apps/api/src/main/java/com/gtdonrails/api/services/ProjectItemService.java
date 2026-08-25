@@ -62,7 +62,7 @@ public class ProjectItemService {
         item.markAsStuff();
         Item savedItem = itemRepository.saveAndFlush(item);
         projectItemRepository.insertProjectItem(project.getItemId(), savedItem.getId());
-        afterCommitExecutor.run(cacheInvalidationService::evictProjectMutation);
+        afterCommitExecutor.run(cacheInvalidationService::evictItemMutation);
         return toResponse(new ProjectItem(project, savedItem));
     }
 
