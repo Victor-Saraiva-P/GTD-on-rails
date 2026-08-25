@@ -4,7 +4,7 @@ alter table items add constraint items_status_check check (status in ('STUFF', '
 create table projects (
     item_id uuid primary key references items(id),
     deadline date,
-    status varchar(50) not null default 'ACTIVE',
+    status text not null default 'ACTIVE',
     done_date date,
     done_time time,
     created_at timestamp with time zone not null,

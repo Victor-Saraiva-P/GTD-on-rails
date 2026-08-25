@@ -116,12 +116,12 @@ async function autosaveBody(item: ProjectItem | null, edit: ReturnType<typeof us
 }
 
 async function processSelectedStuff(item: ProjectItem | null, energy: number | null, minutes: number | null, contextIds: string[], deadline: string | null, reload: () => void) {
-  if (!item || item.kind !== "STUFF") return;
+  if (item?.kind !== "STUFF") return;
   await processProjectStuff(item, energy, minutes, contextIds, deadline); reload();
 }
 
 async function processSelectedStuffToCalendar(item: ProjectItem | null, payload: CalendarConversionPayload, reload: () => void) {
-  if (!item || item.kind !== "STUFF") return;
+  if (item?.kind !== "STUFF") return;
   await processProjectStuffToCalendar(item, payload); reload();
 }
 

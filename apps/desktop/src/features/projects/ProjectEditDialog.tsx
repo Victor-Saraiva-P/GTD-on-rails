@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import { NextActionDeadlineStep } from "../next-actions/NextActionDeadlineStep";
 import type { Project, ProjectPatch } from "./types";
@@ -12,18 +12,21 @@ type ProjectEditDialogProps = Readonly<{
 type ProjectEditStep = "initial" | "title" | "deadline";
 
 function ProjectEditInitialStep({ onSelect, onClose }: Readonly<{ onSelect: (step: ProjectEditStep) => void; onClose: () => void }>) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => { ref.current?.focus(); }, []);
-  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (!["Escape", "t", "T", "d", "D"].includes(event.key)) return;
-    event.preventDefault();
-    event.stopPropagation();
-    if (event.key === "Escape") onClose();
-    if (event.key.toLowerCase() === "t") onSelect("title");
-    if (event.key.toLowerCase() === "d") onSelect("deadline");
-  };
+  useLayoutEffect(() => {
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (!["Escape", "t", "T", "d", "D"].includes(event.key)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (event.key === "Escape") onClose();
+      if (event.key.toLowerCase() === "t") onSelect("title");
+      if (event.key.toLowerCase() === "d") onSelect("deadline");
+    };
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
+  }, [onClose, onSelect]);
+
   return (
-    <div ref={ref} className="processing-dialog__step processing-dialog__step--initial" tabIndex={-1} onKeyDown={handleKeyDown}>
+    <div className="processing-dialog__step processing-dialog__step--initial">
       <button className="processing-dialog__command" type="button" onClick={() => onSelect("title")}><kbd>t</kbd><span>Title</span></button>
       <button className="processing-dialog__command" type="button" onClick={() => onSelect("deadline")}><kbd>d</kbd><span>Deadline</span></button>
     </div>
@@ -63,12 +66,12 @@ export function ProjectEditDialog({ item, onClose, onSave }: ProjectEditDialogPr
     await onSave({ title: title.trim() });
   };
   return (
-    <section className="processing-dialog" role="dialog" aria-modal="true" aria-label="Edit project">
+    <dialog className="processing-dialog" aria-modal="true" aria-label="Edit project" open>
       <div className="processing-dialog__title">Edit project</div>
       {error ? <p className="processing-dialog__error" role="alert">{error}</p> : null}
       {step === "initial" ? <ProjectEditInitialStep onSelect={setStep} onClose={onClose} /> : null}
       {step === "title" ? <ProjectTitleStep value={title} onValueChange={updateTitle} onBack={() => setStep("initial")} onSave={saveTitle} /> : null}
       {step === "deadline" ? <NextActionDeadlineStep value={deadline} enableTodayShortcut onDeadlineChange={setDeadline} onDeadlineSelected={(value) => onSave(deadlinePatch(value))} onBack={() => setStep("initial")} /> : null}
-    </section>
+    </dialog>
   );
 }
