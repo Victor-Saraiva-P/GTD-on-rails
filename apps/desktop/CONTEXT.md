@@ -44,3 +44,8 @@ _Avoid_: Database login, connection screen, Supabase setup
 The explicit bootstrap flow that validates a fresh administrative connection and rotates a broken limited application role without treating an existing configuration as first installation.
 _Avoid_: Database Setup, automatic credential recovery
 
+**Optimistic Mutation**:
+A desktop state transition applied immediately in the user interface for high-frequency keyboard operations before the backend write-through persistence confirms success.
+_Avoid_: Local save, offline queue, draft
+
+
