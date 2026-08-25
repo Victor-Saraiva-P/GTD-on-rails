@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { ApiRequestError } from "../../lib/api/apiClient";
-import { useSyncStatus } from "../sync-status/SyncStatusProvider";
+import { ApiRequestError } from "../../lib/api/apiClient.ts";
+import { useSyncStatus } from "../sync-status/SyncStatusProvider.tsx";
+import { optimisticMutate } from "../../lib/api/optimistic.ts";
 import {
   createContext as createContextRequest,
   deleteContext as deleteContextRequest,
@@ -130,8 +131,13 @@ async function deleteContextItem(id: string, state: ContextsLoadState, mutations
   mutations.setIsDeleting(true);
 
   try {
-    await deleteContextRequest(id);
-    state.setContexts((currentContexts) => currentContexts.filter((context) => context.id !== id));
+    await optimisticMutate({
+      current: () => state.contexts,
+      applyOptimistic: (currentContexts) => currentContexts.filter((context) => context.id !== id),
+      set: state.setContexts,
+      mutate: () => deleteContextRequest(id),
+      onError: (error) => state.setErrorMessage(toErrorMessage(error))
+    });
     completeContextMutation(state, triggerSyncStatusPolling);
   } finally {
     mutations.setIsDeleting(false);

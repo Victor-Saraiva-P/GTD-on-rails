@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { ApiRequestError } from "../../lib/api/apiClient";
-import { useSyncStatus } from "../sync-status/SyncStatusProvider";
+import { ApiRequestError } from "../../lib/api/apiClient.ts";
+import { optimisticMutate } from "../../lib/api/optimistic.ts";
+import { useSyncStatus } from "../sync-status/SyncStatusProvider.tsx";
 import type { ItemBody } from "../inbox/types";
 import type { NextAction, NextActionOrder, NextActionPatch } from "./types";
 import {
@@ -103,8 +104,13 @@ export function useNextActionsMutations(state: NextActionsLoadState, mutations: 
 async function markAsDone(id: string, state: NextActionsLoadState, mutations: NextActionsMutationState, poll: () => void) {
   mutations.setIsUpdating(true);
   try {
-    await markNextActionDone(id);
-    state.setItems((items) => items.filter((item) => item.id !== id));
+    await optimisticMutate({
+      current: () => state.items,
+      applyOptimistic: (items) => items.filter((item) => item.id !== id),
+      set: state.setItems,
+      mutate: () => markNextActionDone(id),
+      onError: (err) => state.setErrorMessage(toErrorMessage(err))
+    });
     completeMutation(state, poll);
   } finally {
     mutations.setIsUpdating(false);
@@ -114,8 +120,13 @@ async function markAsDone(id: string, state: NextActionsLoadState, mutations: Ne
 async function markAsOnGoing(id: string, state: NextActionsLoadState, mutations: NextActionsMutationState, poll: () => void) {
   mutations.setIsUpdating(true);
   try {
-    await markNextActionOnGoing(id);
-    state.setItems((items) => items.filter((item) => item.id !== id));
+    await optimisticMutate({
+      current: () => state.items,
+      applyOptimistic: (items) => items.filter((item) => item.id !== id),
+      set: state.setItems,
+      mutate: () => markNextActionOnGoing(id),
+      onError: (err) => state.setErrorMessage(toErrorMessage(err))
+    });
     completeMutation(state, poll);
   } finally {
     mutations.setIsUpdating(false);
@@ -125,8 +136,13 @@ async function markAsOnGoing(id: string, state: NextActionsLoadState, mutations:
 async function restoreStatus(id: string, state: NextActionsLoadState, mutations: NextActionsMutationState, poll: () => void) {
   mutations.setIsUpdating(true);
   try {
-    await resetNextActionStatus(id);
-    state.setItems((items) => items.filter((item) => item.id !== id));
+    await optimisticMutate({
+      current: () => state.items,
+      applyOptimistic: (items) => items.filter((item) => item.id !== id),
+      set: state.setItems,
+      mutate: () => resetNextActionStatus(id),
+      onError: (err) => state.setErrorMessage(toErrorMessage(err))
+    });
     completeMutation(state, poll);
   } finally {
     mutations.setIsUpdating(false);
@@ -135,32 +151,65 @@ async function restoreStatus(id: string, state: NextActionsLoadState, mutations:
 
 async function deleteItem(id: string, state: NextActionsLoadState, mutations: NextActionsMutationState, poll: () => void) {
   mutations.setIsDeleting(true);
-  try { await deleteNextAction(id); state.setItems((items) => items.filter((item) => item.id !== id)); completeMutation(state, poll); }
-  finally { mutations.setIsDeleting(false); }
+  try {
+    await optimisticMutate({
+      current: () => state.items,
+      applyOptimistic: (items) => items.filter((item) => item.id !== id),
+      set: state.setItems,
+      mutate: () => deleteNextAction(id),
+      onError: (err) => state.setErrorMessage(toErrorMessage(err))
+    });
+    completeMutation(state, poll);
+  } finally {
+    mutations.setIsDeleting(false);
+  }
 }
 
 async function restoreItem(id: string, mutations: NextActionsMutationState, reload: () => void, poll: () => void) {
   mutations.setIsUpdating(true);
-  try { await restoreNextAction(id); reload(); poll(); }
-  finally { mutations.setIsUpdating(false); }
+  try {
+    await restoreNextAction(id);
+    reload();
+    poll();
+  } finally {
+    mutations.setIsUpdating(false);
+  }
 }
 
 async function patchItem(id: string, patch: NextActionPatch, state: NextActionsLoadState, mutations: NextActionsMutationState, poll: () => void) {
   mutations.setIsUpdating(true);
-  try { const updated = await patchNextActionAttributes(id, patch); state.setItems((items) => replaceItem(items, updated)); completeMutation(state, poll); return updated; }
-  finally { mutations.setIsUpdating(false); }
+  try {
+    const updated = await patchNextActionAttributes(id, patch);
+    state.setItems((items) => replaceItem(items, updated));
+    completeMutation(state, poll);
+    return updated;
+  } finally {
+    mutations.setIsUpdating(false);
+  }
 }
 
 async function updateBody(item: NextAction, body: ItemBody, state: NextActionsLoadState, mutations: NextActionsMutationState, poll: () => void) {
   mutations.setIsUpdating(true);
-  try { const updated = await updateNextActionBody(item, body); state.setItems((items) => replaceItem(items, updated)); completeMutation(state, poll); return updated; }
-  finally { mutations.setIsUpdating(false); }
+  try {
+    const updated = await updateNextActionBody(item, body);
+    state.setItems((items) => replaceItem(items, updated));
+    completeMutation(state, poll);
+    return updated;
+  } finally {
+    mutations.setIsUpdating(false);
+  }
 }
 
 async function updateTitle(item: NextAction, title: string, state: NextActionsLoadState, mutations: NextActionsMutationState, poll: () => void) {
   mutations.setIsUpdating(true);
-  try { const updated = await updateNextActionTitle(item, title); state.setItems((items) => replaceItem(items, updated)); completeMutation(state, poll); return updated; }
-  finally { mutations.setIsUpdating(false); }
+  try {
+    const updated = await updateNextActionTitle(item, title);
+    state.setItems((items) => replaceItem(items, updated));
+    completeMutation(state, poll);
+    return updated;
+  } finally {
+    mutations.setIsUpdating(false);
+  }
 }
 
 /**
