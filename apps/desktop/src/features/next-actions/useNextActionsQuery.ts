@@ -17,16 +17,16 @@ import {
 } from "./api";
 
 type NextActionsQuery = ReturnType<typeof useNextActionsQuery>;
-type LoadState = ReturnType<typeof useNextActionsLoadState>;
-type MutationState = ReturnType<typeof useNextActionsMutationState>;
+type NextActionsLoadState = ReturnType<typeof useNextActionsLoadState>;
+type NextActionsMutationState = ReturnType<typeof useNextActionsMutationState>;
 
-export function toErrorMessage(error: unknown): string {
+function toErrorMessage(error: unknown): string {
   if (error instanceof ApiRequestError) return `Failed to load next actions (${error.status})`;
   if (error instanceof Error) return error.message;
   return "Failed to load next actions";
 }
 
-export function useNextActionsLoadState() {
+function useNextActionsLoadState() {
   const [items, setItems] = useState<NextAction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -34,15 +34,11 @@ export function useNextActionsLoadState() {
   return { errorMessage, isLoading, items, reloadToken, setErrorMessage, setIsLoading, setItems, setReloadToken };
 }
 
-export type NextActionsLoadState = ReturnType<typeof useNextActionsLoadState>;
-
-export function useNextActionsMutationState() {
+function useNextActionsMutationState() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   return { isDeleting, isUpdating, setIsDeleting, setIsUpdating };
 }
-
-export type NextActionsMutationState = ReturnType<typeof useNextActionsMutationState>;
 
 async function loadNextActions(
   state: NextActionsLoadState,
@@ -64,7 +60,7 @@ async function loadNextActions(
   }
 }
 
-export function useNextActionsLoader(
+function useNextActionsLoader(
   state: NextActionsLoadState,
   contextIds: string[],
   currentTimeMinutes: number | null,
@@ -87,82 +83,40 @@ function completeMutation(state: NextActionsLoadState, poll: () => void) {
   poll();
 }
 
-export function useNextActionsMutations(state: NextActionsLoadState, mutations: NextActionsMutationState, reload: () => void) {
+async function optimisticRemoveAction(
+  id: string,
+  state: NextActionsLoadState,
+  poll: () => void,
+  action: (id: string) => Promise<unknown>,
+  setBusy: (busy: boolean) => void
+) {
+  setBusy(true);
+  try {
+    await optimisticMutate({
+      current: () => state.items,
+      applyOptimistic: (items) => items.filter((item) => item.id !== id),
+      set: state.setItems,
+      mutate: () => action(id),
+      onError: (err) => state.setErrorMessage(toErrorMessage(err))
+    });
+    completeMutation(state, poll);
+  } finally {
+    setBusy(false);
+  }
+}
+
+function useNextActionsMutations(state: NextActionsLoadState, mutations: NextActionsMutationState, reload: () => void) {
   const { triggerSyncStatusPolling } = useSyncStatus();
   return {
-    deleteItem: (id: string) => deleteItem(id, state, mutations, triggerSyncStatusPolling),
-    markAsDone: (id: string) => markAsDone(id, state, mutations, triggerSyncStatusPolling),
-    markAsOnGoing: (id: string) => markAsOnGoing(id, state, mutations, triggerSyncStatusPolling),
+    deleteItem: (id: string) => optimisticRemoveAction(id, state, triggerSyncStatusPolling, deleteNextAction, mutations.setIsDeleting),
+    markAsDone: (id: string) => optimisticRemoveAction(id, state, triggerSyncStatusPolling, markNextActionDone, mutations.setIsUpdating),
+    markAsOnGoing: (id: string) => optimisticRemoveAction(id, state, triggerSyncStatusPolling, markNextActionOnGoing, mutations.setIsUpdating),
     patchItem: (id: string, patch: NextActionPatch) => patchItem(id, patch, state, mutations, triggerSyncStatusPolling),
-    restoreStatus: (id: string) => restoreStatus(id, state, mutations, triggerSyncStatusPolling),
+    restoreStatus: (id: string) => optimisticRemoveAction(id, state, triggerSyncStatusPolling, resetNextActionStatus, mutations.setIsUpdating),
     restoreItem: (id: string) => restoreItem(id, mutations, reload, triggerSyncStatusPolling),
     updateBody: (item: NextAction, body: ItemBody) => updateBody(item, body, state, mutations, triggerSyncStatusPolling),
     updateTitle: (item: NextAction, title: string) => updateTitle(item, title, state, mutations, triggerSyncStatusPolling)
   };
-}
-
-async function markAsDone(id: string, state: NextActionsLoadState, mutations: NextActionsMutationState, poll: () => void) {
-  mutations.setIsUpdating(true);
-  try {
-    await optimisticMutate({
-      current: () => state.items,
-      applyOptimistic: (items) => items.filter((item) => item.id !== id),
-      set: state.setItems,
-      mutate: () => markNextActionDone(id),
-      onError: (err) => state.setErrorMessage(toErrorMessage(err))
-    });
-    completeMutation(state, poll);
-  } finally {
-    mutations.setIsUpdating(false);
-  }
-}
-
-async function markAsOnGoing(id: string, state: NextActionsLoadState, mutations: NextActionsMutationState, poll: () => void) {
-  mutations.setIsUpdating(true);
-  try {
-    await optimisticMutate({
-      current: () => state.items,
-      applyOptimistic: (items) => items.filter((item) => item.id !== id),
-      set: state.setItems,
-      mutate: () => markNextActionOnGoing(id),
-      onError: (err) => state.setErrorMessage(toErrorMessage(err))
-    });
-    completeMutation(state, poll);
-  } finally {
-    mutations.setIsUpdating(false);
-  }
-}
-
-async function restoreStatus(id: string, state: NextActionsLoadState, mutations: NextActionsMutationState, poll: () => void) {
-  mutations.setIsUpdating(true);
-  try {
-    await optimisticMutate({
-      current: () => state.items,
-      applyOptimistic: (items) => items.filter((item) => item.id !== id),
-      set: state.setItems,
-      mutate: () => resetNextActionStatus(id),
-      onError: (err) => state.setErrorMessage(toErrorMessage(err))
-    });
-    completeMutation(state, poll);
-  } finally {
-    mutations.setIsUpdating(false);
-  }
-}
-
-async function deleteItem(id: string, state: NextActionsLoadState, mutations: NextActionsMutationState, poll: () => void) {
-  mutations.setIsDeleting(true);
-  try {
-    await optimisticMutate({
-      current: () => state.items,
-      applyOptimistic: (items) => items.filter((item) => item.id !== id),
-      set: state.setItems,
-      mutate: () => deleteNextAction(id),
-      onError: (err) => state.setErrorMessage(toErrorMessage(err))
-    });
-    completeMutation(state, poll);
-  } finally {
-    mutations.setIsDeleting(false);
-  }
 }
 
 async function restoreItem(id: string, mutations: NextActionsMutationState, reload: () => void, poll: () => void) {
