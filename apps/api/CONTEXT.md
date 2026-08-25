@@ -12,12 +12,32 @@ _Avoid_: Task, todo
 The date a next action should be done by. When present, it is the date used to represent the active next action on an external agenda.
 _Avoid_: Due date, scheduled date
 
+**Project**:
+A GTD outcome that represents a desired result with a title and optional deadline. A project may originate from captured stuff, but the project view is concerned with the result rather than the original captured body.
+_Avoid_: On going, task
+
+**Project Item**:
+A GTD item associated with a project and shown as part of that project's operational work. In the current project detail flow, a project item can be stuff, a next action, or a calendar item.
+_Avoid_: subtask, child task, project task
+
+**Active Project**:
+A project whose desired result has not yet been achieved and remains part of current commitments.
+_Avoid_: In-progress project, on going project
+
+**Done Project**:
+A project whose desired result has been achieved and is no longer active. On an external agenda, it is represented by its deadline when a deadline exists.
+_Avoid_: Completed Project, concluded project
+
+**Deleted Project**:
+A project removed from active operational use but kept as a recoverable project record. Recovering a deleted project returns it to the project state it had before deletion.
+_Avoid_: Removed project, trashed project
+
 **External Agenda Mirror**:
 A derived calendar representation of GTD items outside the local GTD system. The local GTD item remains the source of truth.
 _Avoid_: Calendar source, remote truth
 
 **GTD Google Calendar**:
-One of the external agendas owned by the GTD system, including Calendar, Next Action, On Going, and Done. A GTD item should appear on at most one of these agendas at a time.
+One of the external agendas owned by the GTD system, including Calendar, Next Action, Project, On Going, and Done. A GTD item should appear on at most one of these agendas at a time.
 _Avoid_: Google agenda set, remote GTD state
 
 **Token Encryption Key**:

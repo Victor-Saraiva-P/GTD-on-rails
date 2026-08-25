@@ -7,8 +7,11 @@ import {
   contextsListTheme,
   doneCalendarsListTheme,
   doneNextActionsListTheme,
+  doneProjectsListTheme,
+  deletedProjectsListTheme,
   inboxListTheme,
   nextActionsListTheme,
+  projectsListTheme,
   stuffDetailListTheme
 } from "../src/features/lists/listThemes.ts";
 
@@ -36,6 +39,12 @@ test("nextActionsListTheme defines green next actions styling", () => {
   assert.equal(nextActionsListTheme.accentColor, "#4F9768");
 });
 
+test("projectsListTheme defines purple projects styling", () => {
+  assert.equal(projectsListTheme.id, "projects");
+  assert.equal(projectsListTheme.label, "Projects");
+  assert.equal(projectsListTheme.accentColor, "#9B5AB7");
+});
+
 test("calendarsListTheme keeps the calendar red accent", () => {
   assert.equal(calendarsListTheme.id, "calendars");
   assert.equal(calendarsListTheme.accentColor, "#c85a53");
@@ -44,4 +53,14 @@ test("calendarsListTheme keeps the calendar red accent", () => {
 
 test("doneCalendarsListTheme reuses completed next actions green", () => {
   assert.equal(doneCalendarsListTheme.accentColor, doneNextActionsListTheme.accentColor);
+});
+
+test("doneProjectsListTheme uses completed green", () => {
+  assert.equal(doneProjectsListTheme.label, "Completed Projects");
+  assert.equal(doneProjectsListTheme.accentColor, "#7F8D3F");
+});
+
+test("deletedProjectsListTheme uses deleted gray", () => {
+  assert.equal(deletedProjectsListTheme.label, "Deleted Projects");
+  assert.equal(deletedProjectsListTheme.accentColor, "#9B9B9B");
 });

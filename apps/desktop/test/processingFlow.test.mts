@@ -18,9 +18,10 @@ import {
 import type { SegmentedCalendarDateState } from "../src/features/processing/processingFlow.ts";
 
 describe("processing flow", () => {
-  test("initial keyboard choices branch to next actions or calendar", () => {
+  test("initial keyboard choices branch to supported processing outcomes", () => {
     assert.equal(stepAfterInitialChoice("next-action"), "set-deadline");
     assert.equal(stepAfterInitialChoice("calendar"), "set-calendar-date");
+    assert.equal(stepAfterInitialChoice("project"), "set-project-deadline");
   });
 
   test("escape goes back after the initial step", () => {
@@ -30,6 +31,7 @@ describe("processing flow", () => {
     assert.equal(previousProcessingStep("set-time"), "set-energy");
     assert.equal(previousProcessingStep("set-calendar-date"), "initial");
     assert.equal(previousProcessingStep("set-calendar-time"), "set-calendar-date");
+    assert.equal(previousProcessingStep("set-project-deadline"), "initial");
   });
 
   test("calendar time keyboard input preserves valid HH:mm digits", () => {

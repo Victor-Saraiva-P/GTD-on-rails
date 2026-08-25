@@ -123,12 +123,21 @@ public class GoogleCalendarController {
         try {
             if (!configurationReady()) return configurationNotReadyResponse();
             googleCalendarService.exchangeCodeForTokens(code, redirectUri);
-            googleCalendarService.setupGtdCalendars();
+            googleCalendarService.reconcileGtdCalendars();
             return ResponseEntity.ok("<html><body><h2>Connected!</h2><p>You can close this window and return to the app.</p><script>window.close();</script></body></html>");
         } catch (Exception e) {
             log.error("OAuth callback failed", e);
             return ResponseEntity.internalServerError().body("<html><body><h2>Failed to connect</h2><p>An unexpected error occurred. Please try again later.</p></body></html>");
         }
+    }
+
+    @PostMapping("/integrations/google-calendar/reconcile")
+    public ResponseEntity<Void> reconcileCalendars() {
+        if (!configurationReady()) return ResponseEntity.status(503).build();
+        if (googleCalendarService.getValidCredential() == null) return ResponseEntity.status(503).build();
+
+        googleCalendarService.reconcileGtdCalendars();
+        return ResponseEntity.ok().build();
     }
 
     private boolean configurationReady() {

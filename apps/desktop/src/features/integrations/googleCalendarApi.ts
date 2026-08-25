@@ -41,6 +41,15 @@ export async function saveGoogleCredentials(clientId: string, clientSecret: stri
 }
 
 /**
+ * Reconciles GTD calendars in Google Calendar with local GTD mirror settings.
+ *
+ * @example await reconcileGoogleCalendars();
+ */
+export async function reconcileGoogleCalendars(): Promise<void> {
+  await apiFetch("/integrations/google-calendar/reconcile", { method: "POST" });
+}
+
+/**
  * Obtains the Google OAuth authorization URL.
  *
  * @returns The URL that starts the Google Calendar authorization flow.

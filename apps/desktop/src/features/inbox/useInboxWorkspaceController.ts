@@ -361,6 +361,15 @@ async function processSelectedStuffToCalendarAction(model: InboxModel, payload: 
   model.zone.setActiveZone("inbox-list");
 }
 
+async function processSelectedStuffToProjectAction(model: InboxModel, deadline: string | null) {
+  const selectedItem = model.selection.selectedItem;
+  if (!selectedItem) return;
+  await model.query.processStuffToProject(selectedItem, deadline);
+  model.selection.setSelectedId(model.query.stuffs[0]?.id ?? null);
+  clearAllEditing(model);
+  model.zone.setActiveZone("inbox-list");
+}
+
 function useInboxWorkspaceActions(model: InboxModel) {
   return {
     autosaveEditingSelectedStuffBody: (body: ItemBody) => autosaveEditingSelectedStuffBodyAction(model, body),
@@ -372,6 +381,7 @@ function useInboxWorkspaceActions(model: InboxModel) {
     deleteSelectedStuff: () => deleteSelectedStuffAction(model),
     processSelectedStuff: (energy: number | null, estimatedTimeMinutes: number | null, contextIds: string[], deadline: string | null) => processSelectedStuffAction(model, energy, estimatedTimeMinutes, contextIds, deadline),
     processSelectedStuffToCalendar: (payload: CalendarConversionPayload) => processSelectedStuffToCalendarAction(model, payload),
+    processSelectedStuffToProject: (deadline: string | null) => processSelectedStuffToProjectAction(model, deadline),
     undo: () => undoAction(model),
     redo: () => redoAction(model),
     selectFirstStuff: model.selection.selectFirstStuff,

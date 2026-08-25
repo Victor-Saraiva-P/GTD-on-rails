@@ -78,6 +78,6 @@ class LegacyDatasetImporterTests {
     void clearApplicationTablesDeletesInDependencyOrder() {
         importer.clearApplicationTables();
 
-        verify(jdbcTemplate, times(10)).execute((String) any());
+        verify(jdbcTemplate, times(12)).execute((String) any());
     }
 }

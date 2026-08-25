@@ -5,6 +5,7 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -208,6 +209,47 @@ class InboxControllerTests {
 
         mockMvc.perform(get("/inbox/{id}", stuff.getId()))
             .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void convertsStuffToProjectAndListsIt() throws Exception {
+        Item stuff = itemRepository.save(new Item(new Title("Launch project"), "Captured notes"));
+
+        mockMvc.perform(post("/inbox/{id}/project", stuff.getId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"deadline\":\"2028-02-29\"}"))
+            .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/inbox/{id}", stuff.getId()))
+            .andExpect(status().isNotFound());
+
+        mockMvc.perform(get("/projects"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(1)))
+            .andExpect(jsonPath("$[0].id").value(stuff.getId().toString()))
+            .andExpect(jsonPath("$[0].title").value("Launch project"))
+            .andExpect(jsonPath("$[0].deadline").value("2028-02-29"));
+    }
+
+    @Test
+    void editsProjectTitleAndClearsDeadline() throws Exception {
+        Item stuff = itemRepository.save(new Item(new Title("Old project"), null));
+        mockMvc.perform(post("/inbox/{id}/project", stuff.getId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"deadline\":\"2028-02-29\"}"))
+            .andExpect(status().isNoContent());
+
+        mockMvc.perform(patch("/projects/{id}", stuff.getId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"New project\",\"clearDeadline\":true}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(stuff.getId().toString()))
+            .andExpect(jsonPath("$.title").value("New project"))
+            .andExpect(jsonPath("$.deadline").doesNotExist());
+
+        mockMvc.perform(get("/projects"))
+            .andExpect(jsonPath("$[0].title").value("New project"))
+            .andExpect(jsonPath("$[0].deadline").doesNotExist());
     }
 
     @Test

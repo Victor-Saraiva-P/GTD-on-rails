@@ -22,10 +22,12 @@ import com.gtdonrails.api.entities.Calendar;
 import com.gtdonrails.api.entities.GoogleCredential;
 import com.gtdonrails.api.entities.Item;
 import com.gtdonrails.api.entities.NextAction;
+import com.gtdonrails.api.entities.Project;
 import com.gtdonrails.api.enums.NextActionStatus;
 import com.gtdonrails.api.repositories.CalendarRepository;
 import com.gtdonrails.api.repositories.GoogleCalendarRepository;
 import com.gtdonrails.api.repositories.NextActionRepository;
+import com.gtdonrails.api.repositories.ProjectRepository;
 import com.gtdonrails.api.types.Title;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
@@ -38,6 +40,7 @@ class GoogleCalendarEventSyncServiceTests {
     private GoogleCalendarService googleCalendarService;
     private CalendarRepository calendarRepository;
     private NextActionRepository nextActionRepository;
+    private ProjectRepository projectRepository;
     private GoogleCalendarRepository googleCalendarRepository;
     private FakeGoogleCalendarEventGateway eventGateway;
     private GoogleCalendarEventSyncService syncService;
@@ -47,17 +50,20 @@ class GoogleCalendarEventSyncServiceTests {
         googleCalendarService = mock(GoogleCalendarService.class);
         calendarRepository = mock(CalendarRepository.class);
         nextActionRepository = mock(NextActionRepository.class);
+        projectRepository = mock(ProjectRepository.class);
         googleCalendarRepository = mock(GoogleCalendarRepository.class);
         eventGateway = new FakeGoogleCalendarEventGateway();
         syncService = new GoogleCalendarEventSyncService(
             googleCalendarService,
             calendarRepository,
             nextActionRepository,
+            projectRepository,
             googleCalendarRepository,
             eventGateway);
         when(googleCalendarService.getValidCredential()).thenReturn(new GoogleCredential());
         stubGoogleCalendar("Calendar", "google-calendar-id");
         stubGoogleCalendar("Next Action", "google-next-action-id");
+        stubGoogleCalendar("Project", "google-project-id");
         stubGoogleCalendar("On Going", "google-ongoing-id");
         stubGoogleCalendar("Done", "google-done-id");
     }
@@ -74,7 +80,7 @@ class GoogleCalendarEventSyncServiceTests {
         assertEquals(LocalDate.parse("2026-06-01"), request.allDayStartDate());
         assertEquals(LocalDate.parse("2026-06-02"), request.allDayEndDate());
         assertEquals(
-            List.of("google-calendar-id", "google-ongoing-id", "google-done-id"),
+            List.of("google-calendar-id", "google-project-id", "google-ongoing-id", "google-done-id"),
             eventGateway.deletedCalendarIds());
     }
 
@@ -86,7 +92,7 @@ class GoogleCalendarEventSyncServiceTests {
 
         assertTrue(eventGateway.upserts.isEmpty());
         assertEquals(
-            List.of("google-calendar-id", "google-next-action-id", "google-ongoing-id", "google-done-id"),
+            List.of("google-calendar-id", "google-next-action-id", "google-project-id", "google-ongoing-id", "google-done-id"),
             eventGateway.deletedCalendarIds());
     }
 
@@ -154,7 +160,65 @@ class GoogleCalendarEventSyncServiceTests {
         assertEquals("google-calendar-id", eventGateway.upserts.getFirst().googleCalendarId());
         assertEquals(LocalDate.parse("2026-05-21"), eventGateway.upserts.getFirst().allDayStartDate());
         assertEquals(LocalDate.parse("2026-05-22"), eventGateway.upserts.getFirst().allDayEndDate());
-        assertEquals(List.of("google-next-action-id", "google-ongoing-id", "google-done-id"), eventGateway.deletedCalendarIds());
+        assertEquals(List.of("google-next-action-id", "google-project-id", "google-ongoing-id", "google-done-id"), eventGateway.deletedCalendarIds());
+    }
+
+    @Test
+    void syncActiveProjectWithDeadlineCreatesAllDayProjectEvent() {
+        Project project = projectWithId("Launch beta", LocalDate.parse("2026-06-01"));
+
+        syncService.syncProjectEvent(project);
+
+        GoogleCalendarEventRequest request = eventGateway.upserts.getFirst();
+        assertEquals("google-project-id", request.googleCalendarId());
+        assertEquals("Launch beta", request.title());
+        assertEquals(LocalDate.parse("2026-06-01"), request.allDayStartDate());
+        assertEquals(LocalDate.parse("2026-06-02"), request.allDayEndDate());
+        assertEquals(
+            List.of("google-calendar-id", "google-next-action-id", "google-ongoing-id", "google-done-id"),
+            eventGateway.deletedCalendarIds());
+    }
+
+    @Test
+    void syncActiveProjectWithoutDeadlineDeletesStaleEvents() {
+        Project project = projectWithId("Undated outcome", null);
+
+        syncService.syncProjectEvent(project);
+
+        assertTrue(eventGateway.upserts.isEmpty());
+        assertEquals(
+            List.of("google-calendar-id", "google-next-action-id", "google-project-id", "google-ongoing-id", "google-done-id"),
+            eventGateway.deletedCalendarIds());
+    }
+
+    @Test
+    void syncDoneProjectCreatesAllDayDoneEventOnDeadlineDate() {
+        Project project = projectWithId("Ship release", LocalDate.parse("2026-06-01"));
+        project.markDone(clockAt("2026-05-22T09:45:00Z"));
+
+        syncService.syncProjectEvent(project);
+
+        GoogleCalendarEventRequest request = eventGateway.upserts.getFirst();
+        assertEquals("google-done-id", request.googleCalendarId());
+        assertEquals("Ship release", request.title());
+        assertEquals(LocalDate.parse("2026-06-01"), request.allDayStartDate());
+        assertEquals(LocalDate.parse("2026-06-02"), request.allDayEndDate());
+        assertEquals(
+            List.of("google-calendar-id", "google-next-action-id", "google-project-id", "google-ongoing-id"),
+            eventGateway.deletedCalendarIds());
+    }
+
+    @Test
+    void syncDoneProjectWithoutDeadlineDeletesStaleEvents() {
+        Project project = projectWithId("Undated completed outcome", null);
+        project.markDone(clockAt("2026-05-22T09:45:00Z"));
+
+        syncService.syncProjectEvent(project);
+
+        assertTrue(eventGateway.upserts.isEmpty());
+        assertEquals(
+            List.of("google-calendar-id", "google-next-action-id", "google-project-id", "google-ongoing-id", "google-done-id"),
+            eventGateway.deletedCalendarIds());
     }
 
     @Test
@@ -176,7 +240,7 @@ class GoogleCalendarEventSyncServiceTests {
         syncService.syncCalendarEvent(calendar);
 
         assertEquals("google-ongoing-id", eventGateway.upserts.getFirst().googleCalendarId());
-        assertEquals(List.of("google-calendar-id", "google-next-action-id", "google-done-id"), eventGateway.deletedCalendarIds());
+        assertEquals(List.of("google-calendar-id", "google-next-action-id", "google-project-id", "google-done-id"), eventGateway.deletedCalendarIds());
     }
 
     @Test
@@ -251,15 +315,30 @@ class GoogleCalendarEventSyncServiceTests {
     }
 
     @Test
+    void syncCalendarEventByItemIdLoadsLatestActiveProject() {
+        UUID itemId = UUID.fromString("11111111-2222-3333-4444-555555555555");
+        Project project = projectWithId("Latest project", LocalDate.parse("2026-06-01"));
+        when(calendarRepository.findByItemIdAndItem_DeletedAtIsNull(itemId)).thenReturn(Optional.empty());
+        when(nextActionRepository.findByItemIdAndItem_DeletedAtIsNull(itemId)).thenReturn(Optional.empty());
+        when(projectRepository.findByItemIdAndItem_DeletedAtIsNull(itemId)).thenReturn(Optional.of(project));
+
+        syncService.syncCalendarEvent(itemId);
+
+        assertEquals("google-project-id", eventGateway.upserts.getFirst().googleCalendarId());
+        assertEquals("Latest project", eventGateway.upserts.getFirst().title());
+    }
+
+    @Test
     void syncCalendarEventByItemIdSkipsMissingActiveCalendar() {
         UUID itemId = UUID.randomUUID();
         when(calendarRepository.findByItemIdAndItem_DeletedAtIsNull(itemId)).thenReturn(Optional.empty());
         when(nextActionRepository.findByItemIdAndItem_DeletedAtIsNull(itemId)).thenReturn(Optional.empty());
+        when(projectRepository.findByItemIdAndItem_DeletedAtIsNull(itemId)).thenReturn(Optional.empty());
 
         syncService.syncCalendarEvent(itemId);
 
         assertTrue(eventGateway.upserts.isEmpty());
-        assertEquals(4, eventGateway.deletes.size());
+        assertEquals(5, eventGateway.deletes.size());
     }
 
     @Test
@@ -269,7 +348,7 @@ class GoogleCalendarEventSyncServiceTests {
         syncService.deleteCalendarEvent(itemId);
 
         assertEquals(
-            List.of("google-calendar-id", "google-next-action-id", "google-ongoing-id", "google-done-id"),
+            List.of("google-calendar-id", "google-next-action-id", "google-project-id", "google-ongoing-id", "google-done-id"),
             eventGateway.deletedCalendarIds());
     }
 
@@ -308,6 +387,15 @@ class GoogleCalendarEventSyncServiceTests {
         ReflectionTestUtils.setField(nextAction, "itemId", itemId);
         nextAction.setDeadline(deadline);
         return nextAction;
+    }
+
+    private Project projectWithId(String title, LocalDate deadline) {
+        Item item = new Item(new Title(title), null);
+        UUID itemId = UUID.fromString("11111111-2222-3333-4444-555555555555");
+        ReflectionTestUtils.setField(item, "id", itemId);
+        Project project = new Project(item, deadline);
+        ReflectionTestUtils.setField(project, "itemId", itemId);
+        return project;
     }
 
     private Clock clockAt(String instant) {

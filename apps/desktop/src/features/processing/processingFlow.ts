@@ -7,9 +7,10 @@ export type ProcessingStep =
   | "set-energy"
   | "set-time"
   | "set-calendar-date"
-  | "set-calendar-time";
+  | "set-calendar-time"
+  | "set-project-deadline";
 
-export type ProcessingInitialChoice = "next-action" | "calendar";
+export type ProcessingInitialChoice = "next-action" | "calendar" | "project";
 export type SegmentedCalendarDateSegment = "day" | "month" | "year";
 
 export type SegmentedCalendarDateState = {
@@ -21,6 +22,7 @@ export type SegmentedCalendarDateState = {
 };
 
 export function stepAfterInitialChoice(choice: ProcessingInitialChoice): ProcessingStep {
+  if (choice === "project") return "set-project-deadline";
   return choice === "calendar" ? "set-calendar-date" : "set-deadline";
 }
 

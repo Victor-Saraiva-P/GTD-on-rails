@@ -13,12 +13,15 @@ These shortcuts are registered globally by the desktop shell.
 | `Space i` | Open inbox and reset the inbox workspace. |
 | `Space n` | Open next actions. |
 | `Space o` | Open on going next actions. |
+| `Space p` | Open projects. |
 
 Calendars use `[` and `]` inside the page to cycle through Today, Weekly, Completed, and Deleted subviews.
 
+Projects use `[` and `]` inside the page to cycle between Projects and Completed Projects.
+
 ## Master Lists
 
-These shortcuts are available in master-list focus zones for Inbox, Deleted Inbox, Next Actions, Ongoing Next Actions, Done Next Actions, Deleted Next Actions, and Contexts. They do not apply to Calendar panels.
+These shortcuts are available in master-list focus zones for Inbox, Deleted Inbox, Next Actions, Ongoing Next Actions, Done Next Actions, Deleted Next Actions, Projects, Completed Projects, and Contexts. They do not apply to Calendar panels.
 
 | Shortcut | Action |
 | --- | --- |

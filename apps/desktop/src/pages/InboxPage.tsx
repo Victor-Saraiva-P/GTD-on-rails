@@ -18,6 +18,11 @@ import { ProcessingDialog } from "../features/processing/ProcessingDialog";
 
 type InboxPageProps = Readonly<{
   controller: InboxWorkspaceController;
+  openProjects: () => void;
+}>;
+
+type InboxControllerProps = Readonly<{
+  controller: InboxWorkspaceController;
 }>;
 
 const LazyMarkdownAssetComboDialog = lazy(async () => {
@@ -205,7 +210,7 @@ async function exitBodyEditingFromNormalMode(controller: InboxWorkspaceControlle
   controller.setActiveZone("inbox-list");
 }
 
-function InboxListReady({ controller }: InboxPageProps) {
+function InboxListReady({ controller }: InboxControllerProps) {
   return (
     <InboxList
       items={controller.stuffs}
@@ -223,7 +228,7 @@ function InboxListReady({ controller }: InboxPageProps) {
   );
 }
 
-function InboxListBody({ controller }: InboxPageProps) {
+function InboxListBody({ controller }: InboxControllerProps) {
   if (controller.isLoading) {
     return <p className="pane-state">Loading inbox...</p>;
   }
@@ -235,7 +240,7 @@ function InboxListBody({ controller }: InboxPageProps) {
   return controller.stuffs.length === 0 ? <p className="pane-state">Inbox is empty.</p> : <InboxListReady controller={controller} />;
 }
 
-function InboxDetailReady({ controller }: InboxPageProps) {
+function InboxDetailReady({ controller }: InboxControllerProps) {
   const selectedItem = controller.selectedItem;
 
   return selectedItem ? (
@@ -251,7 +256,7 @@ function InboxDetailReady({ controller }: InboxPageProps) {
   ) : null;
 }
 
-function InboxDetailBody({ controller }: InboxPageProps) {
+function InboxDetailBody({ controller }: InboxControllerProps) {
   if (controller.isLoading) {
     return <p className="pane-state">Loading stuff details...</p>;
   }
@@ -267,7 +272,7 @@ function InboxDetailBody({ controller }: InboxPageProps) {
   );
 }
 
-function InboxListView({ controller }: InboxPageProps) {
+function InboxListView({ controller }: InboxControllerProps) {
   const listMeta = `${controller.stuffs.length} ${controller.stuffs.length === 1 ? "item" : "items"}`;
 
   return (
@@ -277,7 +282,7 @@ function InboxListView({ controller }: InboxPageProps) {
   );
 }
 
-function InboxDetailView({ controller }: InboxPageProps) {
+function InboxDetailView({ controller }: InboxControllerProps) {
   return (
     <ListView title="Stuff Detail" viewIndex={2} active={controller.activeZone === "stuff-detail"} bodyClassName="list-pane__body--detail" className="inbox-pane inbox-pane--detail">
       <InboxDetailBody controller={controller} />
@@ -285,7 +290,7 @@ function InboxDetailView({ controller }: InboxPageProps) {
   );
 }
 
-function InboxViews({ controller }: InboxPageProps) {
+function InboxViews({ controller }: InboxControllerProps) {
   return (
     <section className="inbox-terminal-layout" aria-label="Inbox">
       <InboxListView controller={controller} />
@@ -299,7 +304,7 @@ function InboxViews({ controller }: InboxPageProps) {
  *
  * @example <InboxPage controller={controller} />
  */
-export function InboxPage({ controller }: InboxPageProps) {
+export function InboxPage({ controller, openProjects }: InboxPageProps) {
   const [isLinkComboOpen, setIsLinkComboOpen] = useState(false);
   const [isAssetComboOpen, setIsAssetComboOpen] = useState(false);
   const [isProcessingOpen, setIsProcessingOpen] = useState(false);
@@ -312,6 +317,10 @@ export function InboxPage({ controller }: InboxPageProps) {
   };
   const processSelectedCalendarItem = (payload: CalendarConversionPayload) => {
     void controller.processSelectedStuffToCalendar(payload);
+    setIsProcessingOpen(false);
+  };
+  const processSelectedProjectItem = (deadline: string | null) => {
+    void controller.processSelectedStuffToProject(deadline).then(openProjects);
     setIsProcessingOpen(false);
   };
   useKeybindScreen("inbox");
@@ -327,7 +336,7 @@ export function InboxPage({ controller }: InboxPageProps) {
         {isLinkComboOpen ? <LazyMarkdownLinkComboDialog onClose={() => setIsLinkComboOpen(false)} /> : null}
         {isAssetComboOpen && controller.selectedItem ? <LazyMarkdownAssetComboDialog itemId={controller.selectedItem.id} onClose={() => setIsAssetComboOpen(false)} /> : null}
       </Suspense>
-      {isProcessingOpen && controller.selectedItem ? <ProcessingDialog item={controller.selectedItem} onClose={() => setIsProcessingOpen(false)} onProcess={processSelectedItem} onProcessCalendar={processSelectedCalendarItem} /> : null}
+      {isProcessingOpen && controller.selectedItem ? <ProcessingDialog item={controller.selectedItem} onClose={() => setIsProcessingOpen(false)} onProcess={processSelectedItem} onProcessCalendar={processSelectedCalendarItem} onProcessProject={processSelectedProjectItem} /> : null}
     </ListWorkspace>
   );
 }

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test, { describe, afterEach, mock } from "node:test";
-import { fetchGoogleCalendarStatus, saveGoogleCredentials, getAuthUrl } from "../src/features/integrations/googleCalendarApi.ts";
+import { fetchGoogleCalendarStatus, saveGoogleCredentials, reconcileGoogleCalendars, getAuthUrl } from "../src/features/integrations/googleCalendarApi.ts";
 
 describe("googleCalendarApi", () => {
   const originalFetch = globalThis.fetch;
@@ -31,6 +31,16 @@ describe("googleCalendarApi", () => {
     });
 
     await saveGoogleCredentials("id", "secret");
+  });
+
+  test("reconcileGoogleCalendars sends reconcile request", async () => {
+    globalThis.fetch = mock.fn(async (input, init) => {
+      assert.equal(init?.method, "POST");
+      assert.ok(input.toString().endsWith("/integrations/google-calendar/reconcile"));
+      return new Response(null, { status: 200 });
+    });
+
+    await reconcileGoogleCalendars();
   });
 
   test("getAuthUrl returns auth url", async () => {

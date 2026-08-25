@@ -5,6 +5,8 @@ import java.time.Instant;
 
 import com.gtdonrails.api.repositories.ContextRepository;
 import com.gtdonrails.api.repositories.ItemRepository;
+import com.gtdonrails.api.repositories.ProjectItemRepository;
+import com.gtdonrails.api.repositories.ProjectRepository;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,11 +22,21 @@ public class TestResetController {
 
     private final ContextRepository contextRepository;
     private final ItemRepository itemRepository;
+    private final ProjectRepository projectRepository;
+    private final ProjectItemRepository projectItemRepository;
     private final Clock clock;
 
-    public TestResetController(ContextRepository contextRepository, ItemRepository itemRepository, Clock clock) {
+    public TestResetController(
+        ContextRepository contextRepository,
+        ItemRepository itemRepository,
+        ProjectRepository projectRepository,
+        ProjectItemRepository projectItemRepository,
+        Clock clock
+    ) {
         this.contextRepository = contextRepository;
         this.itemRepository = itemRepository;
+        this.projectRepository = projectRepository;
+        this.projectItemRepository = projectItemRepository;
         this.clock = clock;
     }
 
@@ -36,6 +48,8 @@ public class TestResetController {
     @PostMapping("/reset")
     @Transactional
     public ResponseEntity<Void> reset() {
+        projectItemRepository.deleteAll();
+        projectRepository.deleteAll();
         itemRepository.deleteAll();
         contextRepository.deleteAll();
         return ResponseEntity.noContent().build();

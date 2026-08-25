@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchGoogleCalendarStatus, getAuthUrl, type GoogleCalendarStatus } from "./googleCalendarApi";
+import { fetchGoogleCalendarStatus, getAuthUrl, reconcileGoogleCalendars, type GoogleCalendarStatus } from "./googleCalendarApi";
 import { openExternalUrl } from "../inbox/openExternalResource";
 
 export type GoogleCalendarIntegrationController = ReturnType<typeof useGoogleCalendarIntegrationController>;
@@ -33,11 +33,20 @@ export function useGoogleCalendarIntegrationController() {
     }
   };
 
+  const reconcile = async () => {
+    try {
+      await reconcileGoogleCalendars();
+      await reload();
+    } catch (e: unknown) {
+      setError(errorMessageFrom(e));
+    }
+  };
+
   useEffect(() => {
     reload();
   }, []);
 
-  return { status, error, reload, connect, setError };
+  return { status, error, reload, connect, reconcile, setError };
 }
 
 function errorMessageFrom(error: unknown): string {

@@ -49,6 +49,8 @@ public class LegacyDatasetImporter {
         jdbcTemplate.execute("DELETE FROM gtd.calendars");
         jdbcTemplate.execute("DELETE FROM gtd.next_action_contexts");
         jdbcTemplate.execute("DELETE FROM gtd.next_actions");
+        jdbcTemplate.execute("DELETE FROM gtd.project_items");
+        jdbcTemplate.execute("DELETE FROM gtd.projects");
         jdbcTemplate.execute("DELETE FROM gtd.context_icon_assets");
         jdbcTemplate.execute("DELETE FROM gtd.item_assets");
         jdbcTemplate.execute("DELETE FROM gtd.items");

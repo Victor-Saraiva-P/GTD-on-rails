@@ -36,6 +36,13 @@ export const nextActionsListTheme: ListTheme = {
 export const onGoingNextActionsListTheme: ListTheme = {
   id: "ongoing-next-actions",
   label: "On Going Actions",
+  accentColor: "#2D8C8A",
+  accentColorRgb: "45, 140, 138"
+};
+
+export const projectsListTheme: ListTheme = {
+  id: "projects",
+  label: "Projects",
   accentColor: "#9B5AB7",
   accentColorRgb: "155, 90, 183"
 };
@@ -66,6 +73,20 @@ export const doneNextActionsListTheme: ListTheme = {
   label: "Completed Next Actions",
   accentColor: "#7F8D3F",
   accentColorRgb: "127, 141, 63"
+};
+
+export const doneProjectsListTheme: ListTheme = {
+  id: "done-projects",
+  label: "Completed Projects",
+  accentColor: doneNextActionsListTheme.accentColor,
+  accentColorRgb: doneNextActionsListTheme.accentColorRgb
+};
+
+export const deletedProjectsListTheme: ListTheme = {
+  id: "deleted-projects",
+  label: "Deleted Projects",
+  accentColor: deletedInboxListTheme.accentColor,
+  accentColorRgb: deletedInboxListTheme.accentColorRgb
 };
 
 export const deletedNextActionsListTheme: ListTheme = {

@@ -1,5 +1,6 @@
 package com.gtdonrails.api.services;
 
+import java.io.IOException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +40,16 @@ import lombok.extern.slf4j.Slf4j;
 public class GoogleCalendarService {
 
     private static final String GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
+    private static final String NEXT_ACTION_NAME = "Next Action";
+    private static final String CALENDAR_NAME = "Calendar";
+    private static final String PROJECT_NAME = "Project";
+    private static final String ONGOING_NAME = "On Going";
+    private static final String DONE_NAME = "Done";
+    private static final String NEXT_ACTION_COLOR_HEX = "#4F9768";
+    private static final String CALENDAR_COLOR_HEX = "#c85a53";
+    private static final String PROJECT_COLOR_HEX = "#9B5AB7";
+    private static final String ONGOING_COLOR_HEX = "#2D8C8A";
+    private static final String DONE_COLOR_HEX = "#7F8D3F";
     private static final ParameterizedTypeReference<Map<String, Object>> TOKEN_RESPONSE_TYPE = new ParameterizedTypeReference<>() {
     };
 
@@ -186,63 +197,85 @@ public class GoogleCalendarService {
                 .build();
     }
 
+    /**
+     * Reconciles required GTD system calendars with Google Calendar and local persistence.
+     *
+     * Example:
+     * {@code googleCalendarService.reconcileGtdCalendars();}
+     */
     @Transactional
-    public void setupGtdCalendars() {
+    public void reconcileGtdCalendars() {
         Calendar client = getCalendarClient();
         try {
             List<CalendarListEntry> existing = client.calendarList().list().execute().getItems();
-            
-            createOrUpdateCalendar(client, existing, "Next Action", "#4F9768");
-            createOrUpdateCalendar(client, existing, "Calendar", "#c85a53");
-            createOrUpdateCalendar(client, existing, "On Going", "#9B5AB7");
-            createOrUpdateCalendar(client, existing, "Done", "#7F8D3F");
-            
-        } catch (Exception e) {
-            log.error("Failed to setup GTD calendars", e);
-            throw new RuntimeException("Failed to setup calendars", e);
+            createOrUpdateCalendar(client, existing, NEXT_ACTION_NAME, NEXT_ACTION_COLOR_HEX);
+            createOrUpdateCalendar(client, existing, CALENDAR_NAME, CALENDAR_COLOR_HEX);
+            createOrUpdateCalendar(client, existing, PROJECT_NAME, PROJECT_COLOR_HEX);
+            createOrUpdateCalendar(client, existing, ONGOING_NAME, ONGOING_COLOR_HEX);
+            createOrUpdateCalendar(client, existing, DONE_NAME, DONE_COLOR_HEX);
+        } catch (IOException exception) {
+            log.error("Failed to reconcile GTD calendars", exception);
+            throw new IllegalStateException("Failed to reconcile GTD calendars", exception);
         }
     }
 
-    private void createOrUpdateCalendar(Calendar client, List<CalendarListEntry> existing, String name, String colorHex) throws Exception {
+    private void createOrUpdateCalendar(
+            Calendar client,
+            List<CalendarListEntry> existing,
+            String name,
+            String colorHex) throws IOException {
         GoogleCalendar dbCal = calendarRepository.findByName(name);
-        Optional<CalendarListEntry> found = existing == null ? Optional.empty() : existing.stream().filter(c -> name.equals(c.getSummary())).findFirst();
-        String googleCalendarId = null;
-        boolean existsOnGoogle = false;
-        
-        if (dbCal != null) {
-            String dbId = dbCal.getGoogleCalendarId();
-            if (existing != null && existing.stream().anyMatch(c -> dbId.equals(c.getId()))) {
-                googleCalendarId = dbId;
-                existsOnGoogle = true;
-            }
-        }
-        
-        if (!existsOnGoogle && found.isPresent()) {
-            googleCalendarId = found.get().getId();
-            existsOnGoogle = true;
-        }
+        String googleCalendarId = resolveGoogleCalendarId(client, existing, dbCal, name);
+        updateCalendarColor(client, googleCalendarId, colorHex);
+        persistGoogleCalendar(dbCal, name, googleCalendarId, colorHex);
+    }
 
-        if (!existsOnGoogle) {
-            com.google.api.services.calendar.model.Calendar newCal = new com.google.api.services.calendar.model.Calendar();
-            newCal.setSummary(name);
-            com.google.api.services.calendar.model.Calendar created = client.calendars().insert(newCal).execute();
-            googleCalendarId = created.getId();
+    private String resolveGoogleCalendarId(
+            Calendar client,
+            List<CalendarListEntry> existing,
+            GoogleCalendar dbCal,
+            String name) throws IOException {
+        if (dbCal != null && calendarExists(existing, dbCal.getGoogleCalendarId())) {
+            return dbCal.getGoogleCalendarId();
         }
+        Optional<CalendarListEntry> found = findCalendarByName(existing, name);
+        if (found.isPresent()) {
+            return found.get().getId();
+        }
+        return createGoogleCalendar(client, name);
+    }
 
-        // Always ensure the calendar list entry has the exact requested color
+    private boolean calendarExists(List<CalendarListEntry> existing, String calendarId) {
+        return existing != null && existing.stream().anyMatch(entry -> calendarId.equals(entry.getId()));
+    }
+
+    private Optional<CalendarListEntry> findCalendarByName(List<CalendarListEntry> existing, String name) {
+        if (existing == null) return Optional.empty();
+        return existing.stream().filter(entry -> name.equals(entry.getSummary())).findFirst();
+    }
+
+    private String createGoogleCalendar(Calendar client, String name) throws IOException {
+        com.google.api.services.calendar.model.Calendar newCal = new com.google.api.services.calendar.model.Calendar();
+        newCal.setSummary(name);
+        com.google.api.services.calendar.model.Calendar created = client.calendars().insert(newCal).execute();
+        return created.getId();
+    }
+
+    private void updateCalendarColor(Calendar client, String googleCalendarId, String colorHex) throws IOException {
         CalendarListEntry entry = new CalendarListEntry();
         entry.setId(googleCalendarId);
         entry.setBackgroundColor(colorHex);
         entry.setForegroundColor("#FFFFFF");
         client.calendarList().update(googleCalendarId, entry).setColorRgbFormat(true).execute();
-
-        if (dbCal == null) {
-            dbCal = new GoogleCalendar();
-            dbCal.setName(name);
-        }
-        dbCal.setGoogleCalendarId(googleCalendarId);
-        dbCal.setColorHex(colorHex);
-        calendarRepository.save(dbCal);
     }
 
+    private void persistGoogleCalendar(GoogleCalendar dbCal, String name, String googleCalendarId, String colorHex) {
+        GoogleCalendar targetCalendar = dbCal != null ? dbCal : new GoogleCalendar();
+        if (dbCal == null) {
+            targetCalendar.setName(name);
+        }
+        targetCalendar.setGoogleCalendarId(googleCalendarId);
+        targetCalendar.setColorHex(colorHex);
+        calendarRepository.save(targetCalendar);
+    }
 }

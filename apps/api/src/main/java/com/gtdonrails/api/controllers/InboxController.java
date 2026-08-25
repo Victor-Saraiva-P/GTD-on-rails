@@ -8,6 +8,7 @@ import com.gtdonrails.api.dtos.calendar.ConvertStuffToCalendarRequestDto;
 import com.gtdonrails.api.dtos.inbox.ConvertStuffToNextActionRequestDto;
 import com.gtdonrails.api.dtos.inbox.CreateStuffRequestDto;
 import com.gtdonrails.api.dtos.inbox.StuffResponseDto;
+import com.gtdonrails.api.dtos.project.ConvertStuffToProjectRequestDto;
 import com.gtdonrails.api.services.InboxService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -94,6 +95,20 @@ public class InboxController {
         @Valid @RequestBody ConvertStuffToCalendarRequestDto request
     ) {
         inboxService.convertStuffToCalendar(id, request);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Handles conversion from inbox stuff into a GTD project.
+     *
+     * <p>Example: {@code POST /inbox/018f13b2-a7f3-7c44-8f1a-9f31f65a7fd2/project}.</p>
+     */
+    @PostMapping("/{id}/project")
+    public ResponseEntity<Void> convertStuffToProject(
+        @PathVariable UUID id,
+        @Valid @RequestBody ConvertStuffToProjectRequestDto request
+    ) {
+        inboxService.convertStuffToProject(id, request);
         return ResponseEntity.noContent().build();
     }
 }

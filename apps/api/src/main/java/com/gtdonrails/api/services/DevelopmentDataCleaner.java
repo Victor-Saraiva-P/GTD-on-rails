@@ -8,6 +8,8 @@ import com.gtdonrails.api.repositories.ContextRepository;
 import com.gtdonrails.api.repositories.ItemAssetRepository;
 import com.gtdonrails.api.repositories.ItemRepository;
 import com.gtdonrails.api.repositories.NextActionRepository;
+import com.gtdonrails.api.repositories.ProjectItemRepository;
+import com.gtdonrails.api.repositories.ProjectRepository;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +25,8 @@ public class DevelopmentDataCleaner {
     private final ItemAssetRepository itemAssetRepository;
     private final ItemRepository itemRepository;
     private final NextActionRepository nextActionRepository;
+    private final ProjectItemRepository projectItemRepository;
+    private final ProjectRepository projectRepository;
 
     public DevelopmentDataCleaner(
         AssetStorageService assetStorageService,
@@ -31,7 +35,9 @@ public class DevelopmentDataCleaner {
         ContextRepository contextRepository,
         ItemAssetRepository itemAssetRepository,
         ItemRepository itemRepository,
-        NextActionRepository nextActionRepository
+        NextActionRepository nextActionRepository,
+        ProjectItemRepository projectItemRepository,
+        ProjectRepository projectRepository
     ) {
         this.assetStorageService = assetStorageService;
         this.calendarRepository = calendarRepository;
@@ -40,6 +46,8 @@ public class DevelopmentDataCleaner {
         this.itemAssetRepository = itemAssetRepository;
         this.itemRepository = itemRepository;
         this.nextActionRepository = nextActionRepository;
+        this.projectItemRepository = projectItemRepository;
+        this.projectRepository = projectRepository;
     }
 
     /**
@@ -54,6 +62,8 @@ public class DevelopmentDataCleaner {
         nextActionRepository.findAll().forEach(nextAction -> nextActionRepository.deleteContextLinks(nextAction.getItemId()));
         calendarRepository.deleteAll();
         nextActionRepository.deleteAll();
+        projectItemRepository.deleteAll();
+        projectRepository.deleteAll();
         itemAssetRepository.deleteAll();
         contextIconAssetRepository.deleteAll();
         itemRepository.deleteAll();

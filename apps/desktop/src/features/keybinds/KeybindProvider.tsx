@@ -84,7 +84,7 @@ function isTypingTarget(target: EventTarget | null): boolean {
 }
 
 function hasActiveModalKeybindScope(): boolean {
-  return document.querySelector('[aria-modal="true"]') !== null;
+  return document.querySelector('dialog, [aria-modal="true"]') !== null;
 }
 
 function bindingMatchesZone(

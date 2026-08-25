@@ -133,11 +133,13 @@ type CredentialInputProps = Readonly<{
 
 function ConnectionStatus({ controller }: Props) {
   const canConnect = controller.status?.configurationStatus === "READY";
+  const canReconcile = canConnect && Boolean(controller.status?.connected);
   const reason = controller.status?.configurationMessage ?? "Loading Google Calendar configuration.";
   return (
     <div style={sectionStyle}>
       <h2 style={headingStyle}>Connection Status</h2>
       <p>{controller.status?.connected ? <span style={doneStyle}>Connected</span> : <span style={mutedStyle}>{canConnect ? "Disconnected (Press 'c' to connect)" : `Disconnected (${reason})`}</span>}</p>
+      <p style={mutedStyle}>{canReconcile ? "Press 'r' to reconcile GTD calendars." : "Reconcile available after connection."}</p>
       <button disabled={!canConnect} onClick={controller.connect} style={{ ...connectButtonStyle, opacity: canConnect ? 1 : 0.5 }}>Connect to Google Calendar</button>
     </div>
   );
@@ -165,12 +167,15 @@ function CalendarRow({ colorHex, name }: Readonly<{ colorHex: string; name: stri
 function useGoogleCalendarKeybinds({ controller, isFormOpen, setIsFormOpen }: KeybindsProps) {
   const { setActiveScreen } = useActiveScreen();
   const canConnect = controller.status?.configurationStatus === "READY";
+  const canReconcile = canConnect && Boolean(controller.status?.connected);
   const reason = controller.status?.configurationMessage ?? "Loading Google Calendar configuration.";
+  const reconcileReason = controller.status?.connected ? reason : "Connect to Google Calendar first.";
   useKeybindScreen("google-calendar-integration");
   useRegisterKeybinds([
     googleCalendarBackKeybind(isFormOpen, setIsFormOpen, setActiveScreen),
     googleCalendarSetupKeybind(isFormOpen, setIsFormOpen),
-    googleCalendarConnectKeybind(controller, isFormOpen, canConnect, reason)
+    googleCalendarConnectKeybind(controller, isFormOpen, canConnect, reason),
+    googleCalendarReconcileKeybind(controller, isFormOpen, canReconcile, reconcileReason)
   ]);
 }
 
@@ -186,9 +191,21 @@ function googleCalendarConnectKeybind(controller: GoogleCalendarIntegrationContr
   return { id: "gcal.connect", key: "c", description: "Connect to Google Calendar", screen: "google-calendar-integration" as const, runKeybind: () => connectFromKeybind(controller, isFormOpen, canConnect, reason) };
 }
 
+function googleCalendarReconcileKeybind(controller: GoogleCalendarIntegrationController, isFormOpen: boolean, canReconcile: boolean, reason: string) {
+  return { id: "gcal.reconcile", key: "r", description: "Reconcile GTD calendars", screen: "google-calendar-integration" as const, runKeybind: () => reconcileFromKeybind(controller, isFormOpen, canReconcile, reason) };
+}
+
 function connectFromKeybind(controller: GoogleCalendarIntegrationController, isFormOpen: boolean, canConnect: boolean, reason: string) {
   if (!isFormOpen && canConnect) {
     controller.connect();
+    return;
+  }
+  controller.setError(reason);
+}
+
+function reconcileFromKeybind(controller: GoogleCalendarIntegrationController, isFormOpen: boolean, canReconcile: boolean, reason: string) {
+  if (!isFormOpen && canReconcile) {
+    controller.reconcile();
     return;
   }
   controller.setError(reason);

@@ -58,6 +58,9 @@ public class Item extends AuditableEntity {
     @OneToOne(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true)
     private Calendar calendar;
 
+    @OneToOne(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Project project;
+
     @OneToMany(mappedBy = "item", cascade = CascadeType.REMOVE, orphanRemoval = true)
     private Set<ItemAsset> assets = new HashSet<>();
 
@@ -105,13 +108,20 @@ public class Item extends AuditableEntity {
         }
     }
 
+    void setProject(Project project) {
+        this.project = project;
+        if (project != null && project.getItem() != this) {
+            project.setItem(this);
+        }
+    }
+
     /**
      * Explicitly classifies this item as inbox stuff.
      *
      * <p>Example: {@code item.markAsStuff()}.</p>
      */
     public void markAsStuff() {
-        if (nextAction != null || calendar != null) {
+        if (nextAction != null || calendar != null || project != null) {
             throw new IllegalStateException("item subtype value is invalid; expected no subtype when marking as STUFF");
         }
 
@@ -136,10 +146,22 @@ public class Item extends AuditableEntity {
      * <p>Example: {@code item.convertToCalendar(date, LocalTime.NOON)}.</p>
      */
     public Calendar convertToCalendar(LocalDate scheduledDate, LocalTime scheduledTime) {
-        requireActiveStuffBeforeCalendarConversion();
+        requireActiveStuffWithoutSubtype();
         Calendar createdCalendar = new Calendar(this, scheduledDate, scheduledTime);
         status = ItemStatus.CALENDAR;
         return createdCalendar;
+    }
+
+    /**
+     * Converts this active inbox stuff item into a GTD project.
+     *
+     * <p>Example: {@code item.convertToProject(LocalDate.parse("2026-06-01"))}.</p>
+     */
+    public Project convertToProject(LocalDate deadline) {
+        requireActiveStuffWithoutSubtype();
+        Project createdProject = new Project(this, deadline);
+        status = ItemStatus.PROJECT;
+        return createdProject;
     }
 
     @PrePersist
@@ -159,8 +181,8 @@ public class Item extends AuditableEntity {
         }
     }
 
-    private void requireActiveStuffBeforeCalendarConversion() {
-        if (status != ItemStatus.STUFF || nextAction != null || calendar != null || isDeleted()) {
+    private void requireActiveStuffWithoutSubtype() {
+        if (status != ItemStatus.STUFF || nextAction != null || calendar != null || project != null || isDeleted()) {
             throw new IllegalStateException(
                 "item value '" + status + "' is invalid; expected active STUFF without subtype");
         }

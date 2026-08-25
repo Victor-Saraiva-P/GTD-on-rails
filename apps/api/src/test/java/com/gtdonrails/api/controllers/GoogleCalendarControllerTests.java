@@ -172,6 +172,36 @@ class GoogleCalendarControllerTests {
         verify(googleCalendarService, never()).exchangeCodeForTokens(anyString(), anyString());
     }
 
+    @Test
+    void oauthCallbackReconcilesCalendarsAfterTokenExchange() throws Exception {
+        googleProperties.setClientId("client-id");
+        googleProperties.setClientSecret("client-secret");
+        googleProperties.setTokenEncryptionKey("MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=");
+
+        mockMvc.perform(get("/oauth/google/callback").param("code", "oauth-code"))
+            .andExpect(status().isOk());
+
+        verify(googleCalendarService).exchangeCodeForTokens(anyString(), anyString());
+        verify(googleCalendarService).reconcileGtdCalendars();
+    }
+
+    @Test
+    void reconcileCalendarsUpdatesMirrorWhenConnected() throws Exception {
+        googleProperties.setClientId("client-id");
+        googleProperties.setClientSecret("client-secret");
+        googleProperties.setTokenEncryptionKey("MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=");
+
+        GoogleCredential cred = new GoogleCredential();
+        cred.setAccessToken("token");
+        cred.setExpiresAt(Instant.now().plusSeconds(3600));
+        when(googleCalendarService.getValidCredential()).thenReturn(cred);
+
+        mockMvc.perform(post("/integrations/google-calendar/reconcile"))
+            .andExpect(status().isOk());
+
+        verify(googleCalendarService).reconcileGtdCalendars();
+    }
+
     private void writePersistedGoogleCredentials() throws Exception {
         Files.createDirectories(googleCredentialsPath().getParent());
         Files.writeString(googleCredentialsPath(), """

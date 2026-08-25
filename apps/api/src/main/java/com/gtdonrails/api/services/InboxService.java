@@ -9,6 +9,7 @@ import com.gtdonrails.api.dtos.calendar.ConvertStuffToCalendarRequestDto;
 import com.gtdonrails.api.dtos.inbox.ConvertStuffToNextActionRequestDto;
 import com.gtdonrails.api.dtos.inbox.CreateStuffRequestDto;
 import com.gtdonrails.api.dtos.inbox.StuffResponseDto;
+import com.gtdonrails.api.dtos.project.ConvertStuffToProjectRequestDto;
 import com.gtdonrails.api.entities.Context;
 import com.gtdonrails.api.entities.Item;
 import com.gtdonrails.api.entities.NextAction;
@@ -122,6 +123,19 @@ public class InboxService {
     public void convertStuffToCalendar(UUID id, ConvertStuffToCalendarRequestDto request) {
         Item item = findStuff(id);
         item.convertToCalendar(request.toScheduledDate(), request.toScheduledTime());
+        itemRepository.save(item);
+        requestGoogleCalendarEventSyncAfterCommit(id);
+    }
+
+    /**
+     * Converts one inbox stuff item into a GTD project.
+     *
+     * <p>Example: {@code inboxService.convertStuffToProject(stuffId, request)}.</p>
+     */
+    @Transactional
+    public void convertStuffToProject(UUID id, ConvertStuffToProjectRequestDto request) {
+        Item item = findStuff(id);
+        item.convertToProject(request.deadline());
         itemRepository.save(item);
         requestGoogleCalendarEventSyncAfterCommit(id);
     }
