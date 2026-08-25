@@ -21,6 +21,7 @@ import com.gtdonrails.api.repositories.ItemRepository;
 import com.gtdonrails.api.repositories.ProjectItemRepository;
 import com.gtdonrails.api.repositories.ProjectRepository;
 import com.gtdonrails.api.types.Title;
+import com.gtdonrails.api.services.CacheInvalidationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -54,11 +55,15 @@ class ProjectControllerTests {
     @Autowired
     private ItemRepository itemRepository;
 
+    @Autowired
+    private CacheInvalidationService cacheInvalidationService;
+
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).build();
+        cacheInvalidationService.evictAll();
         projectItemRepository.deleteAll();
         projectRepository.deleteAll();
         itemRepository.deleteAll();
