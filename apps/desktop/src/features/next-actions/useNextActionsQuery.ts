@@ -17,10 +17,15 @@ import {
 } from "./api";
 
 type NextActionsQuery = ReturnType<typeof useNextActionsQuery>;
-type NextActionsLoadState = ReturnType<typeof useNextActionsLoadState>;
-type NextActionsMutationState = ReturnType<typeof useNextActionsMutationState>;
+export type NextActionsLoadState = ReturnType<typeof useNextActionsLoadState>;
+export type NextActionsMutationState = ReturnType<typeof useNextActionsMutationState>;
 
-function toErrorMessage(error: unknown): string {
+/**
+ * Normalizes an API or runtime error into a user-facing error message string.
+ *
+ * @example const msg = toErrorMessage(error);
+ */
+export function toErrorMessage(error: unknown): string {
   if (error instanceof ApiRequestError) return `Failed to load next actions (${error.status})`;
   if (error instanceof Error) return error.message;
   return "Failed to load next actions";
@@ -34,7 +39,12 @@ function useNextActionsLoadState() {
   return { errorMessage, isLoading, items, reloadToken, setErrorMessage, setIsLoading, setItems, setReloadToken };
 }
 
-function useNextActionsMutationState() {
+/**
+ * Manages deleting and updating loading states for next action mutations.
+ *
+ * @example const mutations = useNextActionsMutationState();
+ */
+export function useNextActionsMutationState() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   return { isDeleting, isUpdating, setIsDeleting, setIsUpdating };
@@ -105,7 +115,12 @@ async function optimisticRemoveAction(
   }
 }
 
-function useNextActionsMutations(state: NextActionsLoadState, mutations: NextActionsMutationState, reload: () => void) {
+/**
+ * Binds mutation actions with optimistic updates for next action items.
+ *
+ * @example const actions = useNextActionsMutations(state, mutations, reload);
+ */
+export function useNextActionsMutations(state: NextActionsLoadState, mutations: NextActionsMutationState, reload: () => void) {
   const { triggerSyncStatusPolling } = useSyncStatus();
   return {
     deleteItem: (id: string) => optimisticRemoveAction(id, state, triggerSyncStatusPolling, deleteNextAction, mutations.setIsDeleting),
