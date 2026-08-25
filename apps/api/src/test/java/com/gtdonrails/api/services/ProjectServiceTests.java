@@ -34,6 +34,9 @@ class ProjectServiceTests {
     @Mock
     private GoogleCalendarEventQueueService googleCalendarEventQueueService;
 
+    @Mock
+    private CacheInvalidationService cacheInvalidationService;
+
     private ProjectService projectService;
     private Project project;
     private UUID projectId;
@@ -46,6 +49,7 @@ class ProjectServiceTests {
             new ItemTextNormalizer(),
             googleCalendarEventQueueService,
             new AfterCommitExecutor(),
+            cacheInvalidationService,
             Clock.fixed(Instant.parse("2026-05-21T12:34:56Z"), ZoneId.of("UTC")));
         projectId = UUID.randomUUID();
         Item item = new Item(new Title("Launch beta"), null);
@@ -62,6 +66,7 @@ class ProjectServiceTests {
         projectService.markDone(projectId);
 
         verify(googleCalendarEventQueueService).requestUpsert(projectId);
+        verify(cacheInvalidationService).evictProjectMutation();
     }
 
     @Test
@@ -72,6 +77,7 @@ class ProjectServiceTests {
         projectService.patchProject(projectId, new PatchProjectRequestDto("Launch public beta", null, null));
 
         verify(googleCalendarEventQueueService).requestUpsert(projectId);
+        verify(cacheInvalidationService).evictProjectMutation();
     }
 
     @Test
@@ -83,6 +89,7 @@ class ProjectServiceTests {
         projectService.resetStatus(projectId);
 
         verify(googleCalendarEventQueueService).requestUpsert(projectId);
+        verify(cacheInvalidationService).evictProjectMutation();
     }
 
     @Test
@@ -92,6 +99,7 @@ class ProjectServiceTests {
         projectService.deleteProject(projectId);
 
         verify(googleCalendarEventQueueService).requestDelete(projectId);
+        verify(cacheInvalidationService).evictProjectMutation();
     }
 
     @Test
@@ -102,5 +110,6 @@ class ProjectServiceTests {
         projectService.recoverProject(projectId);
 
         verify(googleCalendarEventQueueService).requestUpsert(projectId);
+        verify(cacheInvalidationService).evictProjectMutation();
     }
 }

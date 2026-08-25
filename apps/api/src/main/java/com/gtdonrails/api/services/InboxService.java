@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+import com.gtdonrails.api.config.CacheNames;
 import com.gtdonrails.api.dtos.calendar.ConvertStuffToCalendarRequestDto;
 import com.gtdonrails.api.dtos.inbox.ConvertStuffToNextActionRequestDto;
 import com.gtdonrails.api.dtos.inbox.CreateStuffRequestDto;
@@ -21,6 +22,7 @@ import com.gtdonrails.api.normalizers.ItemTextNormalizer;
 import com.gtdonrails.api.repositories.ContextRepository;
 import com.gtdonrails.api.repositories.ItemRepository;
 import com.gtdonrails.api.types.Title;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +35,7 @@ public class InboxService {
     private final ItemTextNormalizer itemTextNormalizer;
     private final GoogleCalendarEventQueueService googleCalendarEventQueueService;
     private final AfterCommitExecutor afterCommitExecutor;
+    private final CacheInvalidationService cacheInvalidationService;
 
     public InboxService(
         ItemRepository itemRepository,
@@ -40,7 +43,8 @@ public class InboxService {
         StuffMapper stuffMapper,
         ItemTextNormalizer itemTextNormalizer,
         GoogleCalendarEventQueueService googleCalendarEventQueueService,
-        AfterCommitExecutor afterCommitExecutor
+        AfterCommitExecutor afterCommitExecutor,
+        CacheInvalidationService cacheInvalidationService
     ) {
         this.itemRepository = itemRepository;
         this.contextRepository = contextRepository;
@@ -48,6 +52,7 @@ public class InboxService {
         this.itemTextNormalizer = itemTextNormalizer;
         this.googleCalendarEventQueueService = googleCalendarEventQueueService;
         this.afterCommitExecutor = afterCommitExecutor;
+        this.cacheInvalidationService = cacheInvalidationService;
     }
 
     /**
@@ -55,6 +60,7 @@ public class InboxService {
      *
      * <p>Example: {@code inboxService.listStuff()}.</p>
      */
+    @Cacheable(value = CacheNames.INBOX, key = "'active'")
     @Transactional(readOnly = true)
     public List<StuffResponseDto> listStuff() {
         return itemRepository.findAllByStatusAndDeletedAtIsNullOrderByCreatedAtAsc(ItemStatus.STUFF)
@@ -68,6 +74,7 @@ public class InboxService {
      *
      * <p>Example: {@code inboxService.listDeletedStuff()}.</p>
      */
+    @Cacheable(value = CacheNames.INBOX, key = "'deleted'")
     @Transactional(readOnly = true)
     public List<StuffResponseDto> listDeletedStuff() {
         return itemRepository.findAllByStatusAndDeletedAtIsNotNullOrderByUpdatedAtDesc(ItemStatus.STUFF)
@@ -96,7 +103,9 @@ public class InboxService {
         Title title = new Title(itemTextNormalizer.normalizeTitle(request.title()));
         Item item = new Item(title, null);
         item.markAsStuff();
-        return stuffMapper.toResponse(itemRepository.save(item));
+        StuffResponseDto response = stuffMapper.toResponse(itemRepository.save(item));
+        evictCachesAfterCommit();
+        return response;
     }
 
     /**
@@ -112,6 +121,7 @@ public class InboxService {
         nextAction.setDeadline(request.deadline());
         itemRepository.save(item);
         requestGoogleCalendarEventSyncAfterCommit(id);
+        evictCachesAfterCommit();
     }
 
     /**
@@ -125,6 +135,7 @@ public class InboxService {
         item.convertToCalendar(request.toScheduledDate(), request.toScheduledTime());
         itemRepository.save(item);
         requestGoogleCalendarEventSyncAfterCommit(id);
+        evictCachesAfterCommit();
     }
 
     /**
@@ -138,6 +149,7 @@ public class InboxService {
         item.convertToProject(request.deadline());
         itemRepository.save(item);
         requestGoogleCalendarEventSyncAfterCommit(id);
+        evictCachesAfterCommit();
     }
 
     private Item findStuff(UUID id) {
@@ -161,5 +173,9 @@ public class InboxService {
 
     private void requestGoogleCalendarEventSyncAfterCommit(UUID itemId) {
         afterCommitExecutor.run(() -> googleCalendarEventQueueService.requestUpsert(itemId));
+    }
+
+    private void evictCachesAfterCommit() {
+        afterCommitExecutor.run(cacheInvalidationService::evictItemMutation);
     }
 }

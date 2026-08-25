@@ -40,6 +40,9 @@ class CalendarServiceTests {
     @Mock
     private GoogleCalendarEventQueueService googleCalendarEventQueueService;
 
+    @Mock
+    private CacheInvalidationService cacheInvalidationService;
+
     private CalendarService calendarService;
     private Calendar calendar;
     private UUID calendarId;
@@ -53,7 +56,8 @@ class CalendarServiceTests {
             new CalendarMapper(),
             CLOCK,
             googleCalendarEventQueueService,
-            new AfterCommitExecutor());
+            new AfterCommitExecutor(),
+            cacheInvalidationService);
         when(calendarRepository.findById(calendarId)).thenReturn(Optional.of(calendar));
         when(calendarRepository.save(any(Calendar.class))).thenAnswer(invocation -> invocation.getArgument(0));
     }
@@ -65,6 +69,7 @@ class CalendarServiceTests {
         assertEquals(LocalDate.parse("2026-05-22"), calendar.getScheduledDate());
         assertEquals(LocalTime.parse("10:15"), calendar.getScheduledTime());
         verifyGoogleCalendarSync();
+        verify(cacheInvalidationService).evictCalendarMutation();
     }
 
     @Test
@@ -73,6 +78,7 @@ class CalendarServiceTests {
 
         assertEquals(CalendarStatus.ONGOING, calendar.getStatus());
         verifyGoogleCalendarSync();
+        verify(cacheInvalidationService).evictCalendarMutation();
     }
 
     @Test
@@ -81,6 +87,7 @@ class CalendarServiceTests {
 
         assertEquals(CalendarStatus.DONE, calendar.getStatus());
         verifyGoogleCalendarSync();
+        verify(cacheInvalidationService).evictCalendarMutation();
     }
 
     @Test
@@ -91,6 +98,7 @@ class CalendarServiceTests {
 
         assertEquals(CalendarStatus.CALENDAR, calendar.getStatus());
         verifyGoogleCalendarSync();
+        verify(cacheInvalidationService).evictCalendarMutation();
     }
 
     @Test
@@ -100,6 +108,7 @@ class CalendarServiceTests {
         calendarService.recoverCalendar(calendarId);
 
         verifyGoogleCalendarSync();
+        verify(cacheInvalidationService).evictCalendarMutation();
     }
 
     private void verifyGoogleCalendarSync() {

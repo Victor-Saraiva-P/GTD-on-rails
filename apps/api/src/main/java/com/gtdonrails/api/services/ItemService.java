@@ -26,6 +26,7 @@ public class ItemService {
     private final ItemAssetService itemAssetService;
     private final GoogleCalendarEventQueueService googleCalendarEventQueueService;
     private final AfterCommitExecutor afterCommitExecutor;
+    private final CacheInvalidationService cacheInvalidationService;
 
     public ItemService(
         ItemRepository itemRepository,
@@ -34,7 +35,8 @@ public class ItemService {
         ItemBodyNormalizer itemBodyNormalizer,
         ItemAssetService itemAssetService,
         GoogleCalendarEventQueueService googleCalendarEventQueueService,
-        AfterCommitExecutor afterCommitExecutor
+        AfterCommitExecutor afterCommitExecutor,
+        CacheInvalidationService cacheInvalidationService
     ) {
         this.itemRepository = itemRepository;
         this.itemMapper = itemMapper;
@@ -43,6 +45,7 @@ public class ItemService {
         this.itemAssetService = itemAssetService;
         this.googleCalendarEventQueueService = googleCalendarEventQueueService;
         this.afterCommitExecutor = afterCommitExecutor;
+        this.cacheInvalidationService = cacheInvalidationService;
     }
 
     /**
@@ -56,7 +59,9 @@ public class ItemService {
         ItemBody body = itemBodyNormalizer.normalizeBody(request.body());
         itemAssetService.reconcileBodyAssetReferences(id, body);
         item.setBody(body);
-        return itemMapper.toResponse(itemRepository.save(item));
+        ItemResponseDto response = itemMapper.toResponse(itemRepository.save(item));
+        evictCachesAfterCommit();
+        return response;
     }
 
     /**
@@ -70,6 +75,7 @@ public class ItemService {
         item.setTitle(new Title(itemTextNormalizer.normalizeTitle(request.title())));
         ItemResponseDto response = itemMapper.toResponse(itemRepository.save(item));
         requestCalendarEventUpsertAfterCommit(id, item);
+        evictCachesAfterCommit();
         return response;
     }
 
@@ -85,6 +91,7 @@ public class ItemService {
         item.softDelete();
         itemRepository.save(item);
         requestCalendarEventDeleteAfterCommit(id, item);
+        evictCachesAfterCommit();
     }
 
     /**
@@ -100,6 +107,7 @@ public class ItemService {
         itemAssetService.reconcileBodyAssetReferences(id, item.getBody());
         itemRepository.save(item);
         requestCalendarEventUpsertAfterCommit(id, item);
+        evictCachesAfterCommit();
     }
 
     private Item findItem(UUID id) {
@@ -117,4 +125,7 @@ public class ItemService {
         afterCommitExecutor.run(() -> googleCalendarEventQueueService.requestDelete(itemId));
     }
 
+    private void evictCachesAfterCommit() {
+        afterCommitExecutor.run(cacheInvalidationService::evictItemMutation);
+    }
 }

@@ -4,6 +4,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
 
+import com.gtdonrails.api.config.CacheNames;
 import com.gtdonrails.api.dtos.context.ContextItemResponseDto;
 import com.gtdonrails.api.dtos.context.ContextResponseDto;
 import com.gtdonrails.api.dtos.context.CreateContextRequestDto;
@@ -16,6 +17,7 @@ import com.gtdonrails.api.mappers.ItemMapper;
 import com.gtdonrails.api.normalizers.ContextNameNormalizer;
 import com.gtdonrails.api.repositories.ContextRepository;
 import com.gtdonrails.api.repositories.NextActionRepository;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +31,8 @@ public class ContextService {
     private final ItemMapper itemMapper;
     private final ContextNameNormalizer contextNameNormalizer;
     private final ContextIconAssetService contextIconAssetService;
+    private final CacheInvalidationService cacheInvalidationService;
+    private final AfterCommitExecutor afterCommitExecutor;
 
     public ContextService(
         ContextRepository contextRepository,
@@ -36,7 +40,9 @@ public class ContextService {
         ContextMapper contextMapper,
         ItemMapper itemMapper,
         ContextNameNormalizer contextNameNormalizer,
-        ContextIconAssetService contextIconAssetService
+        ContextIconAssetService contextIconAssetService,
+        CacheInvalidationService cacheInvalidationService,
+        AfterCommitExecutor afterCommitExecutor
     ) {
         this.contextRepository = contextRepository;
         this.nextActionRepository = nextActionRepository;
@@ -44,6 +50,8 @@ public class ContextService {
         this.itemMapper = itemMapper;
         this.contextNameNormalizer = contextNameNormalizer;
         this.contextIconAssetService = contextIconAssetService;
+        this.cacheInvalidationService = cacheInvalidationService;
+        this.afterCommitExecutor = afterCommitExecutor;
     }
 
     /**
@@ -51,6 +59,7 @@ public class ContextService {
      *
      * <p>Example: {@code contextService.listContexts()}.</p>
      */
+    @Cacheable(value = CacheNames.CONTEXTS, key = "'all'")
     @Transactional(readOnly = true)
     public List<ContextResponseDto> listContexts() {
         return contextRepository.findAllByDeletedAtIsNullOrderByNameAsc()
@@ -74,6 +83,7 @@ public class ContextService {
      *
      * <p>Example: {@code contextService.listContextItems(contextId, 10)}.</p>
      */
+    @Cacheable(value = CacheNames.CONTEXTS, key = "'items:' + #id + ':' + #limit")
     @Transactional(readOnly = true)
     public List<ContextItemResponseDto> listContextItems(UUID id, Integer limit) {
         findContext(id);
@@ -105,7 +115,9 @@ public class ContextService {
     public ContextResponseDto createContext(CreateContextRequestDto request) {
         String normalizedName = contextNameNormalizer.normalize(request.name());
         Context context = new Context(normalizedName);
-        return contextMapper.toResponse(contextRepository.save(context));
+        ContextResponseDto response = contextMapper.toResponse(contextRepository.save(context));
+        evictCachesAfterCommit();
+        return response;
     }
 
     /**
@@ -119,7 +131,9 @@ public class ContextService {
         String normalizedName = contextNameNormalizer.normalize(request.name());
 
         context.setName(normalizedName);
-        return contextMapper.toResponse(contextRepository.save(context));
+        ContextResponseDto response = contextMapper.toResponse(contextRepository.save(context));
+        evictCachesAfterCommit();
+        return response;
     }
 
     /**
@@ -134,6 +148,7 @@ public class ContextService {
         contextIconAssetService.deleteContextIconAsset(context);
         context.softDelete();
         contextRepository.save(context);
+        evictCachesAfterCommit();
     }
 
     /**
@@ -147,6 +162,11 @@ public class ContextService {
             .orElseThrow(() -> new ContextNotFoundException("context not found"));
         context.restore();
         contextRepository.save(context);
+        evictCachesAfterCommit();
+    }
+
+    private void evictCachesAfterCommit() {
+        afterCommitExecutor.run(cacheInvalidationService::evictContextMutation);
     }
 
     private Context findContext(UUID id) {

@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+import com.gtdonrails.api.config.CacheNames;
 import com.gtdonrails.api.dtos.nextaction.NextActionResponseDto;
 import com.gtdonrails.api.dtos.nextaction.PatchNextActionRequestDto;
 import com.gtdonrails.api.entities.Context;
@@ -16,6 +17,7 @@ import com.gtdonrails.api.exceptions.item.ItemNotFoundException;
 import com.gtdonrails.api.mappers.NextActionMapper;
 import com.gtdonrails.api.repositories.ContextRepository;
 import com.gtdonrails.api.repositories.NextActionRepository;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -29,6 +31,7 @@ public class NextActionService {
     private final NextActionMapper nextActionMapper;
     private final GoogleCalendarEventQueueService googleCalendarEventQueueService;
     private final AfterCommitExecutor afterCommitExecutor;
+    private final CacheInvalidationService cacheInvalidationService;
     private final Clock clock;
 
     public NextActionService(
@@ -37,6 +40,7 @@ public class NextActionService {
         NextActionMapper nextActionMapper,
         GoogleCalendarEventQueueService googleCalendarEventQueueService,
         AfterCommitExecutor afterCommitExecutor,
+        CacheInvalidationService cacheInvalidationService,
         Clock clock
     ) {
         this.nextActionRepository = nextActionRepository;
@@ -44,6 +48,7 @@ public class NextActionService {
         this.nextActionMapper = nextActionMapper;
         this.googleCalendarEventQueueService = googleCalendarEventQueueService;
         this.afterCommitExecutor = afterCommitExecutor;
+        this.cacheInvalidationService = cacheInvalidationService;
         this.clock = clock;
     }
 
@@ -52,7 +57,9 @@ public class NextActionService {
         NextAction nextAction = findNextAction(id);
         applyNextActionPatch(nextAction, request);
         if (changesDeadline(request)) requestGoogleCalendarEventSyncAfterCommit(id);
-        return nextActionMapper.toResponse(nextActionRepository.save(nextAction));
+        NextActionResponseDto response = nextActionMapper.toResponse(nextActionRepository.save(nextAction));
+        evictCachesAfterCommit();
+        return response;
     }
 
     private void applyNextActionPatch(NextAction nextAction, PatchNextActionRequestDto request) {
@@ -79,7 +86,9 @@ public class NextActionService {
         NextAction nextAction = findNextAction(id);
         nextAction.markOnGoing(clock);
         requestGoogleCalendarEventSyncAfterCommit(id);
-        return nextActionMapper.toResponse(nextActionRepository.save(nextAction));
+        NextActionResponseDto response = nextActionMapper.toResponse(nextActionRepository.save(nextAction));
+        evictCachesAfterCommit();
+        return response;
     }
 
     @Transactional
@@ -87,7 +96,9 @@ public class NextActionService {
         NextAction nextAction = findNextAction(id);
         nextAction.markDone(clock);
         requestGoogleCalendarEventSyncAfterCommit(id);
-        return nextActionMapper.toResponse(nextActionRepository.save(nextAction));
+        NextActionResponseDto response = nextActionMapper.toResponse(nextActionRepository.save(nextAction));
+        evictCachesAfterCommit();
+        return response;
     }
 
     @Transactional
@@ -95,13 +106,20 @@ public class NextActionService {
         NextAction nextAction = findNextAction(id);
         nextAction.resetStatus();
         requestGoogleCalendarEventSyncAfterCommit(id);
-        return nextActionMapper.toResponse(nextActionRepository.save(nextAction));
+        NextActionResponseDto response = nextActionMapper.toResponse(nextActionRepository.save(nextAction));
+        evictCachesAfterCommit();
+        return response;
     }
 
     private void requestGoogleCalendarEventSyncAfterCommit(UUID itemId) {
         afterCommitExecutor.run(() -> googleCalendarEventQueueService.requestUpsert(itemId));
     }
 
+    private void evictCachesAfterCommit() {
+        afterCommitExecutor.run(cacheInvalidationService::evictItemMutation);
+    }
+
+    @Cacheable(value = CacheNames.NEXT_ACTIONS, key = "'ongoing'")
     @Transactional(readOnly = true)
     public List<NextActionResponseDto> getOnGoingNextActions() {
         return nextActionRepository
@@ -111,6 +129,7 @@ public class NextActionService {
             .toList();
     }
 
+    @Cacheable(value = CacheNames.NEXT_ACTIONS, key = "'energy:' + #contextIds")
     @Transactional(readOnly = true)
     public List<NextActionResponseDto> getOrderedByEnergy(List<UUID> contextIds) {
         List<NextAction> nextActions = noContextFilter(contextIds)
@@ -123,6 +142,7 @@ public class NextActionService {
             .toList();
     }
 
+    @Cacheable(value = CacheNames.NEXT_ACTIONS, key = "'time:' + #contextIds")
     @Transactional(readOnly = true)
     public List<NextActionResponseDto> getOrderedByTime(List<UUID> contextIds) {
         List<NextAction> nextActions = noContextFilter(contextIds)
@@ -135,6 +155,7 @@ public class NextActionService {
             .toList();
     }
 
+    @Cacheable(value = CacheNames.NEXT_ACTIONS, key = "'priority:' + #contextIds + ':' + #currentTimeMinutes + ':' + #currentEnergy")
     @Transactional(readOnly = true)
     public List<NextActionResponseDto> getOrderedByPriority(
         List<UUID> contextIds,
@@ -152,6 +173,7 @@ public class NextActionService {
             .toList();
     }
 
+    @Cacheable(value = CacheNames.NEXT_ACTIONS, key = "'deleted'")
     @Transactional(readOnly = true)
     public List<NextActionResponseDto> getDeletedNextActions() {
         return nextActionRepository
@@ -161,6 +183,7 @@ public class NextActionService {
             .toList();
     }
 
+    @Cacheable(value = CacheNames.NEXT_ACTIONS, key = "'done:' + #pageable.pageNumber + ':' + #pageable.pageSize")
     @Transactional(readOnly = true)
     public Page<NextActionResponseDto> getDoneNextActions(Pageable pageable) {
         return nextActionRepository

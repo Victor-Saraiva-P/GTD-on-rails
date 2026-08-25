@@ -7,6 +7,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
+import com.gtdonrails.api.config.CacheNames;
 import com.gtdonrails.api.dtos.inbox.CreateStuffRequestDto;
 import com.gtdonrails.api.dtos.project.ProjectItemResponseDto;
 import com.gtdonrails.api.entities.Item;
@@ -19,6 +20,7 @@ import com.gtdonrails.api.repositories.ItemRepository;
 import com.gtdonrails.api.repositories.ProjectItemRepository;
 import com.gtdonrails.api.repositories.ProjectRepository;
 import com.gtdonrails.api.types.Title;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,17 +31,23 @@ public class ProjectItemService {
     private final ProjectItemRepository projectItemRepository;
     private final ItemRepository itemRepository;
     private final ItemTextNormalizer itemTextNormalizer;
+    private final CacheInvalidationService cacheInvalidationService;
+    private final AfterCommitExecutor afterCommitExecutor;
 
     public ProjectItemService(
         ProjectRepository projectRepository,
         ProjectItemRepository projectItemRepository,
         ItemRepository itemRepository,
-        ItemTextNormalizer itemTextNormalizer
+        ItemTextNormalizer itemTextNormalizer,
+        CacheInvalidationService cacheInvalidationService,
+        AfterCommitExecutor afterCommitExecutor
     ) {
         this.projectRepository = projectRepository;
         this.projectItemRepository = projectItemRepository;
         this.itemRepository = itemRepository;
         this.itemTextNormalizer = itemTextNormalizer;
+        this.cacheInvalidationService = cacheInvalidationService;
+        this.afterCommitExecutor = afterCommitExecutor;
     }
 
     /**
@@ -54,6 +62,7 @@ public class ProjectItemService {
         item.markAsStuff();
         Item savedItem = itemRepository.saveAndFlush(item);
         projectItemRepository.insertProjectItem(project.getItemId(), savedItem.getId());
+        afterCommitExecutor.run(cacheInvalidationService::evictProjectMutation);
         return toResponse(new ProjectItem(project, savedItem));
     }
 
@@ -62,6 +71,7 @@ public class ProjectItemService {
      *
      * <p>Example: {@code projectItemService.listProjectActions(projectId)}.</p>
      */
+    @Cacheable(value = CacheNames.PROJECTS, key = "'actions:' + #projectId")
     @Transactional(readOnly = true)
     public List<ProjectItemResponseDto> listProjectActions(UUID projectId) {
         findActiveProject(projectId);
