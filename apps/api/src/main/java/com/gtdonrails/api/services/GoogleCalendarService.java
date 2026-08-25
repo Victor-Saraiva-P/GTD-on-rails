@@ -270,12 +270,12 @@ public class GoogleCalendarService {
     }
 
     private void persistGoogleCalendar(GoogleCalendar dbCal, String name, String googleCalendarId, String colorHex) {
-        GoogleCalendar record = dbCal != null ? dbCal : new GoogleCalendar();
+        GoogleCalendar targetCalendar = dbCal != null ? dbCal : new GoogleCalendar();
         if (dbCal == null) {
-            record.setName(name);
+            targetCalendar.setName(name);
         }
-        record.setGoogleCalendarId(googleCalendarId);
-        record.setColorHex(colorHex);
-        calendarRepository.save(record);
+        targetCalendar.setGoogleCalendarId(googleCalendarId);
+        targetCalendar.setColorHex(colorHex);
+        calendarRepository.save(targetCalendar);
     }
 }
