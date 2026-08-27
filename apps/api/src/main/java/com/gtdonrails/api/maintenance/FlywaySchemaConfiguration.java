@@ -12,7 +12,7 @@ public class FlywaySchemaConfiguration {
     @Bean
     public FlywaySchemaRange flywaySchemaRange(
         @Value("${gtd.schema.min-supported-version:1}") int minSupportedVersion,
-        @Value("${gtd.schema.max-supported-version:3}") int maxSupportedVersion
+        @Value("${gtd.schema.max-supported-version:1}") int maxSupportedVersion
     ) {
         return new FlywaySchemaRange(minSupportedVersion, maxSupportedVersion);
     }

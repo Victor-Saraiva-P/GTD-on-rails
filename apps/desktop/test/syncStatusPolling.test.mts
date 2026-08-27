@@ -28,6 +28,16 @@ function syncStatus(fileState: SyncStatus["file"]["state"]): SyncStatus {
       lastFinishedAt: null,
       lastSuccessfulSyncAt: null,
       lastError: null
+    },
+    database: {
+      state: "SYNCED",
+      pending: false,
+      running: false,
+      pendingCount: 0,
+      lastStartedAt: null,
+      lastFinishedAt: null,
+      lastSuccessfulSyncAt: null,
+      lastError: null
     }
   };
 }

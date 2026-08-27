@@ -71,6 +71,7 @@ org.glassfish.jaxb:jaxb-runtime:4.0.6=productionRuntimeClasspath,runtimeClasspat
 org.glassfish.jaxb:txw2:4.0.6=productionRuntimeClasspath,runtimeClasspath,testRuntimeClasspath
 org.hamcrest:hamcrest:3.0=testCompileClasspath,testRuntimeClasspath
 org.hibernate.models:hibernate-models:1.0.1=productionRuntimeClasspath,runtimeClasspath,testRuntimeClasspath
+org.hibernate.orm:hibernate-community-dialects:7.2.7.Final=compileClasspath,productionRuntimeClasspath,runtimeClasspath,testCompileClasspath,testRuntimeClasspath
 org.hibernate.orm:hibernate-core:7.2.7.Final=compileClasspath,productionRuntimeClasspath,runtimeClasspath,testCompileClasspath,testRuntimeClasspath
 org.hibernate.validator:hibernate-validator:9.0.1.Final=compileClasspath,productionRuntimeClasspath,runtimeClasspath,testCompileClasspath,testRuntimeClasspath
 org.jacoco:org.jacoco.agent:0.8.14=jacocoAgent,jacocoAnt

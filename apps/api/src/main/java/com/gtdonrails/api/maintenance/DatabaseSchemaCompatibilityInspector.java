@@ -13,7 +13,7 @@ public class DatabaseSchemaCompatibilityInspector {
     private static final Logger logger = LoggerFactory.getLogger(DatabaseSchemaCompatibilityInspector.class);
 
     public static final String LATEST_SCHEMA_VERSION_QUERY =
-        "select version from gtd.flyway_schema_history where success = true order by installed_rank desc limit 1";
+        "select version from flyway_schema_history where success = 1 order by installed_rank desc limit 1";
 
     private final JdbcTemplate jdbcTemplate;
     private final FlywaySchemaRange supportedSchemaRange;

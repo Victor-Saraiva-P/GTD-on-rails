@@ -8,6 +8,21 @@ public record PostgresConnection(String jdbcUrl, String username, String passwor
 
     private static final String JDBC_PREFIX = "jdbc:";
 
+    /**
+     * Creates a PostgresConnection if all parameters are valid PostgreSQL credentials, or returns null.
+     *
+     * @example PostgresConnection.ofNullable("jdbc:postgresql://localhost/db", "user", "pass")
+     */
+    public static PostgresConnection ofNullable(String jdbcUrl, String username, String password) {
+        if (jdbcUrl == null || !jdbcUrl.startsWith("jdbc:postgresql://")) {
+            return null;
+        }
+        if (username == null || username.isBlank() || password == null || password.isBlank()) {
+            return null;
+        }
+        return new PostgresConnection(jdbcUrl, username, password);
+    }
+
     public PostgresConnection {
         if (jdbcUrl == null || !jdbcUrl.startsWith("jdbc:postgresql://")) {
             throw new IllegalArgumentException("database URL value '%s' is invalid; expected jdbc:postgresql:// URL".formatted(jdbcUrl));

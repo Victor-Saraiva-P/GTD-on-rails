@@ -54,7 +54,7 @@ public class LegacyDatabaseCutoverService {
 
     private String currentCutoverState() {
         return jdbcTemplate.queryForObject(
-            "SELECT state FROM gtd.database_cutover WHERE id = true", String.class);
+            "SELECT state FROM database_cutover WHERE id = 1", String.class);
     }
 
     private void requireAwaitingOrRetryableState(String state) {
@@ -101,6 +101,6 @@ public class LegacyDatabaseCutoverService {
     }
 
     private void updateCutoverState(String newState) {
-        jdbcTemplate.update("UPDATE gtd.database_cutover SET state = ? WHERE id = true", newState);
+        jdbcTemplate.update("UPDATE database_cutover SET state = ? WHERE id = 1", newState);
     }
 }

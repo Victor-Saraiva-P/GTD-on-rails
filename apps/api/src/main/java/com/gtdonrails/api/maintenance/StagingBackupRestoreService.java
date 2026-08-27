@@ -26,13 +26,13 @@ public class StagingBackupRestoreService {
         @Value("${gtd.backup.directory:${gtd.data.root-directory}/backups}") String backupDirectory,
         @Value("${gtd.backup.work-directory:${user.home}/.cache/gtd-on-rails/backup-work}") String workDirectory,
         @Value("${gtd.data.root-directory}") String dataRoot,
-        @Value("${spring.datasource.url}") String jdbcUrl,
-        @Value("${spring.datasource.username}") String username,
-        @Value("${spring.datasource.password}") String password,
+        @Value("${spring.datasource.url:}") String jdbcUrl,
+        @Value("${spring.datasource.username:}") String username,
+        @Value("${spring.datasource.password:}") String password,
         DatabaseIdentityService databaseIdentityService,
         PostgresCommandRunner commandRunner
     ) {
-        this(Path.of(backupDirectory), BackupWorkDirectory.outsideDataRoot(dataRoot, workDirectory), new PostgresConnection(jdbcUrl, username, password), databaseIdentityService, commandRunner);
+        this(Path.of(backupDirectory), BackupWorkDirectory.outsideDataRoot(dataRoot, workDirectory), PostgresConnection.ofNullable(jdbcUrl, username, password), databaseIdentityService, commandRunner);
     }
 
     StagingBackupRestoreService(

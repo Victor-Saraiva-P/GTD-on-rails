@@ -12,15 +12,16 @@ export function startupObservationDeadline(startedAt: number): number {
 }
 
 /**
- * Reports whether both sync systems are no longer actively changing state.
+ * Reports whether all three sync systems are no longer actively changing state.
  *
  * @example isSettledSyncStatus(status)
  */
 export function isSettledSyncStatus(status: SyncStatus): boolean {
   const fileSettled = status.file.state === "SYNCED" || status.file.state === "DISABLED" || status.file.state === "FAILED";
   const googleSettled = status.googleCalendar.state === "SYNCED" || status.googleCalendar.state === "DISABLED" || status.googleCalendar.state === "FAILED";
+  const databaseSettled = status.database.state === "SYNCED" || status.database.state === "DISABLED" || status.database.state === "FAILED";
 
-  return fileSettled && googleSettled;
+  return fileSettled && googleSettled && databaseSettled;
 }
 
 /**
