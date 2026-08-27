@@ -10,12 +10,13 @@ The infrastructure that hosts these sync processes is described in [Infrastructu
 
 ## 1. Sync Boundaries
 
-The system has two synchronization channels.
+The system has three synchronization channels.
 
-- File Sync uses `rclone bisync` to move file-backed state under the trusted data root between machines and Google Drive. It never moves a live PostgreSQL database.
+- Database Sync pushes local SQLite mutations to the remote Supabase PostgreSQL database using a Transactional Outbox pattern.
+- File Sync uses `rclone bisync` to move file-backed state under the trusted data root between machines and Google Drive.
 - Google Calendar sync mirrors GTD items to external agendas after local domain changes.
 
-The backend owns both channels. The frontend observes status and can request manual File Sync.
+The backend owns all three channels. The frontend observes status and renders visual indicators in the workspace footer.
 
 ---
 
@@ -151,26 +152,20 @@ The response contains:
 
 - `file`: File Sync status.
 - `googleCalendar`: Google Calendar sync status.
+- `database`: Database outbox sync status.
 
-File Sync status includes:
+Database Sync status includes:
 
-- `state`: `DISABLED`, `BOOTSTRAPPING`, `SYNCED`, `PENDING`, `SYNCING`, or `FAILED`.
-- `pending`
-- `running`
+- `state`: `DISABLED`, `SYNCED`, `PENDING`, `SYNCING`, or `FAILED`.
+- `pending`: whether a sync cycle is requested.
+- `running`: whether an async worker is actively processing events.
+- `pendingCount`: number of mutations waiting in `sync_outbox`.
 - `lastStartedAt`
 - `lastFinishedAt`
 - `lastSuccessfulSyncAt`
 - `lastError`
 
-Manual File Sync is requested at:
-
-```text
-POST /sync/files
-```
-
-The endpoint enqueues sync and returns `202 Accepted` with the current File Sync status.
-
-The desktop footer renders one File Sync indicator and one Google Calendar sync indicator.
+The desktop footer renders three sync indicators: File Sync, Google Calendar sync, and Database Sync.
 
 ---
 
@@ -178,9 +173,7 @@ The desktop footer renders one File Sync indicator and one Google Calendar sync 
 
 Startup File Sync is blocking when enabled. In production and staging, a startup rclone failure prevents the API from becoming ready.
 
-Runtime File Sync failures do not block local editing. The File Sync state becomes `FAILED`, the footer exposes the error state, and later scheduled, manual, or mutation-triggered sync can recover.
-
-Google Integration Configuration saves do not roll back when File Sync fails later. They are local writes followed by asynchronous File Sync.
+Runtime Database and File Sync failures do not block local editing. Database mutations are always safely persisted to the local SQLite database first. If the remote Supabase push fails, events remain in `sync_outbox` with incremented retry counts, and the background worker retries periodically.
 
 ---
 
@@ -188,7 +181,7 @@ Google Integration Configuration saves do not roll back when File Sync fails lat
 
 Because the project targets one owner and trusted machines, the synchronization model depends on these rules:
 
-- Do not edit the same PostgreSQL environment on two devices at the same time.
+- Allow pending outbox events to sync to Supabase before switching devices.
 - Keep `rclone` configured for the expected Google Drive remotes.
 - Treat `FAILED` sync states as operational issues to resolve before continuing long editing sessions.
 - Do not manually edit `database.properties`, `google.properties`, assets, or the sync marker while the app is running.
@@ -199,8 +192,9 @@ Because the project targets one owner and trusted machines, the synchronization 
 
 GTD on Rails currently synchronizes data with:
 
+- Local-first SQLite database for instant UI reads and writes.
+- Async Transactional Outbox pushing mutations to remote Supabase PostgreSQL.
 - `rclone bisync` over file-backed state under `${gtd.data.root-directory}`.
-- Blocking startup File Sync before PostgreSQL opens.
+- Blocking startup File Sync before the application opens.
 - Async coalesced runtime File Sync after file-backed changes.
-- Async Google Integration Configuration sync after local save.
 - UI sync indicators backed by `/sync/status`.

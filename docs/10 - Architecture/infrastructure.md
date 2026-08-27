@@ -59,23 +59,24 @@ The backend lives in `apps/api`.
 - Gradle builds, tests, and packages the backend.
 - Flyway manages database migrations.
 - Spring Data JPA and Hibernate persist application entities.
-- PostgreSQL is the application database for development and shared environments.
+- SQLite is the primary application database for sub-millisecond local reads and writes.
+- Supabase PostgreSQL receives asynchronous database sync updates via the Transactional Outbox.
 
 The backend package scripts wrap Gradle commands so workspace workflows can call it through `pnpm --filter @gtd-on-rails/api ...`.
 
 ### Database
 
-The development application database is PostgreSQL in the persistent local Compose volume.
+The primary application database is SQLite stored in the data root directory (`gtd.db`).
 
 The development JDBC URL defaults to:
 
 ```text
-jdbc:postgresql://127.0.0.1:5432/gtd_on_rails
+jdbc:sqlite:${gtd.data.root-directory}/gtd.db
 ```
 
-Flyway initializes new development databases with the baseline in schema `gtd` and records the `DEVELOPMENT` database identity.
+Flyway initializes new databases with the baseline SQLite migration and records the database identity.
 
-The PostgreSQL baseline migration lives under `apps/api/src/main/resources/db/postgresql-migration`. Legacy SQLite migrations have been contracted from active runtime resources.
+The SQLite baseline migration lives under `apps/api/src/main/resources/db/sqlite-migration`.
 
 ---
 
