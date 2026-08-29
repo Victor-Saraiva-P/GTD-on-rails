@@ -1,31 +1,33 @@
-import { useState, type FormEvent } from "react";
+import { type FormEvent } from "react";
 import { apiJson } from "../../lib/api/apiClient.ts";
+import { useSupabaseConnectionState } from "./useSupabaseConnectionState.ts";
+import { DatabaseConnectionFields } from "./DatabaseConnectionFields.tsx";
 import "./database-setup.css";
 
 type SetupResponse = { status: string };
 
+/** Renders the first-installation setup flow for Database Connection Configuration.
+ *
+ * @example <DatabaseSetup />
+ */
 export function DatabaseSetup() {
-  const [url, setUrl] = useState("");
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  const form = useSupabaseConnectionState();
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setSaving(true);
-    setError(null);
+    form.setSaving(true);
+    form.setError(null);
     try {
       await apiJson<SetupResponse>("/bootstrap/database", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ administrativeUrl: url, administrativeUsername: username, administrativePassword: password })
+        body: JSON.stringify(form.buildPayload())
       });
-      setPassword("");
+      form.setPassword("");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Database setup failed; expected a reachable PostgreSQL administrator");
+      form.setError(cause instanceof Error ? cause.message : "Database setup failed; expected a reachable PostgreSQL administrator");
     } finally {
-      setSaving(false);
+      form.setSaving(false);
     }
   }
 
@@ -33,11 +35,13 @@ export function DatabaseSetup() {
     <form className="database-setup__form" onSubmit={submit}>
       <h1>Database Setup</h1>
       <p>Connect once with a Supabase administrator account. GTD on Rails will create a limited application role.</p>
-      <label>Administrative PostgreSQL URL<input required value={url} onChange={(event) => setUrl(event.target.value)} placeholder="jdbc:postgresql://...?...&sslmode=verify-full" /></label>
-      <label>Administrative username<input required value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" /></label>
-      <label>Administrative password<input required type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" /></label>
-      {error ? <p role="alert">{error}</p> : null}
-      <button type="submit" disabled={saving}>{saving ? "Provisioning..." : "Set up database"}</button>
+      <DatabaseConnectionFields
+        host={form.host} setHost={form.setHost} port={form.port} setPort={form.setPort}
+        database={form.database} setDatabase={form.setDatabase} user={form.user} setUser={form.setUser}
+        password={form.password} setPassword={form.setPassword} onPaste={form.handlePaste}
+      />
+      {form.error ? <p role="alert">{form.error}</p> : null}
+      <button type="submit" disabled={form.saving}>{form.saving ? "Provisioning..." : "Set up database"}</button>
     </form>
   </main>;
 }
