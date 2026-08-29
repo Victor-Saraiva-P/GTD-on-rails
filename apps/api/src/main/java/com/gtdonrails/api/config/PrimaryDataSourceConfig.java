@@ -29,7 +29,7 @@ public class PrimaryDataSourceConfig {
     public DataSource dataSource(
         @Value("${spring.datasource.url}") String url,
         @Value("${spring.datasource.driver-class-name:org.sqlite.JDBC}") String driverClass,
-        @Value("${spring.datasource.hikari.maximum-pool-size:5}") int maxPoolSize,
+        @Value("${spring.datasource.hikari.maximum-pool-size:1}") int maxPoolSize,
         @Value("${spring.datasource.hikari.minimum-idle:1}") int minIdle
     ) {
         org.sqlite.SQLiteConfig sqliteConfig = new org.sqlite.SQLiteConfig();
