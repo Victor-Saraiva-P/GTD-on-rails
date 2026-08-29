@@ -163,13 +163,34 @@ public class BootstrapConfiguration {
         try (BufferedReader reader = Files.newBufferedReader(configuration)) {
             properties.load(reader);
         }
-        return validDatabaseConfiguration(properties) ? "READY" : "INVALID";
+        if (!validDatabaseConfiguration(properties)) return "INVALID";
+        migrateLegacyKeysIfPresent(configuration, properties);
+        return "READY";
+    }
+
+    private void migrateLegacyKeysIfPresent(Path configuration, Properties properties) throws IOException {
+        if (!properties.containsKey("spring.datasource.url")) return;
+        Properties migrated = new Properties();
+        migrated.setProperty("spring.datasource.supabase.url", getSupabaseProperty(properties, "url"));
+        migrated.setProperty("spring.datasource.supabase.username", getSupabaseProperty(properties, "username"));
+        migrated.setProperty("spring.datasource.supabase.password", getSupabaseProperty(properties, "password"));
+        String identity = properties.getProperty("spring.flyway.placeholders.databaseIdentity");
+        if (identity != null) migrated.setProperty("spring.flyway.placeholders.databaseIdentity", identity);
+        try (var writer = Files.newBufferedWriter(configuration, java.nio.charset.StandardCharsets.UTF_8)) {
+            migrated.store(writer, "GTD on Rails limited database connection");
+        }
     }
 
     private boolean validDatabaseConfiguration(Properties properties) {
-        return validDatabaseUrl(properties.getProperty("spring.datasource.url"))
-            && isApplicationUser(properties.getProperty("spring.datasource.username"))
-            && hasText(properties.getProperty("spring.datasource.password"));
+        return validDatabaseUrl(getSupabaseProperty(properties, "url"))
+            && isApplicationUser(getSupabaseProperty(properties, "username"))
+            && hasText(getSupabaseProperty(properties, "password"));
+    }
+
+    private String getSupabaseProperty(Properties properties, String key) {
+        String value = properties.getProperty("spring.datasource.supabase." + key);
+        if (value != null) return value;
+        return properties.getProperty("spring.datasource." + key);
     }
 
     /** Accepts "gtd_app" or "gtd_app.PROJECT_REF" (Supavisor tenant routing). */

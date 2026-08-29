@@ -62,15 +62,15 @@ public class DevelopmentDataCleaner {
     public void deleteAll() {
         itemAssetRepository.findAll().forEach(this::deleteItemAsset);
         contextIconAssetRepository.findAll().forEach(this::deleteContextIconAsset);
-        nextActionRepository.findAll().forEach(nextAction -> nextActionRepository.deleteContextLinks(nextAction.getItemId()));
-        calendarRepository.deleteAll();
-        nextActionRepository.deleteAll();
-        projectItemRepository.deleteAll();
-        projectRepository.deleteAll();
-        itemAssetRepository.deleteAll();
-        contextIconAssetRepository.deleteAll();
-        itemRepository.deleteAll();
-        contextRepository.deleteAll();
+        nextActionRepository.deleteAllContextLinks();
+        calendarRepository.deleteAllInBatch();
+        nextActionRepository.deleteAllInBatch();
+        projectItemRepository.deleteAllInBatch();
+        projectRepository.deleteAllInBatch();
+        itemAssetRepository.deleteAllInBatch();
+        contextIconAssetRepository.deleteAllInBatch();
+        itemRepository.deleteAllInBatch();
+        contextRepository.deleteAllInBatch();
         cacheInvalidationService.evictAll();
     }
 

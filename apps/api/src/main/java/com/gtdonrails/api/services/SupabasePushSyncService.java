@@ -34,6 +34,7 @@ public class SupabasePushSyncService {
      *
      * @example new SupabasePushSyncService(supabaseJdbc)
      */
+    @org.springframework.beans.factory.annotation.Autowired
     public SupabasePushSyncService(
         @Qualifier("supabaseJdbcTemplate") JdbcTemplate supabaseJdbc
     ) {
@@ -111,13 +112,22 @@ public class SupabasePushSyncService {
         supabaseJdbc.update(sql, values);
     }
 
+    private static final java.util.regex.Pattern UUID_PATTERN =
+        java.util.regex.Pattern.compile("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
+    private static final java.util.regex.Pattern INSTANT_PATTERN =
+        java.util.regex.Pattern.compile("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})?$");
+    private static final java.util.regex.Pattern DATE_PATTERN =
+        java.util.regex.Pattern.compile("^\\d{4}-\\d{2}-\\d{2}$");
+    private static final java.util.regex.Pattern TIME_PATTERN =
+        java.util.regex.Pattern.compile("^\\d{2}:\\d{2}(?::\\d{2}(?:\\.\\d+)?)?$");
+
     private void pushDelete(SyncOutboxEvent event) {
         String table = event.getEntityType();
         String entityId = event.getEntityId();
         String primaryKey = OutboxTableMetadata.primaryKeyColumn(table);
 
         String sql = "DELETE FROM gtd.%s WHERE %s = ?".formatted(table, primaryKey);
-        supabaseJdbc.update(sql, entityId);
+        supabaseJdbc.update(sql, parseTypedString(entityId));
     }
 
     private JsonNode parsePayload(SyncOutboxEvent event) {
@@ -173,7 +183,7 @@ public class SupabasePushSyncService {
                 values.add(nodeToJdbcValue(payload.get(name)));
             }
         }
-        values.add(entityId);
+        values.add(parseTypedString(entityId));
         return values.toArray();
     }
 
@@ -183,11 +193,27 @@ public class SupabasePushSyncService {
         return names;
     }
 
+    private Object parseTypedString(String text) {
+        if (text.length() == 36 && UUID_PATTERN.matcher(text).matches()) {
+            return java.util.UUID.fromString(text);
+        }
+        if (INSTANT_PATTERN.matcher(text).matches()) {
+            return java.time.OffsetDateTime.parse(text);
+        }
+        if (DATE_PATTERN.matcher(text).matches()) {
+            return java.time.LocalDate.parse(text);
+        }
+        if (TIME_PATTERN.matcher(text).matches()) {
+            return java.time.LocalTime.parse(text);
+        }
+        return text;
+    }
+
     private Object nodeToJdbcValue(JsonNode node) {
         if (node == null || node.isNull()) return null;
         if (node.isBoolean()) return node.asBoolean();
         if (node.isInt() || node.isLong()) return node.asLong();
         if (node.isDouble() || node.isFloat()) return node.asDouble();
-        return node.asText();
+        return parseTypedString(node.asText());
     }
 }

@@ -96,4 +96,35 @@ class DatabaseSyncServiceTests {
         assertEquals(1, event.getRetryCount());
         assertEquals("Connection timeout", event.getLastError());
     }
+
+    @Test
+    void syncOnStartupPushesEventsAndPullsFromSupabase() {
+        SyncOutboxRepository outboxRepository = mock(SyncOutboxRepository.class);
+        SupabasePushSyncService pushSyncService = mock(SupabasePushSyncService.class);
+        SupabasePullSyncService pullSyncService = mock(SupabasePullSyncService.class);
+
+        when(outboxRepository.findByStatusOrderByCreatedAtAsc(SyncOutboxStatus.PENDING)).thenReturn(List.of());
+
+        DatabaseSyncService service = new DatabaseSyncService(outboxRepository, pushSyncService, pullSyncService, true);
+        service.syncOnStartup();
+
+        verify(pullSyncService).pullAll();
+        assertEquals(DatabaseSyncState.SYNCED, service.status().state());
+    }
+
+    @Test
+    void syncOnStartupHandlesFailureGracefully() {
+        SyncOutboxRepository outboxRepository = mock(SyncOutboxRepository.class);
+        SupabasePushSyncService pushSyncService = mock(SupabasePushSyncService.class);
+        SupabasePullSyncService pullSyncService = mock(SupabasePullSyncService.class);
+
+        when(outboxRepository.findByStatusOrderByCreatedAtAsc(SyncOutboxStatus.PENDING)).thenReturn(List.of());
+        doThrow(new RuntimeException("Supabase unreachable")).when(pullSyncService).pullAll();
+
+        DatabaseSyncService service = new DatabaseSyncService(outboxRepository, pushSyncService, pullSyncService, true);
+        service.syncOnStartup();
+
+        assertEquals(DatabaseSyncState.FAILED, service.status().state());
+        assertEquals("Supabase unreachable", service.status().lastError());
+    }
 }

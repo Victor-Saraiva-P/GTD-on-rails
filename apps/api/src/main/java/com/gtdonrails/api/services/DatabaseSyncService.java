@@ -35,6 +35,7 @@ public class DatabaseSyncService {
 
     private final SyncOutboxRepository outboxRepository;
     private final SupabasePushSyncService pushSyncService;
+    private final SupabasePullSyncService pullSyncService;
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
     private final AtomicBoolean running = new AtomicBoolean(false);
     private final AtomicBoolean pending = new AtomicBoolean(false);
@@ -49,17 +50,32 @@ public class DatabaseSyncService {
     /**
      * Creates a database sync service with Spring-managed dependencies.
      *
-     * @example new DatabaseSyncService(outboxRepository, pushSyncServiceProvider, true)
+     * @example new DatabaseSyncService(outboxRepository, pushSyncServiceProvider, pullSyncServiceProvider, true)
      */
     @Autowired
     public DatabaseSyncService(
         SyncOutboxRepository outboxRepository,
         ObjectProvider<SupabasePushSyncService> pushSyncServiceProvider,
+        ObjectProvider<SupabasePullSyncService> pullSyncServiceProvider,
         @Value("${gtd.sync.database.enabled:false}") boolean enabled
     ) {
         this.outboxRepository = outboxRepository;
         this.pushSyncService = pushSyncServiceProvider.getIfAvailable();
+        this.pullSyncService = pullSyncServiceProvider.getIfAvailable();
         this.enabled = enabled && this.pushSyncService != null;
+        this.state = this.enabled ? DatabaseSyncState.SYNCED : DatabaseSyncState.DISABLED;
+    }
+
+    DatabaseSyncService(
+        SyncOutboxRepository outboxRepository,
+        SupabasePushSyncService pushSyncService,
+        SupabasePullSyncService pullSyncService,
+        boolean enabled
+    ) {
+        this.outboxRepository = outboxRepository;
+        this.pushSyncService = pushSyncService;
+        this.pullSyncService = pullSyncService;
+        this.enabled = enabled && pushSyncService != null;
         this.state = this.enabled ? DatabaseSyncState.SYNCED : DatabaseSyncState.DISABLED;
     }
 
@@ -68,10 +84,7 @@ public class DatabaseSyncService {
         SupabasePushSyncService pushSyncService,
         boolean enabled
     ) {
-        this.outboxRepository = outboxRepository;
-        this.pushSyncService = pushSyncService;
-        this.enabled = enabled && pushSyncService != null;
-        this.state = this.enabled ? DatabaseSyncState.SYNCED : DatabaseSyncState.DISABLED;
+        this(outboxRepository, pushSyncService, null, enabled);
     }
 
     /**
@@ -140,6 +153,34 @@ public class DatabaseSyncService {
         }
     }
 
+    /**
+     * Reports whether database sync is enabled.
+     *
+     * <p>Example: {@code databaseSyncService.isEnabled()}.</p>
+     */
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    /**
+     * Executes initial database sync on startup, pushing pending events and pulling remote state.
+     *
+     * <p>Example: {@code databaseSyncService.syncOnStartup()}.</p>
+     */
+    public void syncOnStartup() {
+        if (!enabled) return;
+
+        lastStartedAt = Instant.now();
+        state = DatabaseSyncState.SYNCING;
+        try {
+            executeBatchSync();
+            if (pullSyncService != null) pullSyncService.pullAll();
+            markSyncSucceeded();
+        } catch (RuntimeException exception) {
+            markSyncFailed(exception);
+        }
+    }
+
     private void processBatch() {
         lastStartedAt = Instant.now();
         state = DatabaseSyncState.SYNCING;
@@ -147,6 +188,7 @@ public class DatabaseSyncService {
 
         try {
             executeBatchSync();
+            if (pullSyncService != null) pullSyncService.pullAll();
             markSyncSucceeded();
         } catch (RuntimeException exception) {
             markSyncFailed(exception);

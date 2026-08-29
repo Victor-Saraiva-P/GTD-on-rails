@@ -2,6 +2,7 @@ package com.gtdonrails.api.config;
 
 import javax.sql.DataSource;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.jdbc.DataSourceBuilder;
@@ -29,16 +30,43 @@ public class SupabaseDataSourceConfig {
         @Value("${gtd.sync.database.supabase.username}") String username,
         @Value("${gtd.sync.database.supabase.password}") String password
     ) {
-        return DataSourceBuilder.create()
-            .driverClassName("org.postgresql.Driver")
-            .url(url)
-            .username(username)
-            .password(password)
-            .build();
+        String effectiveUrl = url.contains("stringType=") ? url : (url.contains("?") ? url + "&stringType=unspecified" : url + "?stringType=unspecified");
+        com.zaxxer.hikari.HikariConfig config = new com.zaxxer.hikari.HikariConfig();
+        config.setDriverClassName("org.postgresql.Driver");
+        config.setJdbcUrl(effectiveUrl);
+        config.setUsername(username);
+        config.setPassword(password);
+        config.setMaximumPoolSize(2);
+        config.setMinimumIdle(1);
+        config.setPoolName("HikariPool-Supabase");
+        config.setMaxLifetime(60000);
+        config.setIdleTimeout(30000);
+        return new com.zaxxer.hikari.HikariDataSource(config);
+    }
+
+    @Bean("supabaseFlyway")
+    public org.flywaydb.core.Flyway supabaseFlyway(
+        @Qualifier("supabaseDataSource") DataSource supabaseDataSource,
+        @Value("${spring.flyway.placeholders.databaseIdentity:STAGING}") String databaseIdentity
+    ) {
+        org.flywaydb.core.Flyway flyway = org.flywaydb.core.Flyway.configure()
+            .dataSource(supabaseDataSource)
+            .schemas("gtd")
+            .defaultSchema("gtd")
+            .locations("classpath:db/postgresql-migration")
+            .baselineOnMigrate(true)
+            .baselineVersion("0")
+            .placeholders(java.util.Map.of("databaseIdentity", databaseIdentity))
+            .load();
+        flyway.migrate();
+        return flyway;
     }
 
     @Bean("supabaseJdbcTemplate")
-    public JdbcTemplate supabaseJdbcTemplate(DataSource supabaseDataSource) {
+    @org.springframework.context.annotation.DependsOn("supabaseFlyway")
+    public JdbcTemplate supabaseJdbcTemplate(
+        @Qualifier("supabaseDataSource") DataSource supabaseDataSource
+    ) {
         return new JdbcTemplate(supabaseDataSource);
     }
 }

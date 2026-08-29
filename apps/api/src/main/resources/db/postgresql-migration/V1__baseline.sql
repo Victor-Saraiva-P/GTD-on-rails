@@ -9,7 +9,7 @@ create table if not exists database_identity (
 
 insert into database_identity (environment) values ('${databaseIdentity}') on conflict (id) do nothing;
 
-create table items (
+create table if not exists items (
     id uuid primary key,
     title varchar(200) not null,
     body text not null default '{"text":"","inlineMarks":[],"lineBlocks":[],"blockEntities":[]}',
@@ -20,7 +20,7 @@ create table items (
     check (length(body) <= 150000)
 );
 
-create table contexts (
+create table if not exists contexts (
     id uuid primary key,
     name varchar(100) not null,
     created_at timestamp with time zone not null,
@@ -28,7 +28,7 @@ create table contexts (
     deleted_at timestamp with time zone
 );
 
-create table item_assets (
+create table if not exists item_assets (
     id uuid primary key,
     item_id uuid not null references items(id),
     file_name text not null,
@@ -39,9 +39,9 @@ create table item_assets (
     updated_at timestamp with time zone not null,
     deleted_at timestamp with time zone
 );
-create index idx_item_assets_item_id on item_assets (item_id);
+create index if not exists idx_item_assets_item_id on item_assets (item_id);
 
-create table context_icon_assets (
+create table if not exists context_icon_assets (
     id uuid primary key,
     context_id uuid not null references contexts(id),
     file_name text not null,
@@ -52,9 +52,9 @@ create table context_icon_assets (
     updated_at timestamp with time zone not null,
     deleted_at timestamp with time zone
 );
-create unique index uq_context_icon_assets_active_context_id on context_icon_assets (context_id) where deleted_at is null;
+create unique index if not exists uq_context_icon_assets_active_context_id on context_icon_assets (context_id) where deleted_at is null;
 
-create table next_actions (
+create table if not exists next_actions (
     item_id uuid primary key references items(id),
     energy numeric(10, 2) not null,
     estimated_time_minutes bigint not null,
@@ -70,13 +70,13 @@ create table next_actions (
     deleted_at timestamp with time zone
 );
 
-create table next_action_contexts (
+create table if not exists next_action_contexts (
     next_action_id uuid not null references next_actions(item_id),
     context_id uuid not null references contexts(id),
     primary key (next_action_id, context_id)
 );
 
-create table calendars (
+create table if not exists calendars (
     item_id uuid primary key references items(id),
     scheduled_date date not null,
     scheduled_time time,
@@ -91,6 +91,6 @@ create table calendars (
     deleted_at timestamp with time zone
 );
 
-create table maintenance_runs (name text primary key, last_run_at timestamp with time zone not null);
-create table google_credentials (id uuid primary key, access_token text not null, refresh_token text not null, token_type text not null, expires_at timestamp with time zone not null, scope text not null);
-create table google_calendars (id uuid primary key, google_calendar_id text not null, name text not null, color_hex text not null);
+create table if not exists maintenance_runs (name text primary key, last_run_at timestamp with time zone not null);
+create table if not exists google_credentials (id uuid primary key, access_token text not null, refresh_token text not null, token_type text not null, expires_at timestamp with time zone not null, scope text not null);
+create table if not exists google_calendars (id uuid primary key, google_calendar_id text not null, name text not null, color_hex text not null);

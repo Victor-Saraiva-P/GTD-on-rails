@@ -68,9 +68,9 @@ class DatabaseSetupServiceTests {
         service.provision(request("aws-0-us-east-1.pooler.supabase.com"));
 
         Properties configuration = readConfiguration();
-        assertEquals("gtd_app", configuration.getProperty("spring.datasource.username"));
-        assertTrue(configuration.getProperty("spring.datasource.password").length() > 20);
-        assertTrue(configuration.getProperty("spring.datasource.url").contains("currentSchema=gtd"));
+        assertEquals("gtd_app", configuration.getProperty("spring.datasource.supabase.username"));
+        assertTrue(configuration.getProperty("spring.datasource.supabase.password").length() > 20);
+        assertTrue(configuration.getProperty("spring.datasource.supabase.url").contains("currentSchema=gtd"));
         assertTrue(Files.isRegularFile(tempDir.resolve("root.crt")));
         verify(fileSync).syncNow();
     }
@@ -127,7 +127,7 @@ class DatabaseSetupServiceTests {
 
         assertTrue(exception.getMessage().contains("expected existing target"));
         assertArrayEquals(new char[] {'\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0'}, request.administrativePassword());
-        assertArrayEquals("old-secret".getBytes(StandardCharsets.UTF_8), readConfiguration().getProperty("spring.datasource.password").getBytes(StandardCharsets.UTF_8));
+        assertArrayEquals("old-secret".getBytes(StandardCharsets.UTF_8), readConfiguration().getProperty("spring.datasource.supabase.password").getBytes(StandardCharsets.UTF_8));
         assertEquals(0, factory.openCalls);
     }
 
@@ -145,7 +145,7 @@ class DatabaseSetupServiceTests {
 
         verify(connection.createStatement()).executeQuery(anyString());
         verify(connection.createStatement(), never()).execute(anyString());
-        assertEquals("old-secret", readConfiguration().getProperty("spring.datasource.password"));
+        assertEquals("old-secret", readConfiguration().getProperty("spring.datasource.supabase.password"));
     }
 
     @Test
@@ -162,8 +162,8 @@ class DatabaseSetupServiceTests {
             administrativePassword));
 
         assertArrayEquals(new char[] {'\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0'}, administrativePassword);
-        assertEquals("gtd_app", readConfiguration().getProperty("spring.datasource.username"));
-        assertNotEquals("old-secret", readConfiguration().getProperty("spring.datasource.password"));
+        assertEquals("gtd_app", readConfiguration().getProperty("spring.datasource.supabase.username"));
+        assertNotEquals("old-secret", readConfiguration().getProperty("spring.datasource.supabase.password"));
         verify(connection.createStatement(), times(2)).executeQuery(anyString());
     }
 
@@ -179,7 +179,7 @@ class DatabaseSetupServiceTests {
         DatabaseRepairException exception = assertThrows(DatabaseRepairException.class, () -> service.repair(request));
 
         assertFalse(exception.getMessage().contains("admin-secret"));
-        assertEquals("old-secret", readConfiguration().getProperty("spring.datasource.password"));
+        assertEquals("old-secret", readConfiguration().getProperty("spring.datasource.supabase.password"));
     }
 
     @Test
@@ -194,7 +194,7 @@ class DatabaseSetupServiceTests {
         assertThrows(DatabaseRepairException.class, () -> service.repair(request));
 
         verify(administrative.createStatement(), times(2)).execute(anyString());
-        assertEquals("old-secret", readConfiguration().getProperty("spring.datasource.password"));
+        assertEquals("old-secret", readConfiguration().getProperty("spring.datasource.supabase.password"));
     }
 
     private DatabaseSetupService service() {
@@ -216,9 +216,9 @@ class DatabaseSetupServiceTests {
     }
 
     private String runtimeConfiguration(String password) {
-        return "spring.datasource.url=jdbc:postgresql://aws-0-us-east-1.pooler.supabase.com:5432/postgres?sslmode=verify-full&currentSchema=gtd&tcpKeepAlive=true\n"
-            + "spring.datasource.username=gtd_app\n"
-            + "spring.datasource.password=" + password + "\n";
+        return "spring.datasource.supabase.url=jdbc:postgresql://aws-0-us-east-1.pooler.supabase.com:5432/postgres?sslmode=verify-full&currentSchema=gtd&tcpKeepAlive=true\n"
+            + "spring.datasource.supabase.username=gtd_app\n"
+            + "spring.datasource.supabase.password=" + password + "\n";
     }
 
     private Properties readConfiguration() throws Exception {

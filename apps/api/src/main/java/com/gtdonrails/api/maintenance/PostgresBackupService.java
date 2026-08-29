@@ -39,9 +39,9 @@ public class PostgresBackupService implements DailyBackupCreator {
         @Value("${gtd.backup.directory:${gtd.data.root-directory}/backups}") String backupDirectory,
         @Value("${gtd.backup.work-directory:${user.home}/.cache/gtd-on-rails/backup-work}") String workDirectory,
         @Value("${gtd.data.root-directory}") String dataRoot,
-        @Value("${spring.datasource.url:}") String jdbcUrl,
-        @Value("${spring.datasource.username:}") String username,
-        @Value("${spring.datasource.password:}") String password,
+        @Value("${gtd.sync.database.supabase.url:${spring.datasource.supabase.url:${spring.datasource.url:}}}") String jdbcUrl,
+        @Value("${gtd.sync.database.supabase.username:${spring.datasource.supabase.username:${spring.datasource.username:}}}") String username,
+        @Value("${gtd.sync.database.supabase.password:${spring.datasource.supabase.password:${spring.datasource.password:}}}") String password,
         FileSyncService fileSyncService,
         Clock clock,
         PostgresCommandRunner commandRunner

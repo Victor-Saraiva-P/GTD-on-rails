@@ -19,6 +19,9 @@ class CachePrewarmServiceTests {
     private DatabaseReadinessService databaseReadinessService;
 
     @Mock
+    private DatabaseSyncService databaseSyncService;
+
+    @Mock
     private InboxService inboxService;
 
     @Mock
@@ -39,6 +42,7 @@ class CachePrewarmServiceTests {
     void setUp() {
         cachePrewarmService = new CachePrewarmService(
             databaseReadinessService,
+            databaseSyncService,
             inboxService,
             nextActionService,
             projectService,
@@ -52,6 +56,7 @@ class CachePrewarmServiceTests {
 
         cachePrewarmService.prewarmCaches();
 
+        verify(databaseSyncService).syncOnStartup();
         verify(inboxService).listStuff();
         verify(nextActionService).getOnGoingNextActions();
         verify(nextActionService).getOrderedByEnergy(null);

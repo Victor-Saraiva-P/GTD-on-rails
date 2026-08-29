@@ -15,6 +15,7 @@ public class CachePrewarmService {
     private static final Logger logger = LoggerFactory.getLogger(CachePrewarmService.class);
 
     private final DatabaseReadinessService databaseReadinessService;
+    private final DatabaseSyncService databaseSyncService;
     private final InboxService inboxService;
     private final NextActionService nextActionService;
     private final ProjectService projectService;
@@ -23,6 +24,7 @@ public class CachePrewarmService {
 
     public CachePrewarmService(
         DatabaseReadinessService databaseReadinessService,
+        DatabaseSyncService databaseSyncService,
         InboxService inboxService,
         NextActionService nextActionService,
         ProjectService projectService,
@@ -30,6 +32,7 @@ public class CachePrewarmService {
         CalendarService calendarService
     ) {
         this.databaseReadinessService = databaseReadinessService;
+        this.databaseSyncService = databaseSyncService;
         this.inboxService = inboxService;
         this.nextActionService = nextActionService;
         this.projectService = projectService;
@@ -48,6 +51,7 @@ public class CachePrewarmService {
             logger.info("Database not ready; skipping cache pre-warming");
             return;
         }
+        databaseSyncService.syncOnStartup();
         warmActiveDatasets();
     }
 
