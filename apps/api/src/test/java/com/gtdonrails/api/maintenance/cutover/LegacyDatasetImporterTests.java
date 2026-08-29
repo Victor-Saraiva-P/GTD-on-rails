@@ -62,16 +62,16 @@ class LegacyDatasetImporterTests {
 
         importer.importDataset(dataset);
 
-        verify(jdbcTemplate).update(contains("INSERT INTO gtd.contexts"), eq(contextId), eq("@home"), any(), any(), eq(null));
-        verify(jdbcTemplate).update(contains("INSERT INTO gtd.items"), eq(itemId), eq("Task 1"), eq("{}"), eq("NEXT_ACTION"), any(), any(), eq(null));
-        verify(jdbcTemplate).update(contains("INSERT INTO gtd.item_assets"), eq(assetId), eq(itemId), eq("file.png"), eq("file.png"), eq("image/png"), eq(100L), any(), any(), eq(null));
-        verify(jdbcTemplate).update(contains("INSERT INTO gtd.context_icon_assets"), eq(iconAssetId), eq(contextId), eq("icon.png"), eq("icon.png"), eq("image/png"), eq(50L), any(), any(), eq(null));
-        verify(jdbcTemplate).update(contains("INSERT INTO gtd.next_actions"), eq(itemId), eq(new BigDecimal("1.0")), eq(30L), any(), eq(null), any(), eq(null), eq(false), eq(null), eq("NEXT_ACTION"), any(), any(), eq(null));
-        verify(jdbcTemplate).update(contains("INSERT INTO gtd.next_action_contexts"), eq(itemId), eq(contextId));
-        verify(jdbcTemplate).update(contains("INSERT INTO gtd.calendars"), eq(itemId), any(), any(), eq(null), eq(null), eq(null), eq(null), eq(false), eq("CALENDAR"), any(), any(), eq(null));
-        verify(jdbcTemplate).update(contains("INSERT INTO gtd.maintenance_runs"), eq("cleanup"), any());
-        verify(jdbcTemplate).update(contains("INSERT INTO gtd.google_credentials"), eq(credId), contains("gtdenc:v1:"), contains("gtdenc:v1:"), eq("Bearer"), any(), eq("scope"));
-        verify(jdbcTemplate).update(contains("INSERT INTO gtd.google_calendars"), eq(gcalId), eq("primary"), eq("Primary"), eq("#FFF"));
+        verify(jdbcTemplate).update(contains("INSERT INTO contexts"), eq(contextId), eq("@home"), any(), any(), eq(null));
+        verify(jdbcTemplate).update(contains("INSERT INTO items"), eq(itemId), eq("Task 1"), eq("{}"), eq("NEXT_ACTION"), any(), any(), eq(null));
+        verify(jdbcTemplate).update(contains("INSERT INTO item_assets"), eq(assetId), eq(itemId), eq("file.png"), eq("file.png"), eq("image/png"), eq(100L), any(), any(), eq(null));
+        verify(jdbcTemplate).update(contains("INSERT INTO context_icon_assets"), eq(iconAssetId), eq(contextId), eq("icon.png"), eq("icon.png"), eq("image/png"), eq(50L), any(), any(), eq(null));
+        verify(jdbcTemplate).update(contains("INSERT INTO next_actions"), eq(itemId), eq(new BigDecimal("1.0")), eq(30L), any(), eq(null), any(), eq(null), eq(false), eq(null), eq("NEXT_ACTION"), any(), any(), eq(null));
+        verify(jdbcTemplate).update(contains("INSERT INTO next_action_contexts"), eq(itemId), eq(contextId));
+        verify(jdbcTemplate).update(contains("INSERT INTO calendars"), eq(itemId), any(), any(), eq(null), eq(null), eq(null), eq(null), eq(false), eq("CALENDAR"), any(), any(), eq(null));
+        verify(jdbcTemplate).update(contains("INSERT INTO maintenance_runs"), eq("cleanup"), any());
+        verify(jdbcTemplate).update(contains("INSERT INTO google_credentials"), eq(credId), contains("gtdenc:v1:"), contains("gtdenc:v1:"), eq("Bearer"), any(), eq("scope"));
+        verify(jdbcTemplate).update(contains("INSERT INTO google_calendars"), eq(gcalId), eq("primary"), eq("Primary"), eq("#FFF"));
     }
 
     @Test

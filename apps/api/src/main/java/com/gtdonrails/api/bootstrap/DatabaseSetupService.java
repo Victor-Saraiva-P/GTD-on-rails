@@ -99,11 +99,17 @@ public class DatabaseSetupService {
     private RepairData loadRepairData(DatabaseSetupRequest request) {
         byte[] original = readExistingConfiguration(configurationPath);
         Properties existing = existingProperties(configurationPath);
-        String existingUrl = existing.getProperty("spring.datasource.url");
-        String existingPassword = existing.getProperty("spring.datasource.password");
+        String existingUrl = getSupabaseProperty(existing, "url");
+        String existingPassword = getSupabaseProperty(existing, "password");
         validateSameTargetIfKnown(request.administrativeUrl(), existingUrl);
         requirePreviousPassword(existingPassword);
         return new RepairData(original, existingPassword);
+    }
+
+    private String getSupabaseProperty(Properties properties, String key) {
+        String value = properties.getProperty("spring.datasource.supabase." + key);
+        if (value != null) return value;
+        return properties.getProperty("spring.datasource." + key);
     }
 
     private void executeRepair(DatabaseSetupRequest request, String password, RepairData repairData) throws SQLException, IOException {
@@ -301,11 +307,11 @@ public class DatabaseSetupService {
         Files.createDirectories(configurationPath.getParent());
         certificateProvisioner.ensureCertificate(configurationPath.getParent());
         Properties properties = new Properties();
-        properties.setProperty("spring.datasource.url", DatabaseConnectionUrl.runtimeUrl(url));
+        properties.setProperty("spring.datasource.supabase.url", DatabaseConnectionUrl.runtimeUrl(url));
         // WHY: Supavisor requires the project ref suffix on every username for tenant routing.
         // The admin username is "postgres.PROJECT_REF"; we reuse the same suffix for gtd_app.
-        properties.setProperty("spring.datasource.username", supavisorUsername(administrativeUsername));
-        properties.setProperty("spring.datasource.password", password);
+        properties.setProperty("spring.datasource.supabase.username", supavisorUsername(administrativeUsername));
+        properties.setProperty("spring.datasource.supabase.password", password);
         properties.setProperty("spring.flyway.placeholders.databaseIdentity", environment);
         Path temporary = Files.createTempFile(configurationPath.getParent(), "database", ".properties");
         try {

@@ -71,3 +71,12 @@ _Avoid_: Planned schedule, appointment time
 **Done**:
 An item state for work that has been completed. Done items are represented on the shared done external agenda using their actual schedule window.
 _Avoid_: Completed task, finished todo
+
+**Domain Cache**:
+The in-memory cache managed by the local Spring Boot sidecar that serves active read queries with sub-millisecond latency.
+_Avoid_: Redis, local database, offline store
+
+**Cache Eviction**:
+The invalidation of cached query projections across affected domain aggregates following entity mutations or explicit maintenance operations.
+_Avoid_: Cache purge, database wipe
+

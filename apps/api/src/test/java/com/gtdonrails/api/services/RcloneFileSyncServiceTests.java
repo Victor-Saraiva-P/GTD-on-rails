@@ -85,6 +85,8 @@ class RcloneFileSyncServiceTests {
 
     private void assertContainsCommonScriptFlags(List<String> command) {
         assertTrue(command.contains("--force"));
+        assertTrue(command.contains("--filter"));
+        assertTrue(command.contains("- *.db*"));
         assertTrue(command.contains("size,modtime,checksum"));
         assertTrue(command.contains("--modify-window"));
         assertTrue(command.contains("--drive-acknowledge-abuse"));

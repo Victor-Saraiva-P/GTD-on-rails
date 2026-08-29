@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { ApiRequestError } from "../../lib/api/apiClient";
-import { processStuffToCalendar as processStuffToCalendarRequest } from "../calendar/api";
-import type { CalendarConversionPayload } from "../calendar/types";
-import { processStuffToProject as processStuffToProjectRequest } from "../projects/api";
-import { useSyncStatus } from "../sync-status/SyncStatusProvider";
+import { ApiRequestError } from "../../lib/api/apiClient.ts";
+import { optimisticMutate } from "../../lib/api/optimistic.ts";
+import { processStuffToCalendar as processStuffToCalendarRequest } from "../calendar/api.ts";
+import type { CalendarConversionPayload } from "../calendar/types.ts";
+import { processStuffToProject as processStuffToProjectRequest } from "../projects/api.ts";
+import { useSyncStatus } from "../sync-status/SyncStatusProvider.tsx";
 import {
   createStuff as createStuffRequest,
   deleteStuff as deleteStuffRequest,
@@ -130,8 +131,13 @@ async function deleteInboxStuff(id: string, state: InboxLoadState, mutations: In
   mutations.setIsDeleting(true);
 
   try {
-    await deleteStuffRequest(id);
-    state.setStuffs((currentStuffs) => currentStuffs.filter((stuff) => stuff.id !== id));
+    await optimisticMutate({
+      current: () => state.stuffs,
+      applyOptimistic: (currentStuffs) => currentStuffs.filter((stuff) => stuff.id !== id),
+      set: state.setStuffs,
+      mutate: () => deleteStuffRequest(id),
+      onError: (error) => state.setErrorMessage(toErrorMessage(error))
+    });
     completeInboxMutation(state, triggerSyncStatusPolling);
   } finally {
     mutations.setIsDeleting(false);
@@ -174,8 +180,13 @@ async function processInboxStuff(item: Stuff, processRequest: () => Promise<void
   mutations.setIsUpdating(true);
 
   try {
-    await processRequest();
-    state.setStuffs((currentStuffs) => removeProcessedInboxStuff(currentStuffs, item.id));
+    await optimisticMutate({
+      current: () => state.stuffs,
+      applyOptimistic: (currentStuffs) => removeProcessedInboxStuff(currentStuffs, item.id),
+      set: state.setStuffs,
+      mutate: processRequest,
+      onError: (error) => state.setErrorMessage(toErrorMessage(error))
+    });
     completeInboxMutation(state, triggerSyncStatusPolling);
   } finally {
     mutations.setIsUpdating(false);

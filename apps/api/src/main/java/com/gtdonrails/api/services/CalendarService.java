@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
+import com.gtdonrails.api.config.CacheNames;
 import com.gtdonrails.api.dtos.calendar.CalendarResponseDto;
 import com.gtdonrails.api.dtos.calendar.PatchCalendarRequestDto;
 import com.gtdonrails.api.entities.Calendar;
@@ -12,6 +13,7 @@ import com.gtdonrails.api.enums.CalendarStatus;
 import com.gtdonrails.api.exceptions.item.ItemNotFoundException;
 import com.gtdonrails.api.mappers.CalendarMapper;
 import com.gtdonrails.api.repositories.CalendarRepository;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,19 +25,22 @@ public class CalendarService {
     private final Clock clock;
     private final GoogleCalendarEventQueueService googleCalendarEventQueueService;
     private final AfterCommitExecutor afterCommitExecutor;
+    private final CacheInvalidationService cacheInvalidationService;
 
     public CalendarService(
         CalendarRepository calendarRepository,
         CalendarMapper calendarMapper,
         Clock clock,
         GoogleCalendarEventQueueService googleCalendarEventQueueService,
-        AfterCommitExecutor afterCommitExecutor
+        AfterCommitExecutor afterCommitExecutor,
+        CacheInvalidationService cacheInvalidationService
     ) {
         this.calendarRepository = calendarRepository;
         this.calendarMapper = calendarMapper;
         this.clock = clock;
         this.googleCalendarEventQueueService = googleCalendarEventQueueService;
         this.afterCommitExecutor = afterCommitExecutor;
+        this.cacheInvalidationService = cacheInvalidationService;
     }
 
     /**
@@ -43,6 +48,7 @@ public class CalendarService {
      *
      * <p>Example: {@code calendarService.getTodayCalendars()}.</p>
      */
+    @Cacheable(value = CacheNames.CALENDAR, key = "'today'")
     @Transactional(readOnly = true)
     public List<CalendarResponseDto> getTodayCalendars() {
         LocalDate today = LocalDate.now(clock);
@@ -57,6 +63,7 @@ public class CalendarService {
      *
      * <p>Example: {@code calendarService.getDoneTodayCalendars()}.</p>
      */
+    @Cacheable(value = CacheNames.CALENDAR, key = "'doneToday'")
     @Transactional(readOnly = true)
     public List<CalendarResponseDto> getDoneTodayCalendars() {
         return mapCalendars(calendarRepository
@@ -70,6 +77,7 @@ public class CalendarService {
      *
      * <p>Example: {@code calendarService.getWeekCalendars(start)}.</p>
      */
+    @Cacheable(value = CacheNames.CALENDAR, key = "'week:' + #start")
     @Transactional(readOnly = true)
     public List<CalendarResponseDto> getWeekCalendars(LocalDate start) {
         return mapCalendars(calendarRepository
@@ -83,6 +91,7 @@ public class CalendarService {
      *
      * <p>Example: {@code calendarService.getDoneCalendars()}.</p>
      */
+    @Cacheable(value = CacheNames.CALENDAR, key = "'done'")
     @Transactional(readOnly = true)
     public List<CalendarResponseDto> getDoneCalendars() {
         return mapCalendars(calendarRepository
@@ -94,6 +103,7 @@ public class CalendarService {
      *
      * <p>Example: {@code calendarService.getDeletedCalendars()}.</p>
      */
+    @Cacheable(value = CacheNames.CALENDAR, key = "'deleted'")
     @Transactional(readOnly = true)
     public List<CalendarResponseDto> getDeletedCalendars() {
         return mapCalendars(calendarRepository.findAllByItem_DeletedAtIsNotNullOrderByItem_UpdatedAtDesc());
@@ -104,6 +114,7 @@ public class CalendarService {
      *
      * <p>Example: {@code calendarService.getOnGoingCalendars()}.</p>
      */
+    @Cacheable(value = CacheNames.CALENDAR, key = "'ongoing'")
     @Transactional(readOnly = true)
     public List<CalendarResponseDto> getOnGoingCalendars() {
         return mapCalendars(calendarRepository
@@ -122,6 +133,7 @@ public class CalendarService {
         Calendar savedCalendar = calendarRepository.save(calendar);
         CalendarResponseDto response = calendarMapper.toResponse(savedCalendar);
         requestGoogleCalendarEventSyncAfterCommit(savedCalendar.getItemId());
+        evictCachesAfterCommit();
         return response;
     }
 
@@ -186,6 +198,7 @@ public class CalendarService {
         Calendar savedCalendar = calendarRepository.save(calendar);
         CalendarResponseDto response = calendarMapper.toResponse(savedCalendar);
         requestGoogleCalendarEventSyncAfterCommit(savedCalendar.getItemId());
+        evictCachesAfterCommit();
         return response;
     }
 
@@ -200,5 +213,9 @@ public class CalendarService {
 
     private void requestGoogleCalendarEventSyncAfterCommit(UUID itemId) {
         afterCommitExecutor.run(() -> googleCalendarEventQueueService.requestUpsert(itemId));
+    }
+
+    private void evictCachesAfterCommit() {
+        afterCommitExecutor.run(cacheInvalidationService::evictCalendarMutation);
     }
 }

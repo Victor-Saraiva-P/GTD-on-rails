@@ -24,6 +24,7 @@ import com.gtdonrails.api.entities.NextAction;
 import com.gtdonrails.api.repositories.ContextIconAssetRepository;
 import com.gtdonrails.api.repositories.ContextRepository;
 import com.gtdonrails.api.repositories.ItemRepository;
+import com.gtdonrails.api.services.CacheInvalidationService;
 import com.gtdonrails.api.types.Title;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
@@ -55,11 +56,15 @@ class ContextControllerTests {
     @Autowired
     private ItemRepository itemRepository;
 
+    @Autowired
+    private CacheInvalidationService cacheInvalidationService;
+
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).build();
+        cacheInvalidationService.evictAll();
         itemRepository.deleteAll();
         contextIconAssetRepository.deleteAll();
         contextRepository.deleteAll();

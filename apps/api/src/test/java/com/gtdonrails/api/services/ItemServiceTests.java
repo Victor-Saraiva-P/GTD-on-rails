@@ -54,6 +54,9 @@ class ItemServiceTests {
     @Mock
     private GoogleCalendarEventQueueService googleCalendarEventQueueService;
 
+    @Mock
+    private CacheInvalidationService cacheInvalidationService;
+
     @BeforeEach
     void setUp() {
         itemService = new ItemService(
@@ -63,7 +66,8 @@ class ItemServiceTests {
             new ItemBodyNormalizer(),
             itemAssetService,
             googleCalendarEventQueueService,
-            new AfterCommitExecutor());
+            new AfterCommitExecutor(),
+            cacheInvalidationService);
     }
 
     @Test
@@ -79,6 +83,7 @@ class ItemServiceTests {
 
         assertEquals("New title", capturedSavedItem().getTitle().value());
         assertEquals(expectedResponse, response);
+        verify(cacheInvalidationService).evictItemMutation();
     }
 
     @Test
@@ -140,6 +145,7 @@ class ItemServiceTests {
         itemService.patchItemBody(itemId, new PatchItemBodyRequestDto(body));
 
         verify(itemAssetService).reconcileBodyAssetReferences(itemId, body);
+        verify(cacheInvalidationService).evictItemMutation();
     }
 
     @Test
@@ -155,6 +161,7 @@ class ItemServiceTests {
         assertTrue(item.isDeleted());
         verify(itemAssetService).softDeleteActiveItemAssets(itemId);
         verify(googleCalendarEventQueueService).requestDelete(itemId);
+        verify(cacheInvalidationService).evictItemMutation();
     }
 
     @Test
@@ -168,6 +175,7 @@ class ItemServiceTests {
         itemService.deleteItem(itemId);
 
         verify(googleCalendarEventQueueService).requestDelete(itemId);
+        verify(cacheInvalidationService).evictItemMutation();
     }
 
     @Test
@@ -184,6 +192,7 @@ class ItemServiceTests {
         assertFalse(item.isDeleted());
         verify(itemAssetService).reconcileBodyAssetReferences(itemId, item.getBody());
         verify(googleCalendarEventQueueService).requestUpsert(itemId);
+        verify(cacheInvalidationService).evictItemMutation();
     }
 
     @Test
@@ -198,6 +207,7 @@ class ItemServiceTests {
         itemService.restoreItem(itemId);
 
         verify(googleCalendarEventQueueService).requestUpsert(itemId);
+        verify(cacheInvalidationService).evictItemMutation();
     }
 
     private void stubSavedItemResponse(ItemResponseDto response) {

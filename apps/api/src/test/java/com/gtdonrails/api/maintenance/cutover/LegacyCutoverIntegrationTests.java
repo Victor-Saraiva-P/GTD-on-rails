@@ -68,15 +68,15 @@ class LegacyCutoverIntegrationTests {
             reader, importer, validator, tempDir.toString(), backupDir.toString()
         );
 
-        jdbcTemplate.execute("UPDATE gtd.database_identity SET environment = 'PRODUCTION' WHERE id = true");
-        jdbcTemplate.execute("UPDATE gtd.database_cutover SET state = 'AWAITING_LEGACY_IMPORT' WHERE id = true");
+        jdbcTemplate.execute("UPDATE database_identity SET environment = 'PRODUCTION' WHERE id = 1");
+        jdbcTemplate.execute("UPDATE database_cutover SET state = 'AWAITING_LEGACY_IMPORT' WHERE id = 1");
         importer.clearApplicationTables();
     }
 
     @org.junit.jupiter.api.AfterEach
     void tearDown() {
-        jdbcTemplate.execute("UPDATE gtd.database_identity SET environment = 'TEST' WHERE id = true");
-        jdbcTemplate.execute("UPDATE gtd.database_cutover SET state = 'READY' WHERE id = true");
+        jdbcTemplate.execute("UPDATE database_identity SET environment = 'TEST' WHERE id = 1");
+        jdbcTemplate.execute("UPDATE database_cutover SET state = 'READY' WHERE id = 1");
         if (importer != null) {
             importer.clearApplicationTables();
         }
@@ -103,35 +103,35 @@ class LegacyCutoverIntegrationTests {
         assertNotNull(result.backupPath());
         assertTrue(Files.exists(result.backupPath()));
 
-        String cutoverState = jdbcTemplate.queryForObject("SELECT state FROM gtd.database_cutover WHERE id = true", String.class);
+        String cutoverState = jdbcTemplate.queryForObject("SELECT state FROM database_cutover WHERE id = 1", String.class);
         assertEquals("READY", cutoverState);
 
-        Integer itemCount = jdbcTemplate.queryForObject("SELECT count(*) FROM gtd.items", Integer.class);
+        Integer itemCount = jdbcTemplate.queryForObject("SELECT count(*) FROM items", Integer.class);
         assertEquals(4, itemCount);
 
-        Map<String, Object> stuff = jdbcTemplate.queryForMap("SELECT title, status, deleted_at FROM gtd.items WHERE id = ?", stuffId);
+        Map<String, Object> stuff = jdbcTemplate.queryForMap("SELECT title, status, deleted_at FROM items WHERE id = ?", stuffId);
         assertEquals("Stuff item", stuff.get("title"));
         assertEquals("STUFF", stuff.get("status"));
         assertNull(stuff.get("deleted_at"));
 
-        Map<String, Object> deleted = jdbcTemplate.queryForMap("SELECT title, deleted_at FROM gtd.items WHERE id = ?", deletedId);
+        Map<String, Object> deleted = jdbcTemplate.queryForMap("SELECT title, deleted_at FROM items WHERE id = ?", deletedId);
         assertEquals("Deleted item", deleted.get("title"));
         assertNotNull(deleted.get("deleted_at"));
 
         Map<String, Object> nextAction = jdbcTemplate.queryForMap(
-            "SELECT energy, estimated_time_minutes, deadline, all_day FROM gtd.next_actions WHERE item_id = ?", nextActionId);
+            "SELECT energy, estimated_time_minutes, deadline, all_day FROM next_actions WHERE item_id = ?", nextActionId);
         assertEquals(3.0, ((Number) nextAction.get("energy")).doubleValue());
         assertEquals(60L, ((Number) nextAction.get("estimated_time_minutes")).longValue());
-        assertFalse((Boolean) nextAction.get("all_day"));
+        assertEquals(0, ((Number) nextAction.get("all_day")).intValue());
 
-        Integer joinCount = jdbcTemplate.queryForObject("SELECT count(*) FROM gtd.next_action_contexts WHERE next_action_id = ? AND context_id = ?", Integer.class, nextActionId, contextId);
+        Integer joinCount = jdbcTemplate.queryForObject("SELECT count(*) FROM next_action_contexts WHERE next_action_id = ? AND context_id = ?", Integer.class, nextActionId, contextId);
         assertEquals(1, joinCount);
 
-        Map<String, Object> calendar = jdbcTemplate.queryForMap("SELECT scheduled_date, all_day FROM gtd.calendars WHERE item_id = ?", calendarId);
+        Map<String, Object> calendar = jdbcTemplate.queryForMap("SELECT scheduled_date, all_day FROM calendars WHERE item_id = ?", calendarId);
         assertEquals("2026-08-20", calendar.get("scheduled_date").toString());
-        assertTrue((Boolean) calendar.get("all_day"));
+        assertEquals(1, ((Number) calendar.get("all_day")).intValue());
 
-        Map<String, Object> cred = jdbcTemplate.queryForMap("SELECT access_token, refresh_token FROM gtd.google_credentials WHERE id = ?", credId);
+        Map<String, Object> cred = jdbcTemplate.queryForMap("SELECT access_token, refresh_token FROM google_credentials WHERE id = ?", credId);
         assertTrue(cred.get("access_token").toString().startsWith("gtdenc:v1:"));
         assertTrue(cred.get("refresh_token").toString().startsWith("gtdenc:v1:"));
 
@@ -148,12 +148,12 @@ class LegacyCutoverIntegrationTests {
             stmt.execute("INSERT INTO items VALUES ('" + stuffId + "', 'Retry stuff', '{\"text\":\"\"}', 'STUFF', '2026-08-10T10:00:00Z', '2026-08-10T10:00:00Z', null)");
         }
 
-        jdbcTemplate.execute("UPDATE gtd.database_cutover SET state = 'FAILED' WHERE id = true");
+        jdbcTemplate.execute("UPDATE database_cutover SET state = 'FAILED' WHERE id = 1");
 
         CutoverResult result = cutoverService.executeCutover();
         assertEquals("READY", result.state());
         assertEquals(1, result.importedRecords());
-        assertEquals("READY", jdbcTemplate.queryForObject("SELECT state FROM gtd.database_cutover WHERE id = true", String.class));
+        assertEquals("READY", jdbcTemplate.queryForObject("SELECT state FROM database_cutover WHERE id = 1", String.class));
     }
 
     private void populateSqliteFixture(

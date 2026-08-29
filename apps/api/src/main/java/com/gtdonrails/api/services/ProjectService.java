@@ -4,6 +4,7 @@ import java.util.List;
 import java.time.Clock;
 import java.util.UUID;
 
+import com.gtdonrails.api.config.CacheNames;
 import com.gtdonrails.api.dtos.project.PatchProjectRequestDto;
 import com.gtdonrails.api.dtos.project.ProjectResponseDto;
 import com.gtdonrails.api.entities.Project;
@@ -13,6 +14,7 @@ import com.gtdonrails.api.mappers.ProjectMapper;
 import com.gtdonrails.api.normalizers.ItemTextNormalizer;
 import com.gtdonrails.api.repositories.ProjectRepository;
 import com.gtdonrails.api.types.Title;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +25,7 @@ public class ProjectService {
     private final ItemTextNormalizer itemTextNormalizer;
     private final GoogleCalendarEventQueueService googleCalendarEventQueueService;
     private final AfterCommitExecutor afterCommitExecutor;
+    private final CacheInvalidationService cacheInvalidationService;
     private final Clock clock;
 
     public ProjectService(
@@ -31,6 +34,7 @@ public class ProjectService {
         ItemTextNormalizer itemTextNormalizer,
         GoogleCalendarEventQueueService googleCalendarEventQueueService,
         AfterCommitExecutor afterCommitExecutor,
+        CacheInvalidationService cacheInvalidationService,
         Clock clock
     ) {
         this.projectRepository = projectRepository;
@@ -38,6 +42,7 @@ public class ProjectService {
         this.itemTextNormalizer = itemTextNormalizer;
         this.googleCalendarEventQueueService = googleCalendarEventQueueService;
         this.afterCommitExecutor = afterCommitExecutor;
+        this.cacheInvalidationService = cacheInvalidationService;
         this.clock = clock;
     }
 
@@ -46,6 +51,7 @@ public class ProjectService {
      *
      * <p>Example: {@code projectService.listProjects()}.</p>
      */
+    @Cacheable(value = CacheNames.PROJECTS, key = "'active'")
     @Transactional(readOnly = true)
     public List<ProjectResponseDto> listProjects() {
         return projectRepository.findAllByStatusAndItem_DeletedAtIsNullOrderByItem_CreatedAtAsc(ProjectStatus.ACTIVE).stream()
@@ -64,6 +70,7 @@ public class ProjectService {
         project.markDone(clock);
         ProjectResponseDto response = projectMapper.toResponse(projectRepository.save(project));
         requestGoogleCalendarEventUpsertAfterCommit(id);
+        evictCachesAfterCommit();
         return response;
     }
 
@@ -72,6 +79,7 @@ public class ProjectService {
      *
      * <p>Example: {@code projectService.listDoneProjects()}.</p>
      */
+    @Cacheable(value = CacheNames.PROJECTS, key = "'done'")
     @Transactional(readOnly = true)
     public List<ProjectResponseDto> listDoneProjects() {
         return projectRepository.findAllByStatusAndItem_DeletedAtIsNullOrderByDoneDateDescDoneTimeDescItem_UpdatedAtDesc(ProjectStatus.DONE).stream()
@@ -84,6 +92,7 @@ public class ProjectService {
      *
      * <p>Example: {@code projectService.listDeletedProjects()}.</p>
      */
+    @Cacheable(value = CacheNames.PROJECTS, key = "'deleted'")
     @Transactional(readOnly = true)
     public List<ProjectResponseDto> listDeletedProjects() {
         return projectRepository.findAllByItem_DeletedAtIsNotNullOrderByItem_DeletedAtDesc().stream()
@@ -102,6 +111,7 @@ public class ProjectService {
         project.resetStatus();
         ProjectResponseDto response = projectMapper.toResponse(projectRepository.save(project));
         requestGoogleCalendarEventUpsertAfterCommit(id);
+        evictCachesAfterCommit();
         return response;
     }
 
@@ -117,6 +127,7 @@ public class ProjectService {
         applyDeadlinePatch(project, request);
         ProjectResponseDto response = projectMapper.toResponse(projectRepository.save(project));
         requestGoogleCalendarEventUpsertAfterCommit(id);
+        evictCachesAfterCommit();
         return response;
     }
 
@@ -131,6 +142,7 @@ public class ProjectService {
         project.getItem().softDelete();
         projectRepository.save(project);
         requestGoogleCalendarEventDeleteAfterCommit(id);
+        evictCachesAfterCommit();
     }
 
     /**
@@ -144,6 +156,7 @@ public class ProjectService {
         project.getItem().restore();
         ProjectResponseDto response = projectMapper.toResponse(projectRepository.save(project));
         requestGoogleCalendarEventUpsertAfterCommit(id);
+        evictCachesAfterCommit();
         return response;
     }
 
@@ -173,5 +186,9 @@ public class ProjectService {
 
     private void requestGoogleCalendarEventDeleteAfterCommit(UUID itemId) {
         afterCommitExecutor.run(() -> googleCalendarEventQueueService.requestDelete(itemId));
+    }
+
+    private void evictCachesAfterCommit() {
+        afterCommitExecutor.run(cacheInvalidationService::evictProjectMutation);
     }
 }

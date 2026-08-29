@@ -58,6 +58,9 @@ class InboxServiceTests {
     @Mock
     private GoogleCalendarEventQueueService googleCalendarEventQueueService;
 
+    @Mock
+    private CacheInvalidationService cacheInvalidationService;
+
     @Captor
     private ArgumentCaptor<Item> itemCaptor;
 
@@ -71,7 +74,8 @@ class InboxServiceTests {
             stuffMapper,
             new ItemTextNormalizer(),
             googleCalendarEventQueueService,
-            new AfterCommitExecutor());
+            new AfterCommitExecutor(),
+            cacheInvalidationService);
     }
 
     @Test
@@ -126,6 +130,7 @@ class InboxServiceTests {
         verify(itemRepository).save(itemCaptor.capture());
         assertEquals("Capture idea later", itemCaptor.getValue().getTitle().value());
         assertEquals(expectedResponse, response);
+        verify(cacheInvalidationService).evictItemMutation();
     }
 
     @Test
@@ -146,6 +151,7 @@ class InboxServiceTests {
         assertEquals(LocalDate.parse("2028-02-29"), stuff.getNextAction().getDeadline());
         assertEquals(context, stuff.getNextAction().getContexts().iterator().next());
         verify(googleCalendarEventQueueService).requestUpsert(stuffId);
+        verify(cacheInvalidationService).evictItemMutation();
     }
 
     @Test
@@ -160,6 +166,7 @@ class InboxServiceTests {
         verify(itemRepository).save(stuff);
         assertEquals(Set.of(), stuff.getNextAction().getContexts());
         verify(contextRepository, never()).findAllByIdInAndDeletedAtIsNull(any());
+        verify(cacheInvalidationService).evictItemMutation();
     }
 
     @Test
@@ -175,6 +182,7 @@ class InboxServiceTests {
 
         assertEquals("context not found", exception.getMessage());
         verify(itemRepository, never()).save(any(Item.class));
+        verify(cacheInvalidationService, never()).evictItemMutation();
     }
 
     @Test
@@ -187,6 +195,7 @@ class InboxServiceTests {
 
         verify(itemRepository).save(stuff);
         verify(googleCalendarEventQueueService).requestUpsert(stuffId);
+        verify(cacheInvalidationService).evictItemMutation();
     }
 
     @Test
@@ -199,6 +208,7 @@ class InboxServiceTests {
 
         verify(itemRepository).save(stuff);
         verify(googleCalendarEventQueueService).requestUpsert(stuffId);
+        verify(cacheInvalidationService).evictItemMutation();
     }
 
     private ConvertStuffToNextActionRequestDto convertRequest(UUID contextId) {

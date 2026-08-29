@@ -36,6 +36,7 @@ class SyncControllerTests {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.file.state").value("DISABLED"))
             .andExpect(jsonPath("$.googleCalendar.state").exists())
+            .andExpect(jsonPath("$.database.state").exists())
             .andExpect(jsonPath("$.data").doesNotExist())
             .andExpect(jsonPath("$.persistence").doesNotExist())
             .andExpect(jsonPath("$.assets").doesNotExist());

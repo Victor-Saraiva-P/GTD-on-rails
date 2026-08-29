@@ -51,20 +51,20 @@ class LegacyCutoverValidatorTests {
             List.of(), List.of(), List.of(), List.of()
         );
 
-        when(jdbcTemplate.queryForObject(contains("gtd.database_identity"), eq(String.class))).thenReturn("PRODUCTION");
-        when(jdbcTemplate.queryForObject(contains("FROM gtd.items"), eq(Integer.class))).thenReturn(1);
-        when(jdbcTemplate.queryForObject(contains("FROM gtd.contexts"), eq(Integer.class))).thenReturn(1);
-        when(jdbcTemplate.queryForObject(contains("FROM gtd.item_assets"), eq(Integer.class))).thenReturn(0);
-        when(jdbcTemplate.queryForObject(contains("FROM gtd.context_icon_assets"), eq(Integer.class))).thenReturn(0);
-        when(jdbcTemplate.queryForObject(contains("FROM gtd.next_actions"), eq(Integer.class))).thenReturn(1);
-        when(jdbcTemplate.queryForObject(contains("FROM gtd.next_action_contexts"), eq(Integer.class))).thenReturn(1);
-        when(jdbcTemplate.queryForObject(contains("FROM gtd.calendars"), eq(Integer.class))).thenReturn(0);
-        when(jdbcTemplate.queryForObject(contains("FROM gtd.maintenance_runs"), eq(Integer.class))).thenReturn(0);
-        when(jdbcTemplate.queryForObject(contains("FROM gtd.google_credentials"), eq(Integer.class))).thenReturn(0);
-        when(jdbcTemplate.queryForObject(contains("FROM gtd.google_calendars"), eq(Integer.class))).thenReturn(0);
+        when(jdbcTemplate.queryForObject(contains("database_identity"), eq(String.class))).thenReturn("PRODUCTION");
+        when(jdbcTemplate.queryForObject(contains("FROM items"), eq(Integer.class))).thenReturn(1);
+        when(jdbcTemplate.queryForObject(contains("FROM contexts"), eq(Integer.class))).thenReturn(1);
+        when(jdbcTemplate.queryForObject(contains("FROM item_assets"), eq(Integer.class))).thenReturn(0);
+        when(jdbcTemplate.queryForObject(contains("FROM context_icon_assets"), eq(Integer.class))).thenReturn(0);
+        when(jdbcTemplate.queryForObject(contains("FROM next_actions"), eq(Integer.class))).thenReturn(1);
+        when(jdbcTemplate.queryForObject(contains("FROM next_action_contexts"), eq(Integer.class))).thenReturn(1);
+        when(jdbcTemplate.queryForObject(contains("FROM calendars"), eq(Integer.class))).thenReturn(0);
+        when(jdbcTemplate.queryForObject(contains("FROM maintenance_runs"), eq(Integer.class))).thenReturn(0);
+        when(jdbcTemplate.queryForObject(contains("FROM google_credentials"), eq(Integer.class))).thenReturn(0);
+        when(jdbcTemplate.queryForObject(contains("FROM google_calendars"), eq(Integer.class))).thenReturn(0);
 
         when(jdbcTemplate.queryForObject(contains("LEFT JOIN"), eq(Integer.class))).thenReturn(0);
-        when(jdbcTemplate.queryForObject(contains("SELECT title FROM gtd.items WHERE id = ?"), eq(String.class), eq(itemId))).thenReturn("Task 1");
+        when(jdbcTemplate.queryForObject(contains("SELECT title FROM items WHERE id = ?"), eq(String.class), eq(itemId))).thenReturn("Task 1");
 
         assertDoesNotThrow(() -> validator.validate(dataset));
     }
@@ -74,7 +74,7 @@ class LegacyCutoverValidatorTests {
         LegacySqliteDataset dataset = new LegacySqliteDataset(
             List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of()
         );
-        when(jdbcTemplate.queryForObject(contains("gtd.database_identity"), eq(String.class))).thenReturn("STAGING");
+        when(jdbcTemplate.queryForObject(contains("database_identity"), eq(String.class))).thenReturn("STAGING");
 
         assertThrows(IllegalStateException.class, () -> validator.validate(dataset));
     }
@@ -87,8 +87,8 @@ class LegacyCutoverValidatorTests {
             List.of(new LegacyItemRecord(itemId, "Task 1", "{}", "NEXT_ACTION", now, now, null)),
             List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of()
         );
-        when(jdbcTemplate.queryForObject(contains("gtd.database_identity"), eq(String.class))).thenReturn("PRODUCTION");
-        when(jdbcTemplate.queryForObject(contains("FROM gtd.items"), eq(Integer.class))).thenReturn(0);
+        when(jdbcTemplate.queryForObject(contains("database_identity"), eq(String.class))).thenReturn("PRODUCTION");
+        when(jdbcTemplate.queryForObject(contains("FROM items"), eq(Integer.class))).thenReturn(0);
 
         assertThrows(IllegalStateException.class, () -> validator.validate(dataset));
     }
@@ -98,8 +98,17 @@ class LegacyCutoverValidatorTests {
         LegacySqliteDataset dataset = new LegacySqliteDataset(
             List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of()
         );
-        when(jdbcTemplate.queryForObject(contains("gtd.database_identity"), eq(String.class))).thenReturn("PRODUCTION");
-        when(jdbcTemplate.queryForObject(contains("FROM gtd."), eq(Integer.class))).thenReturn(0);
+        when(jdbcTemplate.queryForObject(contains("database_identity"), eq(String.class))).thenReturn("PRODUCTION");
+        when(jdbcTemplate.queryForObject(contains("FROM items"), eq(Integer.class))).thenReturn(0);
+        when(jdbcTemplate.queryForObject(contains("FROM contexts"), eq(Integer.class))).thenReturn(0);
+        when(jdbcTemplate.queryForObject(contains("FROM item_assets"), eq(Integer.class))).thenReturn(0);
+        when(jdbcTemplate.queryForObject(contains("FROM context_icon_assets"), eq(Integer.class))).thenReturn(0);
+        when(jdbcTemplate.queryForObject(contains("FROM next_actions"), eq(Integer.class))).thenReturn(0);
+        when(jdbcTemplate.queryForObject(contains("FROM next_action_contexts"), eq(Integer.class))).thenReturn(0);
+        when(jdbcTemplate.queryForObject(contains("FROM calendars"), eq(Integer.class))).thenReturn(0);
+        when(jdbcTemplate.queryForObject(contains("FROM maintenance_runs"), eq(Integer.class))).thenReturn(0);
+        when(jdbcTemplate.queryForObject(contains("FROM google_credentials"), eq(Integer.class))).thenReturn(0);
+        when(jdbcTemplate.queryForObject(contains("FROM google_calendars"), eq(Integer.class))).thenReturn(0);
         when(jdbcTemplate.queryForObject(contains("LEFT JOIN"), eq(Integer.class))).thenReturn(1);
 
         assertThrows(IllegalStateException.class, () -> validator.validate(dataset));

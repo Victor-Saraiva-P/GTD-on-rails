@@ -7,6 +7,7 @@ import com.gtdonrails.api.repositories.ContextRepository;
 import com.gtdonrails.api.repositories.ItemRepository;
 import com.gtdonrails.api.repositories.ProjectItemRepository;
 import com.gtdonrails.api.repositories.ProjectRepository;
+import com.gtdonrails.api.services.CacheInvalidationService;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +25,7 @@ public class TestResetController {
     private final ItemRepository itemRepository;
     private final ProjectRepository projectRepository;
     private final ProjectItemRepository projectItemRepository;
+    private final CacheInvalidationService cacheInvalidationService;
     private final Clock clock;
 
     public TestResetController(
@@ -31,12 +33,14 @@ public class TestResetController {
         ItemRepository itemRepository,
         ProjectRepository projectRepository,
         ProjectItemRepository projectItemRepository,
+        CacheInvalidationService cacheInvalidationService,
         Clock clock
     ) {
         this.contextRepository = contextRepository;
         this.itemRepository = itemRepository;
         this.projectRepository = projectRepository;
         this.projectItemRepository = projectItemRepository;
+        this.cacheInvalidationService = cacheInvalidationService;
         this.clock = clock;
     }
 
@@ -52,6 +56,7 @@ public class TestResetController {
         projectRepository.deleteAll();
         itemRepository.deleteAll();
         contextRepository.deleteAll();
+        cacheInvalidationService.evictAll();
         return ResponseEntity.noContent().build();
     }
 

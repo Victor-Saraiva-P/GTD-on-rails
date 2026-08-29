@@ -2,6 +2,7 @@ package com.gtdonrails.api.controllers;
 
 import com.gtdonrails.api.dtos.sync.FileSyncStatusDto;
 import com.gtdonrails.api.dtos.sync.SyncStatusDto;
+import com.gtdonrails.api.services.DatabaseSyncService;
 import com.gtdonrails.api.services.FileSyncService;
 import com.gtdonrails.api.services.GoogleCalendarEventQueueService;
 import org.springframework.http.HttpStatus;
@@ -15,17 +16,20 @@ public class SyncController {
 
     private final FileSyncService fileSyncService;
     private final GoogleCalendarEventQueueService googleCalendarEventQueueService;
+    private final DatabaseSyncService databaseSyncService;
 
     public SyncController(
         FileSyncService fileSyncService,
-        GoogleCalendarEventQueueService googleCalendarEventQueueService
+        GoogleCalendarEventQueueService googleCalendarEventQueueService,
+        DatabaseSyncService databaseSyncService
     ) {
         this.fileSyncService = fileSyncService;
         this.googleCalendarEventQueueService = googleCalendarEventQueueService;
+        this.databaseSyncService = databaseSyncService;
     }
 
     /**
-     * Handles sync status requests for file sync and Google Calendar.
+     * Handles sync status requests for file sync, Google Calendar, and database sync.
      *
      * <p>Example: {@code GET /sync/status}.</p>
      */
@@ -33,7 +37,8 @@ public class SyncController {
     public SyncStatusDto getStatus() {
         return new SyncStatusDto(
             fileSyncService.status(),
-            googleCalendarEventQueueService.status());
+            googleCalendarEventQueueService.status(),
+            databaseSyncService.status());
     }
 
     /**

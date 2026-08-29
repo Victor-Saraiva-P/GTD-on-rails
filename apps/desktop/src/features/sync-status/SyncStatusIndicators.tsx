@@ -1,6 +1,8 @@
 import type { CSSProperties } from "react";
 import { useSyncStatus } from "./SyncStatusProvider";
 import type {
+  DatabaseSyncState,
+  DatabaseSyncStatus,
   FileSyncState,
   FileSyncStatus,
   GoogleCalendarSyncState,
@@ -62,6 +64,23 @@ function googleCalendarVisual(state: GoogleCalendarSyncState | null): IndicatorV
   }
 }
 
+function databaseVisual(state: DatabaseSyncState | null): IndicatorVisual {
+  switch (state) {
+    case "SYNCED":
+      return { label: "Synced", tone: "idle" };
+    case "SYNCING":
+      return { label: "Syncing", tone: "active", pulse: true };
+    case "PENDING":
+      return { label: "Pending", tone: "pending", pulse: true };
+    case "FAILED":
+      return { label: "Failed", tone: "error" };
+    case "DISABLED":
+      return { label: "Disabled", tone: "disabled" };
+    default:
+      return { label: "Unknown", tone: "unknown" };
+  }
+}
+
 function describeFileStatus(status: FileSyncStatus | null, failed: boolean): string {
   if (!status) {
     return failed ? "File sync status unavailable." : "Loading file sync status.";
@@ -90,6 +109,21 @@ function describeGoogleCalendarStatus(status: GoogleCalendarSyncStatus | null, f
   return details.join("\n");
 }
 
+function describeDatabaseStatus(status: DatabaseSyncStatus | null, failed: boolean): string {
+  if (!status) {
+    return failed ? "Database sync status unavailable." : "Loading database sync status.";
+  }
+
+  const details = [
+    `Database sync: ${databaseVisual(status.state).label}`,
+    status.pendingCount > 0 ? `Pending: ${status.pendingCount} event${status.pendingCount === 1 ? "" : "s"}` : null,
+    status.lastSuccessfulSyncAt ? `Last success: ${formatInstant(status.lastSuccessfulSyncAt)}` : null,
+    status.lastError ? `Last error: ${status.lastError}` : null
+  ].filter(Boolean);
+
+  return details.join("\n");
+}
+
 function FileSyncIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" className="sync-status__svg">
@@ -111,11 +145,21 @@ function GoogleCalendarIcon() {
   );
 }
 
+/** WHY: Cloud-with-arrow-up icon represents data flowing from local SQLite to remote Supabase. */
+function DatabaseSyncIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="sync-status__svg">
+      <path d="M12 16V8M12 8l-3 3M12 8l3 3" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
+      <path d="M4.5 16.5A4.5 4.5 0 0 1 4.5 9c.2-2.5 2.2-4.5 4.8-4.5 1.8 0 3.3 1 4.2 2.4a3.5 3.5 0 0 1 4.8 1.6A4.5 4.5 0 0 1 19.5 17" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.6" />
+    </svg>
+  );
+}
+
 type SyncIndicatorProps = Readonly<{
   ariaLabel: string;
   title: string;
   visual: IndicatorVisual;
-  icon: "calendar" | "file";
+  icon: "calendar" | "database" | "file";
 }>;
 
 function syncIndicatorClassName(visual: IndicatorVisual): string {
@@ -131,6 +175,10 @@ function syncIndicatorStyle(visual: IndicatorVisual): CSSProperties {
 function SyncIndicatorIcon({ icon }: Readonly<Pick<SyncIndicatorProps, "icon">>) {
   if (icon === "calendar") {
     return <GoogleCalendarIcon />;
+  }
+
+  if (icon === "database") {
+    return <DatabaseSyncIcon />;
   }
 
   return <FileSyncIcon />;
@@ -186,8 +234,21 @@ function GoogleCalendarStatusIndicator({ failedBeforeStatus, isLoading, status }
   );
 }
 
+function DatabaseStatusIndicator({ failedBeforeStatus, isLoading, status }: SyncStatusIndicatorRowProps) {
+  const visual = databaseVisual(status?.database.state ?? null);
+
+  return (
+    <SyncIndicator
+      ariaLabel={`Database sync ${visual.label.toLowerCase()}`}
+      title={describeDatabaseStatus(status?.database ?? null, failedBeforeStatus)}
+      visual={loadingVisual(visual, isLoading)}
+      icon="database"
+    />
+  );
+}
+
 /**
- * Renders File Sync and Google Calendar status indicators in the workspace footer.
+ * Renders File Sync, Google Calendar, and Database sync status indicators in the workspace footer.
  *
  * @example <SyncStatusIndicators />
  */
@@ -201,6 +262,7 @@ export function SyncStatusIndicators() {
     <div className="sync-status" aria-label={groupLabel}>
       <FileStatusIndicator failedBeforeStatus={failedBeforeStatus} isLoading={loadingBeforeStatus} status={status} />
       <GoogleCalendarStatusIndicator failedBeforeStatus={failedBeforeStatus} isLoading={loadingBeforeStatus} status={status} />
+      <DatabaseStatusIndicator failedBeforeStatus={failedBeforeStatus} isLoading={loadingBeforeStatus} status={status} />
     </div>
   );
 }

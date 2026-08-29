@@ -27,6 +27,7 @@ public class DevelopmentDataCleaner {
     private final NextActionRepository nextActionRepository;
     private final ProjectItemRepository projectItemRepository;
     private final ProjectRepository projectRepository;
+    private final CacheInvalidationService cacheInvalidationService;
 
     public DevelopmentDataCleaner(
         AssetStorageService assetStorageService,
@@ -37,7 +38,8 @@ public class DevelopmentDataCleaner {
         ItemRepository itemRepository,
         NextActionRepository nextActionRepository,
         ProjectItemRepository projectItemRepository,
-        ProjectRepository projectRepository
+        ProjectRepository projectRepository,
+        CacheInvalidationService cacheInvalidationService
     ) {
         this.assetStorageService = assetStorageService;
         this.calendarRepository = calendarRepository;
@@ -48,6 +50,7 @@ public class DevelopmentDataCleaner {
         this.nextActionRepository = nextActionRepository;
         this.projectItemRepository = projectItemRepository;
         this.projectRepository = projectRepository;
+        this.cacheInvalidationService = cacheInvalidationService;
     }
 
     /**
@@ -59,15 +62,16 @@ public class DevelopmentDataCleaner {
     public void deleteAll() {
         itemAssetRepository.findAll().forEach(this::deleteItemAsset);
         contextIconAssetRepository.findAll().forEach(this::deleteContextIconAsset);
-        nextActionRepository.findAll().forEach(nextAction -> nextActionRepository.deleteContextLinks(nextAction.getItemId()));
-        calendarRepository.deleteAll();
-        nextActionRepository.deleteAll();
-        projectItemRepository.deleteAll();
-        projectRepository.deleteAll();
-        itemAssetRepository.deleteAll();
-        contextIconAssetRepository.deleteAll();
-        itemRepository.deleteAll();
-        contextRepository.deleteAll();
+        nextActionRepository.deleteAllContextLinks();
+        calendarRepository.deleteAllInBatch();
+        nextActionRepository.deleteAllInBatch();
+        projectItemRepository.deleteAllInBatch();
+        projectRepository.deleteAllInBatch();
+        itemAssetRepository.deleteAllInBatch();
+        contextIconAssetRepository.deleteAllInBatch();
+        itemRepository.deleteAllInBatch();
+        contextRepository.deleteAllInBatch();
+        cacheInvalidationService.evictAll();
     }
 
     private void deleteItemAsset(ItemAsset asset) {

@@ -12,13 +12,13 @@ import org.junit.jupiter.api.Test;
 class DatabaseRuntimeConfigurationTests {
 
     @Test
-    void usesPostgresqlAsTheDefaultRuntimeDatabase() throws IOException {
+    void usesSqliteAsTheDefaultRuntimeDatabase() throws IOException {
         Properties properties = load("application.properties");
 
-        assertEquals("org.postgresql.Driver", properties.getProperty("spring.datasource.driver-class-name"));
-        assertEquals("org.hibernate.dialect.PostgreSQLDialect", properties.getProperty("spring.jpa.database-platform"));
-        assertEquals("classpath:db/postgresql-migration", properties.getProperty("spring.flyway.locations"));
-        assertFalse(properties.values().stream().map(Object::toString).anyMatch(value -> value.contains("jdbc:sqlite")));
+        assertEquals("org.sqlite.JDBC", properties.getProperty("spring.datasource.driver-class-name"));
+        assertEquals("org.hibernate.community.dialect.SQLiteDialect", properties.getProperty("spring.jpa.database-platform"));
+        assertEquals("classpath:db/sqlite-migration", properties.getProperty("spring.flyway.locations"));
+        assertEquals("1", properties.getProperty("spring.datasource.hikari.maximum-pool-size"));
     }
 
     @Test
@@ -26,7 +26,7 @@ class DatabaseRuntimeConfigurationTests {
         Properties properties = load("application.properties");
 
         assertEquals("${GTD_SCHEMA_MIN_SUPPORTED_VERSION:1}", properties.getProperty("gtd.schema.min-supported-version"));
-        assertEquals("${GTD_SCHEMA_MAX_SUPPORTED_VERSION:3}", properties.getProperty("gtd.schema.max-supported-version"));
+        assertEquals("${GTD_SCHEMA_MAX_SUPPORTED_VERSION:1}", properties.getProperty("gtd.schema.max-supported-version"));
     }
 
     private Properties load(String resourceName) throws IOException {

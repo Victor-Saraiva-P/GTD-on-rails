@@ -18,7 +18,7 @@ class DatabaseIdentityServiceTests {
     @Test
     void rejectsAProductionDatabaseBeforeReset() {
         when(jdbcTemplate.queryForObject(
-            "select environment from gtd.database_identity where id = true", String.class
+            "select environment from database_identity where id = 1", String.class
         )).thenReturn("PRODUCTION");
 
         DatabaseIdentityService service = new DatabaseIdentityService(jdbcTemplate);

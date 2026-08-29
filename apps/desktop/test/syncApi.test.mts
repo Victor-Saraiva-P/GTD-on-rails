@@ -30,6 +30,16 @@ describe("sync-status API", () => {
         lastFinishedAt: "2026-05-01T00:00:05Z",
         lastSuccessfulSyncAt: "2026-05-01T00:00:05Z",
         lastError: null
+      },
+      database: {
+        state: "SYNCED",
+        pending: false,
+        running: false,
+        pendingCount: 0,
+        lastStartedAt: "2026-05-01T00:00:00Z",
+        lastFinishedAt: "2026-05-01T00:00:05Z",
+        lastSuccessfulSyncAt: "2026-05-01T00:00:05Z",
+        lastError: null
       }
     };
     

@@ -65,7 +65,7 @@ class LegacyCutoverServiceTests {
 
     @Test
     void executesFullCutoverSuccessfully() throws Exception {
-        when(jdbcTemplate.queryForObject(contains("gtd.database_cutover"), eq(String.class))).thenReturn("AWAITING_LEGACY_IMPORT");
+        when(jdbcTemplate.queryForObject(contains("database_cutover"), eq(String.class))).thenReturn("AWAITING_LEGACY_IMPORT");
         Path backupFile = backupDir.resolve("gtd-legacy-sqlite-2026.db");
         when(backupService.createBackup(sqlitePath, backupDir)).thenReturn(backupFile);
         LegacySqliteDataset dataset = new LegacySqliteDataset(
@@ -79,16 +79,16 @@ class LegacyCutoverServiceTests {
         verify(identityService).require("PRODUCTION");
         verify(fileSyncService).syncNow();
         verify(backupService).createBackup(sqlitePath, backupDir);
-        verify(jdbcTemplate).update(contains("UPDATE gtd.database_cutover SET state = ?"), eq("IMPORTING"));
+        verify(jdbcTemplate).update(contains("UPDATE database_cutover SET state = ?"), eq("IMPORTING"));
         verify(importer).clearApplicationTables();
         verify(importer).importDataset(dataset);
         verify(validator).validate(dataset);
-        verify(jdbcTemplate).update(contains("UPDATE gtd.database_cutover SET state = ?"), eq("READY"));
+        verify(jdbcTemplate).update(contains("UPDATE database_cutover SET state = ?"), eq("READY"));
     }
 
     @Test
     void repeatedExecutionAgainstReadyIsNoOp() throws Exception {
-        when(jdbcTemplate.queryForObject(contains("gtd.database_cutover"), eq(String.class))).thenReturn("READY");
+        when(jdbcTemplate.queryForObject(contains("database_cutover"), eq(String.class))).thenReturn("READY");
 
         CutoverResult result = service.executeCutover();
 
@@ -102,7 +102,7 @@ class LegacyCutoverServiceTests {
 
     @Test
     void retriesSuccessfullyFromFailedState() {
-        when(jdbcTemplate.queryForObject(contains("gtd.database_cutover"), eq(String.class))).thenReturn("FAILED");
+        when(jdbcTemplate.queryForObject(contains("database_cutover"), eq(String.class))).thenReturn("FAILED");
         Path backupFile = backupDir.resolve("gtd-legacy-sqlite-2026.db");
         when(backupService.createBackup(sqlitePath, backupDir)).thenReturn(backupFile);
         LegacySqliteDataset dataset = new LegacySqliteDataset(
@@ -116,12 +116,12 @@ class LegacyCutoverServiceTests {
         verify(importer).clearApplicationTables();
         verify(importer).importDataset(dataset);
         verify(validator).validate(dataset);
-        verify(jdbcTemplate).update(contains("UPDATE gtd.database_cutover SET state = ?"), eq("READY"));
+        verify(jdbcTemplate).update(contains("UPDATE database_cutover SET state = ?"), eq("READY"));
     }
 
     @Test
     void cleansPartialDataSetsFailedAndPreservesSqliteOnFailure() throws IOException {
-        when(jdbcTemplate.queryForObject(contains("gtd.database_cutover"), eq(String.class))).thenReturn("AWAITING_LEGACY_IMPORT");
+        when(jdbcTemplate.queryForObject(contains("database_cutover"), eq(String.class))).thenReturn("AWAITING_LEGACY_IMPORT");
         when(backupService.createBackup(sqlitePath, backupDir)).thenReturn(backupDir.resolve("backup.db"));
         LegacySqliteDataset dataset = new LegacySqliteDataset(
             List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of()
@@ -132,14 +132,14 @@ class LegacyCutoverServiceTests {
         assertThrows(IllegalStateException.class, () -> service.executeCutover());
 
         verify(importer, times(2)).clearApplicationTables();
-        verify(jdbcTemplate).update(contains("UPDATE gtd.database_cutover SET state = ?"), eq("FAILED"));
+        verify(jdbcTemplate).update(contains("UPDATE database_cutover SET state = ?"), eq("FAILED"));
         assertTrue(Files.exists(sqlitePath));
         assertEquals("test-sqlite-data", Files.readString(sqlitePath));
     }
 
     @Test
     void rejectsInvalidCutoverState() {
-        when(jdbcTemplate.queryForObject(contains("gtd.database_cutover"), eq(String.class))).thenReturn("IMPORTING");
+        when(jdbcTemplate.queryForObject(contains("database_cutover"), eq(String.class))).thenReturn("IMPORTING");
 
         assertThrows(IllegalStateException.class, () -> service.executeCutover());
     }

@@ -60,6 +60,9 @@ class ContextServiceTests {
     @Mock
     private ContextIconAssetService contextIconAssetService;
 
+    @Mock
+    private CacheInvalidationService cacheInvalidationService;
+
     @Captor
     private ArgumentCaptor<Context> contextCaptor;
 
@@ -73,7 +76,9 @@ class ContextServiceTests {
             contextMapper,
             itemMapper,
             new ContextNameNormalizer(),
-            contextIconAssetService);
+            contextIconAssetService,
+            cacheInvalidationService,
+            new AfterCommitExecutor());
     }
 
     @Test
@@ -148,6 +153,7 @@ class ContextServiceTests {
 
         verify(contextRepository).save(contextCaptor.capture());
         assertEquals("home office", contextCaptor.getValue().getName());
+        verify(cacheInvalidationService).evictContextMutation();
     }
 
     @Test
@@ -164,6 +170,7 @@ class ContextServiceTests {
 
         assertEquals(expectedResponse, response);
         assertEquals("office", context.getName());
+        verify(cacheInvalidationService).evictContextMutation();
     }
 
     @Test
@@ -182,6 +189,7 @@ class ContextServiceTests {
         assertEquals(Set.of(), context.getNextActions());
         assertTrue(context.isDeleted());
         verify(contextIconAssetService).deleteContextIconAsset(context);
+        verify(cacheInvalidationService).evictContextMutation();
     }
 
     @Test
@@ -196,6 +204,7 @@ class ContextServiceTests {
 
         assertFalse(context.isDeleted());
         verify(contextRepository).save(contextCaptor.capture());
+        verify(cacheInvalidationService).evictContextMutation();
     }
 
     private NextAction nextAction(String title, Context context) {

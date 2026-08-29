@@ -22,6 +22,7 @@ import com.gtdonrails.api.types.Title;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import com.gtdonrails.api.services.CacheInvalidationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -49,11 +50,15 @@ class CalendarControllerTests {
     @Autowired
     private ItemRepository itemRepository;
 
+    @Autowired
+    private CacheInvalidationService cacheInvalidationService;
+
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).build();
+        cacheInvalidationService.evictAll();
         calendarRepository.deleteAll();
         itemRepository.deleteAll();
     }

@@ -1,5 +1,9 @@
 .database-setup { min-height: 100vh; display: grid; place-items: center; background: #101010; color: #eee; }
 .database-setup__form { width: min(34rem, 90vw); display: grid; gap: 1rem; padding: 2rem; border: 1px solid #555; background: #181818; }
-.database-setup__form label { display: grid; gap: .35rem; }
-.database-setup__form input { padding: .65rem; background: #0d0d0d; color: #fff; border: 1px solid #666; }
-.database-setup__form button { padding: .7rem; cursor: pointer; }
+.database-setup__form label { display: grid; gap: .35rem; font-size: .875rem; color: #ccc; }
+.database-setup__form input { padding: .65rem; background: #0d0d0d; color: #fff; border: 1px solid #666; font-family: inherit; font-size: .95rem; }
+.database-setup__form input:focus { border-color: #888; outline: none; }
+.database-setup__form button { padding: .7rem; cursor: pointer; background: #333; color: #fff; border: 1px solid #555; font-weight: 500; }
+.database-setup__form button:hover:not(:disabled) { background: #444; }
+.database-setup__form button:disabled { opacity: .6; cursor: not-allowed; }
+.database-setup__row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }

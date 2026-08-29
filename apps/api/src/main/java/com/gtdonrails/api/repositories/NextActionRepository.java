@@ -84,6 +84,10 @@ public interface NextActionRepository extends JpaRepository<NextAction, UUID> {
     void deleteContextLinks(@Param("id") UUID id);
 
     @Modifying
+    @Query(value = "delete from next_action_contexts", nativeQuery = true)
+    void deleteAllContextLinks();
+
+    @Modifying
     @Query(value = "delete from next_action_contexts where context_id = :contextId", nativeQuery = true)
     void deleteContextLinksForContext(@Param("contextId") UUID contextId);
 }

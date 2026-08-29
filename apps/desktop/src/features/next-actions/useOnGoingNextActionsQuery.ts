@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
-import type { NextActionOrder } from "./types";
-import { fetchOnGoingNextActions } from "./api";
-import { useNextActionsMutationState, useNextActionsMutations, toErrorMessage, NextActionsLoadState } from "./useNextActionsQuery";
+import type { NextAction } from "./types.ts";
+import { fetchOnGoingNextActions } from "./api.ts";
+import {
+  useNextActionsMutationState,
+  useNextActionsMutations,
+  toErrorMessage,
+  type NextActionsLoadState
+} from "./useNextActionsQuery.ts";
 
 /**
  * Loads on going next actions for the active filter and exposes item mutations.
@@ -9,12 +14,12 @@ import { useNextActionsMutationState, useNextActionsMutations, toErrorMessage, N
  * @example const query = useOnGoingNextActionsQuery()
  */
 export function useOnGoingNextActionsQuery() {
-  const [items, setItems] = useState<any[]>([]);
+  const [items, setItems] = useState<NextAction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
 
-  const state: NextActionsLoadState = { errorMessage, isLoading, items, reloadToken, setErrorMessage, setIsLoading, setItems, setReloadToken } as any;
+  const state: NextActionsLoadState = { errorMessage, isLoading, items, reloadToken, setErrorMessage, setIsLoading, setItems, setReloadToken };
   const mutations = useNextActionsMutationState();
   const reload = () => setReloadToken((value) => value + 1);
   const actions = useNextActionsMutations(state, mutations, reload);

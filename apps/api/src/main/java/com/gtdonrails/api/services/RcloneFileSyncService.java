@@ -16,6 +16,8 @@ public class RcloneFileSyncService {
 
     private static final Logger logger = LoggerFactory.getLogger(RcloneFileSyncService.class);
     private static final List<String> COMMON_FLAGS = List.of(
+        "--filter",
+        "- *.db*",
         "--compare",
         "size,modtime,checksum",
         "--modify-window",

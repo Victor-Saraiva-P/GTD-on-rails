@@ -35,7 +35,7 @@ public class LegacyCutoverValidator {
 
     private void validateDatabaseIdentity() {
         String actual = jdbcTemplate.queryForObject(
-            "SELECT environment FROM gtd.database_identity WHERE id = true", String.class);
+            "SELECT environment FROM database_identity WHERE id = 1", String.class);
         if (!expectedEnvironment.equals(actual)) {
             throw new IllegalStateException(
                 "database identity value '%s' is invalid; expected %s".formatted(actual, expectedEnvironment));
@@ -56,27 +56,27 @@ public class LegacyCutoverValidator {
     }
 
     private void assertCount(String table, int expected) {
-        Integer actual = jdbcTemplate.queryForObject("SELECT count(*) FROM gtd." + table, Integer.class);
+        Integer actual = jdbcTemplate.queryForObject("SELECT count(*) FROM " + table, Integer.class);
         int count = actual != null ? actual : 0;
         if (count != expected) {
             throw new IllegalStateException(
-                "table 'gtd.%s' row count %d is invalid; expected %d".formatted(table, count, expected));
+                "table '%s' row count %d is invalid; expected %d".formatted(table, count, expected));
         }
     }
 
     private void validateForeignKeys() {
         assertNoOrphans("item_assets.item_id",
-            "SELECT count(*) FROM gtd.item_assets a LEFT JOIN gtd.items i ON a.item_id = i.id WHERE i.id IS NULL");
+            "SELECT count(*) FROM item_assets a LEFT JOIN items i ON a.item_id = i.id WHERE i.id IS NULL");
         assertNoOrphans("context_icon_assets.context_id",
-            "SELECT count(*) FROM gtd.context_icon_assets a LEFT JOIN gtd.contexts c ON a.context_id = c.id WHERE c.id IS NULL");
+            "SELECT count(*) FROM context_icon_assets a LEFT JOIN contexts c ON a.context_id = c.id WHERE c.id IS NULL");
         assertNoOrphans("next_actions.item_id",
-            "SELECT count(*) FROM gtd.next_actions na LEFT JOIN gtd.items i ON na.item_id = i.id WHERE i.id IS NULL");
+            "SELECT count(*) FROM next_actions na LEFT JOIN items i ON na.item_id = i.id WHERE i.id IS NULL");
         assertNoOrphans("next_action_contexts.next_action_id",
-            "SELECT count(*) FROM gtd.next_action_contexts nac LEFT JOIN gtd.next_actions na ON nac.next_action_id = na.item_id WHERE na.item_id IS NULL");
+            "SELECT count(*) FROM next_action_contexts nac LEFT JOIN next_actions na ON nac.next_action_id = na.item_id WHERE na.item_id IS NULL");
         assertNoOrphans("next_action_contexts.context_id",
-            "SELECT count(*) FROM gtd.next_action_contexts nac LEFT JOIN gtd.contexts c ON nac.context_id = c.id WHERE c.id IS NULL");
+            "SELECT count(*) FROM next_action_contexts nac LEFT JOIN contexts c ON nac.context_id = c.id WHERE c.id IS NULL");
         assertNoOrphans("calendars.item_id",
-            "SELECT count(*) FROM gtd.calendars cal LEFT JOIN gtd.items i ON cal.item_id = i.id WHERE i.id IS NULL");
+            "SELECT count(*) FROM calendars cal LEFT JOIN items i ON cal.item_id = i.id WHERE i.id IS NULL");
     }
 
     private void assertNoOrphans(String relationship, String query) {
@@ -95,7 +95,7 @@ public class LegacyCutoverValidator {
         if (items.isEmpty()) return;
         LegacyItemRecord sample = items.getFirst();
         String title = jdbcTemplate.queryForObject(
-            "SELECT title FROM gtd.items WHERE id = ?", String.class, sample.id());
+            "SELECT title FROM items WHERE id = ?", String.class, sample.id());
         if (!sample.title().equals(title)) {
             throw new IllegalStateException(
                 "item id '%s' title '%s' is invalid; expected '%s'".formatted(sample.id(), title, sample.title()));

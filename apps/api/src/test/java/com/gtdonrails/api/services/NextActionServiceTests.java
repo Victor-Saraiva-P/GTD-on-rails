@@ -61,6 +61,9 @@ class NextActionServiceTests {
     @Mock
     private GoogleCalendarEventQueueService googleCalendarEventQueueService;
 
+    @Mock
+    private CacheInvalidationService cacheInvalidationService;
+
     private NextActionMapper nextActionMapper;
     private Clock clock;
     private NextActionService nextActionService;
@@ -81,6 +84,7 @@ class NextActionServiceTests {
             nextActionMapper,
             googleCalendarEventQueueService,
             new AfterCommitExecutor(),
+            cacheInvalidationService,
             clock);
 
         nextActionId = UUID.randomUUID();
@@ -105,6 +109,7 @@ class NextActionServiceTests {
         assertThat(response.energy()).isEqualTo(new BigDecimal("7.0"));
         verify(nextActionRepository).save(nextAction);
         verify(googleCalendarEventQueueService, never()).requestUpsert(nextActionId);
+        verify(cacheInvalidationService).evictItemMutation();
     }
 
     @Test
@@ -116,6 +121,7 @@ class NextActionServiceTests {
         nextActionService.patchNextAction(nextActionId, request);
 
         verify(googleCalendarEventQueueService).requestUpsert(nextActionId);
+        verify(cacheInvalidationService).evictItemMutation();
     }
 
     @Test
@@ -127,6 +133,7 @@ class NextActionServiceTests {
         nextActionService.patchNextAction(nextActionId, request);
 
         verify(googleCalendarEventQueueService).requestUpsert(nextActionId);
+        verify(cacheInvalidationService).evictItemMutation();
     }
 
     @Test
@@ -140,6 +147,7 @@ class NextActionServiceTests {
         assertThat(response.contexts()).isEmpty();
         verify(contextRepository, never()).findAllById(any());
         verify(nextActionRepository).save(nextAction);
+        verify(cacheInvalidationService).evictItemMutation();
     }
 
     @Test
@@ -149,6 +157,7 @@ class NextActionServiceTests {
 
         assertThatThrownBy(() -> nextActionService.patchNextAction(nextActionId, request))
             .isInstanceOf(ItemNotFoundException.class);
+        verify(cacheInvalidationService, never()).evictItemMutation();
     }
 
     @Test
@@ -161,6 +170,7 @@ class NextActionServiceTests {
         assertThat(response.status()).isEqualTo(NextActionStatus.ONGOING.name());
         verify(nextActionRepository).save(nextAction);
         verify(googleCalendarEventQueueService).requestUpsert(nextActionId);
+        verify(cacheInvalidationService).evictItemMutation();
     }
 
     @Test
@@ -173,6 +183,7 @@ class NextActionServiceTests {
         assertThat(response.status()).isEqualTo(NextActionStatus.DONE.name());
         verify(nextActionRepository).save(nextAction);
         verify(googleCalendarEventQueueService).requestUpsert(nextActionId);
+        verify(cacheInvalidationService).evictItemMutation();
     }
 
     @Test
@@ -186,6 +197,7 @@ class NextActionServiceTests {
         assertThat(response.status()).isEqualTo(NextActionStatus.NEXT_ACTION.name());
         verify(nextActionRepository).save(nextAction);
         verify(googleCalendarEventQueueService).requestUpsert(nextActionId);
+        verify(cacheInvalidationService).evictItemMutation();
     }
 
     @Test
@@ -198,6 +210,7 @@ class NextActionServiceTests {
 
         assertThat(response.status()).isEqualTo(NextActionStatus.NEXT_ACTION.name());
         verify(nextActionRepository).save(nextAction);
+        verify(cacheInvalidationService).evictItemMutation();
     }
 
     @Test

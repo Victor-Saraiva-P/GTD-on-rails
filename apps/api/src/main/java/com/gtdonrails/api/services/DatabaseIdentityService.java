@@ -28,7 +28,7 @@ public class DatabaseIdentityService {
     private String readIdentity() {
         try {
             return jdbcTemplate.queryForObject(
-                "select environment from gtd.database_identity where id = true", String.class
+                "select environment from database_identity where id = 1", String.class
             );
         } catch (RuntimeException exception) {
             throw new IllegalStateException(

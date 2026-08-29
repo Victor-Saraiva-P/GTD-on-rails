@@ -20,7 +20,7 @@ public class DatabaseReadinessService {
     static final long CACHE_TTL_NANOS = Duration.ofSeconds(5).toNanos();
 
     public static final String READINESS_QUERY =
-        "select d.environment || '|' || c.state from gtd.database_identity d join gtd.database_cutover c on c.id = true where d.id = true";
+        "select d.environment || '|' || c.state from database_identity d join database_cutover c on c.id = 1 where d.id = 1";
 
     private final JdbcTemplate jdbcTemplate;
     private final DatabaseSchemaCompatibilityInspector compatibilityInspector;
