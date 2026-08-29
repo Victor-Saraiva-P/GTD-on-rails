@@ -58,7 +58,18 @@ public class SupabaseDataSourceConfig {
             .baselineVersion("0")
             .placeholders(java.util.Map.of("databaseIdentity", databaseIdentity))
             .load();
-        flyway.migrate();
+        try {
+            flyway.migrate();
+        } catch (org.flywaydb.core.api.exception.FlywayValidateException exception) {
+            // WHY: some Supabase installs carry a stale migration checksum after the
+            // schema history was created before the current migration files. Repairing
+            // just the checksum drift keeps startup resilient and preserves the live schema.
+            if (!exception.getMessage().contains("checksum mismatch")) {
+                throw exception;
+            }
+            flyway.repair();
+            flyway.migrate();
+        }
         return flyway;
     }
 
