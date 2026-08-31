@@ -41,9 +41,16 @@ test("selects multiple next action contexts with keyboard", async ({ page, reque
   await page.keyboard.press("Tab");
   await page.keyboard.press("j");
   await page.keyboard.press("Tab");
+  const nextActionRequestPromise = page.waitForRequest((request) => request.url().endsWith("/next-action") && request.method() === "POST");
+  await page.keyboard.press("Enter");
+  await expect(dialog.getByText("Energy level")).toBeVisible();
+  await page.keyboard.press("Enter");
+  await expect(dialog.getByText("Estimated time")).toBeVisible();
   await page.keyboard.press("Enter");
 
-  await expect(dialog.getByText("Energy level")).toBeVisible();
+  const nextActionRequest = await nextActionRequestPromise;
+  const payload = nextActionRequest.postDataJSON() as any;
+  expect(payload.contextIds).toHaveLength(2);
 });
 
 test("enters next action deadline before contexts", async ({ page }) => {
