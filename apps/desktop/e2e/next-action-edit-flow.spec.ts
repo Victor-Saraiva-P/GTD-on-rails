@@ -1,17 +1,17 @@
 import { expect, test, type Page } from "@playwright/test";
-import { createAndSelectInboxStuff, openApp, resetTestData, todayDisplayValue, todayIsoValue, uniqueLabel } from "./support/app";
+import { createContextApi, createAndSelectInboxStuff, openApp, resetTestData, todayDisplayValue, todayIsoValue, uniqueLabel } from "./support/app";
 
 test.beforeEach(async ({ page, request }) => {
   await resetTestData(request);
   await openApp(page);
 });
 
-test("edits selected next action contexts with keyboard flow", async ({ page }) => {
+test("edits selected next action contexts with keyboard flow", async ({ page, request }) => {
   const title = uniqueLabel("Next action edit");
   const firstContext = uniqueLabel("A edit context");
   const secondContext = uniqueLabel("B edit context");
-  await createContextFromKeyboard(page, firstContext);
-  await createContextFromKeyboard(page, secondContext);
+  await createContextApi(request, firstContext);
+  await createContextApi(request, secondContext);
   await createNextActionFromKeyboard(page, title);
 
   await openSelectedNextActionEditDialog(page, title);
@@ -72,19 +72,6 @@ test("sets selected next action deadline to today with keyboard flow", async ({ 
   expect(deadlineRequest.postDataJSON()).toEqual({ deadline: todayIsoValue() });
   await expect(dialog).not.toBeVisible();
 });
-
-async function createContextFromKeyboard(page: Page, name: string): Promise<void> {
-  await page.keyboard.press(" ");
-  await page.keyboard.press("C");
-  await expect(page.locator(".list-pane__title", { hasText: "Contexts" }).first()).toBeVisible();
-  await page.keyboard.press("h");
-  await page.keyboard.press("a");
-  const input = page.locator("input.tree-entry__input");
-  await expect(input).toBeVisible();
-  await input.fill(name);
-  await input.press("Enter");
-  await expect(page.getByRole("button", { name })).toBeVisible();
-}
 
 async function createNextActionFromKeyboard(page: Page, title: string): Promise<void> {
   await page.keyboard.press(" ");
