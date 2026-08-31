@@ -1,6 +1,8 @@
 package com.gtdonrails.api.services;
 
+import java.math.BigDecimal;
 import java.net.URI;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Comparator;
@@ -17,6 +19,8 @@ import com.gtdonrails.api.enums.ItemStatus;
 import com.gtdonrails.api.exceptions.item.ItemNotFoundException;
 import com.gtdonrails.api.normalizers.ItemTextNormalizer;
 import com.gtdonrails.api.repositories.ItemRepository;
+import com.gtdonrails.api.dtos.context.ContextResponseDto;
+import com.gtdonrails.api.mappers.ContextMapper;
 import com.gtdonrails.api.repositories.ProjectItemRepository;
 import com.gtdonrails.api.repositories.ProjectRepository;
 import com.gtdonrails.api.types.Title;
@@ -31,6 +35,7 @@ public class ProjectItemService {
     private final ProjectItemRepository projectItemRepository;
     private final ItemRepository itemRepository;
     private final ItemTextNormalizer itemTextNormalizer;
+    private final ContextMapper contextMapper;
     private final CacheInvalidationService cacheInvalidationService;
     private final AfterCommitExecutor afterCommitExecutor;
 
@@ -39,6 +44,7 @@ public class ProjectItemService {
         ProjectItemRepository projectItemRepository,
         ItemRepository itemRepository,
         ItemTextNormalizer itemTextNormalizer,
+        ContextMapper contextMapper,
         CacheInvalidationService cacheInvalidationService,
         AfterCommitExecutor afterCommitExecutor
     ) {
@@ -46,6 +52,7 @@ public class ProjectItemService {
         this.projectItemRepository = projectItemRepository;
         this.itemRepository = itemRepository;
         this.itemTextNormalizer = itemTextNormalizer;
+        this.contextMapper = contextMapper;
         this.cacheInvalidationService = cacheInvalidationService;
         this.afterCommitExecutor = afterCommitExecutor;
     }
@@ -125,8 +132,38 @@ public class ProjectItemService {
         return projectItem.getItem().getNextAction().getDeadline();
     }
 
+    private BigDecimal nextActionEnergy(ProjectItem projectItem) {
+        if (projectItem.getItem().getNextAction() == null) return null;
+        return projectItem.getItem().getNextAction().getEnergy();
+    }
+
+    private java.time.Duration nextActionEstimatedTime(ProjectItem projectItem) {
+        if (projectItem.getItem().getNextAction() == null) return null;
+        return projectItem.getItem().getNextAction().getEstimatedTime();
+    }
+
+    private List<ContextResponseDto> nextActionContexts(ProjectItem projectItem) {
+        if (projectItem.getItem().getNextAction() == null) return List.of();
+        return projectItem.getItem().getNextAction().getContexts().stream()
+            .map(contextMapper::toResponse)
+            .toList();
+    }
+
     private ProjectItemResponseDto toResponse(ProjectItem projectItem) {
         Item item = projectItem.getItem();
-        return new ProjectItemResponseDto(projectItem.getProject().getItemId(), item.getId(), item.getStatus().name(), item.getTitle().value(), item.getBody(), item.getCreatedAt(), calendarDate(projectItem), calendarTime(projectItem), nextActionDeadline(projectItem));
+        return new ProjectItemResponseDto(
+            projectItem.getProject().getItemId(),
+            item.getId(),
+            item.getStatus().name(),
+            item.getTitle().value(),
+            item.getBody(),
+            item.getCreatedAt(),
+            calendarDate(projectItem),
+            calendarTime(projectItem),
+            nextActionDeadline(projectItem),
+            nextActionEnergy(projectItem),
+            nextActionEstimatedTime(projectItem),
+            nextActionContexts(projectItem)
+        );
     }
 }

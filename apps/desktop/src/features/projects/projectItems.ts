@@ -3,6 +3,7 @@ import { processStuff, updateStuffBody, updateStuffTitle } from "../inbox/api.ts
 import type { ItemBody, Stuff } from "../inbox/types";
 import { processStuffToCalendar } from "../calendar/api.ts";
 import type { CalendarConversionPayload } from "../calendar/types";
+import { parseEstimatedTime } from "../next-actions/types.ts";
 
 export type ProjectItemKind = "STUFF" | "NEXT_ACTION" | "CALENDAR";
 
@@ -14,8 +15,9 @@ export type ProjectItem = Stuff & {
   deadline?: string | null;
 };
 
-type ProjectItemResponse = ProjectItem & {
+type ProjectItemResponse = Omit<ProjectItem, "body" | "estimatedTime"> & {
   body: ItemBody | string | null;
+  estimatedTime?: { hours: number; minutes: number } | string | null;
 };
 
 export async function fetchProjectActions(projectId: string): Promise<ProjectItem[]> {
@@ -51,7 +53,13 @@ function jsonRequest(method: string, payload: object): RequestInit {
 }
 
 function toProjectItem(item: ProjectItemResponse): ProjectItem {
-  return { ...item, body: normalizeBody(item.body) };
+  return {
+    ...item,
+    body: normalizeBody(item.body),
+    energy: item.energy == null ? null : Number(item.energy),
+    estimatedTime: item.estimatedTime ? parseEstimatedTime(item.estimatedTime) : null,
+    contexts: item.contexts ?? []
+  };
 }
 
 function normalizeBody(body: ProjectItemResponse["body"]): ItemBody {

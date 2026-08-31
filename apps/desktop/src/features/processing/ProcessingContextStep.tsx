@@ -35,6 +35,26 @@ function syncSelectedIds(model: SelectedIdsModel, contextId: string, onChange?: 
   onChange?.(nextIds);
 }
 
+type ProcessingContextKeyActions = Readonly<{
+  onBack: () => void;
+  moveFocused: (offset: number) => void;
+  toggleFocused: () => void;
+  confirm: () => void;
+}>;
+
+function handleProcessingContextKeyDown(event: KeyboardEvent, actions: ProcessingContextKeyActions) {
+  const handledKeys = ["Escape", "Tab", "Enter", "j", "k", " ", "x", "ArrowDown", "ArrowUp"];
+  if (!handledKeys.includes(event.key)) return;
+
+  event.preventDefault();
+  event.stopPropagation();
+  if (event.key === "Escape") actions.onBack();
+  if (event.key === "j" || event.key === "ArrowDown") actions.moveFocused(1);
+  if (event.key === "k" || event.key === "ArrowUp") actions.moveFocused(-1);
+  if (event.key === "Tab" || event.key === " " || event.key === "x") actions.toggleFocused();
+  if (event.key === "Enter") actions.confirm();
+}
+
 /**
  * Selects zero or more contexts for a next action during inbox processing.
  *
@@ -76,23 +96,19 @@ export function ProcessingContextStep({ onContextsSelected, onSelectedIdsChange,
     return () => window.removeEventListener("keydown", listener, true);
   }, []);
 
-  handleKeyDownRef.current = (event: KeyboardEvent) => {
-    const handledKeys = ["Escape", "Tab", "Enter", "j", "k"];
-    if (!handledKeys.includes(event.key)) return;
-
-    event.preventDefault();
-    event.stopPropagation();
-    if (event.key === "Escape") onBack();
-    if (event.key === "j") moveFocusedContext(1);
-    if (event.key === "k") moveFocusedContext(-1);
-    if (event.key === "Tab") toggleFocusedContext();
-    if (event.key === "Enter") onContextsSelected(selectedIdsRef.current);
-  };
-
   const moveFocusedContext = (offset: number) => {
     const nextIndex = nextFocusedIndex(focusedIndexRef.current, offset, contextsRef.current);
     focusedIndexRef.current = nextIndex;
     setFocusedIndex(nextIndex);
+  };
+
+  handleKeyDownRef.current = (event: KeyboardEvent) => {
+    handleProcessingContextKeyDown(event, {
+      onBack,
+      moveFocused: moveFocusedContext,
+      toggleFocused: toggleFocusedContext,
+      confirm: () => onContextsSelected(selectedIdsRef.current)
+    });
   };
 
   return (
@@ -126,7 +142,7 @@ export function ProcessingContextStep({ onContextsSelected, onSelectedIdsChange,
           })
         )}
       </div>
-      <div className="processing-dialog__hint">j/k move | tab toggles | enter confirms</div>
+      <div className="processing-dialog__hint">j/k move | tab/space toggles | enter confirms</div>
     </div>
   );
 }

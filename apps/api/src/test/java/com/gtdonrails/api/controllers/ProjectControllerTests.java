@@ -15,8 +15,10 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.UUID;
 
+import com.gtdonrails.api.entities.Context;
 import com.gtdonrails.api.entities.Item;
 import com.gtdonrails.api.entities.Project;
+import com.gtdonrails.api.repositories.ContextRepository;
 import com.gtdonrails.api.repositories.ItemRepository;
 import com.gtdonrails.api.repositories.ProjectItemRepository;
 import com.gtdonrails.api.repositories.ProjectRepository;
@@ -54,6 +56,9 @@ class ProjectControllerTests {
 
     @Autowired
     private ItemRepository itemRepository;
+
+    @Autowired
+    private ContextRepository contextRepository;
 
     @Autowired
     private CacheInvalidationService cacheInvalidationService;
@@ -191,6 +196,7 @@ class ProjectControllerTests {
 
     @Test
     void keepsProcessedProjectItemsInProjectActionsOrder() throws Exception {
+        Context context = contextRepository.save(new Context("hardware"));
         Project project = saveProject("Replace CPU");
         UUID nextActionId = createProjectStuff(project, "Search thermal paste prices");
         UUID calendarId = createProjectStuff(project, "Buy thermal paste");
@@ -202,10 +208,10 @@ class ProjectControllerTests {
                     {
                       "energy": 4.5,
                       "estimatedTime": { "hours": 1, "minutes": 30 },
-                      "contextIds": [],
+                      "contextIds": ["%s"],
                       "deadline": "2026-02-01"
                     }
-                    """))
+                    """.formatted(context.getId())))
             .andExpect(status().isNoContent());
 
         mockMvc.perform(post("/inbox/{id}/calendar", calendarId)
@@ -220,7 +226,11 @@ class ProjectControllerTests {
             .andExpect(jsonPath("$[1].kind").value("CALENDAR"))
             .andExpect(jsonPath("$[1].scheduledDate").value("2026-01-01"))
             .andExpect(jsonPath("$[2].kind").value("NEXT_ACTION"))
-            .andExpect(jsonPath("$[2].deadline").value("2026-02-01"));
+            .andExpect(jsonPath("$[2].deadline").value("2026-02-01"))
+            .andExpect(jsonPath("$[2].energy").value(4.5))
+            .andExpect(jsonPath("$[2].estimatedTime").value("PT1H30M"))
+            .andExpect(jsonPath("$[2].contexts", hasSize(1)))
+            .andExpect(jsonPath("$[2].contexts[0].name").value("hardware"));
     }
 
     private Project saveProject(String title) {

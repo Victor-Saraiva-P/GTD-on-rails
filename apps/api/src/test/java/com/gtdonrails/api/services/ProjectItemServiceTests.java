@@ -27,6 +27,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import com.gtdonrails.api.mappers.ContextMapper;
+
 @ExtendWith(MockitoExtension.class)
 @Tag("unit")
 class ProjectItemServiceTests {
@@ -39,6 +41,9 @@ class ProjectItemServiceTests {
 
     @Mock
     private ItemRepository itemRepository;
+
+    @Mock
+    private ContextMapper contextMapper;
 
     @Mock
     private CacheInvalidationService cacheInvalidationService;
@@ -54,6 +59,7 @@ class ProjectItemServiceTests {
             projectItemRepository,
             itemRepository,
             new ItemTextNormalizer(),
+            contextMapper,
             cacheInvalidationService,
             new AfterCommitExecutor());
 

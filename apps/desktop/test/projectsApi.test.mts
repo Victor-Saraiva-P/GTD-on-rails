@@ -120,13 +120,23 @@ describe("projects API", () => {
   test("fetchProjectActions loads mixed project items", async () => {
     globalThis.fetch = mock.fn(async (input) => {
       assert.ok(input.toString().endsWith("/projects/project-1/items/actions"));
-      return new Response(JSON.stringify([{ id: "item-1", projectId: "project-1", kind: "STUFF", title: "Buy paste", body: null, status: "STUFF", createdAt: "2026-01-01T00:00:00Z" }]), { status: 200 });
+      return new Response(
+        JSON.stringify([
+          { id: "item-1", projectId: "project-1", kind: "STUFF", title: "Buy paste", body: null, status: "STUFF", createdAt: "2026-01-01T00:00:00Z" },
+          { id: "item-2", projectId: "project-1", kind: "NEXT_ACTION", title: "Apply paste", body: null, status: "NEXT_ACTION", createdAt: "2026-01-01T00:00:00Z", energy: 4.5, estimatedTime: "PT1H30M", contexts: [{ id: "ctx-1", name: "hardware" }] }
+        ]),
+        { status: 200 }
+      );
     });
 
     const items = await fetchProjectActions("project-1");
 
     assert.equal(items[0].kind, "STUFF");
     assert.equal(items[0].body.text, "");
+    assert.equal(items[1].kind, "NEXT_ACTION");
+    assert.equal(items[1].energy, 4.5);
+    assert.deepEqual(items[1].estimatedTime, { hours: 1, minutes: 30 });
+    assert.deepEqual(items[1].contexts, [{ id: "ctx-1", name: "hardware" }]);
   });
 
   test("createProjectStuff posts project-scoped stuff", async () => {
