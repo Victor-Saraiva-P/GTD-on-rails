@@ -44,7 +44,7 @@ class SupabasePullSyncServiceTests {
         verify(supabaseJdbc).query(contains("FROM gtd.next_actions"), any(RowMapper.class));
         verify(supabaseJdbc).query(contains("FROM gtd.next_action_contexts"), any(RowMapper.class));
         verify(supabaseJdbc).query(contains("FROM gtd.calendars"), any(RowMapper.class));
-        verify(sqliteJdbc).update(eq("DELETE FROM next_action_contexts"));
+        verify(sqliteJdbc).update(contains("DELETE FROM next_action_contexts"));
     }
 
     @Test

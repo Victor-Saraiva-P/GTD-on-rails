@@ -95,7 +95,18 @@ public class OutboxPayloadSerializer {
         addScheduleWindow(node, na.getSchedule());
         putString(node, "deadline", na.getDeadline() != null ? na.getDeadline().toString() : null);
         putString(node, "status", na.getStatus() != null ? na.getStatus().name() : null);
+        addContextIds(node, na.getContexts());
         addAuditFields(node, na.getCreatedAt(), na.getUpdatedAt(), na.getDeletedAt());
+    }
+
+    private void addContextIds(ObjectNode node, java.util.Set<Context> contexts) {
+        if (contexts == null) return;
+        var arrayNode = node.putArray("context_ids");
+        contexts.stream()
+            .filter(c -> c.getId() != null)
+            .map(c -> c.getId().toString())
+            .sorted()
+            .forEach(arrayNode::add);
     }
 
     private void serializeCalendar(ObjectNode node, Calendar cal) {

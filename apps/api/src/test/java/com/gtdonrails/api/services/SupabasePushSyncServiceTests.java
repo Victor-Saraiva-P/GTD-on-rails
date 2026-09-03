@@ -86,6 +86,73 @@ class SupabasePushSyncServiceTests {
     }
 
     @Test
+    void pushesNextActionInsertEventAndSyncsContexts() {
+        SyncOutboxEvent event = new SyncOutboxEvent(
+            "next_actions", "550e8400-e29b-41d4-a716-446655440000", SyncOutboxOperation.INSERT,
+            "{\"item_id\":\"550e8400-e29b-41d4-a716-446655440000\",\"energy\":2.0,\"context_ids\":[\"660e8400-e29b-41d4-a716-446655440000\"]}"
+        );
+
+        service.pushEvent(event);
+
+        verify(jdbcTemplate).update(
+            contains("INSERT INTO gtd.next_actions (item_id, energy)"),
+            any(Object[].class)
+        );
+        verify(jdbcTemplate).update(
+            eq("DELETE FROM gtd.next_action_contexts WHERE next_action_id = ?"),
+            eq(java.util.UUID.fromString("550e8400-e29b-41d4-a716-446655440000"))
+        );
+        verify(jdbcTemplate).update(
+            eq("INSERT INTO gtd.next_action_contexts (next_action_id, context_id) VALUES (?, ?) ON CONFLICT (next_action_id, context_id) DO NOTHING"),
+            eq(java.util.UUID.fromString("550e8400-e29b-41d4-a716-446655440000")),
+            eq(java.util.UUID.fromString("660e8400-e29b-41d4-a716-446655440000"))
+        );
+    }
+
+    @Test
+    void pushesNextActionUpdateEventAndSyncsContexts() {
+        SyncOutboxEvent event = new SyncOutboxEvent(
+            "next_actions", "550e8400-e29b-41d4-a716-446655440000", SyncOutboxOperation.UPDATE,
+            "{\"item_id\":\"550e8400-e29b-41d4-a716-446655440000\",\"energy\":5.0,\"context_ids\":[\"770e8400-e29b-41d4-a716-446655440000\"]}"
+        );
+
+        service.pushEvent(event);
+
+        verify(jdbcTemplate).update(
+            eq("UPDATE gtd.next_actions SET energy = ? WHERE item_id = ?"),
+            any(Object[].class)
+        );
+        verify(jdbcTemplate).update(
+            eq("DELETE FROM gtd.next_action_contexts WHERE next_action_id = ?"),
+            eq(java.util.UUID.fromString("550e8400-e29b-41d4-a716-446655440000"))
+        );
+        verify(jdbcTemplate).update(
+            eq("INSERT INTO gtd.next_action_contexts (next_action_id, context_id) VALUES (?, ?) ON CONFLICT (next_action_id, context_id) DO NOTHING"),
+            eq(java.util.UUID.fromString("550e8400-e29b-41d4-a716-446655440000")),
+            eq(java.util.UUID.fromString("770e8400-e29b-41d4-a716-446655440000"))
+        );
+    }
+
+    @Test
+    void pushesNextActionDeleteEventAndDeletesContexts() {
+        SyncOutboxEvent event = new SyncOutboxEvent(
+            "next_actions", "550e8400-e29b-41d4-a716-446655440000", SyncOutboxOperation.DELETE,
+            "{\"item_id\":\"550e8400-e29b-41d4-a716-446655440000\"}"
+        );
+
+        service.pushEvent(event);
+
+        verify(jdbcTemplate).update(
+            eq("DELETE FROM gtd.next_action_contexts WHERE next_action_id = ?"),
+            eq(java.util.UUID.fromString("550e8400-e29b-41d4-a716-446655440000"))
+        );
+        verify(jdbcTemplate).update(
+            eq("DELETE FROM gtd.next_actions WHERE item_id = ?"),
+            eq(java.util.UUID.fromString("550e8400-e29b-41d4-a716-446655440000"))
+        );
+    }
+
+    @Test
     void throwsOnInvalidJsonPayload() {
         SyncOutboxEvent event = new SyncOutboxEvent(
             "items", "item-123", SyncOutboxOperation.INSERT,

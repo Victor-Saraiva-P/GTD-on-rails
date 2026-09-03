@@ -79,6 +79,29 @@ class NextActionControllerTests {
     }
 
     @Test
+    void patchesNextActionContexts() throws Exception {
+        Context home = contextRepository.save(new Context("Home"));
+        Context office = contextRepository.save(new Context("Office"));
+        Item item = itemRepository.save(new Item(new Title("Buy milk"), null));
+        NextAction nextAction = nextActionRepository.save(
+            new NextAction(item, new BigDecimal("2.0"), Duration.ofMinutes(15), Set.of(home)));
+
+        mockMvc.perform(patch("/next-actions/{id}", nextAction.getItemId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"contextIds\":[\"%s\"]}".formatted(office.getId())))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.contexts", hasSize(1)))
+            .andExpect(jsonPath("$.contexts[0].id").value(office.getId().toString()))
+            .andExpect(jsonPath("$.contexts[0].name").value("Office"));
+
+        mockMvc.perform(get("/next-actions?orderBy=energy"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].contexts", hasSize(1)))
+            .andExpect(jsonPath("$[0].contexts[0].id").value(office.getId().toString()))
+            .andExpect(jsonPath("$[0].contexts[0].name").value("Office"));
+    }
+
+    @Test
     void patchesNextActionDeadline() throws Exception {
         Item item = itemRepository.save(new Item(new Title("Buy milk"), null));
         NextAction nextAction = nextActionRepository.save(

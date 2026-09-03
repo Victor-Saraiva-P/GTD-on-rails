@@ -41,7 +41,8 @@ public class CacheInvalidationService {
             CacheNames.INBOX,
             CacheNames.NEXT_ACTIONS,
             CacheNames.PROJECTS,
-            CacheNames.CALENDAR
+            CacheNames.CALENDAR,
+            CacheNames.CONTEXTS
         ));
     }
 

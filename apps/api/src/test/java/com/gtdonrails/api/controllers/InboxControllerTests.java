@@ -169,6 +169,12 @@ class InboxControllerTests {
 
         mockMvc.perform(get("/inbox/{id}", stuff.getId()))
             .andExpect(status().isNotFound());
+
+        mockMvc.perform(get("/next-actions?orderBy=energy"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(1)))
+            .andExpect(jsonPath("$[0].contexts", hasSize(1)))
+            .andExpect(jsonPath("$[0].contexts[0].id").value(context.getId().toString()));
     }
 
     @Test
