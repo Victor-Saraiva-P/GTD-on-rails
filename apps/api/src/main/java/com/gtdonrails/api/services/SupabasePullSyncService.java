@@ -163,7 +163,13 @@ public class SupabasePullSyncService {
         String sql = "SELECT next_action_id::text, context_id::text FROM gtd.next_action_contexts";
         String upsert = "INSERT INTO next_action_contexts (next_action_id, context_id) VALUES (?, ?) ON CONFLICT (next_action_id, context_id) DO NOTHING";
         List<Object[]> rows = supabaseJdbc.query(sql, (rs, i) -> new Object[] { rs.getString(1), rs.getString(2) });
-        sqliteJdbc.update("DELETE FROM next_action_contexts");
+        sqliteJdbc.update("""
+            DELETE FROM next_action_contexts
+            WHERE next_action_id NOT IN (
+                SELECT entity_id FROM sync_outbox
+                WHERE entity_type = 'next_actions' AND status IN ('PENDING', 'PROCESSING')
+            )
+            """);
         rows.forEach(params -> sqliteJdbc.update(upsert, params));
     }
 

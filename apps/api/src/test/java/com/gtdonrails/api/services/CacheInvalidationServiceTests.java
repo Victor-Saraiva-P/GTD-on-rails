@@ -68,6 +68,7 @@ class CacheInvalidationServiceTests {
         when(cacheManager.getCache(CacheNames.NEXT_ACTIONS)).thenReturn(nextActionsCache);
         when(cacheManager.getCache(CacheNames.PROJECTS)).thenReturn(projectsCache);
         when(cacheManager.getCache(CacheNames.CALENDAR)).thenReturn(calendarCache);
+        when(cacheManager.getCache(CacheNames.CONTEXTS)).thenReturn(contextsCache);
 
         cacheInvalidationService.evictItemMutation();
 
@@ -75,6 +76,7 @@ class CacheInvalidationServiceTests {
         verify(nextActionsCache).clear();
         verify(projectsCache).clear();
         verify(calendarCache).clear();
+        verify(contextsCache).clear();
     }
 
     @Test

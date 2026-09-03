@@ -96,6 +96,9 @@ public class SupabasePushSyncService {
                 .formatted(table, columns, placeholders, primaryKey, updateSet);
 
         supabaseJdbc.update(sql, values);
+        if ("next_actions".equals(table)) {
+            syncNextActionContexts(event.getEntityId(), payload.get("context_ids"));
+        }
     }
 
     private void pushUpdate(SyncOutboxEvent event) {
@@ -110,6 +113,9 @@ public class SupabasePushSyncService {
             .formatted(table, setClause, primaryKey);
 
         supabaseJdbc.update(sql, values);
+        if ("next_actions".equals(table)) {
+            syncNextActionContexts(entityId, payload.get("context_ids"));
+        }
     }
 
     private static final java.util.regex.Pattern UUID_PATTERN =
@@ -126,8 +132,28 @@ public class SupabasePushSyncService {
         String entityId = event.getEntityId();
         String primaryKey = OutboxTableMetadata.primaryKeyColumn(table);
 
+        if ("next_actions".equals(table)) {
+            deleteNextActionContexts(entityId);
+        }
+
         String sql = "DELETE FROM gtd.%s WHERE %s = ?".formatted(table, primaryKey);
         supabaseJdbc.update(sql, parseTypedString(entityId));
+    }
+
+    private void syncNextActionContexts(String nextActionId, JsonNode contextIdsNode) {
+        if (contextIdsNode == null || !contextIdsNode.isArray()) return;
+        deleteNextActionContexts(nextActionId);
+        String sql = "INSERT INTO gtd.next_action_contexts (next_action_id, context_id) VALUES (?, ?) ON CONFLICT (next_action_id, context_id) DO NOTHING";
+        for (JsonNode idNode : contextIdsNode) {
+            supabaseJdbc.update(sql, parseTypedString(nextActionId), parseTypedString(idNode.asText()));
+        }
+    }
+
+    private void deleteNextActionContexts(String nextActionId) {
+        supabaseJdbc.update(
+            "DELETE FROM gtd.next_action_contexts WHERE next_action_id = ?",
+            parseTypedString(nextActionId)
+        );
     }
 
     private JsonNode parsePayload(SyncOutboxEvent event) {
@@ -189,7 +215,11 @@ public class SupabasePushSyncService {
 
     private List<String> iterableFieldNames(JsonNode payload) {
         List<String> names = new ArrayList<>();
-        payload.fieldNames().forEachRemaining(names::add);
+        payload.fieldNames().forEachRemaining(name -> {
+            if (!"context_ids".equals(name)) {
+                names.add(name);
+            }
+        });
         return names;
     }
 

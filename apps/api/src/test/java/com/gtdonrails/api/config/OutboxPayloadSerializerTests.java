@@ -78,6 +78,28 @@ class OutboxPayloadSerializerTests {
     }
 
     @Test
+    void serializesNextActionPayloadWithContextIds() throws Exception {
+        Item item = new Item(new Title("Action Task"), null);
+        Context context = new Context("@office");
+        java.util.UUID contextId = java.util.UUID.randomUUID();
+        org.springframework.test.util.ReflectionTestUtils.setField(context, "id", contextId);
+
+        NextAction nextAction = new NextAction(
+            item,
+            new BigDecimal("3.0"),
+            Duration.ofMinutes(45),
+            Set.of(context)
+        );
+
+        String payload = serializer.serializeEntity(nextAction);
+        JsonNode node = objectMapper.readTree(payload);
+
+        assertTrue(node.has("context_ids"));
+        assertEquals(1, node.get("context_ids").size());
+        assertEquals(contextId.toString(), node.get("context_ids").get(0).asText());
+    }
+
+    @Test
     void serializesCalendarAndContextPayloads() throws Exception {
         Item item = new Item(new Title("Meeting"), null);
         Calendar calendar = new Calendar(item, LocalDate.of(2026, 8, 27), LocalTime.of(14, 0));
