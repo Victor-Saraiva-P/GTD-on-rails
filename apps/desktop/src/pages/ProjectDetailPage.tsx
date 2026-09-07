@@ -13,6 +13,7 @@ import { projectsListTheme } from "../features/lists/listThemes";
 import { ProcessingDialog } from "../features/processing/ProcessingDialog";
 import { ProjectActionsList } from "../features/projects/ProjectActionsList";
 import { ProjectAssociateDialog } from "../features/projects/ProjectAssociateDialog";
+import { useProjectAssociateDialog } from "../features/projects/useProjectAssociateDialog";
 import type { ProjectItem } from "../features/projects/projectItems";
 import type { ProjectDetailController } from "../features/projects/useProjectDetailController";
 
@@ -122,8 +123,7 @@ type ProjectDetailModalsProps = Readonly<{
   setIsLinkOpen: (open: boolean) => void;
   isAssetOpen: boolean;
   setIsAssetOpen: (open: boolean) => void;
-  isProjectAssociateOpen: boolean;
-  setIsProjectAssociateOpen: (open: boolean) => void;
+  projectAssociate: ReturnType<typeof useProjectAssociateDialog>;
 }>;
 
 function ProjectDetailComboModals(props: ProjectDetailModalsProps) {
@@ -132,9 +132,12 @@ function ProjectDetailComboModals(props: ProjectDetailModalsProps) {
     <Suspense fallback={null}>
       {props.isLinkOpen ? <LazyMarkdownLinkComboDialog onClose={() => props.setIsLinkOpen(false)} /> : null}
       {props.isAssetOpen && item ? <LazyMarkdownAssetComboDialog itemId={item.id} onClose={() => props.setIsAssetOpen(false)} /> : null}
-      {props.isProjectAssociateOpen && item ? (
-        <ProjectAssociateDialog item={item} onClose={() => props.setIsProjectAssociateOpen(false)} onAssociate={props.controller.assignSelectedProject} />
-      ) : null}
+      <ProjectAssociateDialog
+        item={item}
+        isOpen={props.projectAssociate.isOpen}
+        onClose={props.projectAssociate.close}
+        onAssociate={props.controller.assignSelectedProject}
+      />
     </Suspense>
   );
 }
@@ -162,10 +165,10 @@ export function ProjectDetailPage({ controller }: ProjectDetailPageProps) {
   const [isProcessingOpen, setIsProcessingOpen] = useState(false);
   const [isLinkOpen, setIsLinkOpen] = useState(false);
   const [isAssetOpen, setIsAssetOpen] = useState(false);
-  const [isProjectAssociateOpen, setIsProjectAssociateOpen] = useState(false);
+  const projectAssociate = useProjectAssociateDialog();
   useKeybindScreen("project-detail");
   useProjectDetailZone(controller);
-  useProjectDetailBindings(controller, () => setIsProcessingOpen(true), () => setIsLinkOpen(true), () => setIsAssetOpen(true), () => setIsProjectAssociateOpen(true));
+  useProjectDetailBindings(controller, () => setIsProcessingOpen(true), () => setIsLinkOpen(true), () => setIsAssetOpen(true), projectAssociate.open);
 
   return (
     <ListWorkspace theme={projectsListTheme} currentLabel={projectsListTheme.label} modeLabel={controller.vimMode ?? undefined}>
@@ -181,8 +184,7 @@ export function ProjectDetailPage({ controller }: ProjectDetailPageProps) {
         setIsLinkOpen={setIsLinkOpen}
         isAssetOpen={isAssetOpen}
         setIsAssetOpen={setIsAssetOpen}
-        isProjectAssociateOpen={isProjectAssociateOpen}
-        setIsProjectAssociateOpen={setIsProjectAssociateOpen}
+        projectAssociate={projectAssociate}
       />
     </ListWorkspace>
   );

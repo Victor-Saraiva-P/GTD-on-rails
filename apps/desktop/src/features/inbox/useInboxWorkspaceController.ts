@@ -379,6 +379,7 @@ async function assignSelectedStuffProjectAction(model: InboxModel, projectId: st
 
 function useInboxWorkspaceActions(model: InboxModel) {
   return {
+    assignSelectedProject: (projectId: string | null) => assignSelectedStuffProjectAction(model, projectId),
     assignSelectedStuffProject: (projectId: string | null) => assignSelectedStuffProjectAction(model, projectId),
     autosaveEditingSelectedStuffBody: (body: ItemBody) => autosaveEditingSelectedStuffBodyAction(model, body),
     cancelEditingSelectedStuff: () => cancelEditingSelectedStuffAction(model),

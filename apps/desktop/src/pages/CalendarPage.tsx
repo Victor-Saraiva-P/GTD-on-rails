@@ -15,6 +15,7 @@ import { calendarsListTheme, deletedCalendarsListTheme, doneCalendarsListTheme, 
 import { getMondayForOffset } from "../features/calendar/calendarDateUtils";
 import { activePanelZone, buildCalendarKeybinds } from "../features/calendar/calendarKeybinds";
 import { ProjectAssociateDialog } from "../features/projects/ProjectAssociateDialog";
+import { useProjectAssociateDialog } from "../features/projects/useProjectAssociateDialog";
 
 type CalendarPageProps = Readonly<{
   controller: CalendarWorkspaceController;
@@ -300,15 +301,14 @@ export function CalendarPage({ controller, selectOnGoingCalendar }: CalendarPage
   const [isLinkOpen, setIsLinkOpen] = useState(false);
   const [isAssetOpen, setIsAssetOpen] = useState(false);
   const [isScheduleEditOpen, setIsScheduleEditOpen] = useState(false);
-  const [isProjectAssociateOpen, setIsProjectAssociateOpen] = useState(false);
+  const projectAssociate = useProjectAssociateDialog();
   const openLink = useCallback(() => setIsLinkOpen(true), []);
   const openAsset = useCallback(() => setIsAssetOpen(true), []);
   const openScheduleEdit = useCallback(() => setIsScheduleEditOpen(true), []);
-  const openProjectAssociate = useCallback(() => setIsProjectAssociateOpen(true), []);
   useKeybindScreen("calendars");
   useCalendarZone(controller);
   useCalendarAssetPreload(controller);
-  useCalendarBindings(controller, openLink, openAsset, openScheduleEdit, selectOnGoingCalendar, openProjectAssociate);
+  useCalendarBindings(controller, openLink, openAsset, openScheduleEdit, selectOnGoingCalendar, projectAssociate.open);
 
   return (
     <ListWorkspace theme={calendarWorkspaceTheme(controller.activeSubview)} currentLabel="Calendars" modeLabel={controller.vimMode ?? undefined}>
@@ -318,13 +318,12 @@ export function CalendarPage({ controller, selectOnGoingCalendar }: CalendarPage
         {isLinkOpen ? <LazyMarkdownLinkComboDialog onClose={() => setIsLinkOpen(false)} /> : null}
         {isAssetOpen && controller.selectedItem ? <LazyMarkdownAssetComboDialog itemId={controller.selectedItem.id} onClose={() => setIsAssetOpen(false)} /> : null}
         {isScheduleEditOpen && controller.selectedItem ? <CalendarScheduleEditDialog item={controller.selectedItem} onClose={() => setIsScheduleEditOpen(false)} onSave={controller.updateSchedule} /> : null}
-        {isProjectAssociateOpen && controller.selectedItem ? (
-          <ProjectAssociateDialog
-            item={controller.selectedItem}
-            onClose={() => setIsProjectAssociateOpen(false)}
-            onAssociate={controller.assignSelectedProject}
-          />
-        ) : null}
+        <ProjectAssociateDialog
+          item={controller.selectedItem}
+          isOpen={projectAssociate.isOpen}
+          onClose={projectAssociate.close}
+          onAssociate={controller.assignSelectedProject}
+        />
       </Suspense>
     </ListWorkspace>
   );

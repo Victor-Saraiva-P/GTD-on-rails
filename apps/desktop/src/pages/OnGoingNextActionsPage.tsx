@@ -13,6 +13,7 @@ import type { OnGoingWorkspaceController } from "../features/ongoing/useOnGoingW
 import { OnGoingUnifiedList } from "../features/ongoing/OnGoingUnifiedList";
 import type { OnGoingItemSelection } from "../features/ongoing/combinedOnGoingState";
 import { ProjectAssociateDialog } from "../features/projects/ProjectAssociateDialog";
+import { useProjectAssociateDialog } from "../features/projects/useProjectAssociateDialog";
 
 type OnGoingNextActionsPageProps = Readonly<{
   controller: OnGoingWorkspaceController;
@@ -212,7 +213,7 @@ export function OnGoingNextActionsPage({ controller, selectNextAction }: OnGoing
   useKeybindScreen("ongoing-next-actions");
   useOnGoingZone(controller);
   useActiveAssetPreload(controller);
-  useOnGoingBindings(controller, selectNextAction, dialogState.openLink, dialogState.openAsset, dialogState.openProjectAssociate);
+  useOnGoingBindings(controller, selectNextAction, dialogState.openLink, dialogState.openAsset, dialogState.projectAssociate.open);
 
   return (
     <ListWorkspace theme={onGoingNextActionsListTheme} currentClassName="list-workspace__current--next-actions" currentLabel={<OnGoingFooterLabel />} modeLabel={controller.vimMode ?? undefined}>
@@ -226,11 +227,10 @@ export function OnGoingNextActionsPage({ controller, selectNextAction }: OnGoing
 function useOnGoingDialogState() {
   const [isLinkOpen, setIsLinkOpen] = useState(false);
   const [isAssetOpen, setIsAssetOpen] = useState(false);
-  const [isProjectAssociateOpen, setIsProjectAssociateOpen] = useState(false);
+  const projectAssociate = useProjectAssociateDialog();
   const openLink = useCallback(() => setIsLinkOpen(true), []);
   const openAsset = useCallback(() => setIsAssetOpen(true), []);
-  const openProjectAssociate = useCallback(() => setIsProjectAssociateOpen(true), []);
-  return { isAssetOpen, isLinkOpen, isProjectAssociateOpen, openAsset, openLink, openProjectAssociate, setIsAssetOpen, setIsLinkOpen, setIsProjectAssociateOpen };
+  return { isAssetOpen, isLinkOpen, openAsset, openLink, projectAssociate, setIsAssetOpen, setIsLinkOpen };
 }
 
 function OnGoingDialogs({ controller, dialogState }: Readonly<{ controller: OnGoingWorkspaceController; dialogState: ReturnType<typeof useOnGoingDialogState> }>) {
@@ -241,16 +241,12 @@ function OnGoingDialogs({ controller, dialogState }: Readonly<{ controller: OnGo
         {dialogState.isLinkOpen ? <LazyMarkdownLinkComboDialog onClose={() => dialogState.setIsLinkOpen(false)} /> : null}
         {dialogState.isAssetOpen && selected ? <LazyMarkdownAssetComboDialog itemId={selected.item.id} onClose={() => dialogState.setIsAssetOpen(false)} /> : null}
       </Suspense>
-      {dialogState.isProjectAssociateOpen && selected ? (
-        <ProjectAssociateDialog
-          item={selected.item}
-          onClose={() => dialogState.setIsProjectAssociateOpen(false)}
-          onAssociate={(projectId) => {
-            void controller.assignSelectedProject(projectId);
-            dialogState.setIsProjectAssociateOpen(false);
-          }}
-        />
-      ) : null}
+      <ProjectAssociateDialog
+        item={selected?.item}
+        isOpen={dialogState.projectAssociate.isOpen}
+        onClose={dialogState.projectAssociate.close}
+        onAssociate={controller.assignSelectedProject}
+      />
     </>
   );
 }

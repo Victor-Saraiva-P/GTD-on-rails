@@ -17,6 +17,7 @@ import { CurrentAvailabilityDialog } from "../features/next-actions/CurrentAvail
 import { NextActionEditDialog } from "../features/next-actions/NextActionEditDialog";
 import { NextActionsList } from "../features/next-actions/NextActionsList";
 import { ProjectAssociateDialog } from "../features/projects/ProjectAssociateDialog";
+import { useProjectAssociateDialog } from "../features/projects/useProjectAssociateDialog";
 import type { ContextItem } from "../features/contexts/types";
 import type { NextActionPatch } from "../features/next-actions/types";
 import type { NextActionsWorkspaceController } from "../features/next-actions/useNextActionsWorkspaceController";
@@ -288,13 +289,13 @@ export function NextActionsPage({ controller, selectOnGoingAction }: NextActions
   const contextsQuery = useContextsQuery();
   const [isCurrentAvailabilityOpen, setIsCurrentAvailabilityOpen] = useState(false);
   const [isAttrsOpen, setIsAttrsOpen] = useState(false);
-  const [isProjectAssociateOpen, setIsProjectAssociateOpen] = useState(false);
+  const projectAssociate = useProjectAssociateDialog();
   const [isLinkOpen, setIsLinkOpen] = useState(false);
   const [isAssetOpen, setIsAssetOpen] = useState(false);
-  const isPickerOpen = isAttrsOpen || isCurrentAvailabilityOpen || isProjectAssociateOpen;
+  const isPickerOpen = isAttrsOpen || isCurrentAvailabilityOpen || projectAssociate.isOpen;
   const openCurrentAvailability = useCallback(() => !isPickerOpen && setIsCurrentAvailabilityOpen(true), [isPickerOpen]);
   const openAttrs = useCallback(() => !isPickerOpen && setIsAttrsOpen(true), [isPickerOpen]);
-  const openProjectAssociate = useCallback(() => !isPickerOpen && setIsProjectAssociateOpen(true), [isPickerOpen]);
+  const openProjectAssociate = useCallback(() => !isPickerOpen && projectAssociate.open(), [isPickerOpen, projectAssociate]);
   const openLink = useCallback(() => setIsLinkOpen(true), []);
   const openAsset = useCallback(() => setIsAssetOpen(true), []);
   useKeybindScreen("next-actions");
@@ -312,16 +313,12 @@ export function NextActionsPage({ controller, selectOnGoingAction }: NextActions
       </Suspense>
       {isCurrentAvailabilityOpen ? <CurrentAvailabilityDialog contextIds={controller.contexts.map((context) => context.id)} energy={controller.currentEnergy} timeMinutes={controller.currentTimeMinutes} onApply={(contextIds, energy, timeMinutes) => applyCurrentAvailability(controller, contextsQuery.contexts, contextIds, energy, timeMinutes, () => setIsCurrentAvailabilityOpen(false))} onClose={() => setIsCurrentAvailabilityOpen(false)} /> : null}
       {isAttrsOpen && controller.selectedItem ? <NextActionEditDialog item={controller.selectedItem} onSave={(patch) => saveAttributes(controller, patch, () => setIsAttrsOpen(false))} onClose={() => setIsAttrsOpen(false)} /> : null}
-      {isProjectAssociateOpen && controller.selectedItem ? (
-        <ProjectAssociateDialog
-          item={controller.selectedItem}
-          onClose={() => setIsProjectAssociateOpen(false)}
-          onAssociate={(projectId) => {
-            void controller.assignSelectedProject(projectId);
-            setIsProjectAssociateOpen(false);
-          }}
-        />
-      ) : null}
+      <ProjectAssociateDialog
+        item={controller.selectedItem}
+        isOpen={projectAssociate.isOpen}
+        onClose={projectAssociate.close}
+        onAssociate={controller.assignSelectedProject}
+      />
     </ListWorkspace>
   );
 }
