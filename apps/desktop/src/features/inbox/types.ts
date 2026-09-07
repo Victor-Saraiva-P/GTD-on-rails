@@ -67,6 +67,7 @@ export type Stuff = {
   energy?: number | null;
   estimatedTime?: { hours: number; minutes: number } | null;
   contexts?: Array<{ id: string; name: string; iconUrl?: string; iconRevision?: number }>;
+  projectTitle?: string | null;
 };
 
 /**

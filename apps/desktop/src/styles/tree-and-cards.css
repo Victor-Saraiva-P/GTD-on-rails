@@ -153,6 +153,51 @@
   column-gap: 10px;
 }
 
+.tree-list--inbox .tree-entry--project-associated {
+  grid-template-columns: 12px minmax(0, 1fr) minmax(0, 260px);
+}
+
+.tree-list--inbox .calendar-item-entry--project-associated {
+  grid-template-columns: 12px minmax(0, 1fr) minmax(0, 260px) auto;
+}
+
+.unified-item-entry {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr) minmax(0, 260px);
+  column-gap: 10px;
+}
+
+.project-association-marker {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  gap: 6px;
+  color: #8660ef;
+}
+
+.project-association-marker__glyph {
+  flex: 0 0 auto;
+  font-weight: 800;
+}
+
+.project-association-marker--list {
+  max-width: 260px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.project-association-marker--list .project-association-marker__title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-association-marker--detail {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
 .tree-list--inbox .calendar-entry__time {
   display: inline-flex;
   align-items: center;

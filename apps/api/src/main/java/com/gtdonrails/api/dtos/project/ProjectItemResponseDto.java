@@ -13,6 +13,7 @@ import com.gtdonrails.api.types.ItemBody;
 
 public record ProjectItemResponseDto(
     UUID projectId,
+    String projectTitle,
     UUID id,
     String kind,
     String title,

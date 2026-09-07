@@ -19,6 +19,7 @@ public record NextActionResponseDto(
     LocalDate deadline,
     String status,
     ScheduleWindow schedule,
-    List<ContextResponseDto> contexts
+    List<ContextResponseDto> contexts,
+    String projectTitle
 ) {
 }

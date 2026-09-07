@@ -16,6 +16,7 @@ public record ItemResponseDto(
     ItemTimeDto estimatedTime,
     String status,
     Instant createdAt,
-    List<ContextResponseDto> contexts
+    List<ContextResponseDto> contexts,
+    String projectTitle
 ) {
 }

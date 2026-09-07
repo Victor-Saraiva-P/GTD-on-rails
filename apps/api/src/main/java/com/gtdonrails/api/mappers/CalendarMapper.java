@@ -2,10 +2,22 @@ package com.gtdonrails.api.mappers;
 
 import com.gtdonrails.api.dtos.calendar.CalendarResponseDto;
 import com.gtdonrails.api.entities.Calendar;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
 public class CalendarMapper {
+
+    private final ProjectAssociationMapper projectAssociationMapper;
+
+    @Autowired
+    public CalendarMapper(ProjectAssociationMapper projectAssociationMapper) {
+        this.projectAssociationMapper = projectAssociationMapper;
+    }
+
+    public CalendarMapper() {
+        this(new ProjectAssociationMapper(null));
+    }
 
     /**
      * Maps a Calendar entity into the Calendar API response.
@@ -20,7 +32,8 @@ public class CalendarMapper {
             calendar.getScheduledDate(),
             calendar.getScheduledTime(),
             calendar.getStatus().name(),
-            calendar.getSchedule()
+            calendar.getSchedule(),
+            projectAssociationMapper.titleFor(calendar.getItem())
         );
     }
 }

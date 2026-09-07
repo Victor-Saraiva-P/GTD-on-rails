@@ -10,6 +10,7 @@ public record StuffResponseDto(
     String title,
     ItemBody body,
     String status,
-    Instant createdAt
+    Instant createdAt,
+    String projectTitle
 ) {
 }

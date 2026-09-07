@@ -153,6 +153,7 @@ public class ProjectItemService {
         Item item = projectItem.getItem();
         return new ProjectItemResponseDto(
             projectItem.getProject().getItemId(),
+            projectItem.getProject().getItem().getTitle().value(),
             item.getId(),
             item.getStatus().name(),
             item.getTitle().value(),

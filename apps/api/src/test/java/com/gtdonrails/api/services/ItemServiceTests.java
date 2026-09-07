@@ -221,7 +221,7 @@ class ItemServiceTests {
     }
 
     private ItemResponseDto itemResponse(String title, String body) {
-        return new ItemResponseDto(UUID.randomUUID(), title, bodyValue(body), null, null, "STUFF", Instant.now(), List.of());
+        return new ItemResponseDto(UUID.randomUUID(), title, bodyValue(body), null, null, "STUFF", Instant.now(), List.of(), null);
     }
 
     private ItemBody bodyValue(String text) {

@@ -10,6 +10,7 @@ export type ProjectItemKind = "STUFF" | "NEXT_ACTION" | "CALENDAR";
 export type ProjectItem = Stuff & {
   kind: ProjectItemKind;
   projectId: string;
+  projectTitle?: string | null;
   scheduledDate?: string | null;
   scheduledTime?: string | null;
   deadline?: string | null;

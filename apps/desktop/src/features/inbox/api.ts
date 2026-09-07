@@ -10,6 +10,7 @@ type StuffResponse = {
   energy?: number | null;
   estimatedTime?: { hours: number; minutes: number } | null;
   contexts?: Array<{ id: string; name: string; iconUrl?: string }>;
+  projectTitle?: string | null;
 };
 
 type EstimatedTimePayload = {
@@ -208,6 +209,7 @@ function toStuff(item: StuffResponse): Stuff {
     estimatedTime: item.estimatedTime ?? null,
     contexts: item.contexts ?? [],
     status: item.status,
-    createdAt: item.createdAt
+    createdAt: item.createdAt,
+    projectTitle: item.projectTitle ?? null
   };
 }

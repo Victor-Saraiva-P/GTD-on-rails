@@ -14,6 +14,7 @@ public record CalendarResponseDto(
     LocalDate scheduledDate,
     LocalTime scheduledTime,
     String status,
-    ScheduleWindow schedule
+    ScheduleWindow schedule,
+    String projectTitle
 ) {
 }
