@@ -11,7 +11,8 @@ type NextActionEditDialogProps = Readonly<{
   onClose: () => void;
 }>;
 
-type NextActionEditStep = "initial" | "context" | "deadline" | "energy" | "time";
+type NextActionEditStep =
+  "initial" | "context" | "deadline" | "energy" | "time";
 
 type CommandKeyEvent = {
   key: string;
@@ -24,8 +25,13 @@ function initialContextIds(item: NextAction): string[] {
 }
 
 function estimatedTimePatch(minutes: number | null): NextActionPatch {
-  if (minutes == null) return { estimatedTime: null };
-  return { estimatedTime: { hours: Math.floor(minutes / 60), minutes: minutes % 60 } };
+  const totalMinutes = minutes ?? 0;
+  return {
+    estimatedTime: {
+      hours: Math.floor(totalMinutes / 60),
+      minutes: totalMinutes % 60,
+    },
+  };
 }
 
 function initialEnergyDigits(item: NextAction): string {
@@ -38,17 +44,27 @@ function initialTimeDigits(item: NextAction): string {
   return `${item.estimatedTime.hours}${minutes}`;
 }
 
-function NextActionEditInitialStep(props: Readonly<{ onSelect: (step: NextActionEditStep) => void; onCancel: () => void }>) {
+function NextActionEditInitialStep(
+  props: Readonly<{
+    onSelect: (step: NextActionEditStep) => void;
+    onCancel: () => void;
+  }>,
+) {
   const containerRef = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => containerRef.current?.focus(), []);
   useLayoutEffect(() => {
-    const listener = (event: KeyboardEvent) => handleInitialKey(event, props.onSelect, props.onCancel);
+    const listener = (event: KeyboardEvent) =>
+      handleInitialKey(event, props.onSelect, props.onCancel);
     window.addEventListener("keydown", listener, true);
     return () => window.removeEventListener("keydown", listener, true);
   }, [props.onSelect, props.onCancel]);
 
   return (
-    <div ref={containerRef} className="processing-dialog__step processing-dialog__step--initial" tabIndex={-1}>
+    <div
+      ref={containerRef}
+      className="processing-dialog__step processing-dialog__step--initial"
+      tabIndex={-1}
+    >
       <EditCommand shortcut="e" label="Energy" />
       <EditCommand shortcut="c" label="Context" />
       <EditCommand shortcut="t" label="Estimated time" />
@@ -57,30 +73,92 @@ function NextActionEditInitialStep(props: Readonly<{ onSelect: (step: NextAction
   );
 }
 
-function handleInitialKey(event: CommandKeyEvent, onSelect: (step: NextActionEditStep) => void, onCancel: () => void) {
+function handleInitialKey(
+  event: CommandKeyEvent,
+  onSelect: (step: NextActionEditStep) => void,
+  onCancel: () => void,
+) {
   if (event.key === "Escape") return cancelKey(event, onCancel);
   const selectedStep = keyToStep(event.key);
   if (selectedStep) selectKey(event, () => onSelect(selectedStep));
 }
 
-function EditCommand({ shortcut, label }: Readonly<{ shortcut: string; label: string }>) {
-  return <button className="processing-dialog__command" type="button"><kbd>{shortcut}</kbd><span>{label}</span></button>;
+function EditCommand({
+  shortcut,
+  label,
+}: Readonly<{ shortcut: string; label: string }>) {
+  return (
+    <button className="processing-dialog__command" type="button">
+      <kbd>{shortcut}</kbd>
+      <span>{label}</span>
+    </button>
+  );
 }
 
-function renderContextStep(contextIds: string[], setContextIds: (contextIds: string[]) => void, savePatch: (patch: NextActionPatch) => void, onBack: () => void) {
-  return <ProcessingContextStep initialSelectedIds={contextIds} onSelectedIdsChange={setContextIds} onContextsSelected={(nextIds) => savePatch({ contextIds: nextIds })} onBack={onBack} />;
+function renderContextStep(
+  contextIds: string[],
+  setContextIds: (contextIds: string[]) => void,
+  savePatch: (patch: NextActionPatch) => void,
+  onBack: () => void,
+) {
+  return (
+    <ProcessingContextStep
+      initialSelectedIds={contextIds}
+      onSelectedIdsChange={setContextIds}
+      onContextsSelected={(nextIds) => savePatch({ contextIds: nextIds })}
+      onBack={onBack}
+    />
+  );
 }
 
-function renderEnergyStep(digits: string, setDigits: (digits: string) => void, savePatch: (patch: NextActionPatch) => void, onBack: () => void) {
-  return <ProcessingEnergyStep digits={digits} onDigitsChange={setDigits} onEnergySelected={(energy) => savePatch({ energy })} onBack={onBack} />;
+function renderEnergyStep(
+  digits: string,
+  setDigits: (digits: string) => void,
+  savePatch: (patch: NextActionPatch) => void,
+  onBack: () => void,
+) {
+  return (
+    <ProcessingEnergyStep
+      digits={digits}
+      onDigitsChange={setDigits}
+      onEnergySelected={(energy) => savePatch({ energy: energy ?? 0 })}
+      onBack={onBack}
+    />
+  );
 }
 
-function renderTimeStep(digits: string, setDigits: (digits: string) => void, savePatch: (patch: NextActionPatch) => void, onBack: () => void) {
-  return <ProcessingTimeStep digits={digits} onDigitsChange={setDigits} onTimeSelected={(minutes) => savePatch(estimatedTimePatch(minutes))} onBack={onBack} />;
+function renderTimeStep(
+  digits: string,
+  setDigits: (digits: string) => void,
+  savePatch: (patch: NextActionPatch) => void,
+  onBack: () => void,
+) {
+  return (
+    <ProcessingTimeStep
+      digits={digits}
+      onDigitsChange={setDigits}
+      onTimeSelected={(minutes) => savePatch(estimatedTimePatch(minutes))}
+      onBack={onBack}
+    />
+  );
 }
 
-function renderDeadlineStep(value: string, setValue: (value: string) => void, savePatch: (patch: NextActionPatch) => void, onBack: () => void) {
-  return <NextActionDeadlineStep value={value} enableTodayShortcut onDeadlineChange={setValue} onDeadlineSelected={(deadline) => savePatch(deadlinePatch(deadline))} onBack={onBack} />;
+function renderDeadlineStep(
+  value: string,
+  setValue: (value: string) => void,
+  savePatch: (patch: NextActionPatch) => void,
+  onBack: () => void,
+) {
+  return (
+    <NextActionDeadlineStep
+      value={value}
+      enableClearShortcut
+      enableTodayShortcut
+      onDeadlineChange={setValue}
+      onDeadlineSelected={(deadline) => savePatch(deadlinePatch(deadline))}
+      onBack={onBack}
+    />
+  );
 }
 
 function deadlinePatch(deadline: string | null): NextActionPatch {
@@ -112,24 +190,55 @@ function selectKey(event: CommandKeyEvent, onSelect: () => void) {
  *
  * @example <NextActionEditDialog item={item} onSave={savePatch} onClose={close} />
  */
-export function NextActionEditDialog({ item, onSave, onClose }: NextActionEditDialogProps) {
+export function NextActionEditDialog({
+  item,
+  onSave,
+  onClose,
+}: NextActionEditDialogProps) {
   const [step, setStep] = useState<NextActionEditStep>("initial");
   const [contextIds, setContextIds] = useState(() => initialContextIds(item));
   const [deadline, setDeadline] = useState(() => item.deadline ?? "");
-  const [energyDigits, setEnergyDigits] = useState(() => initialEnergyDigits(item));
+  const [energyDigits, setEnergyDigits] = useState(() =>
+    initialEnergyDigits(item),
+  );
   const [timeDigits, setTimeDigits] = useState(() => initialTimeDigits(item));
   const backToInitial = () => setStep("initial");
   const savePatch = (patch: NextActionPatch) => void onSave(patch);
 
   return (
-    <section className="processing-dialog" role="dialog" aria-modal="true" aria-label="Edit next action">
+    <section
+      className="processing-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Edit next action"
+    >
       <div className="processing-dialog__title">Edit Next Action</div>
       <div className="processing-dialog__content">
-        {step === "initial" ? <NextActionEditInitialStep onSelect={setStep} onCancel={onClose} /> : null}
-        {step === "context" ? renderContextStep(contextIds, setContextIds, savePatch, backToInitial) : null}
-        {step === "deadline" ? renderDeadlineStep(deadline, setDeadline, savePatch, backToInitial) : null}
-        {step === "energy" ? renderEnergyStep(energyDigits, setEnergyDigits, savePatch, backToInitial) : null}
-        {step === "time" ? renderTimeStep(timeDigits, setTimeDigits, savePatch, backToInitial) : null}
+        {step === "initial" ? (
+          <NextActionEditInitialStep onSelect={setStep} onCancel={onClose} />
+        ) : null}
+        {step === "context"
+          ? renderContextStep(
+              contextIds,
+              setContextIds,
+              savePatch,
+              backToInitial,
+            )
+          : null}
+        {step === "deadline"
+          ? renderDeadlineStep(deadline, setDeadline, savePatch, backToInitial)
+          : null}
+        {step === "energy"
+          ? renderEnergyStep(
+              energyDigits,
+              setEnergyDigits,
+              savePatch,
+              backToInitial,
+            )
+          : null}
+        {step === "time"
+          ? renderTimeStep(timeDigits, setTimeDigits, savePatch, backToInitial)
+          : null}
       </div>
     </section>
   );

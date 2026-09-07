@@ -38,6 +38,7 @@ public class OutboxHibernateListenerRegistrar {
 
         registry.appendListeners(EventType.POST_INSERT, outboxListener);
         registry.appendListeners(EventType.POST_UPDATE, outboxListener);
+        registry.appendListeners(EventType.POST_COLLECTION_UPDATE, outboxListener);
         registry.appendListeners(EventType.POST_DELETE, outboxListener);
     }
 }

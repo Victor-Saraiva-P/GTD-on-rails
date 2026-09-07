@@ -3,7 +3,10 @@ package com.gtdonrails.api.config;
 import java.util.Set;
 
 import com.gtdonrails.api.entities.SyncOutboxOperation;
+import com.gtdonrails.api.entities.NextAction;
 import com.gtdonrails.api.services.DatabaseSyncService;
+import org.hibernate.event.spi.PostCollectionUpdateEvent;
+import org.hibernate.event.spi.PostCollectionUpdateEventListener;
 import org.hibernate.event.spi.PostDeleteEvent;
 import org.hibernate.event.spi.PostDeleteEventListener;
 import org.hibernate.event.spi.PostInsertEvent;
@@ -23,7 +26,8 @@ import org.springframework.stereotype.Component;
  * <p>Example: Automatically invoked by Hibernate after INSERT, UPDATE, DELETE.</p>
  */
 @Component
-public class OutboxHibernateListener implements PostInsertEventListener, PostUpdateEventListener, PostDeleteEventListener {
+public class OutboxHibernateListener implements PostInsertEventListener, PostUpdateEventListener,
+        PostDeleteEventListener, PostCollectionUpdateEventListener {
 
     private static final Logger logger = LoggerFactory.getLogger(OutboxHibernateListener.class);
 
@@ -60,6 +64,18 @@ public class OutboxHibernateListener implements PostInsertEventListener, PostUpd
     @Override
     public void onPostUpdate(PostUpdateEvent event) {
         captureEvent(event.getEntity(), event.getPersister(), SyncOutboxOperation.UPDATE);
+    }
+
+    /**
+     * Captures context-only edits, which do not fire an entity UPDATE event.
+     *
+     * <p>Example: {@code nextAction.replaceContexts(Set.of(office))} during a PATCH.</p>
+     */
+    @Override
+    public void onPostUpdateCollection(PostCollectionUpdateEvent event) {
+        if (!(event.getAffectedOwnerOrNull() instanceof NextAction action)) return;
+        persistOutboxRecord("next_actions", action.getItemId().toString(),
+            SyncOutboxOperation.UPDATE, payloadSerializer.serializeEntity(action));
     }
 
     @Override

@@ -10,7 +10,6 @@ export type ScheduleWindow = {
   allDay?: boolean;
 };
 
-
 export type NextAction = Stuff & {
   deadline?: string | null;
   schedule?: ScheduleWindow;
@@ -41,9 +40,12 @@ export type NextActionResponse = {
  *
  * @example parseEstimatedTime("PT1H30M")
  */
-export function parseEstimatedTime(value: NextActionResponse["estimatedTime"]) {
+export function parseEstimatedTime(
+  value: NextActionResponse["estimatedTime"],
+): { hours: number; minutes: number } | null {
   if (!value) return null;
   if (typeof value !== "string") return value;
+  if (value === "PT0S") return { hours: 0, minutes: 0 };
   const match = /^PT(?:(\d+)H)?(?:(\d+)M)?$/.exec(value);
   if (!match) return null;
   return { hours: Number(match[1] ?? 0), minutes: Number(match[2] ?? 0) };
@@ -54,22 +56,29 @@ export function parseEstimatedTime(value: NextActionResponse["estimatedTime"]) {
  *
  * @example normalizeNextActionBody("notes")
  */
-export function normalizeNextActionBody(body: NextActionResponse["body"]): ItemBody {
-  if (!body) return { text: "", inlineMarks: [], lineBlocks: [], blockEntities: [] };
-  if (typeof body === "string") return { text: body, inlineMarks: [], lineBlocks: [], blockEntities: [] };
+export function normalizeNextActionBody(
+  body: NextActionResponse["body"],
+): ItemBody {
+  if (!body)
+    return { text: "", inlineMarks: [], lineBlocks: [], blockEntities: [] };
+  if (typeof body === "string")
+    return { text: body, inlineMarks: [], lineBlocks: [], blockEntities: [] };
   return body;
 }
 
 /**
  * Formats a schedule date and time into a localized string.
  */
-export function formatScheduleDateTime(date?: string | null, time?: string | null): string | null {
+export function formatScheduleDateTime(
+  date?: string | null,
+  time?: string | null,
+): string | null {
   if (!date) return null;
-  
+
   // Format as ISO string to ensure correct parsing: YYYY-MM-DDTHH:mm:ss
   const dateTimeString = time ? `${date}T${time}Z` : date;
   const dateObj = new Date(dateTimeString);
-  
+
   if (isNaN(dateObj.getTime())) return null;
 
   // We intentionally avoid locale-driven ordering here.
