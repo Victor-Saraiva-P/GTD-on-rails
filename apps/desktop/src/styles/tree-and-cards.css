@@ -172,12 +172,16 @@
   align-items: center;
   min-width: 0;
   gap: 6px;
-  color: #8660ef;
 }
 
 .project-association-marker__glyph {
   flex: 0 0 auto;
+  color: #8660ef;
   font-weight: 800;
+}
+
+.project-association-marker__title {
+  color: #8a817c;
 }
 
 .project-association-marker--list {

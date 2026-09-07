@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { convertStuffToProjectApi, createAndSelectInboxStuff, createStuffApi, openApp, resetTestData, uniqueLabel } from "./support/app";
+import { apiBaseUrl, convertStuffToProjectApi, createAndSelectInboxStuff, createStuffApi, openApp, resetTestData, uniqueLabel } from "./support/app";
 
 test.beforeEach(async ({ page, request }) => {
   await resetTestData(request);
@@ -62,12 +62,18 @@ test("shows the project association marker on the project action row", async ({ 
   const itemResponse = await request.post(`${apiBaseUrl}/projects/${project.id}/items/stuff`, { data: { title: "Stay rich" } });
   expect(itemResponse.ok()).toBeTruthy();
 
+  await page.reload();
   await page.keyboard.press("Space");
   await page.keyboard.press("p");
+  const projectCard = page.getByRole("button", { name: projectTitle, exact: false });
+  await expect(projectCard).toBeVisible();
+  await projectCard.click();
   await page.keyboard.press("Enter");
 
-  const marker = page.locator(".project-association-marker");
+  const marker = page.locator(".project-association-marker--list");
   await expect(marker).toHaveText(`P${projectTitle}`);
+  await expect(marker.locator(".project-association-marker__glyph")).toHaveCSS("color", "rgb(134, 96, 239)");
+  await expect(marker.locator(".project-association-marker__title")).toHaveCSS("color", "rgb(138, 129, 124)");
   const markerTop = await marker.evaluate((element) => element.getBoundingClientRect().top);
   const actionTop = await marker.locator("xpath=../..").evaluate((element) => element.getBoundingClientRect().top);
   expect(markerTop).toBe(actionTop);
