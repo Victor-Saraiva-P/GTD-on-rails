@@ -31,6 +31,7 @@ When editing energy or estimated time, clearing all digits and confirming with `
 | `c` | List | Set current availability. |
 | `C` | List | Clear current availability. |
 | `E` | List or detail | Edit next action attributes. |
+| `P` | List or detail | Associate selected next action to project. |
 | `o` | List | Mark selected next action as on going and open its detail. |
 | `O` | List or detail | Cycle ordering. |
 | `u` | List or detail | Undo last deletion. |
@@ -73,6 +74,7 @@ On going next actions appear on the shared external On Going agenda using the ti
 | `d` | List | Delete selected on going item. |
 | `x` | List | Mark selected item as done. |
 | `r` | List | Restore selected item to its original state. |
+| `P` | List or detail | Associate selected item to project. |
 | `gg` | List | Move selection to the first item. |
 | `G` | List | Move selection to the last item. |
 | `j` | List | Move selection down. |

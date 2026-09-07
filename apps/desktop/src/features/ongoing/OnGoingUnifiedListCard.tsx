@@ -2,6 +2,7 @@ import type { KeyboardEvent } from "react";
 import { InlineTitleInput } from "../../components/InlineTitleInput";
 import type { OnGoingItemSelection } from "./combinedOnGoingState";
 import { calendarItemIconText } from "../lists/listThemes";
+import { ProjectAssociationMarker } from "../projects/ProjectAssociationMarker";
 
 type OnGoingUnifiedListCardProps = Readonly<{
   selection: OnGoingItemSelection;
@@ -56,12 +57,13 @@ function EditingUnifiedCard(props: Readonly<Omit<OnGoingUnifiedListCardProps, "e
 
   return (
     <li className="tree-list__item">
-      <div className="tree-entry tree-entry--active unified-item-entry">
+      <div className={`tree-entry tree-entry--active unified-item-entry${props.selection.item.projectTitle ? " tree-entry--project-associated" : ""}`}>
         <UnifiedGlyph selection={props.selection} />
         <div className="tree-entry__edit">
           <InlineTitleInput initialValue={props.editingTitle} onBlur={props.onCommitEditing} onEditKeyDown={handleKeyDown} onValueChange={props.onEditingTitleChange} />
           {props.editingTitleError ? <p className="tree-entry__error">{props.editingTitleError}</p> : null}
         </div>
+        <ProjectAssociationMarker projectTitle={props.selection.item.projectTitle} placement="list" />
       </div>
     </li>
   );
@@ -82,12 +84,13 @@ function ReadOnlyUnifiedCard(props: OnGoingUnifiedListCardProps) {
     <li className="tree-list__item">
       <button
         type="button"
-        className={`tree-entry unified-item-entry${selected ? " tree-entry--active" : ""}`}
+        className={`tree-entry unified-item-entry${selected ? " tree-entry--active" : ""}${selection.item.projectTitle ? " tree-entry--project-associated" : ""}`}
         onClick={() => onSelect(selection.item.id)}
         onDoubleClick={() => handleSelectDoubleClick(props)}
       >
         <UnifiedGlyph selection={selection} />
         <span className="tree-entry__label">{selection.item.title}</span>
+        <ProjectAssociationMarker projectTitle={selection.item.projectTitle} placement="list" />
       </button>
     </li>
   );

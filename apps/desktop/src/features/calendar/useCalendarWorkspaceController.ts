@@ -261,8 +261,15 @@ function focusTodayCalendarWeek(model: CalendarModel): void {
   focusCalendarPanel(model, resolveTodayWeeklyPanel(new Date()));
 }
 
+async function assignSelectedCalendarProjectAction(model: CalendarModel, projectId: string | null): Promise<void> {
+  const selected = model.selection.selectedItem;
+  if (!selected) return;
+  await model.query.assignProject(selected, projectId);
+}
+
 function useCalendarWorkspaceActions(model: CalendarModel) {
   return {
+    assignSelectedProject: (projectId: string | null) => assignSelectedCalendarProjectAction(model, projectId),
     autosaveBody: (body: ItemBody) => autosaveCalendarBodyEdit(model, body),
     cancelBodyEdit: () => clearCalendarBodyEdit(model.edit),
     cancelTitleEdit: () => clearCalendarTitleEdit(model.edit),

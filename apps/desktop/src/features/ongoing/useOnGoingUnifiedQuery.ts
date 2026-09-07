@@ -36,14 +36,16 @@ export function useOnGoingUnifiedQuery() {
       restoreSelected: nextActionsQuery.restoreStatus,
       deleteSelected: nextActionsQuery.deleteItem,
       updateBody: nextActionsQuery.updateBody,
-      updateTitle: nextActionsQuery.updateTitle
+      updateTitle: nextActionsQuery.updateTitle,
+      assignProject: nextActionsQuery.assignProject
     },
     calendarsActions: {
       markAsDone: calendarsQuery.markAsDone,
       restoreStatus: calendarsQuery.restoreStatus,
       deleteItem: calendarsQuery.deleteItem,
       updateBody: calendarsQuery.updateBody,
-      updateTitle: calendarsQuery.updateTitle
+      updateTitle: calendarsQuery.updateTitle,
+      assignProject: calendarsQuery.assignProject
     }
   };
 }

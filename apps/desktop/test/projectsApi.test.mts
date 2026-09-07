@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test, { afterEach, describe, mock } from "node:test";
 
-import { deleteProject, fetchDeletedProjects, fetchDoneProjects, fetchProjects, markProjectDone, patchProject, processStuffToProject, recoverProject, resetProjectStatus } from "../src/features/projects/api.ts";
+import { assignItemProject, deleteProject, fetchDeletedProjects, fetchDoneProjects, fetchProjects, markProjectDone, patchProject, processStuffToProject, recoverProject, resetProjectStatus } from "../src/features/projects/api.ts";
 import { createProjectStuff, fetchProjectActions } from "../src/features/projects/projectItems.ts";
 import type { Stuff } from "../src/features/inbox/types.ts";
 
@@ -151,6 +151,32 @@ describe("projects API", () => {
 
     assert.equal(item.projectId, "project-1");
     assert.equal(item.title, "Buy paste");
+  });
+
+  test("assignItemProject sends PUT with projectId", async () => {
+    globalThis.fetch = mock.fn(async (input, init) => {
+      assert.ok(input.toString().endsWith("/items/item-1/project"));
+      assert.equal(init?.method, "PUT");
+      assert.equal(init?.body, JSON.stringify({ projectId: "project-2" }));
+      return new Response(JSON.stringify({ projectTitle: "Project Two" }), { status: 200 });
+    });
+
+    const result = await assignItemProject("item-1", "project-2");
+
+    assert.equal(result.projectTitle, "Project Two");
+  });
+
+  test("assignItemProject unassigns project when null", async () => {
+    globalThis.fetch = mock.fn(async (input, init) => {
+      assert.ok(input.toString().endsWith("/items/item-1/project"));
+      assert.equal(init?.method, "PUT");
+      assert.equal(init?.body, JSON.stringify({ projectId: null }));
+      return new Response(JSON.stringify({ projectTitle: null }), { status: 200 });
+    });
+
+    const result = await assignItemProject("item-1", null);
+
+    assert.equal(result.projectTitle, null);
   });
 });
 

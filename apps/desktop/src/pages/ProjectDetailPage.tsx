@@ -12,6 +12,7 @@ import type { KeybindDefinition } from "../features/keybinds/types";
 import { projectsListTheme } from "../features/lists/listThemes";
 import { ProcessingDialog } from "../features/processing/ProcessingDialog";
 import { ProjectActionsList } from "../features/projects/ProjectActionsList";
+import { ProjectAssociateDialog } from "../features/projects/ProjectAssociateDialog";
 import type { ProjectItem } from "../features/projects/projectItems";
 import type { ProjectDetailController } from "../features/projects/useProjectDetailController";
 
@@ -37,7 +38,11 @@ function canRunAction(controller: ProjectDetailController): boolean {
   return !controller.isLoading && Boolean(controller.project);
 }
 
-function buildBindings(controller: ProjectDetailController, openProcessing: () => void, openLink: () => void, openAsset: () => void): KeybindDefinition[] {
+function canAssociateProjectItem(controller: ProjectDetailController): boolean {
+  return canRunAction(controller) && Boolean(controller.selectedItem) && !controller.editingId && !controller.editingBodyId;
+}
+
+function buildBindings(controller: ProjectDetailController, openProcessing: () => void, openLink: () => void, openAsset: () => void, openAssociate: () => void): KeybindDefinition[] {
   return [
     projectDetailBinding("project-detail.create-stuff", "a", "Add project stuff", "project-actions-list", () => canRunAction(controller) && controller.createNewStuff()),
     projectDetailBinding("project-detail.edit-title", "Enter", "Edit selected title", "project-actions-list", () => canRunAction(controller) && controller.startTitleEdit()),
@@ -47,7 +52,9 @@ function buildBindings(controller: ProjectDetailController, openProcessing: () =
     projectDetailBinding("project-detail.move-last", "G", "Move to last item", "project-actions-list", controller.selectLast),
     projectDetailBinding("project-detail.open-detail", "l", "Open selected detail", "project-actions-list", () => canRunAction(controller) && controller.startBodyEdit()),
     projectDetailBinding("project-detail.process", "p", "Process selected stuff", "project-actions-list", () => openProjectProcessing(controller, openProcessing)),
+    projectDetailBinding("project-detail.associate-list", "P", "Associate to project", "project-actions-list", () => canAssociateProjectItem(controller) && openAssociate()),
     projectDetailBinding("project-detail.which-key-list", "k", "Show available keybinds", "project-actions-list", () => undefined, true),
+    projectDetailBinding("project-detail.associate-detail", "P", "Associate to project", "project-item-detail", () => canAssociateProjectItem(controller) && openAssociate()),
     projectDetailBinding("project-detail.which-key-detail", "k", "Show available keybinds", "project-item-detail", () => undefined, true),
     ...buildFormattingBindings("project-detail", openLink, openAsset, "project-item-detail")
   ];
@@ -57,8 +64,8 @@ function openProjectProcessing(controller: ProjectDetailController, openProcessi
   if (controller.selectedItem?.kind === "STUFF") openProcessing();
 }
 
-function useProjectDetailBindings(controller: ProjectDetailController, openProcessing: () => void, openLink: () => void, openAsset: () => void) {
-  const bindings = useMemo(() => buildBindings(controller, openProcessing, openLink, openAsset), [controller, openProcessing, openLink, openAsset]);
+function useProjectDetailBindings(controller: ProjectDetailController, openProcessing: () => void, openLink: () => void, openAsset: () => void, openAssociate: () => void) {
+  const bindings = useMemo(() => buildBindings(controller, openProcessing, openLink, openAsset, openAssociate), [controller, openProcessing, openLink, openAsset, openAssociate]);
   useRegisterKeybinds(bindings);
 }
 
@@ -99,20 +106,66 @@ function ProjectDetailView({ controller }: ProjectDetailPageProps) {
   );
 }
 
-export function ProjectDetailPage({ controller }: ProjectDetailPageProps) {
-  const [isProcessingOpen, setIsProcessingOpen] = useState(false);
-  const [isLinkOpen, setIsLinkOpen] = useState(false);
-  const [isAssetOpen, setIsAssetOpen] = useState(false);
-  const openProcessing = useCallback(() => setIsProcessingOpen(true), []);
-  const openLink = useCallback(() => setIsLinkOpen(true), []);
-  const openAsset = useCallback(() => setIsAssetOpen(true), []);
-  useKeybindScreen("project-detail");
+function useProjectDetailZone(controller: ProjectDetailController) {
   useEffect(() => {
     if (controller.activeZone !== "project-actions-list" && controller.activeZone !== "project-item-detail") {
       controller.setActiveZone("project-actions-list");
     }
   }, [controller.activeZone, controller.setActiveZone]);
-  useProjectDetailBindings(controller, openProcessing, openLink, openAsset);
+}
+
+type ProjectDetailModalsProps = Readonly<{
+  controller: ProjectDetailController;
+  isProcessingOpen: boolean;
+  setIsProcessingOpen: (open: boolean) => void;
+  isLinkOpen: boolean;
+  setIsLinkOpen: (open: boolean) => void;
+  isAssetOpen: boolean;
+  setIsAssetOpen: (open: boolean) => void;
+  isProjectAssociateOpen: boolean;
+  setIsProjectAssociateOpen: (open: boolean) => void;
+}>;
+
+function ProjectDetailComboModals(props: ProjectDetailModalsProps) {
+  const item = props.controller.selectedItem;
+  return (
+    <Suspense fallback={null}>
+      {props.isLinkOpen ? <LazyMarkdownLinkComboDialog onClose={() => props.setIsLinkOpen(false)} /> : null}
+      {props.isAssetOpen && item ? <LazyMarkdownAssetComboDialog itemId={item.id} onClose={() => props.setIsAssetOpen(false)} /> : null}
+      {props.isProjectAssociateOpen && item ? (
+        <ProjectAssociateDialog item={item} onClose={() => props.setIsProjectAssociateOpen(false)} onAssociate={props.controller.assignSelectedProject} />
+      ) : null}
+    </Suspense>
+  );
+}
+
+function ProjectDetailModals(props: ProjectDetailModalsProps) {
+  const item = props.controller.selectedItem;
+  return (
+    <>
+      <ProjectDetailComboModals {...props} />
+      {props.isProcessingOpen && item ? (
+        <ProcessingDialog
+          allowProject={false}
+          item={item}
+          onClose={() => props.setIsProcessingOpen(false)}
+          onProcess={(energy, minutes, contextIds, deadline) => { void props.controller.processSelectedStuff(energy, minutes, contextIds, deadline); props.setIsProcessingOpen(false); }}
+          onProcessCalendar={(payload: CalendarConversionPayload) => { void props.controller.processSelectedStuffToCalendar(payload); props.setIsProcessingOpen(false); }}
+          onProcessProject={() => undefined}
+        />
+      ) : null}
+    </>
+  );
+}
+
+export function ProjectDetailPage({ controller }: ProjectDetailPageProps) {
+  const [isProcessingOpen, setIsProcessingOpen] = useState(false);
+  const [isLinkOpen, setIsLinkOpen] = useState(false);
+  const [isAssetOpen, setIsAssetOpen] = useState(false);
+  const [isProjectAssociateOpen, setIsProjectAssociateOpen] = useState(false);
+  useKeybindScreen("project-detail");
+  useProjectDetailZone(controller);
+  useProjectDetailBindings(controller, () => setIsProcessingOpen(true), () => setIsLinkOpen(true), () => setIsAssetOpen(true), () => setIsProjectAssociateOpen(true));
 
   return (
     <ListWorkspace theme={projectsListTheme} currentLabel={projectsListTheme.label} modeLabel={controller.vimMode ?? undefined}>
@@ -120,11 +173,17 @@ export function ProjectDetailPage({ controller }: ProjectDetailPageProps) {
         <ProjectDetailView controller={controller} />
       </section>
       <LeaderMenu />
-      <Suspense fallback={null}>
-        {isLinkOpen ? <LazyMarkdownLinkComboDialog onClose={() => setIsLinkOpen(false)} /> : null}
-        {isAssetOpen && controller.selectedItem ? <LazyMarkdownAssetComboDialog itemId={controller.selectedItem.id} onClose={() => setIsAssetOpen(false)} /> : null}
-      </Suspense>
-      {isProcessingOpen && controller.selectedItem ? <ProcessingDialog allowProject={false} item={controller.selectedItem} onClose={() => setIsProcessingOpen(false)} onProcess={(energy, minutes, contextIds, deadline) => { void controller.processSelectedStuff(energy, minutes, contextIds, deadline); setIsProcessingOpen(false); }} onProcessCalendar={(payload: CalendarConversionPayload) => { void controller.processSelectedStuffToCalendar(payload); setIsProcessingOpen(false); }} onProcessProject={() => undefined} /> : null}
+      <ProjectDetailModals
+        controller={controller}
+        isProcessingOpen={isProcessingOpen}
+        setIsProcessingOpen={setIsProcessingOpen}
+        isLinkOpen={isLinkOpen}
+        setIsLinkOpen={setIsLinkOpen}
+        isAssetOpen={isAssetOpen}
+        setIsAssetOpen={setIsAssetOpen}
+        isProjectAssociateOpen={isProjectAssociateOpen}
+        setIsProjectAssociateOpen={setIsProjectAssociateOpen}
+      />
     </ListWorkspace>
   );
 }

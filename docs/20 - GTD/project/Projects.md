@@ -42,6 +42,7 @@ Project stuff created from this page remains normal stuff and also appears in In
 | --- | --- | --- |
 | `a` | Project Actions View | Add project stuff. |
 | `p` | Project Actions View | Process selected project stuff into a next action or calendar item. |
+| `P` | Project Actions View or Detail | Associate selected project item to project. |
 | `Enter` | Project Actions View | Edit selected project item title. |
 | `l` | Project Actions View | Focus the selected project item detail/body. |
 | `j` | Project Actions View | Move selection to the next project item. |

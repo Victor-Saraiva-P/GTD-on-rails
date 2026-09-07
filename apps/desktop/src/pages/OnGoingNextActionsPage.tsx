@@ -12,6 +12,7 @@ import { onGoingNextActionsListTheme } from "../features/lists/listThemes";
 import type { OnGoingWorkspaceController } from "../features/ongoing/useOnGoingWorkspaceController";
 import { OnGoingUnifiedList } from "../features/ongoing/OnGoingUnifiedList";
 import type { OnGoingItemSelection } from "../features/ongoing/combinedOnGoingState";
+import { ProjectAssociateDialog } from "../features/projects/ProjectAssociateDialog";
 
 type OnGoingNextActionsPageProps = Readonly<{
   controller: OnGoingWorkspaceController;
@@ -66,7 +67,13 @@ async function restoreSelected(controller: OnGoingWorkspaceController, selectNex
   // Per Q4: `r` DOES NOT jump to another screen anymore. We stay on OnGoing page.
 }
 
-function actionBindings(controller: OnGoingWorkspaceController, setActiveScreen: (screen: ScreenId) => void, selectNextAction: (id: string | null) => void): KeybindDefinition[] {
+function openProjectAssociateFromKeybind(controller: OnGoingWorkspaceController, openProjectAssociate: () => void) {
+  if (canEdit(controller)) {
+    openProjectAssociate();
+  }
+}
+
+function actionBindings(controller: OnGoingWorkspaceController, setActiveScreen: (screen: ScreenId) => void, selectNextAction: (id: string | null) => void, openProjectAssociate: () => void): KeybindDefinition[] {
   const editable = canEdit(controller);
   const zone: FocusZoneId = "next-actions-list"; // We reuse this zone ID for the unified list for simplicity
 
@@ -74,6 +81,7 @@ function actionBindings(controller: OnGoingWorkspaceController, setActiveScreen:
     onGoingBinding(`ongoing.delete.${zone}`, "d", "Delete selected on going item", zone, () => runAsync(editable, controller.deleteSelected, "Failed to delete on going item")),
     onGoingBinding(`ongoing.done.${zone}`, "x", "Mark as done", zone, () => runAsync(editable, controller.markAsDone, "Failed to mark on going item as done")),
     onGoingBinding(`ongoing.restore.${zone}`, "r", "Restore status", zone, () => runAsync(editable, () => restoreSelected(controller, selectNextAction, setActiveScreen), "Failed to restore on going item")),
+    onGoingBinding(`ongoing.associate-project.${zone}`, "P", "Associate to project", zone, () => openProjectAssociateFromKeybind(controller, openProjectAssociate)),
     onGoingBinding(`ongoing.move-first.${zone}`, "g", "Move to first item", zone, () => selectBoundary(controller, "first"), false, ["g", "g"]),
     onGoingBinding(`ongoing.move-last.${zone}`, "G", "Move to last item", zone, () => selectBoundary(controller, "last")),
     onGoingBinding(`ongoing.move-down.${zone}`, "j", "Move down", zone, () => moveSelection(controller, "next")),
@@ -83,10 +91,11 @@ function actionBindings(controller: OnGoingWorkspaceController, setActiveScreen:
   ];
 }
 
-function detailBindings(controller: OnGoingWorkspaceController, setActiveScreen: (screen: ScreenId) => void, openLink: () => void, openAsset: () => void): KeybindDefinition[] {
+function detailBindings(controller: OnGoingWorkspaceController, setActiveScreen: (screen: ScreenId) => void, openLink: () => void, openAsset: () => void, openProjectAssociate: () => void): KeybindDefinition[] {
   const zone: FocusZoneId = "next-actions-list";
   return [
     { ...onGoingBinding("ongoing.focus-active-panel", "h", "Focus list", "next-action-detail", () => controller.setActiveZone(zone)), ctrl: true },
+    onGoingBinding("ongoing.associate-project-detail", "P", "Associate to project", "next-action-detail", () => openProjectAssociateFromKeybind(controller, openProjectAssociate)),
     onGoingBinding("ongoing.open-detail", "Enter", "Open full detail", zone, () => openDetailScreen(controller.selectedItem, setActiveScreen), true, ["Enter"]),
     onGoingBinding("ongoing.which-key-list", "k", "Show available keybinds", zone, () => undefined, true),
     onGoingBinding("ongoing.which-key-detail", "k", "Show available keybinds", "next-action-detail", () => undefined, true),
@@ -94,12 +103,12 @@ function detailBindings(controller: OnGoingWorkspaceController, setActiveScreen:
   ];
 }
 
-function useOnGoingBindings(controller: OnGoingWorkspaceController, selectNextAction: (id: string | null) => void, openLink: () => void, openAsset: () => void) {
+function useOnGoingBindings(controller: OnGoingWorkspaceController, selectNextAction: (id: string | null) => void, openLink: () => void, openAsset: () => void, openProjectAssociate: () => void) {
   const { setActiveScreen } = useActiveScreen();
   const bindings = useMemo(() => [
-    ...actionBindings(controller, setActiveScreen, selectNextAction),
-    ...detailBindings(controller, setActiveScreen, openLink, openAsset)
-  ], [setActiveScreen, selectNextAction, openLink, openAsset, controller]);
+    ...actionBindings(controller, setActiveScreen, selectNextAction, openProjectAssociate),
+    ...detailBindings(controller, setActiveScreen, openLink, openAsset, openProjectAssociate)
+  ], [setActiveScreen, selectNextAction, openLink, openAsset, openProjectAssociate, controller]);
   useRegisterKeybinds(bindings);
 }
 
@@ -203,7 +212,7 @@ export function OnGoingNextActionsPage({ controller, selectNextAction }: OnGoing
   useKeybindScreen("ongoing-next-actions");
   useOnGoingZone(controller);
   useActiveAssetPreload(controller);
-  useOnGoingBindings(controller, selectNextAction, dialogState.openLink, dialogState.openAsset);
+  useOnGoingBindings(controller, selectNextAction, dialogState.openLink, dialogState.openAsset, dialogState.openProjectAssociate);
 
   return (
     <ListWorkspace theme={onGoingNextActionsListTheme} currentClassName="list-workspace__current--next-actions" currentLabel={<OnGoingFooterLabel />} modeLabel={controller.vimMode ?? undefined}>
@@ -217,18 +226,32 @@ export function OnGoingNextActionsPage({ controller, selectNextAction }: OnGoing
 function useOnGoingDialogState() {
   const [isLinkOpen, setIsLinkOpen] = useState(false);
   const [isAssetOpen, setIsAssetOpen] = useState(false);
+  const [isProjectAssociateOpen, setIsProjectAssociateOpen] = useState(false);
   const openLink = useCallback(() => setIsLinkOpen(true), []);
   const openAsset = useCallback(() => setIsAssetOpen(true), []);
-  return { isAssetOpen, isLinkOpen, openAsset, openLink, setIsAssetOpen, setIsLinkOpen };
+  const openProjectAssociate = useCallback(() => setIsProjectAssociateOpen(true), []);
+  return { isAssetOpen, isLinkOpen, isProjectAssociateOpen, openAsset, openLink, openProjectAssociate, setIsAssetOpen, setIsLinkOpen, setIsProjectAssociateOpen };
 }
 
 function OnGoingDialogs({ controller, dialogState }: Readonly<{ controller: OnGoingWorkspaceController; dialogState: ReturnType<typeof useOnGoingDialogState> }>) {
   const selected = controller.selectedItem;
   return (
-    <Suspense fallback={null}>
-      {dialogState.isLinkOpen ? <LazyMarkdownLinkComboDialog onClose={() => dialogState.setIsLinkOpen(false)} /> : null}
-      {dialogState.isAssetOpen && selected ? <LazyMarkdownAssetComboDialog itemId={selected.item.id} onClose={() => dialogState.setIsAssetOpen(false)} /> : null}
-    </Suspense>
+    <>
+      <Suspense fallback={null}>
+        {dialogState.isLinkOpen ? <LazyMarkdownLinkComboDialog onClose={() => dialogState.setIsLinkOpen(false)} /> : null}
+        {dialogState.isAssetOpen && selected ? <LazyMarkdownAssetComboDialog itemId={selected.item.id} onClose={() => dialogState.setIsAssetOpen(false)} /> : null}
+      </Suspense>
+      {dialogState.isProjectAssociateOpen && selected ? (
+        <ProjectAssociateDialog
+          item={selected.item}
+          onClose={() => dialogState.setIsProjectAssociateOpen(false)}
+          onAssociate={(projectId) => {
+            void controller.assignSelectedProject(projectId);
+            dialogState.setIsProjectAssociateOpen(false);
+          }}
+        />
+      ) : null}
+    </>
   );
 }
 

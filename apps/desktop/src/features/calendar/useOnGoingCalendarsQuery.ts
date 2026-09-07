@@ -10,6 +10,7 @@ import {
   updateCalendarBody,
   updateCalendarTitle
 } from "./api";
+import { assignItemProject } from "../projects/api";
 import type { Calendar } from "./types";
 
 type CalendarLoadState = ReturnType<typeof useCalendarLoadState>;
@@ -75,7 +76,8 @@ function useOnGoingCalendarMutations(
     markAsDone: (id: string) => markOnGoingCalendarDone(id, state, mutations, triggerSyncStatusPolling),
     restoreStatus: (id: string) => restoreOnGoingCalendar(id, state, mutations, triggerSyncStatusPolling),
     updateBody: (item: Calendar, body: ItemBody) => updateBody(item, body, state, mutations, triggerSyncStatusPolling),
-    updateTitle: (item: Calendar, title: string) => updateTitle(item, title, state, mutations, triggerSyncStatusPolling)
+    updateTitle: (item: Calendar, title: string) => updateTitle(item, title, state, mutations, triggerSyncStatusPolling),
+    assignProject: (item: Calendar, projectId: string | null) => assignProjectAction(item, projectId, state, mutations, triggerSyncStatusPolling)
   };
 }
 
@@ -134,6 +136,25 @@ async function updateTitle(
   mutations.setIsUpdating(true);
   try { const updated = await updateCalendarTitle(item, title); state.setItems((items) => replaceCalendar(items, updated)); completeCalendarMutation(state, poll); return updated; }
   finally { mutations.setIsUpdating(false); }
+}
+
+async function assignProjectAction(
+  item: Calendar,
+  projectId: string | null,
+  state: CalendarLoadState,
+  mutations: CalendarMutationState,
+  poll: () => void
+): Promise<Calendar> {
+  mutations.setIsUpdating(true);
+  try {
+    const result = await assignItemProject(item.id, projectId);
+    const updated: Calendar = { ...item, projectTitle: result.projectTitle ?? null };
+    state.setItems((items) => replaceCalendar(items, updated));
+    completeCalendarMutation(state, poll);
+    return updated;
+  } finally {
+    mutations.setIsUpdating(false);
+  }
 }
 
 /**

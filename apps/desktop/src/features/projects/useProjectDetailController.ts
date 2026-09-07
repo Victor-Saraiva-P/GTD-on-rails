@@ -3,6 +3,7 @@ import type { CalendarConversionPayload } from "../calendar/types";
 import type { ItemBody } from "../inbox/types";
 import { isSameBody } from "../inbox/types";
 import { useActiveZone } from "../keybinds/hooks";
+import { assignItemProject } from "./api";
 import type { Project } from "./types";
 import { createProjectStuff, fetchProjectActions, processProjectStuff, processProjectStuffToCalendar, updateProjectItemBody, updateProjectItemTitle, type ProjectItem } from "./projectItems";
 
@@ -76,7 +77,7 @@ function useProjectSelectionPruning(items: ProjectItem[], selection: ReturnType<
 }
 
 function buildProjectDetailController(project: Project | null, query: ReturnType<typeof useProjectActionsQuery>, selection: ReturnType<typeof useProjectItemSelection>, edit: ReturnType<typeof useProjectDetailEditState>, zone: ReturnType<typeof useActiveZone>, draft: ProjectItem | null, setDraft: (item: ProjectItem | null) => void) {
-  return { activeZone: zone.activeZone, editingBodyId: edit.editingBodyId, editingId: edit.editingId, editingTitle: edit.editingTitle, editingTitleError: edit.editingTitleError, errorMessage: query.errorMessage, isLoading: query.isLoading, items: selection.items, project, selectedItem: selection.selectedItem, vimMode: edit.vimMode, setActiveZone: zone.setActiveZone, setEditingTitle: (value: string) => { edit.setEditingTitle(value); edit.setEditingTitleError(null); }, setVimMode: edit.setVimMode, reload: query.reload, selectFirst: selection.selectFirst, selectLast: selection.selectLast, selectNext: selection.selectNext, selectPrevious: selection.selectPrevious, setSelectedId: selection.setSelectedId, createNewStuff: () => createDraft(project, selection, edit, zone, setDraft), startTitleEdit: () => startTitleEdit(selection.selectedItem, edit), commitTitle: () => commitTitle(project, selection.selectedItem, edit, draft, setDraft, query.reload), cancelTitleEdit: () => clearTitleEdit(edit), startBodyEdit: () => startBodyEdit(selection.selectedItem, edit, zone), commitBody: (body: ItemBody) => commitBody(selection.selectedItem, edit, body, query.reload), autosaveBody: (body: ItemBody) => autosaveBody(selection.selectedItem, edit, body, query.reload), cancelBodyEdit: () => clearBodyEdit(edit), processSelectedStuff: (energy: number | null, minutes: number | null, contextIds: string[], deadline: string | null) => processSelectedStuff(selection.selectedItem, energy, minutes, contextIds, deadline, query.reload), processSelectedStuffToCalendar: (payload: CalendarConversionPayload) => processSelectedStuffToCalendar(selection.selectedItem, payload, query.reload) };
+  return { activeZone: zone.activeZone, editingBodyId: edit.editingBodyId, editingId: edit.editingId, editingTitle: edit.editingTitle, editingTitleError: edit.editingTitleError, errorMessage: query.errorMessage, isLoading: query.isLoading, items: selection.items, project, selectedItem: selection.selectedItem, vimMode: edit.vimMode, setActiveZone: zone.setActiveZone, setEditingTitle: (value: string) => { edit.setEditingTitle(value); edit.setEditingTitleError(null); }, setVimMode: edit.setVimMode, reload: query.reload, selectFirst: selection.selectFirst, selectLast: selection.selectLast, selectNext: selection.selectNext, selectPrevious: selection.selectPrevious, setSelectedId: selection.setSelectedId, createNewStuff: () => createDraft(project, selection, edit, zone, setDraft), startTitleEdit: () => startTitleEdit(selection.selectedItem, edit), commitTitle: () => commitTitle(project, selection.selectedItem, edit, draft, setDraft, query.reload), cancelTitleEdit: () => clearTitleEdit(edit), startBodyEdit: () => startBodyEdit(selection.selectedItem, edit, zone), commitBody: (body: ItemBody) => commitBody(selection.selectedItem, edit, body, query.reload), autosaveBody: (body: ItemBody) => autosaveBody(selection.selectedItem, edit, body, query.reload), cancelBodyEdit: () => clearBodyEdit(edit), processSelectedStuff: (energy: number | null, minutes: number | null, contextIds: string[], deadline: string | null) => processSelectedStuff(selection.selectedItem, energy, minutes, contextIds, deadline, query.reload), processSelectedStuffToCalendar: (payload: CalendarConversionPayload) => processSelectedStuffToCalendar(selection.selectedItem, payload, query.reload), assignSelectedProject: (projectId: string | null) => assignSelectedProject(selection.selectedItem, projectId, query.reload) };
 }
 
 function createDraft(project: Project | null, selection: ReturnType<typeof useProjectItemSelection>, edit: ReturnType<typeof useProjectDetailEditState>, zone: ReturnType<typeof useActiveZone>, setDraft: (item: ProjectItem | null) => void) {
@@ -123,6 +124,11 @@ async function processSelectedStuff(item: ProjectItem | null, energy: number | n
 async function processSelectedStuffToCalendar(item: ProjectItem | null, payload: CalendarConversionPayload, reload: () => void) {
   if (item?.kind !== "STUFF") return;
   await processProjectStuffToCalendar(item, payload); reload();
+}
+
+async function assignSelectedProject(item: ProjectItem | null, projectId: string | null, reload: () => void) {
+  if (!item || item.id === DRAFT_PROJECT_ITEM_ID) return;
+  await assignItemProject(item.id, projectId); reload();
 }
 
 export type ProjectDetailController = ReturnType<typeof useProjectDetailController>;
