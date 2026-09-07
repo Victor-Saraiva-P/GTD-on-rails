@@ -48,4 +48,11 @@ _Avoid_: Database Setup, automatic credential recovery
 A desktop state transition applied immediately in the user interface for high-frequency keyboard operations before the backend write-through persistence confirms success.
 _Avoid_: Local save, offline queue, draft
 
+**Project-associated item**:
+An item linked to exactly one project. Lists and detail views identify it with the purple `P` project glyph followed by the project's literal title.
+_Avoid_: project label, project breadcrumb, project navigation
+
+**Project association marker**:
+The visual `P project title` marker shown only for project-associated items. It is informational, is not a navigation control, and is omitted when no valid project title is available.
+_Avoid_: project link, project action
 
