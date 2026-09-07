@@ -55,6 +55,24 @@ test("moves down to the project card below", async ({ page, request }) => {
   await expect(rowBelowCard).toHaveClass(/project-card--active/);
 });
 
+test("shows the project association marker on the project action row", async ({ page, request }) => {
+  const projectTitle = uniqueLabel("Project marker");
+  const project = await createStuffApi(request, projectTitle);
+  await convertStuffToProjectApi(request, project.id);
+  const itemResponse = await request.post(`${apiBaseUrl}/projects/${project.id}/items/stuff`, { data: { title: "Stay rich" } });
+  expect(itemResponse.ok()).toBeTruthy();
+
+  await page.keyboard.press("Space");
+  await page.keyboard.press("p");
+  await page.keyboard.press("Enter");
+
+  const marker = page.locator(".project-association-marker");
+  await expect(marker).toHaveText(`P${projectTitle}`);
+  const markerTop = await marker.evaluate((element) => element.getBoundingClientRect().top);
+  const actionTop = await marker.locator("xpath=../..").evaluate((element) => element.getBoundingClientRect().top);
+  expect(markerTop).toBe(actionTop);
+});
+
 test("marks project done, edits it in completed projects, and restores it", async ({ page, request }) => {
   const title = uniqueLabel("Project done");
   const updatedTitle = uniqueLabel("Project done updated");

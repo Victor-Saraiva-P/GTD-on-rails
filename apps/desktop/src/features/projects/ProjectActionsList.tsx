@@ -64,7 +64,7 @@ type ProjectActionCardProps = ProjectActionsListProps & Readonly<{
 function ReadOnlyProjectAction(props: ProjectActionCardProps) {
   return (
     <li className="tree-list__item">
-      <button type="button" className={`tree-entry unified-item-entry${props.selected ? " tree-entry--active" : ""}`} onClick={() => props.onSelect(props.item.id)} onDoubleClick={props.onStartEditing}>
+      <button type="button" className={`tree-entry unified-item-entry${props.selected ? " tree-entry--active" : ""}${props.item.projectTitle ? " tree-entry--project-associated" : ""}`} onClick={() => props.onSelect(props.item.id)} onDoubleClick={props.onStartEditing}>
         <ProjectActionGlyph item={props.item} />
         <span className="tree-entry__label">{props.item.title}</span>
         <ProjectAssociationMarker projectTitle={props.item.projectTitle} placement="list" />
