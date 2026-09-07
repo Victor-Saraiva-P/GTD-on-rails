@@ -29,6 +29,7 @@ Processing stuff into a project opens the Projects page after the project is cre
 | `u` | List | Undo last deletion. |
 | `Ctrl+r` | List | Redo last action. |
 | `p` | List | Process selected stuff. |
+| `P` | List or detail | Associate selected stuff to project. |
 | `gg` | List | Move selection to the first item. |
 | `G` | List | Move selection to the last item. |
 | `j` | List | Move selection down. |
