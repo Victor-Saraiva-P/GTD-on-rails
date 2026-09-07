@@ -15,6 +15,7 @@ import type { FocusZoneId, KeybindDefinition, ScreenId } from "../features/keybi
 import { scrollDetailPane } from "../features/keybinds/scrollDetailPane";
 import { inboxListTheme } from "../features/lists/listThemes";
 import { ProcessingDialog } from "../features/processing/ProcessingDialog";
+import { ProjectAssociateDialog } from "../features/inbox/ProjectAssociateDialog";
 
 type InboxPageProps = Readonly<{
   controller: InboxWorkspaceController;
@@ -127,12 +128,19 @@ function openProcessingFromKeybind(controller: InboxWorkspaceController, openPro
   }
 }
 
+function openProjectAssociateFromKeybind(controller: InboxWorkspaceController, openProjectAssociate: () => void) {
+  if (canEditSelectedStuff(controller)) {
+    openProjectAssociate();
+  }
+}
+
 function buildInboxBindings(
   controller: InboxWorkspaceController,
   setActiveScreen: (screen: ScreenId) => void,
   openLinkCombo: () => void,
   openAssetCombo: () => void,
-  openProcessing: () => void
+  openProcessing: () => void,
+  openProjectAssociate: () => void
 ) {
   return [
     inboxBinding("inbox.switch-forward", "]", "Open deleted stuff", "inbox-list", () => setActiveScreen("deleted-inbox")),
@@ -146,6 +154,8 @@ function buildInboxBindings(
     inboxBinding("inbox.undo-detail", "u", "Undo last deletion", "stuff-detail", () => void controller.undo()),
     inboxBinding("inbox.process-list", "p", "Process selected stuff", "inbox-list", () => openProcessingFromKeybind(controller, openProcessing)),
     inboxBinding("inbox.process-detail", "p", "Process selected stuff", "stuff-detail", () => openProcessingFromKeybind(controller, openProcessing)),
+    inboxBinding("inbox.associate-project-list", "P", "Associate to project", "inbox-list", () => openProjectAssociateFromKeybind(controller, openProjectAssociate)),
+    inboxBinding("inbox.associate-project-detail", "P", "Associate to project", "stuff-detail", () => openProjectAssociateFromKeybind(controller, openProjectAssociate)),
     { ...inboxBinding("inbox.redo-list", "r", "Redo last action", "inbox-list", () => void controller.redo()), ctrl: true },
     { ...inboxBinding("inbox.redo-detail", "r", "Redo last action", "stuff-detail", () => void controller.redo()), ctrl: true },
     inboxBinding("inbox.edit-title", "Enter", "Edit selected title", "inbox-list", () => editTitleFromKeybind(controller)),
@@ -169,9 +179,9 @@ function buildInboxBindings(
 }
 
 
-function useInboxBindings(controller: InboxWorkspaceController, openLinkCombo: () => void, openAssetCombo: () => void, openProcessing: () => void) {
+function useInboxBindings(controller: InboxWorkspaceController, openLinkCombo: () => void, openAssetCombo: () => void, openProcessing: () => void, openProjectAssociate: () => void) {
   const { setActiveScreen } = useActiveScreen();
-  const bindings = useMemo(() => buildInboxBindings(controller, setActiveScreen, openLinkCombo, openAssetCombo, openProcessing), [controller, setActiveScreen, openLinkCombo, openAssetCombo, openProcessing]);
+  const bindings = useMemo(() => buildInboxBindings(controller, setActiveScreen, openLinkCombo, openAssetCombo, openProcessing, openProjectAssociate), [controller, setActiveScreen, openLinkCombo, openAssetCombo, openProcessing, openProjectAssociate]);
 
   useRegisterKeybinds(bindings);
 }
@@ -308,9 +318,11 @@ export function InboxPage({ controller, openProjects }: InboxPageProps) {
   const [isLinkComboOpen, setIsLinkComboOpen] = useState(false);
   const [isAssetComboOpen, setIsAssetComboOpen] = useState(false);
   const [isProcessingOpen, setIsProcessingOpen] = useState(false);
+  const [isProjectAssociateOpen, setIsProjectAssociateOpen] = useState(false);
   const openLinkCombo = useCallback(() => setIsLinkComboOpen(true), []);
   const openAssetCombo = useCallback(() => setIsAssetComboOpen(true), []);
   const openProcessing = useCallback(() => setIsProcessingOpen(true), []);
+  const openProjectAssociate = useCallback(() => setIsProjectAssociateOpen(true), []);
   const processSelectedItem = (energy: number | null, time: number | null, contextIds: string[], deadline: string | null) => {
     void controller.processSelectedStuff(energy, time, contextIds, deadline);
     setIsProcessingOpen(false);
@@ -326,7 +338,7 @@ export function InboxPage({ controller, openProjects }: InboxPageProps) {
   useKeybindScreen("inbox");
   useInboxZone(controller);
   useInboxAssetPreload(controller);
-  useInboxBindings(controller, openLinkCombo, openAssetCombo, openProcessing);
+  useInboxBindings(controller, openLinkCombo, openAssetCombo, openProcessing, openProjectAssociate);
 
   return (
     <ListWorkspace theme={inboxListTheme} currentLabel={inboxListTheme.label} modeLabel={controller.vimMode ?? undefined}>
@@ -337,6 +349,16 @@ export function InboxPage({ controller, openProjects }: InboxPageProps) {
         {isAssetComboOpen && controller.selectedItem ? <LazyMarkdownAssetComboDialog itemId={controller.selectedItem.id} onClose={() => setIsAssetComboOpen(false)} /> : null}
       </Suspense>
       {isProcessingOpen && controller.selectedItem ? <ProcessingDialog item={controller.selectedItem} onClose={() => setIsProcessingOpen(false)} onProcess={processSelectedItem} onProcessCalendar={processSelectedCalendarItem} onProcessProject={processSelectedProjectItem} /> : null}
+      {isProjectAssociateOpen && controller.selectedItem ? (
+        <ProjectAssociateDialog
+          item={controller.selectedItem}
+          onClose={() => setIsProjectAssociateOpen(false)}
+          onAssociate={(projectId) => {
+            void controller.assignSelectedStuffProject(projectId);
+            setIsProjectAssociateOpen(false);
+          }}
+        />
+      ) : null}
     </ListWorkspace>
   );
 }

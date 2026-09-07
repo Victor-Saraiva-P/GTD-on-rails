@@ -370,8 +370,16 @@ async function processSelectedStuffToProjectAction(model: InboxModel, deadline: 
   model.zone.setActiveZone("inbox-list");
 }
 
+async function assignSelectedStuffProjectAction(model: InboxModel, projectId: string | null) {
+  const selectedItem = model.selection.selectedItem;
+  if (!selectedItem) return;
+  const updatedStuff = await model.query.assignStuffProject(selectedItem, projectId);
+  model.selection.setSelectedId(updatedStuff.id);
+}
+
 function useInboxWorkspaceActions(model: InboxModel) {
   return {
+    assignSelectedStuffProject: (projectId: string | null) => assignSelectedStuffProjectAction(model, projectId),
     autosaveEditingSelectedStuffBody: (body: ItemBody) => autosaveEditingSelectedStuffBodyAction(model, body),
     cancelEditingSelectedStuff: () => cancelEditingSelectedStuffAction(model),
     cancelEditingSelectedStuffBody: () => clearBodyEdit(model),

@@ -5,13 +5,17 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.gtdonrails.api.entities.Item;
+import com.gtdonrails.api.entities.Project;
 import com.gtdonrails.api.repositories.ContextRepository;
 import com.gtdonrails.api.repositories.ItemAssetRepository;
 import com.gtdonrails.api.repositories.ItemRepository;
+import com.gtdonrails.api.repositories.ProjectItemRepository;
+import com.gtdonrails.api.repositories.ProjectRepository;
 import com.gtdonrails.api.types.Title;
 import com.gtdonrails.api.services.CacheInvalidationService;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,6 +47,12 @@ class ItemControllerTests {
     private ItemAssetRepository itemAssetRepository;
 
     @Autowired
+    private ProjectRepository projectRepository;
+
+    @Autowired
+    private ProjectItemRepository projectItemRepository;
+
+    @Autowired
     private CacheInvalidationService cacheInvalidationService;
 
     private MockMvc mockMvc;
@@ -51,7 +61,9 @@ class ItemControllerTests {
     void setUp() {
         mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).build();
         cacheInvalidationService.evictAll();
+        projectItemRepository.deleteAll();
         itemAssetRepository.deleteAll();
+        projectRepository.deleteAll();
         itemRepository.deleteAll();
         contextRepository.deleteAll();
     }
@@ -113,5 +125,22 @@ class ItemControllerTests {
         mockMvc.perform(get("/inbox/{id}", item.getId()))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(item.getId().toString()));
+    }
+
+    @Test
+    void assignsAndRemovesItemProject() throws Exception {
+        Item item = itemRepository.save(new Item(new Title("Review PR"), null));
+        Item projectItem = itemRepository.save(new Item(new Title("Alpha Project"), null));
+        Project project = projectRepository.save(new Project(projectItem, null));
+
+        mockMvc.perform(put("/items/{id}/project", item.getId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"projectId\":\"" + project.getItemId() + "\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.projectTitle").value("Alpha Project"));
+
+        mockMvc.perform(delete("/items/{id}/project", item.getId()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.projectTitle").value(nullValue()));
     }
 }

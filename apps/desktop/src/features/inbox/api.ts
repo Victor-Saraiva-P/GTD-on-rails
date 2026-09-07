@@ -191,6 +191,23 @@ function buildEstimatedTimePayload(estimatedTimeMinutes: number | null): Estimat
   };
 }
 
+/**
+ * Assigns or removes project association for one stuff item.
+ *
+ * @example await assignStuffProject(stuff, projectId)
+ */
+export async function assignStuffProject(item: Stuff, projectId: string | null): Promise<Stuff> {
+  const response = await apiJson<StuffResponse>(`/items/${item.id}/project`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ projectId })
+  });
+
+  return toStuff(response);
+}
+
 function toStuff(item: StuffResponse): Stuff {
   let parsedBody: ItemBody;
   if (!item.body) {

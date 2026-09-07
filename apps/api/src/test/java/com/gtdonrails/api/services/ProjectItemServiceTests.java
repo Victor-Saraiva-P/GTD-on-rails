@@ -10,10 +10,12 @@ import java.util.Optional;
 import java.util.UUID;
 
 import com.gtdonrails.api.dtos.inbox.CreateStuffRequestDto;
+import com.gtdonrails.api.dtos.item.ItemResponseDto;
 import com.gtdonrails.api.dtos.project.ProjectItemResponseDto;
 import com.gtdonrails.api.entities.Item;
 import com.gtdonrails.api.entities.Project;
 import com.gtdonrails.api.entities.ProjectItem;
+import com.gtdonrails.api.mappers.ItemMapper;
 import com.gtdonrails.api.normalizers.ItemTextNormalizer;
 import com.gtdonrails.api.repositories.ItemRepository;
 import com.gtdonrails.api.repositories.ProjectItemRepository;
@@ -46,6 +48,9 @@ class ProjectItemServiceTests {
     private ContextMapper contextMapper;
 
     @Mock
+    private ItemMapper itemMapper;
+
+    @Mock
     private CacheInvalidationService cacheInvalidationService;
 
     private ProjectItemService projectItemService;
@@ -60,6 +65,7 @@ class ProjectItemServiceTests {
             itemRepository,
             new ItemTextNormalizer(),
             contextMapper,
+            itemMapper,
             cacheInvalidationService,
             new AfterCommitExecutor());
 
@@ -97,5 +103,37 @@ class ProjectItemServiceTests {
 
         assertEquals(1, result.size());
         assertEquals("Action 1", result.get(0).title());
+    }
+
+    @Test
+    void assignsActiveProjectToItemAndEvictsCache() {
+        UUID itemId = UUID.randomUUID();
+        Item item = new Item(new Title("Stuff 1"), null);
+        ReflectionTestUtils.setField(item, "id", itemId);
+        when(itemRepository.findByIdAndDeletedAtIsNull(itemId)).thenReturn(Optional.of(item));
+        when(projectRepository.findByItemIdAndItem_DeletedAtIsNull(projectId)).thenReturn(Optional.of(project));
+        when(itemMapper.toResponse(item)).thenReturn(new ItemResponseDto(itemId, "Stuff 1", null, null, null, "STUFF", null, List.of(), "Main Project"));
+
+        ItemResponseDto response = projectItemService.assignProject(itemId, projectId);
+
+        assertEquals("Main Project", response.projectTitle());
+        verify(projectItemRepository).deleteByItemId(itemId);
+        verify(projectItemRepository).insertProjectItem(projectId, itemId);
+        verify(cacheInvalidationService).evictItemMutation();
+    }
+
+    @Test
+    void removesProjectAssociationWhenProjectIdIsNull() {
+        UUID itemId = UUID.randomUUID();
+        Item item = new Item(new Title("Stuff 1"), null);
+        ReflectionTestUtils.setField(item, "id", itemId);
+        when(itemRepository.findByIdAndDeletedAtIsNull(itemId)).thenReturn(Optional.of(item));
+        when(itemMapper.toResponse(item)).thenReturn(new ItemResponseDto(itemId, "Stuff 1", null, null, null, "STUFF", null, List.of(), null));
+
+        ItemResponseDto response = projectItemService.assignProject(itemId, null);
+
+        assertEquals(null, response.projectTitle());
+        verify(projectItemRepository).deleteByItemId(itemId);
+        verify(cacheInvalidationService).evictItemMutation();
     }
 }

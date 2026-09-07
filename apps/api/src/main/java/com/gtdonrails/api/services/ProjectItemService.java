@@ -11,12 +11,14 @@ import java.util.UUID;
 
 import com.gtdonrails.api.config.CacheNames;
 import com.gtdonrails.api.dtos.inbox.CreateStuffRequestDto;
+import com.gtdonrails.api.dtos.item.ItemResponseDto;
 import com.gtdonrails.api.dtos.project.ProjectItemResponseDto;
 import com.gtdonrails.api.entities.Item;
 import com.gtdonrails.api.entities.Project;
 import com.gtdonrails.api.entities.ProjectItem;
 import com.gtdonrails.api.enums.ItemStatus;
 import com.gtdonrails.api.exceptions.item.ItemNotFoundException;
+import com.gtdonrails.api.mappers.ItemMapper;
 import com.gtdonrails.api.normalizers.ItemTextNormalizer;
 import com.gtdonrails.api.repositories.ItemRepository;
 import com.gtdonrails.api.dtos.context.ContextResponseDto;
@@ -36,6 +38,7 @@ public class ProjectItemService {
     private final ItemRepository itemRepository;
     private final ItemTextNormalizer itemTextNormalizer;
     private final ContextMapper contextMapper;
+    private final ItemMapper itemMapper;
     private final CacheInvalidationService cacheInvalidationService;
     private final AfterCommitExecutor afterCommitExecutor;
 
@@ -45,6 +48,7 @@ public class ProjectItemService {
         ItemRepository itemRepository,
         ItemTextNormalizer itemTextNormalizer,
         ContextMapper contextMapper,
+        ItemMapper itemMapper,
         CacheInvalidationService cacheInvalidationService,
         AfterCommitExecutor afterCommitExecutor
     ) {
@@ -53,6 +57,7 @@ public class ProjectItemService {
         this.itemRepository = itemRepository;
         this.itemTextNormalizer = itemTextNormalizer;
         this.contextMapper = contextMapper;
+        this.itemMapper = itemMapper;
         this.cacheInvalidationService = cacheInvalidationService;
         this.afterCommitExecutor = afterCommitExecutor;
     }
@@ -71,6 +76,24 @@ public class ProjectItemService {
         projectItemRepository.insertProjectItem(project.getItemId(), savedItem.getId());
         afterCommitExecutor.run(cacheInvalidationService::evictItemMutation);
         return toResponse(new ProjectItem(project, savedItem));
+    }
+
+    /**
+     * Associates or disassociates an active item with an active project.
+     *
+     * <p>Example: {@code projectItemService.assignProject(itemId, projectId)}.</p>
+     */
+    @Transactional
+    public ItemResponseDto assignProject(UUID itemId, UUID projectId) {
+        Item item = itemRepository.findByIdAndDeletedAtIsNull(itemId)
+            .orElseThrow(() -> new ItemNotFoundException("item " + itemId + " not found"));
+        projectItemRepository.deleteByItemId(itemId);
+        if (projectId != null) {
+            Project project = findActiveProject(projectId);
+            projectItemRepository.insertProjectItem(project.getItemId(), itemId);
+        }
+        afterCommitExecutor.run(cacheInvalidationService::evictItemMutation);
+        return itemMapper.toResponse(item);
     }
 
     /**

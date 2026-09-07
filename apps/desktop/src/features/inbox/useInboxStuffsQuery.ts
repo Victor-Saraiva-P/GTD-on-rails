@@ -6,6 +6,7 @@ import type { CalendarConversionPayload } from "../calendar/types.ts";
 import { processStuffToProject as processStuffToProjectRequest } from "../projects/api.ts";
 import { useSyncStatus } from "../sync-status/SyncStatusProvider.tsx";
 import {
+  assignStuffProject as assignStuffProjectRequest,
   createStuff as createStuffRequest,
   deleteStuff as deleteStuffRequest,
   fetchInboxStuffs,
@@ -24,6 +25,7 @@ type InboxStuffsQueryState = {
   isDeleting: boolean;
   isUpdating: boolean;
   errorMessage: string | null;
+  assignStuffProject: (item: Stuff, projectId: string | null) => Promise<Stuff>;
   createStuff: (title: string) => Promise<Stuff>;
   deleteStuff: (id: string) => Promise<void>;
   processStuff: (item: Stuff, energy: number | null, estimatedTimeMinutes: number | null, contextIds: string[], deadline: string | null) => Promise<void>;
@@ -198,6 +200,7 @@ function useInboxStuffsMutations(state: InboxLoadState, mutations: InboxMutation
 
   return {
     createStuff: (title: string) => createInboxStuff(title, state, mutations, triggerSyncStatusPolling),
+    assignStuffProject: (item: Stuff, projectId: string | null) => updateInboxStuff(() => assignStuffProjectRequest(item, projectId), state, mutations, triggerSyncStatusPolling),
     deleteStuff: (id: string) => deleteInboxStuff(id, state, mutations, triggerSyncStatusPolling),
     processStuffToCalendar: (item: Stuff, payload: CalendarConversionPayload) => processInboxStuff(item, () => processStuffToCalendarRequest(item, payload), state, mutations, triggerSyncStatusPolling),
     processStuffToProject: (item: Stuff, deadline: string | null) => processInboxStuff(item, () => processStuffToProjectRequest(item, deadline), state, mutations, triggerSyncStatusPolling),

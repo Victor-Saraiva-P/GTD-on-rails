@@ -29,4 +29,8 @@ public interface ProjectItemRepository extends JpaRepository<ProjectItem, UUID> 
     @Modifying
     @Query(value = "insert into project_items (project_id, item_id) values (:projectId, :itemId)", nativeQuery = true)
     void insertProjectItem(@Param("projectId") UUID projectId, @Param("itemId") UUID itemId);
+
+    @Modifying
+    @Query(value = "delete from project_items where item_id = :itemId", nativeQuery = true)
+    void deleteByItemId(@Param("itemId") UUID itemId);
 }

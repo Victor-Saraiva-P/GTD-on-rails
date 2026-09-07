@@ -11,7 +11,8 @@ import {
   uploadStuffAsset,
   copyLocalStuffAsset,
   updateStuffTitle,
-  updateStuffBody
+  updateStuffBody,
+  assignStuffProject
 } from "../src/features/inbox/api.ts";
 import type { Stuff } from "../src/features/inbox/types.ts";
 
@@ -157,5 +158,33 @@ describe("inbox API", () => {
     });
 
     await processStuff(item, 4.5, 90, ["ctx-1"], "2028-02-29");
+  });
+
+  test("assignStuffProject sends project id and returns updated stuff", async () => {
+    const item: Stuff = { id: "6", title: "Task", body: dummyBody, status: "INBOX", createdAt: "2026-05-01T00:00:00Z" };
+    const mockResponse = { ...item, projectTitle: "Alpha" };
+    globalThis.fetch = mock.fn(async (input, init) => {
+      assert.ok(input.toString().endsWith("/items/6/project"));
+      assert.equal(init?.method, "PUT");
+      assert.equal(init?.body, JSON.stringify({ projectId: "proj-1" }));
+      return new Response(JSON.stringify(mockResponse), { status: 200 });
+    });
+
+    const updated = await assignStuffProject(item, "proj-1");
+    assert.equal(updated.projectTitle, "Alpha");
+  });
+
+  test("assignStuffProject with null unassigns project", async () => {
+    const item: Stuff = { id: "6", title: "Task", body: dummyBody, status: "INBOX", createdAt: "2026-05-01T00:00:00Z", projectTitle: "Alpha" };
+    const mockResponse = { ...item, projectTitle: null };
+    globalThis.fetch = mock.fn(async (input, init) => {
+      assert.ok(input.toString().endsWith("/items/6/project"));
+      assert.equal(init?.method, "PUT");
+      assert.equal(init?.body, JSON.stringify({ projectId: null }));
+      return new Response(JSON.stringify(mockResponse), { status: 200 });
+    });
+
+    const updated = await assignStuffProject(item, null);
+    assert.equal(updated.projectTitle, null);
   });
 });
