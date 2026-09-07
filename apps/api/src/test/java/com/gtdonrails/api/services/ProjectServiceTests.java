@@ -1,5 +1,6 @@
 package com.gtdonrails.api.services;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -8,14 +9,19 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import com.gtdonrails.api.dtos.project.PatchProjectRequestDto;
+import com.gtdonrails.api.dtos.project.ProjectActionCountProjection;
+import com.gtdonrails.api.dtos.project.ProjectResponseDto;
 import com.gtdonrails.api.entities.Item;
 import com.gtdonrails.api.entities.Project;
+import com.gtdonrails.api.enums.ProjectStatus;
 import com.gtdonrails.api.mappers.ProjectMapper;
 import com.gtdonrails.api.normalizers.ItemTextNormalizer;
+import com.gtdonrails.api.repositories.ProjectItemRepository;
 import com.gtdonrails.api.repositories.ProjectRepository;
 import com.gtdonrails.api.types.Title;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,6 +38,9 @@ class ProjectServiceTests {
     private ProjectRepository projectRepository;
 
     @Mock
+    private ProjectItemRepository projectItemRepository;
+
+    @Mock
     private GoogleCalendarEventQueueService googleCalendarEventQueueService;
 
     @Mock
@@ -45,6 +54,7 @@ class ProjectServiceTests {
     void setUp() {
         projectService = new ProjectService(
             projectRepository,
+            projectItemRepository,
             new ProjectMapper(),
             new ItemTextNormalizer(),
             googleCalendarEventQueueService,
@@ -111,5 +121,23 @@ class ProjectServiceTests {
 
         verify(googleCalendarEventQueueService).requestUpsert(projectId);
         verify(cacheInvalidationService).evictProjectMutation();
+    }
+
+    @Test
+    void listProjectsIncludesAggregatedActionCounts() {
+        when(projectRepository.findAllByStatusAndItem_DeletedAtIsNullOrderByItem_CreatedAtAsc(ProjectStatus.ACTIVE))
+            .thenReturn(List.of(project));
+        when(projectItemRepository.countActiveActionsGroupedByProject())
+            .thenReturn(List.of(new ActionCountStub(projectId, 3L)));
+
+        List<ProjectResponseDto> result = projectService.listProjects();
+
+        assertEquals(1, result.size());
+        assertEquals(3L, result.get(0).actionCount());
+    }
+
+    private record ActionCountStub(UUID projectId, long actionCount) implements ProjectActionCountProjection {
+        @Override public UUID getProjectId() { return projectId; }
+        @Override public long getActionCount() { return actionCount; }
     }
 }

@@ -236,6 +236,39 @@ class ProjectControllerTests {
             .andExpect(jsonPath("$[2].contexts[0].name").value("hardware"));
     }
 
+    @Test
+    void listsProjectsWithActionCountExcludingStuff() throws Exception {
+        Project project = saveProject("Build keyboard");
+        Project emptyProject = saveProject("Empty outcome");
+        UUID nextActionId = createProjectStuff(project, "Lube switches");
+        UUID calendarId = createProjectStuff(project, "Soldering session");
+        createProjectStuff(project, "Buy solder wire");
+        convertToNextAction(nextActionId);
+        convertToCalendar(calendarId);
+
+        mockMvc.perform(get("/projects"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(2)))
+            .andExpect(jsonPath("$[0].id").value(project.getItemId().toString()))
+            .andExpect(jsonPath("$[0].actionCount").value(2))
+            .andExpect(jsonPath("$[1].id").value(emptyProject.getItemId().toString()))
+            .andExpect(jsonPath("$[1].actionCount").value(0));
+    }
+
+    private void convertToNextAction(UUID stuffId) throws Exception {
+        mockMvc.perform(post("/inbox/{id}/next-action", stuffId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"energy\":2,\"estimatedTime\":{\"hours\":1,\"minutes\":30},\"contextIds\":[]}"))
+            .andExpect(status().isNoContent());
+    }
+
+    private void convertToCalendar(UUID stuffId) throws Exception {
+        mockMvc.perform(post("/inbox/{id}/calendar", stuffId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"scheduledDate\":\"2026-03-01\"}"))
+            .andExpect(status().isNoContent());
+    }
+
     private Project saveProject(String title) {
         Item item = new Item(new Title(title), null);
         Project project = item.convertToProject(LocalDate.parse("2026-06-01"));

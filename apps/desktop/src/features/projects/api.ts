@@ -8,6 +8,7 @@ type ProjectResponse = {
   deadline?: string | null;
   doneDate?: string | null;
   doneTime?: string | null;
+  actionCount?: number;
 };
 
 /**
@@ -100,7 +101,14 @@ export async function recoverProject(id: string): Promise<Project> {
 }
 
 function toProject(response: ProjectResponse): Project {
-  return { id: response.id, title: response.title, deadline: response.deadline ?? null, doneDate: response.doneDate ?? null, doneTime: response.doneTime ?? null };
+  return {
+    id: response.id,
+    title: response.title,
+    deadline: response.deadline ?? null,
+    doneDate: response.doneDate ?? null,
+    doneTime: response.doneTime ?? null,
+    actionCount: response.actionCount ?? 0
+  };
 }
 
 /**

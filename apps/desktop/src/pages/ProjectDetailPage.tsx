@@ -14,6 +14,7 @@ import { ProcessingDialog } from "../features/processing/ProcessingDialog";
 import { ProjectActionsList } from "../features/projects/ProjectActionsList";
 import { ProjectAssociateDialog } from "../features/projects/ProjectAssociateDialog";
 import { useProjectAssociateDialog } from "../features/projects/useProjectAssociateDialog";
+import { formatProjectActionCount } from "../features/projects/types";
 import type { ProjectItem } from "../features/projects/projectItems";
 import type { ProjectDetailController } from "../features/projects/useProjectDetailController";
 
@@ -95,9 +96,10 @@ async function exitProjectItemDetail(controller: ProjectDetailController, body: 
 }
 
 function ProjectDetailView({ controller }: ProjectDetailPageProps) {
+  const actionCount = controller.items.filter((item) => item.kind === "NEXT_ACTION" || item.kind === "CALENDAR").length;
   return (
     <>
-      <ListView title={controller.project?.title ?? "Project"} meta="Actions" viewIndex={1} active={controller.activeZone === "project-actions-list"} bodyClassName="list-pane__body--flush" className="inbox-pane inbox-pane--list">
+      <ListView title={controller.project?.title ?? "Project"} meta={formatProjectActionCount(actionCount)} viewIndex={1} active={controller.activeZone === "project-actions-list"} bodyClassName="list-pane__body--flush" className="inbox-pane inbox-pane--list">
         <ProjectActionBody controller={controller} />
       </ListView>
       <ListView title="Item Detail" viewIndex={2} active={controller.activeZone === "project-item-detail"} bodyClassName="list-pane__body--detail" className="inbox-pane inbox-pane--detail">
