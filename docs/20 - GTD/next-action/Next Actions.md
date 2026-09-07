@@ -20,6 +20,10 @@ During Inbox processing into a next action, pressing `t` in the Deadline field f
 
 When editing a next action with `E` then `d`, pressing `t` in the Deadline field fills the field with today's local date without saving until `Enter` is pressed.
 
+In that deadline edit field, `Delete` clears the date; `Enter` confirms removal of the deadline. This shortcut is scoped to the next-action attribute dialog. `Escape` returns to the attribute menu without saving.
+
+When editing energy or estimated time, clearing all digits and confirming with `Enter` saves zero, matching the defaults used during Inbox processing.
+
 | Shortcut | Scope | Action |
 | --- | --- | --- |
 | `d` | List | Delete selected next action. |
