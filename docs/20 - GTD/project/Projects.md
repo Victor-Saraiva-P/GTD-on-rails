@@ -44,6 +44,9 @@ Project stuff created from this page remains normal stuff and also appears in In
 | `p` | Project Actions View | Process selected project stuff into a next action or calendar item. |
 | `P` | Project Actions View or Detail | Associate selected project item to project. |
 | `gp` | Project Actions View or Detail | Open owner project detail page. |
+| `d` | Project Actions View or Detail | Delete selected project item. |
+| `u` | Project Actions View or Detail | Undo last deletion. |
+| `Ctrl+r` | Project Actions View or Detail | Redo last deletion. |
 | `Enter` | Project Actions View | Edit selected project item title. |
 | `l` | Project Actions View | Focus the selected project item detail/body. |
 | `j` | Project Actions View | Move selection to the next project item. |
