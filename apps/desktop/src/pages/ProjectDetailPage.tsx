@@ -15,11 +15,15 @@ import { ProjectActionsList } from "../features/projects/ProjectActionsList";
 import { ProjectAssociateDialog } from "../features/projects/ProjectAssociateDialog";
 import { useProjectAssociateDialog } from "../features/projects/useProjectAssociateDialog";
 import { formatProjectActionCount } from "../features/projects/types";
+import { openOwnerProject as triggerOpenOwnerProject } from "../features/projects/ownerProjectNavigation";
+import type { Project } from "../features/projects/types";
 import type { ProjectItem } from "../features/projects/projectItems";
 import type { ProjectDetailController } from "../features/projects/useProjectDetailController";
 
 type ProjectDetailPageProps = Readonly<{
   controller: ProjectDetailController;
+  openOwnerProject?: (projectId: string, projectTitle?: string | null) => void;
+  projects?: Project[];
 }>;
 
 const LazyMarkdownAssetComboDialog = lazy(async () => {
@@ -44,7 +48,25 @@ function canAssociateProjectItem(controller: ProjectDetailController): boolean {
   return canRunAction(controller) && Boolean(controller.selectedItem) && !controller.editingId && !controller.editingBodyId;
 }
 
-function buildBindings(controller: ProjectDetailController, openProcessing: () => void, openLink: () => void, openAsset: () => void, openAssociate: () => void): KeybindDefinition[] {
+function openOwnerProjectFromKeybind(
+  controller: ProjectDetailController,
+  openOwnerProject?: (projectId: string, projectTitle?: string | null) => void,
+  projects: Project[] = []
+) {
+  if (canAssociateProjectItem(controller)) {
+    triggerOpenOwnerProject(controller.selectedItem, openOwnerProject, projects);
+  }
+}
+
+function buildBindings(
+  controller: ProjectDetailController,
+  openProcessing: () => void,
+  openLink: () => void,
+  openAsset: () => void,
+  openAssociate: () => void,
+  openOwnerProject?: (projectId: string, projectTitle?: string | null) => void,
+  projects: Project[] = []
+): KeybindDefinition[] {
   return [
     projectDetailBinding("project-detail.create-stuff", "a", "Add project stuff", "project-actions-list", () => canRunAction(controller) && controller.createNewStuff()),
     projectDetailBinding("project-detail.edit-title", "Enter", "Edit selected title", "project-actions-list", () => canRunAction(controller) && controller.startTitleEdit()),
@@ -55,8 +77,10 @@ function buildBindings(controller: ProjectDetailController, openProcessing: () =
     projectDetailBinding("project-detail.open-detail", "l", "Open selected detail", "project-actions-list", () => canRunAction(controller) && controller.startBodyEdit()),
     projectDetailBinding("project-detail.process", "p", "Process selected stuff", "project-actions-list", () => openProjectProcessing(controller, openProcessing)),
     projectDetailBinding("project-detail.associate-list", "P", "Associate to project", "project-actions-list", () => canAssociateProjectItem(controller) && openAssociate()),
+    projectDetailBinding("project-detail.open-owner-project-list", "p", "Open owner project", "project-actions-list", () => openOwnerProjectFromKeybind(controller, openOwnerProject, projects), false, ["g", "p"]),
     projectDetailBinding("project-detail.which-key-list", "k", "Show available keybinds", "project-actions-list", () => undefined, true),
     projectDetailBinding("project-detail.associate-detail", "P", "Associate to project", "project-item-detail", () => canAssociateProjectItem(controller) && openAssociate()),
+    projectDetailBinding("project-detail.open-owner-project-detail", "p", "Open owner project", "project-item-detail", () => openOwnerProjectFromKeybind(controller, openOwnerProject, projects), false, ["g", "p"]),
     projectDetailBinding("project-detail.which-key-detail", "k", "Show available keybinds", "project-item-detail", () => undefined, true),
     ...buildFormattingBindings("project-detail", openLink, openAsset, "project-item-detail")
   ];
@@ -66,8 +90,19 @@ function openProjectProcessing(controller: ProjectDetailController, openProcessi
   if (controller.selectedItem?.kind === "STUFF") openProcessing();
 }
 
-function useProjectDetailBindings(controller: ProjectDetailController, openProcessing: () => void, openLink: () => void, openAsset: () => void, openAssociate: () => void) {
-  const bindings = useMemo(() => buildBindings(controller, openProcessing, openLink, openAsset, openAssociate), [controller, openProcessing, openLink, openAsset, openAssociate]);
+function useProjectDetailBindings(
+  controller: ProjectDetailController,
+  openProcessing: () => void,
+  openLink: () => void,
+  openAsset: () => void,
+  openAssociate: () => void,
+  openOwnerProject?: (projectId: string, projectTitle?: string | null) => void,
+  projects: Project[] = []
+) {
+  const bindings = useMemo(
+    () => buildBindings(controller, openProcessing, openLink, openAsset, openAssociate, openOwnerProject, projects),
+    [controller, openProcessing, openLink, openAsset, openAssociate, openOwnerProject, projects]
+  );
   useRegisterKeybinds(bindings);
 }
 
@@ -163,14 +198,14 @@ function ProjectDetailModals(props: ProjectDetailModalsProps) {
   );
 }
 
-export function ProjectDetailPage({ controller }: ProjectDetailPageProps) {
+export function ProjectDetailPage({ controller, openOwnerProject, projects = [] }: ProjectDetailPageProps) {
   const [isProcessingOpen, setIsProcessingOpen] = useState(false);
   const [isLinkOpen, setIsLinkOpen] = useState(false);
   const [isAssetOpen, setIsAssetOpen] = useState(false);
   const projectAssociate = useProjectAssociateDialog();
   useKeybindScreen("project-detail");
   useProjectDetailZone(controller);
-  useProjectDetailBindings(controller, () => setIsProcessingOpen(true), () => setIsLinkOpen(true), () => setIsAssetOpen(true), projectAssociate.open);
+  useProjectDetailBindings(controller, () => setIsProcessingOpen(true), () => setIsLinkOpen(true), () => setIsAssetOpen(true), projectAssociate.open, openOwnerProject, projects);
 
   return (
     <ListWorkspace theme={projectsListTheme} currentLabel={projectsListTheme.label} modeLabel={controller.vimMode ?? undefined}>

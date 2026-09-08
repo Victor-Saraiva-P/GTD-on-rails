@@ -10,6 +10,7 @@ type StuffResponse = {
   energy?: number | null;
   estimatedTime?: { hours: number; minutes: number } | null;
   contexts?: Array<{ id: string; name: string; iconUrl?: string }>;
+  projectId?: string | null;
   projectTitle?: string | null;
 };
 
@@ -227,6 +228,7 @@ function toStuff(item: StuffResponse): Stuff {
     contexts: item.contexts ?? [],
     status: item.status,
     createdAt: item.createdAt,
+    projectId: item.projectId ?? null,
     projectTitle: item.projectTitle ?? null
   };
 }

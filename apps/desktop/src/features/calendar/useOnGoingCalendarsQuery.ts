@@ -148,7 +148,7 @@ async function assignProjectAction(
   mutations.setIsUpdating(true);
   try {
     const result = await assignItemProject(item.id, projectId);
-    const updated: Calendar = { ...item, projectTitle: result.projectTitle ?? null };
+    const updated: Calendar = { ...item, projectId: result.projectId ?? projectId, projectTitle: result.projectTitle ?? null };
     state.setItems((items) => replaceCalendar(items, updated));
     completeCalendarMutation(state, poll);
     return updated;

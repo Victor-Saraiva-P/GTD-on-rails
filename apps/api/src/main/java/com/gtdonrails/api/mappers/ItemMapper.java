@@ -41,6 +41,7 @@ public class ItemMapper {
                 .sorted(Comparator.comparing(context -> context.getName().toLowerCase()))
                 .map(contextMapper::toResponse)
                 .toList(),
+            projectAssociationMapper.projectIdFor(item),
             projectAssociationMapper.titleFor(item)
         );
     }

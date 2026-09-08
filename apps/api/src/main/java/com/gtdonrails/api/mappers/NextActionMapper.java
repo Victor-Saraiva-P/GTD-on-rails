@@ -39,6 +39,7 @@ public class NextActionMapper {
             nextAction.getContexts().stream()
                 .map(contextMapper::toResponse)
                 .toList(),
+            projectAssociationMapper.projectIdFor(nextAction.getItem()),
             projectAssociationMapper.titleFor(nextAction.getItem())
         );
     }

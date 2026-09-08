@@ -14,10 +14,14 @@ import { OnGoingUnifiedList } from "../features/ongoing/OnGoingUnifiedList";
 import type { OnGoingItemSelection } from "../features/ongoing/combinedOnGoingState";
 import { ProjectAssociateDialog } from "../features/projects/ProjectAssociateDialog";
 import { useProjectAssociateDialog } from "../features/projects/useProjectAssociateDialog";
+import { openOwnerProject as triggerOpenOwnerProject } from "../features/projects/ownerProjectNavigation";
+import type { Project } from "../features/projects/types";
 
 type OnGoingNextActionsPageProps = Readonly<{
   controller: OnGoingWorkspaceController;
   selectNextAction: (id: string | null) => void;
+  openOwnerProject?: (projectId: string, projectTitle?: string | null) => void;
+  projects?: Project[];
 }>;
 
 const LazyMarkdownAssetComboDialog = lazy(async () => {
@@ -74,7 +78,24 @@ function openProjectAssociateFromKeybind(controller: OnGoingWorkspaceController,
   }
 }
 
-function actionBindings(controller: OnGoingWorkspaceController, setActiveScreen: (screen: ScreenId) => void, selectNextAction: (id: string | null) => void, openProjectAssociate: () => void): KeybindDefinition[] {
+function openOwnerProjectFromKeybind(
+  controller: OnGoingWorkspaceController,
+  openOwnerProject?: (projectId: string, projectTitle?: string | null) => void,
+  projects: Project[] = []
+) {
+  if (canEdit(controller)) {
+    triggerOpenOwnerProject(controller.selectedItem?.item, openOwnerProject, projects);
+  }
+}
+
+function actionBindings(
+  controller: OnGoingWorkspaceController,
+  setActiveScreen: (screen: ScreenId) => void,
+  selectNextAction: (id: string | null) => void,
+  openProjectAssociate: () => void,
+  openOwnerProject?: (projectId: string, projectTitle?: string | null) => void,
+  projects: Project[] = []
+): KeybindDefinition[] {
   const editable = canEdit(controller);
   const zone: FocusZoneId = "next-actions-list"; // We reuse this zone ID for the unified list for simplicity
 
@@ -83,6 +104,7 @@ function actionBindings(controller: OnGoingWorkspaceController, setActiveScreen:
     onGoingBinding(`ongoing.done.${zone}`, "x", "Mark as done", zone, () => runAsync(editable, controller.markAsDone, "Failed to mark on going item as done")),
     onGoingBinding(`ongoing.restore.${zone}`, "r", "Restore status", zone, () => runAsync(editable, () => restoreSelected(controller, selectNextAction, setActiveScreen), "Failed to restore on going item")),
     onGoingBinding(`ongoing.associate-project.${zone}`, "P", "Associate to project", zone, () => openProjectAssociateFromKeybind(controller, openProjectAssociate)),
+    onGoingBinding(`ongoing.open-owner-project.${zone}`, "p", "Open owner project", zone, () => openOwnerProjectFromKeybind(controller, openOwnerProject, projects), false, ["g", "p"]),
     onGoingBinding(`ongoing.move-first.${zone}`, "g", "Move to first item", zone, () => selectBoundary(controller, "first"), false, ["g", "g"]),
     onGoingBinding(`ongoing.move-last.${zone}`, "G", "Move to last item", zone, () => selectBoundary(controller, "last")),
     onGoingBinding(`ongoing.move-down.${zone}`, "j", "Move down", zone, () => moveSelection(controller, "next")),
@@ -92,11 +114,20 @@ function actionBindings(controller: OnGoingWorkspaceController, setActiveScreen:
   ];
 }
 
-function detailBindings(controller: OnGoingWorkspaceController, setActiveScreen: (screen: ScreenId) => void, openLink: () => void, openAsset: () => void, openProjectAssociate: () => void): KeybindDefinition[] {
+function detailBindings(
+  controller: OnGoingWorkspaceController,
+  setActiveScreen: (screen: ScreenId) => void,
+  openLink: () => void,
+  openAsset: () => void,
+  openProjectAssociate: () => void,
+  openOwnerProject?: (projectId: string, projectTitle?: string | null) => void,
+  projects: Project[] = []
+): KeybindDefinition[] {
   const zone: FocusZoneId = "next-actions-list";
   return [
     { ...onGoingBinding("ongoing.focus-active-panel", "h", "Focus list", "next-action-detail", () => controller.setActiveZone(zone)), ctrl: true },
     onGoingBinding("ongoing.associate-project-detail", "P", "Associate to project", "next-action-detail", () => openProjectAssociateFromKeybind(controller, openProjectAssociate)),
+    onGoingBinding("ongoing.open-owner-project-detail", "p", "Open owner project", "next-action-detail", () => openOwnerProjectFromKeybind(controller, openOwnerProject, projects), false, ["g", "p"]),
     onGoingBinding("ongoing.open-detail", "Enter", "Open full detail", zone, () => openDetailScreen(controller.selectedItem, setActiveScreen), true, ["Enter"]),
     onGoingBinding("ongoing.which-key-list", "k", "Show available keybinds", zone, () => undefined, true),
     onGoingBinding("ongoing.which-key-detail", "k", "Show available keybinds", "next-action-detail", () => undefined, true),
@@ -104,12 +135,20 @@ function detailBindings(controller: OnGoingWorkspaceController, setActiveScreen:
   ];
 }
 
-function useOnGoingBindings(controller: OnGoingWorkspaceController, selectNextAction: (id: string | null) => void, openLink: () => void, openAsset: () => void, openProjectAssociate: () => void) {
+function useOnGoingBindings(
+  controller: OnGoingWorkspaceController,
+  selectNextAction: (id: string | null) => void,
+  openLink: () => void,
+  openAsset: () => void,
+  openProjectAssociate: () => void,
+  openOwnerProject?: (projectId: string, projectTitle?: string | null) => void,
+  projects: Project[] = []
+) {
   const { setActiveScreen } = useActiveScreen();
   const bindings = useMemo(() => [
-    ...actionBindings(controller, setActiveScreen, selectNextAction, openProjectAssociate),
-    ...detailBindings(controller, setActiveScreen, openLink, openAsset, openProjectAssociate)
-  ], [setActiveScreen, selectNextAction, openLink, openAsset, openProjectAssociate, controller]);
+    ...actionBindings(controller, setActiveScreen, selectNextAction, openProjectAssociate, openOwnerProject, projects),
+    ...detailBindings(controller, setActiveScreen, openLink, openAsset, openProjectAssociate, openOwnerProject, projects)
+  ], [setActiveScreen, selectNextAction, openLink, openAsset, openProjectAssociate, openOwnerProject, projects, controller]);
   useRegisterKeybinds(bindings);
 }
 
@@ -208,12 +247,12 @@ function OnGoingViews({ controller }: Readonly<{ controller: OnGoingWorkspaceCon
   );
 }
 
-export function OnGoingNextActionsPage({ controller, selectNextAction }: OnGoingNextActionsPageProps) {
+export function OnGoingNextActionsPage({ controller, selectNextAction, openOwnerProject, projects = [] }: OnGoingNextActionsPageProps) {
   const dialogState = useOnGoingDialogState();
   useKeybindScreen("ongoing-next-actions");
   useOnGoingZone(controller);
   useActiveAssetPreload(controller);
-  useOnGoingBindings(controller, selectNextAction, dialogState.openLink, dialogState.openAsset, dialogState.projectAssociate.open);
+  useOnGoingBindings(controller, selectNextAction, dialogState.openLink, dialogState.openAsset, dialogState.projectAssociate.open, openOwnerProject, projects);
 
   return (
     <ListWorkspace theme={onGoingNextActionsListTheme} currentClassName="list-workspace__current--next-actions" currentLabel={<OnGoingFooterLabel />} modeLabel={controller.vimMode ?? undefined}>

@@ -25,6 +25,7 @@ public class StuffMapper {
             item.getBody(),
             item.getStatus().name(),
             item.getCreatedAt(),
+            projectAssociationMapper.projectIdFor(item),
             projectAssociationMapper.titleFor(item)
         );
     }

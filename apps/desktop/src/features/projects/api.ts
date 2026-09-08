@@ -116,8 +116,8 @@ function toProject(response: ProjectResponse): Project {
  *
  * @example await assignItemProject("item-1", "project-2")
  */
-export async function assignItemProject(itemId: string, projectId: string | null): Promise<{ projectTitle: string | null }> {
-  return await apiJson<{ projectTitle: string | null }>(`/items/${itemId}/project`, {
+export async function assignItemProject(itemId: string, projectId: string | null): Promise<{ projectId?: string | null; projectTitle: string | null }> {
+  return await apiJson<{ projectId?: string | null; projectTitle: string | null }>(`/items/${itemId}/project`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ projectId })

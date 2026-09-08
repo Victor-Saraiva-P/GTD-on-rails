@@ -33,6 +33,7 @@ public class CalendarMapper {
             calendar.getScheduledTime(),
             calendar.getStatus().name(),
             calendar.getSchedule(),
+            projectAssociationMapper.projectIdFor(calendar.getItem()),
             projectAssociationMapper.titleFor(calendar.getItem())
         );
     }

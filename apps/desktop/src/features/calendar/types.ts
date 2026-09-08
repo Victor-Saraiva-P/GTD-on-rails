@@ -29,6 +29,7 @@ export type CalendarResponse = {
   scheduledTime?: string | null;
   status: CalendarStatus;
   schedule?: ScheduleWindow;
+  projectId?: string | null;
   projectTitle?: string | null;
 };
 

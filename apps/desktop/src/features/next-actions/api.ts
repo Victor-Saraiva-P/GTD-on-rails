@@ -141,6 +141,7 @@ function toNextAction(item: NextActionResponse): NextAction {
     contexts: item.contexts ?? [],
     status: item.status,
     schedule: item.schedule,
+    projectId: item.projectId ?? null,
     projectTitle: item.projectTitle ?? null
   };
 }

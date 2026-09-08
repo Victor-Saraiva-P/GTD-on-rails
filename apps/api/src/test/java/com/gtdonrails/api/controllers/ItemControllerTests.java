@@ -137,10 +137,12 @@ class ItemControllerTests {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"projectId\":\"" + project.getItemId() + "\"}"))
             .andExpect(status().isOk())
+            .andExpect(jsonPath("$.projectId").value(project.getItemId().toString()))
             .andExpect(jsonPath("$.projectTitle").value("Alpha Project"));
 
         mockMvc.perform(delete("/items/{id}/project", item.getId()))
             .andExpect(status().isOk())
+            .andExpect(jsonPath("$.projectId").value(nullValue()))
             .andExpect(jsonPath("$.projectTitle").value(nullValue()));
     }
 }

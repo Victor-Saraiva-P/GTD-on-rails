@@ -20,6 +20,21 @@ public record NextActionResponseDto(
     String status,
     ScheduleWindow schedule,
     List<ContextResponseDto> contexts,
+    UUID projectId,
     String projectTitle
 ) {
+    public NextActionResponseDto(
+        UUID id,
+        String title,
+        ItemBody body,
+        BigDecimal energy,
+        Duration estimatedTime,
+        LocalDate deadline,
+        String status,
+        ScheduleWindow schedule,
+        List<ContextResponseDto> contexts,
+        String projectTitle
+    ) {
+        this(id, title, body, energy, estimatedTime, deadline, status, schedule, contexts, null, projectTitle);
+    }
 }

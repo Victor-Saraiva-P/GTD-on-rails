@@ -17,6 +17,20 @@ public record ItemResponseDto(
     String status,
     Instant createdAt,
     List<ContextResponseDto> contexts,
+    UUID projectId,
     String projectTitle
 ) {
+    public ItemResponseDto(
+        UUID id,
+        String title,
+        ItemBody body,
+        BigDecimal energy,
+        ItemTimeDto estimatedTime,
+        String status,
+        Instant createdAt,
+        List<ContextResponseDto> contexts,
+        String projectTitle
+    ) {
+        this(id, title, body, energy, estimatedTime, status, createdAt, contexts, null, projectTitle);
+    }
 }

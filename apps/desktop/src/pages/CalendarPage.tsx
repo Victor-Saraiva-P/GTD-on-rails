@@ -16,10 +16,13 @@ import { getMondayForOffset } from "../features/calendar/calendarDateUtils";
 import { activePanelZone, buildCalendarKeybinds } from "../features/calendar/calendarKeybinds";
 import { ProjectAssociateDialog } from "../features/projects/ProjectAssociateDialog";
 import { useProjectAssociateDialog } from "../features/projects/useProjectAssociateDialog";
+import type { Project } from "../features/projects/types";
 
 type CalendarPageProps = Readonly<{
   controller: CalendarWorkspaceController;
   selectOnGoingCalendar: (id: string) => void;
+  openOwnerProject?: (projectId: string, projectTitle?: string | null) => void;
+  projects?: Project[];
 }>;
 
 type CalendarControllerProps = Readonly<{
@@ -42,7 +45,9 @@ function useCalendarBindings(
   openAsset: () => void,
   openScheduleEdit: () => void,
   selectOnGoingCalendar: (id: string) => void,
-  openProjectAssociate: () => void
+  openProjectAssociate: () => void,
+  openOwnerProject?: (projectId: string, projectTitle?: string | null) => void,
+  projects: Project[] = []
 ): void {
   const { setActiveScreen } = useActiveScreen();
   const bindings = useMemo(
@@ -54,9 +59,11 @@ function useCalendarBindings(
         selectOnGoingCalendar,
         openLink,
         openAsset,
-        openProjectAssociate
+        openProjectAssociate,
+        openOwnerProject,
+        projects
       ),
-    [controller, setActiveScreen, openScheduleEdit, selectOnGoingCalendar, openLink, openAsset, openProjectAssociate]
+    [controller, setActiveScreen, openScheduleEdit, selectOnGoingCalendar, openLink, openAsset, openProjectAssociate, openOwnerProject, projects]
   );
   useRegisterKeybinds(bindings);
 }
@@ -297,7 +304,7 @@ function CalendarViews({ controller }: CalendarControllerProps) {
  *
  * @example <CalendarPage controller={controller} />
  */
-export function CalendarPage({ controller, selectOnGoingCalendar }: CalendarPageProps) {
+export function CalendarPage({ controller, selectOnGoingCalendar, openOwnerProject, projects = [] }: CalendarPageProps) {
   const [isLinkOpen, setIsLinkOpen] = useState(false);
   const [isAssetOpen, setIsAssetOpen] = useState(false);
   const [isScheduleEditOpen, setIsScheduleEditOpen] = useState(false);
@@ -308,7 +315,7 @@ export function CalendarPage({ controller, selectOnGoingCalendar }: CalendarPage
   useKeybindScreen("calendars");
   useCalendarZone(controller);
   useCalendarAssetPreload(controller);
-  useCalendarBindings(controller, openLink, openAsset, openScheduleEdit, selectOnGoingCalendar, projectAssociate.open);
+  useCalendarBindings(controller, openLink, openAsset, openScheduleEdit, selectOnGoingCalendar, projectAssociate.open, openOwnerProject, projects);
 
   return (
     <ListWorkspace theme={calendarWorkspaceTheme(controller.activeSubview)} currentLabel="Calendars" modeLabel={controller.vimMode ?? undefined}>

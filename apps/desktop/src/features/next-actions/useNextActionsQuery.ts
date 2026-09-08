@@ -193,7 +193,7 @@ async function assignProjectAction(
   mutations.setIsUpdating(true);
   try {
     const result = await assignItemProject(item.id, projectId);
-    const updated: NextAction = { ...item, projectTitle: result.projectTitle ?? null };
+    const updated: NextAction = { ...item, projectId: result.projectId ?? projectId, projectTitle: result.projectTitle ?? null };
     state.setItems((items) => replaceItem(items, updated));
     completeMutation(state, poll);
     return updated;
