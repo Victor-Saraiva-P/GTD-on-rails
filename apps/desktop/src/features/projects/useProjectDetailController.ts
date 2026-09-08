@@ -5,8 +5,10 @@ import { isSameBody } from "../inbox/types";
 import { useActiveZone } from "../keybinds/hooks";
 import { assignItemProject } from "./api";
 import type { Project } from "./types";
-import { createProjectStuff, fetchProjectActions, processProjectStuff, processProjectStuffToCalendar, updateProjectItemBody, updateProjectItemTitle, type ProjectItem } from "./projectItems";
+import { createProjectStuff, deleteProjectItem, fetchProjectActions, processProjectStuff, processProjectStuffToCalendar, restoreProjectItem, updateProjectItemBody, updateProjectItemTitle, type ProjectItem } from "./projectItems";
 import { projectItemsWithDraft } from "./projectDetailItems";
+import { useUndoRedoHistory } from "../history/useUndoRedoHistory";
+import { deleteProjectItemAction, executeProjectItemUndo, executeProjectItemRedo } from "./projectDetailItemActions";
 
 const DRAFT_PROJECT_ITEM_ID = "__draft_project_item__";
 
@@ -67,8 +69,10 @@ export function useProjectDetailController(project: Project | null) {
   const selection = useProjectItemSelection(items);
   const edit = useProjectDetailEditState();
   const zone = useActiveZone();
+  const history = useUndoRedoHistory<ProjectItem>();
+  const [isDeleting, setIsDeleting] = useState(false);
   useProjectSelectionPruning(items, selection, edit);
-  return buildProjectDetailController(project, query, selection, edit, zone, draft, setDraft);
+  return buildProjectDetailController(project, query, selection, edit, zone, draft, setDraft, history, isDeleting, setIsDeleting);
 }
 
 function useProjectSelectionPruning(items: ProjectItem[], selection: ReturnType<typeof useProjectItemSelection>, edit: ReturnType<typeof useProjectDetailEditState>) {
@@ -77,8 +81,118 @@ function useProjectSelectionPruning(items: ProjectItem[], selection: ReturnType<
   useEffect(() => { if (edit.editingId && !items.some((item) => item.id === edit.editingId)) clearTitleEdit(edit); }, [edit.editingId, items]);
 }
 
-function buildProjectDetailController(project: Project | null, query: ReturnType<typeof useProjectActionsQuery>, selection: ReturnType<typeof useProjectItemSelection>, edit: ReturnType<typeof useProjectDetailEditState>, zone: ReturnType<typeof useActiveZone>, draft: ProjectItem | null, setDraft: (item: ProjectItem | null) => void) {
-  return { activeZone: zone.activeZone, editingBodyId: edit.editingBodyId, editingId: edit.editingId, editingTitle: edit.editingTitle, editingTitleError: edit.editingTitleError, errorMessage: query.errorMessage, isLoading: query.isLoading, items: selection.items, project, selectedItem: selection.selectedItem, vimMode: edit.vimMode, setActiveZone: zone.setActiveZone, setEditingTitle: (value: string) => { edit.setEditingTitle(value); edit.setEditingTitleError(null); }, setVimMode: edit.setVimMode, reload: query.reload, selectFirst: selection.selectFirst, selectLast: selection.selectLast, selectNext: selection.selectNext, selectPrevious: selection.selectPrevious, setSelectedId: selection.setSelectedId, createNewStuff: () => createDraft(project, selection, edit, zone, setDraft), startTitleEdit: () => startTitleEdit(selection.selectedItem, edit), commitTitle: () => commitTitle(project, selection.selectedItem, edit, draft, setDraft, query.reload, selection.setSelectedId), cancelTitleEdit: () => clearTitleEdit(edit), startBodyEdit: () => startBodyEdit(selection.selectedItem, edit, zone), commitBody: (body: ItemBody) => commitBody(selection.selectedItem, edit, body, query.reload), autosaveBody: (body: ItemBody) => autosaveBody(selection.selectedItem, edit, body, query.reload), cancelBodyEdit: () => clearBodyEdit(edit), processSelectedStuff: (energy: number | null, minutes: number | null, contextIds: string[], deadline: string | null) => processSelectedStuff(selection.selectedItem, energy, minutes, contextIds, deadline, query.reload), processSelectedStuffToCalendar: (payload: CalendarConversionPayload) => processSelectedStuffToCalendar(selection.selectedItem, payload, query.reload), assignSelectedProject: (projectId: string | null) => assignSelectedProject(selection.selectedItem, projectId, query.reload) };
+function buildActionHandlers(
+  selection: ReturnType<typeof useProjectItemSelection>,
+  edit: ReturnType<typeof useProjectDetailEditState>,
+  zone: ReturnType<typeof useActiveZone>,
+  setDraft: (item: ProjectItem | null) => void,
+  history: ReturnType<typeof useUndoRedoHistory<ProjectItem>>,
+  query: ReturnType<typeof useProjectActionsQuery>,
+  setIsDeleting: (value: boolean) => void
+) {
+  return {
+    deleteSelected: () => performDelete(selection.selectedItem, edit, zone, setDraft, history, query.reload, setIsDeleting),
+    undo: () => performUndo(history, selection.setSelectedId, query.reload),
+    redo: () => performRedo(history, selection.setSelectedId, query.reload)
+  };
+}
+
+async function performDelete(
+  item: ProjectItem | null,
+  edit: ReturnType<typeof useProjectDetailEditState>,
+  zone: ReturnType<typeof useActiveZone>,
+  setDraft: (item: ProjectItem | null) => void,
+  history: ReturnType<typeof useUndoRedoHistory<ProjectItem>>,
+  reload: () => void,
+  setDeleting: (value: boolean) => void
+) {
+  setDeleting(true);
+  try {
+    await deleteProjectItemAction(
+      item,
+      DRAFT_PROJECT_ITEM_ID,
+      deleteProjectItem,
+      history.pushUndo,
+      () => { setDraft(null); clearTitleEdit(edit); },
+      () => { clearTitleEdit(edit); clearBodyEdit(edit); zone.setActiveZone("project-actions-list"); },
+      reload
+    );
+  } finally {
+    setDeleting(false);
+  }
+}
+
+async function performUndo(
+  history: ReturnType<typeof useUndoRedoHistory<ProjectItem>>,
+  setSelectedId: (id: string | null) => void,
+  reload: () => void
+) {
+  await executeProjectItemUndo(history.popUndo(), restoreProjectItem, deleteProjectItem, setSelectedId, reload);
+}
+
+async function performRedo(
+  history: ReturnType<typeof useUndoRedoHistory<ProjectItem>>,
+  setSelectedId: (id: string | null) => void,
+  reload: () => void
+) {
+  await executeProjectItemRedo(history.popRedo(), restoreProjectItem, deleteProjectItem, setSelectedId, reload);
+}
+
+function buildEditorHandlers(
+  project: Project | null,
+  selection: ReturnType<typeof useProjectItemSelection>,
+  edit: ReturnType<typeof useProjectDetailEditState>,
+  zone: ReturnType<typeof useActiveZone>,
+  draft: ProjectItem | null,
+  setDraft: (item: ProjectItem | null) => void,
+  query: ReturnType<typeof useProjectActionsQuery>
+) {
+  return {
+    createNewStuff: () => createDraft(project, selection, edit, zone, setDraft),
+    startTitleEdit: () => startTitleEdit(selection.selectedItem, edit),
+    commitTitle: () => commitTitle(project, selection.selectedItem, edit, draft, setDraft, query.reload, selection.setSelectedId),
+    cancelTitleEdit: () => clearTitleEdit(edit),
+    startBodyEdit: () => startBodyEdit(selection.selectedItem, edit, zone),
+    commitBody: (body: ItemBody) => commitBody(selection.selectedItem, edit, body, query.reload),
+    autosaveBody: (body: ItemBody) => autosaveBody(selection.selectedItem, edit, body, query.reload),
+    cancelBodyEdit: () => clearBodyEdit(edit)
+  };
+}
+
+function buildProcessHandlers(
+  selection: ReturnType<typeof useProjectItemSelection>,
+  query: ReturnType<typeof useProjectActionsQuery>
+) {
+  return {
+    processSelectedStuff: (energy: number | null, minutes: number | null, contextIds: string[], deadline: string | null) => processSelectedStuff(selection.selectedItem, energy, minutes, contextIds, deadline, query.reload),
+    processSelectedStuffToCalendar: (payload: CalendarConversionPayload) => processSelectedStuffToCalendar(selection.selectedItem, payload, query.reload),
+    assignSelectedProject: (projectId: string | null) => assignSelectedProject(selection.selectedItem, projectId, query.reload)
+  };
+}
+
+function buildProjectDetailController(
+  project: Project | null,
+  query: ReturnType<typeof useProjectActionsQuery>,
+  selection: ReturnType<typeof useProjectItemSelection>,
+  edit: ReturnType<typeof useProjectDetailEditState>,
+  zone: ReturnType<typeof useActiveZone>,
+  draft: ProjectItem | null,
+  setDraft: (item: ProjectItem | null) => void,
+  history: ReturnType<typeof useUndoRedoHistory<ProjectItem>>,
+  isDeleting: boolean,
+  setIsDeleting: (value: boolean) => void
+) {
+  const actions = buildActionHandlers(selection, edit, zone, setDraft, history, query, setIsDeleting);
+  const editor = buildEditorHandlers(project, selection, edit, zone, draft, setDraft, query);
+  const process = buildProcessHandlers(selection, query);
+  return {
+    activeZone: zone.activeZone, editingBodyId: edit.editingBodyId, editingId: edit.editingId, editingTitle: edit.editingTitle, editingTitleError: edit.editingTitleError,
+    errorMessage: query.errorMessage, hasRedo: history.hasRedo, hasUndo: history.hasUndo, isDeleting, isLoading: query.isLoading, items: selection.items,
+    project, selectedItem: selection.selectedItem, vimMode: edit.vimMode, setActiveZone: zone.setActiveZone,
+    setEditingTitle: (value: string) => { edit.setEditingTitle(value); edit.setEditingTitleError(null); }, setVimMode: edit.setVimMode, reload: query.reload,
+    selectFirst: selection.selectFirst, selectLast: selection.selectLast, selectNext: selection.selectNext, selectPrevious: selection.selectPrevious, setSelectedId: selection.setSelectedId,
+    ...editor, ...process, ...actions
+  };
 }
 
 function createDraft(project: Project | null, selection: ReturnType<typeof useProjectItemSelection>, edit: ReturnType<typeof useProjectDetailEditState>, zone: ReturnType<typeof useActiveZone>, setDraft: (item: ProjectItem | null) => void) {

@@ -41,11 +41,15 @@ function projectDetailBinding(id: string, key: string, description: string, zone
 }
 
 function canRunAction(controller: ProjectDetailController): boolean {
-  return !controller.isLoading && Boolean(controller.project);
+  return !controller.isLoading && !controller.isDeleting && Boolean(controller.project);
 }
 
-function canAssociateProjectItem(controller: ProjectDetailController): boolean {
+function canEditProjectItem(controller: ProjectDetailController): boolean {
   return canRunAction(controller) && Boolean(controller.selectedItem) && !controller.editingId && !controller.editingBodyId;
+}
+
+function canUndoProjectAction(controller: ProjectDetailController): boolean {
+  return canRunAction(controller) && !controller.editingId && !controller.editingBodyId;
 }
 
 function openOwnerProjectFromKeybind(
@@ -53,9 +57,45 @@ function openOwnerProjectFromKeybind(
   openOwnerProject?: (projectId: string, projectTitle?: string | null) => void,
   projects: Project[] = []
 ) {
-  if (canAssociateProjectItem(controller)) {
+  if (canEditProjectItem(controller)) {
     triggerOpenOwnerProject(controller.selectedItem, openOwnerProject, projects);
   }
+}
+
+function buildListNavigationBindings(controller: ProjectDetailController): KeybindDefinition[] {
+  return [
+    projectDetailBinding("project-detail.create-stuff", "a", "Add project stuff", "project-actions-list", () => canRunAction(controller) && controller.createNewStuff()),
+    projectDetailBinding("project-detail.edit-title", "Enter", "Edit selected title", "project-actions-list", () => canRunAction(controller) && controller.startTitleEdit()),
+    projectDetailBinding("project-detail.move-down", "j", "Move down", "project-actions-list", controller.selectNext),
+    projectDetailBinding("project-detail.move-up", "k", "Move up", "project-actions-list", controller.selectPrevious),
+    projectDetailBinding("project-detail.move-first", "g", "Move to first item", "project-actions-list", controller.selectFirst, false, ["g", "g"]),
+    projectDetailBinding("project-detail.move-last", "G", "Move to last item", "project-actions-list", controller.selectLast),
+    projectDetailBinding("project-detail.open-detail", "l", "Open selected detail", "project-actions-list", () => canRunAction(controller) && controller.startBodyEdit()),
+    projectDetailBinding("project-detail.which-key-list", "k", "Show available keybinds", "project-actions-list", () => undefined, true)
+  ];
+}
+
+function buildItemActionBindings(
+  controller: ProjectDetailController,
+  openProcessing: () => void,
+  openAssociate: () => void,
+  openOwnerProject?: (projectId: string, projectTitle?: string | null) => void,
+  projects: Project[] = []
+): KeybindDefinition[] {
+  return [
+    projectDetailBinding("project-detail.process", "p", "Process selected stuff", "project-actions-list", () => openProjectProcessing(controller, openProcessing)),
+    projectDetailBinding("project-detail.associate-list", "P", "Associate to project", "project-actions-list", () => canEditProjectItem(controller) && openAssociate()),
+    projectDetailBinding("project-detail.associate-detail", "P", "Associate to project", "project-item-detail", () => canEditProjectItem(controller) && openAssociate()),
+    projectDetailBinding("project-detail.open-owner-project-list", "p", "Open owner project", "project-actions-list", () => openOwnerProjectFromKeybind(controller, openOwnerProject, projects), false, ["g", "p"]),
+    projectDetailBinding("project-detail.open-owner-project-detail", "p", "Open owner project", "project-item-detail", () => openOwnerProjectFromKeybind(controller, openOwnerProject, projects), false, ["g", "p"]),
+    projectDetailBinding("project-detail.delete-list", "d", "Delete selected item", "project-actions-list", () => canEditProjectItem(controller) && void controller.deleteSelected()),
+    projectDetailBinding("project-detail.delete-detail", "d", "Delete selected item", "project-item-detail", () => canEditProjectItem(controller) && void controller.deleteSelected()),
+    projectDetailBinding("project-detail.undo-list", "u", "Undo last deletion", "project-actions-list", () => canUndoProjectAction(controller) && void controller.undo()),
+    projectDetailBinding("project-detail.undo-detail", "u", "Undo last deletion", "project-item-detail", () => canUndoProjectAction(controller) && void controller.undo()),
+    { ...projectDetailBinding("project-detail.redo-list", "r", "Redo last action", "project-actions-list", () => canUndoProjectAction(controller) && void controller.redo()), ctrl: true },
+    { ...projectDetailBinding("project-detail.redo-detail", "r", "Redo last action", "project-item-detail", () => canUndoProjectAction(controller) && void controller.redo()), ctrl: true },
+    projectDetailBinding("project-detail.which-key-detail", "k", "Show available keybinds", "project-item-detail", () => undefined, true)
+  ];
 }
 
 function buildBindings(
@@ -68,20 +108,8 @@ function buildBindings(
   projects: Project[] = []
 ): KeybindDefinition[] {
   return [
-    projectDetailBinding("project-detail.create-stuff", "a", "Add project stuff", "project-actions-list", () => canRunAction(controller) && controller.createNewStuff()),
-    projectDetailBinding("project-detail.edit-title", "Enter", "Edit selected title", "project-actions-list", () => canRunAction(controller) && controller.startTitleEdit()),
-    projectDetailBinding("project-detail.move-down", "j", "Move down", "project-actions-list", controller.selectNext),
-    projectDetailBinding("project-detail.move-up", "k", "Move up", "project-actions-list", controller.selectPrevious),
-    projectDetailBinding("project-detail.move-first", "g", "Move to first item", "project-actions-list", controller.selectFirst, false, ["g", "g"]),
-    projectDetailBinding("project-detail.move-last", "G", "Move to last item", "project-actions-list", controller.selectLast),
-    projectDetailBinding("project-detail.open-detail", "l", "Open selected detail", "project-actions-list", () => canRunAction(controller) && controller.startBodyEdit()),
-    projectDetailBinding("project-detail.process", "p", "Process selected stuff", "project-actions-list", () => openProjectProcessing(controller, openProcessing)),
-    projectDetailBinding("project-detail.associate-list", "P", "Associate to project", "project-actions-list", () => canAssociateProjectItem(controller) && openAssociate()),
-    projectDetailBinding("project-detail.open-owner-project-list", "p", "Open owner project", "project-actions-list", () => openOwnerProjectFromKeybind(controller, openOwnerProject, projects), false, ["g", "p"]),
-    projectDetailBinding("project-detail.which-key-list", "k", "Show available keybinds", "project-actions-list", () => undefined, true),
-    projectDetailBinding("project-detail.associate-detail", "P", "Associate to project", "project-item-detail", () => canAssociateProjectItem(controller) && openAssociate()),
-    projectDetailBinding("project-detail.open-owner-project-detail", "p", "Open owner project", "project-item-detail", () => openOwnerProjectFromKeybind(controller, openOwnerProject, projects), false, ["g", "p"]),
-    projectDetailBinding("project-detail.which-key-detail", "k", "Show available keybinds", "project-item-detail", () => undefined, true),
+    ...buildListNavigationBindings(controller),
+    ...buildItemActionBindings(controller, openProcessing, openAssociate, openOwnerProject, projects),
     ...buildFormattingBindings("project-detail", openLink, openAsset, "project-item-detail")
   ];
 }
