@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test, { afterEach, describe, mock } from "node:test";
 
 import { assignItemProject, deleteProject, fetchDeletedProjects, fetchDoneProjects, fetchProjects, markProjectDone, patchProject, processStuffToProject, recoverProject, resetProjectStatus } from "../src/features/projects/api.ts";
-import { createProjectStuff, fetchProjectActions } from "../src/features/projects/projectItems.ts";
+import { createProjectStuff, deleteProjectItem, fetchProjectActions, restoreProjectItem } from "../src/features/projects/projectItems.ts";
 import { formatProjectActionCount, isProjectDead } from "../src/features/projects/types.ts";
 import type { Stuff } from "../src/features/inbox/types.ts";
 
@@ -189,6 +189,26 @@ describe("projects API", () => {
     const result = await assignItemProject("item-1", null);
 
     assert.equal(result.projectTitle, null);
+  });
+
+  test("deleteProjectItem sends DELETE to /items/{id}", async () => {
+    globalThis.fetch = mock.fn(async (input, init) => {
+      assert.ok(input.toString().endsWith("/items/item-1"));
+      assert.equal(init?.method, "DELETE");
+      return new Response(null, { status: 204 });
+    });
+
+    await deleteProjectItem("item-1");
+  });
+
+  test("restoreProjectItem sends POST to /items/{id}/restore", async () => {
+    globalThis.fetch = mock.fn(async (input, init) => {
+      assert.ok(input.toString().endsWith("/items/item-1/restore"));
+      assert.equal(init?.method, "POST");
+      return new Response(null, { status: 204 });
+    });
+
+    await restoreProjectItem("item-1");
   });
 
   test("formatProjectActionCount formats singular and plural", () => {
