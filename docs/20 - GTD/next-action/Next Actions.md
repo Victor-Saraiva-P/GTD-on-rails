@@ -32,6 +32,7 @@ When editing energy or estimated time, clearing all digits and confirming with `
 | `C` | List | Clear current availability. |
 | `E` | List or detail | Edit next action attributes. |
 | `P` | List or detail | Associate selected next action to project. |
+| `gp` | List or detail | Open owner project detail page. |
 | `o` | List | Mark selected next action as on going and open its detail. |
 | `O` | List or detail | Cycle ordering. |
 | `u` | List or detail | Undo last deletion. |
