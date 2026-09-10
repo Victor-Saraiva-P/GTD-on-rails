@@ -16,7 +16,7 @@ public class CalendarMapper {
     }
 
     public CalendarMapper() {
-        this(new ProjectAssociationMapper(null));
+        this(new ProjectAssociationMapper());
     }
 
     /**

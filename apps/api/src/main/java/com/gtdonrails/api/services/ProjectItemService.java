@@ -41,16 +41,14 @@ public class ProjectItemService {
     private final ItemMapper itemMapper;
     private final CacheInvalidationService cacheInvalidationService;
     private final AfterCommitExecutor afterCommitExecutor;
+    private final jakarta.persistence.EntityManager entityManager;
 
     public ProjectItemService(
-        ProjectRepository projectRepository,
-        ProjectItemRepository projectItemRepository,
-        ItemRepository itemRepository,
-        ItemTextNormalizer itemTextNormalizer,
-        ContextMapper contextMapper,
-        ItemMapper itemMapper,
-        CacheInvalidationService cacheInvalidationService,
-        AfterCommitExecutor afterCommitExecutor
+        ProjectRepository projectRepository, ProjectItemRepository projectItemRepository,
+        ItemRepository itemRepository, ItemTextNormalizer itemTextNormalizer,
+        ContextMapper contextMapper, ItemMapper itemMapper,
+        CacheInvalidationService cacheInvalidationService, AfterCommitExecutor afterCommitExecutor,
+        jakarta.persistence.EntityManager entityManager
     ) {
         this.projectRepository = projectRepository;
         this.projectItemRepository = projectItemRepository;
@@ -60,6 +58,7 @@ public class ProjectItemService {
         this.itemMapper = itemMapper;
         this.cacheInvalidationService = cacheInvalidationService;
         this.afterCommitExecutor = afterCommitExecutor;
+        this.entityManager = entityManager;
     }
 
     /**
@@ -86,12 +85,14 @@ public class ProjectItemService {
     @Transactional
     public ItemResponseDto assignProject(UUID itemId, UUID projectId) {
         Item item = itemRepository.findByIdAndDeletedAtIsNull(itemId)
-            .orElseThrow(() -> new ItemNotFoundException("item " + itemId + " not found"));
+            .orElseThrow(() -> new ItemNotFoundException("item ID '" + itemId + "' not found; expected existing active item UUID"));
         projectItemRepository.deleteByItemId(itemId);
         if (projectId != null) {
             Project project = findActiveProject(projectId);
             projectItemRepository.insertProjectItem(project.getItemId(), itemId);
         }
+        entityManager.flush();
+        entityManager.refresh(item);
         afterCommitExecutor.run(cacheInvalidationService::evictItemMutation);
         return itemMapper.toResponse(item);
     }
@@ -111,13 +112,18 @@ public class ProjectItemService {
             .toList();
     }
 
+    /**
+     * Constructs the URI pointing to a created project item within inbox.
+     *
+     * <p>Example: {@code projectItemService.inboxLocation(response)}.</p>
+     */
     public URI inboxLocation(ProjectItemResponseDto response) {
         return URI.create("/inbox/" + response.id());
     }
 
     private Project findActiveProject(UUID projectId) {
         return projectRepository.findByItemIdAndItem_DeletedAtIsNull(projectId)
-            .orElseThrow(() -> new ItemNotFoundException("project " + projectId + " not found"));
+            .orElseThrow(() -> new ItemNotFoundException("project ID '" + projectId + "' not found; expected existing active project UUID"));
     }
 
     private Comparator<ProjectItem> projectActionOrdering() {

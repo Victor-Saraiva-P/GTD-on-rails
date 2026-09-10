@@ -104,7 +104,7 @@ function actionBindings(
     onGoingBinding(`ongoing.done.${zone}`, "x", "Mark as done", zone, () => runAsync(editable, controller.markAsDone, "Failed to mark on going item as done")),
     onGoingBinding(`ongoing.restore.${zone}`, "r", "Restore status", zone, () => runAsync(editable, () => restoreSelected(controller, selectNextAction, setActiveScreen), "Failed to restore on going item")),
     onGoingBinding(`ongoing.associate-project.${zone}`, "P", "Associate to project", zone, () => openProjectAssociateFromKeybind(controller, openProjectAssociate)),
-    onGoingBinding(`ongoing.open-owner-project.${zone}`, "p", "Open owner project", zone, () => openOwnerProjectFromKeybind(controller, openOwnerProject, projects), false, ["g", "p"]),
+    onGoingBinding(`ongoing.open-owner-project.${zone}`, "d", "Open owner project", zone, () => openOwnerProjectFromKeybind(controller, openOwnerProject, projects), false, ["g", "d"]),
     onGoingBinding(`ongoing.move-first.${zone}`, "g", "Move to first item", zone, () => selectBoundary(controller, "first"), false, ["g", "g"]),
     onGoingBinding(`ongoing.move-last.${zone}`, "G", "Move to last item", zone, () => selectBoundary(controller, "last")),
     onGoingBinding(`ongoing.move-down.${zone}`, "j", "Move down", zone, () => moveSelection(controller, "next")),
@@ -127,7 +127,7 @@ function detailBindings(
   return [
     { ...onGoingBinding("ongoing.focus-active-panel", "h", "Focus list", "next-action-detail", () => controller.setActiveZone(zone)), ctrl: true },
     onGoingBinding("ongoing.associate-project-detail", "P", "Associate to project", "next-action-detail", () => openProjectAssociateFromKeybind(controller, openProjectAssociate)),
-    onGoingBinding("ongoing.open-owner-project-detail", "p", "Open owner project", "next-action-detail", () => openOwnerProjectFromKeybind(controller, openOwnerProject, projects), false, ["g", "p"]),
+    onGoingBinding("ongoing.open-owner-project-detail", "d", "Open owner project", "next-action-detail", () => openOwnerProjectFromKeybind(controller, openOwnerProject, projects), false, ["g", "d"]),
     onGoingBinding("ongoing.open-detail", "Enter", "Open full detail", zone, () => openDetailScreen(controller.selectedItem, setActiveScreen), true, ["Enter"]),
     onGoingBinding("ongoing.which-key-list", "k", "Show available keybinds", zone, () => undefined, true),
     onGoingBinding("ongoing.which-key-detail", "k", "Show available keybinds", "next-action-detail", () => undefined, true),

@@ -1,7 +1,6 @@
 import type { KeyboardEvent } from "react";
 import { InlineTitleInput } from "../../components/InlineTitleInput";
 import { calendarItemIconText } from "../lists/listThemes";
-import { ProjectAssociationMarker } from "./ProjectAssociationMarker";
 import type { ProjectItem } from "./projectItems";
 
 type ProjectActionsListProps = Readonly<{
@@ -44,13 +43,12 @@ function EditingProjectAction(props: ProjectActionCardProps) {
   const commit = props.onCommitEditingAndContinue;
   return (
     <li className="tree-list__item">
-      <div className={`tree-entry tree-entry--active unified-item-entry${props.item.projectTitle ? " tree-entry--project-associated" : ""}`}>
+      <div className="tree-entry tree-entry--active unified-item-entry">
         <ProjectActionGlyph item={props.item} />
         <div className="tree-entry__edit">
           <InlineTitleInput initialValue={props.editingTitle} onBlur={props.onCommitEditing} onEditKeyDown={(event) => handleEditKeyDown(event, commit)} onValueChange={props.onEditingTitleChange} />
           {props.editingTitleError ? <p className="tree-entry__error">{props.editingTitleError}</p> : null}
         </div>
-        <ProjectAssociationMarker projectTitle={props.item.projectTitle} placement="list" />
       </div>
     </li>
   );
@@ -64,10 +62,9 @@ type ProjectActionCardProps = ProjectActionsListProps & Readonly<{
 function ReadOnlyProjectAction(props: ProjectActionCardProps) {
   return (
     <li className="tree-list__item">
-      <button type="button" className={`tree-entry unified-item-entry${props.selected ? " tree-entry--active" : ""}${props.item.projectTitle ? " tree-entry--project-associated" : ""}`} onClick={() => props.onSelect(props.item.id)} onDoubleClick={props.onStartEditing}>
+      <button type="button" className={`tree-entry unified-item-entry${props.selected ? " tree-entry--active" : ""}`} onClick={() => props.onSelect(props.item.id)} onDoubleClick={props.onStartEditing}>
         <ProjectActionGlyph item={props.item} />
         <span className="tree-entry__label">{props.item.title}</span>
-        <ProjectAssociationMarker projectTitle={props.item.projectTitle} placement="list" />
       </button>
     </li>
   );

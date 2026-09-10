@@ -62,6 +62,12 @@ function clearBodyEdit(edit: ReturnType<typeof useProjectDetailEditState>) {
   edit.setEditingBodyId(null); edit.setVimMode(null);
 }
 
+/**
+ * Manages state and operations for the project detail workspace.
+ *
+ * @example
+ * const controller = useProjectDetailController(project);
+ */
 export function useProjectDetailController(project: Project | null) {
   const query = useProjectActionsQuery(project?.id ?? null);
   const [draft, setDraft] = useState<ProjectItem | null>(null);
@@ -81,7 +87,7 @@ function useProjectSelectionPruning(items: ProjectItem[], selection: ReturnType<
   useEffect(() => { if (edit.editingId && !items.some((item) => item.id === edit.editingId)) clearTitleEdit(edit); }, [edit.editingId, items]);
 }
 
-function buildActionHandlers(
+function buildActionOperations(
   selection: ReturnType<typeof useProjectItemSelection>,
   edit: ReturnType<typeof useProjectDetailEditState>,
   zone: ReturnType<typeof useActiveZone>,
@@ -97,6 +103,13 @@ function buildActionHandlers(
   };
 }
 
+function makeDeleteCleanup(edit: ReturnType<typeof useProjectDetailEditState>, setDraft: (item: ProjectItem | null) => void, zone: ReturnType<typeof useActiveZone>) {
+  return {
+    onDraft: () => { setDraft(null); clearTitleEdit(edit); },
+    onItem: () => { clearTitleEdit(edit); clearBodyEdit(edit); zone.setActiveZone("project-actions-list"); }
+  };
+}
+
 async function performDelete(
   item: ProjectItem | null,
   edit: ReturnType<typeof useProjectDetailEditState>,
@@ -107,16 +120,9 @@ async function performDelete(
   setDeleting: (value: boolean) => void
 ) {
   setDeleting(true);
+  const cleanup = makeDeleteCleanup(edit, setDraft, zone);
   try {
-    await deleteProjectItemAction(
-      item,
-      DRAFT_PROJECT_ITEM_ID,
-      deleteProjectItem,
-      history.pushUndo,
-      () => { setDraft(null); clearTitleEdit(edit); },
-      () => { clearTitleEdit(edit); clearBodyEdit(edit); zone.setActiveZone("project-actions-list"); },
-      reload
-    );
+    await deleteProjectItemAction(item, DRAFT_PROJECT_ITEM_ID, deleteProjectItem, history.pushUndo, cleanup.onDraft, cleanup.onItem, reload);
   } finally {
     setDeleting(false);
   }
@@ -138,7 +144,7 @@ async function performRedo(
   await executeProjectItemRedo(history.popRedo(), restoreProjectItem, deleteProjectItem, setSelectedId, reload);
 }
 
-function buildEditorHandlers(
+function buildEditorOperations(
   project: Project | null,
   selection: ReturnType<typeof useProjectItemSelection>,
   edit: ReturnType<typeof useProjectDetailEditState>,
@@ -159,7 +165,7 @@ function buildEditorHandlers(
   };
 }
 
-function buildProcessHandlers(
+function buildProcessOperations(
   selection: ReturnType<typeof useProjectItemSelection>,
   query: ReturnType<typeof useProjectActionsQuery>
 ) {
@@ -167,6 +173,36 @@ function buildProcessHandlers(
     processSelectedStuff: (energy: number | null, minutes: number | null, contextIds: string[], deadline: string | null) => processSelectedStuff(selection.selectedItem, energy, minutes, contextIds, deadline, query.reload),
     processSelectedStuffToCalendar: (payload: CalendarConversionPayload) => processSelectedStuffToCalendar(selection.selectedItem, payload, query.reload),
     assignSelectedProject: (projectId: string | null) => assignSelectedProject(selection.selectedItem, projectId, query.reload)
+  };
+}
+
+function buildControllerState(
+  project: Project | null,
+  query: ReturnType<typeof useProjectActionsQuery>,
+  selection: ReturnType<typeof useProjectItemSelection>,
+  edit: ReturnType<typeof useProjectDetailEditState>,
+  zone: ReturnType<typeof useActiveZone>,
+  history: ReturnType<typeof useUndoRedoHistory<ProjectItem>>,
+  isDeleting: boolean
+) {
+  return {
+    activeZone: zone.activeZone, editingBodyId: edit.editingBodyId, editingId: edit.editingId, editingTitle: edit.editingTitle, editingTitleError: edit.editingTitleError,
+    errorMessage: query.errorMessage, hasRedo: history.hasRedo, hasUndo: history.hasUndo, isDeleting, isLoading: query.isLoading, items: selection.items,
+    project, selectedItem: selection.selectedItem, vimMode: edit.vimMode
+  };
+}
+
+function buildControllerMethods(
+  zone: ReturnType<typeof useActiveZone>,
+  query: ReturnType<typeof useProjectActionsQuery>,
+  edit: ReturnType<typeof useProjectDetailEditState>,
+  selection: ReturnType<typeof useProjectItemSelection>
+) {
+  return {
+    setActiveZone: zone.setActiveZone, reload: query.reload,
+    setEditingTitle: (value: string) => { edit.setEditingTitle(value); edit.setEditingTitleError(null); },
+    setVimMode: edit.setVimMode, selectFirst: selection.selectFirst, selectLast: selection.selectLast,
+    selectNext: selection.selectNext, selectPrevious: selection.selectPrevious, setSelectedId: selection.setSelectedId
   };
 }
 
@@ -182,17 +218,12 @@ function buildProjectDetailController(
   isDeleting: boolean,
   setIsDeleting: (value: boolean) => void
 ) {
-  const actions = buildActionHandlers(selection, edit, zone, setDraft, history, query, setIsDeleting);
-  const editor = buildEditorHandlers(project, selection, edit, zone, draft, setDraft, query);
-  const process = buildProcessHandlers(selection, query);
-  return {
-    activeZone: zone.activeZone, editingBodyId: edit.editingBodyId, editingId: edit.editingId, editingTitle: edit.editingTitle, editingTitleError: edit.editingTitleError,
-    errorMessage: query.errorMessage, hasRedo: history.hasRedo, hasUndo: history.hasUndo, isDeleting, isLoading: query.isLoading, items: selection.items,
-    project, selectedItem: selection.selectedItem, vimMode: edit.vimMode, setActiveZone: zone.setActiveZone,
-    setEditingTitle: (value: string) => { edit.setEditingTitle(value); edit.setEditingTitleError(null); }, setVimMode: edit.setVimMode, reload: query.reload,
-    selectFirst: selection.selectFirst, selectLast: selection.selectLast, selectNext: selection.selectNext, selectPrevious: selection.selectPrevious, setSelectedId: selection.setSelectedId,
-    ...editor, ...process, ...actions
-  };
+  const actions = buildActionOperations(selection, edit, zone, setDraft, history, query, setIsDeleting);
+  const editor = buildEditorOperations(project, selection, edit, zone, draft, setDraft, query);
+  const process = buildProcessOperations(selection, query);
+  const state = buildControllerState(project, query, selection, edit, zone, history, isDeleting);
+  const methods = buildControllerMethods(zone, query, edit, selection);
+  return { ...state, ...methods, ...editor, ...process, ...actions };
 }
 
 function createDraft(project: Project | null, selection: ReturnType<typeof useProjectItemSelection>, edit: ReturnType<typeof useProjectDetailEditState>, zone: ReturnType<typeof useActiveZone>, setDraft: (item: ProjectItem | null) => void) {

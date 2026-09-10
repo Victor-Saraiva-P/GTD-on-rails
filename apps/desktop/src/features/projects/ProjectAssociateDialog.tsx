@@ -42,14 +42,14 @@ function useProjectAssociateQuery(currentProjectTitle?: string | null) {
   return { filterText, focusedIndex, isLoading, projects, setFilterText, setFocusedIndex };
 }
 
-function handleProjectActionKey(key: string, onClose: () => void, confirm: () => void, unassign: () => void): boolean {
+function dispatchProjectActionKey(key: string, onClose: () => void, confirm: () => void, unassign: () => void): boolean {
   if (key === "Escape") { onClose(); return true; }
   if (key === "Enter") { confirm(); return true; }
   if (key === "Delete") { unassign(); return true; }
   return false;
 }
 
-function handleProjectKeyAction(
+function dispatchProjectKeyAction(
   event: ReactKeyboardEvent<HTMLElement>,
   onClose: () => void,
   confirm: () => void,
@@ -58,10 +58,10 @@ function handleProjectKeyAction(
   if (!["Escape", "Enter", "Delete"].includes(event.key)) return false;
   event.preventDefault();
   if (event.key === "Escape") event.stopPropagation();
-  return handleProjectActionKey(event.key, onClose, confirm, unassign);
+  return dispatchProjectActionKey(event.key, onClose, confirm, unassign);
 }
 
-function handleProjectNavigationKey(
+function dispatchProjectNavigationKey(
   event: ReactKeyboardEvent<HTMLElement>,
   setIndex: Dispatch<SetStateAction<number>>,
   totalOptions: number
@@ -127,6 +127,20 @@ type ProjectAssociateListProps = Readonly<{
   onHover: (index: number) => void;
 }>;
 
+function renderProjectItems(props: ProjectAssociateListProps) {
+  return props.filtered.map((proj, idx) => (
+    <ProjectAssociateListItem
+      key={proj.id}
+      project={proj}
+      index={idx}
+      focusedIndex={props.focusedIndex}
+      currentTitle={props.currentTitle}
+      onSelect={props.onSelect}
+      onHover={props.onHover}
+    />
+  ));
+}
+
 function ProjectAssociateList(props: ProjectAssociateListProps) {
   if (props.isLoading) {
     return <div className="processing-dialog__list-item processing-dialog__list-item--muted">Loading projects...</div>;
@@ -136,17 +150,7 @@ function ProjectAssociateList(props: ProjectAssociateListProps) {
   }
   return (
     <>
-      {props.filtered.map((proj, idx) => (
-        <ProjectAssociateListItem
-          key={proj.id}
-          project={proj}
-          index={idx}
-          focusedIndex={props.focusedIndex}
-          currentTitle={props.currentTitle}
-          onSelect={props.onSelect}
-          onHover={props.onHover}
-        />
-      ))}
+      {renderProjectItems(props)}
       {props.hasCurrentProject && (
         <ProjectAssociateRemoveOption
           focused={props.focusedIndex === props.filtered.length}
@@ -185,8 +189,11 @@ type ProjectAssociateDialogBodyProps = Readonly<{
   onSelect: (id: string | null) => void;
 }>;
 
+function projectAssociateHints(hasCurrentProject: boolean): string {
+  return `Arrows move | Enter selects${hasCurrentProject ? " | Del unassigns" : ""} | Esc cancels`;
+}
+
 function ProjectAssociateDialogBody(props: ProjectAssociateDialogBodyProps) {
-  const hints = `Arrows move | Enter selects${props.hasCurrentProject ? " | Del unassigns" : ""} | Esc cancels`;
   return (
     <div className="processing-dialog__content">
       <div className="processing-dialog__hint" style={{ marginBottom: 4 }}>Item: {props.item.title}</div>
@@ -202,7 +209,7 @@ function ProjectAssociateDialogBody(props: ProjectAssociateDialogBodyProps) {
           onHover={props.query.setFocusedIndex}
         />
       </div>
-      <div className="processing-dialog__hint">{hints}</div>
+      <div className="processing-dialog__hint">{projectAssociateHints(props.hasCurrentProject)}</div>
     </div>
   );
 }
@@ -220,8 +227,8 @@ function useProjectAssociateKeyNavigation(
     if (outcome.selected) selectProject(outcome.projectId);
   };
   return (e: ReactKeyboardEvent<HTMLElement>) => {
-    if (handleProjectKeyAction(e, onClose, confirm, () => hasCurrentProject && selectProject(null))) return;
-    handleProjectNavigationKey(e, query.setFocusedIndex, totalOptions);
+    if (dispatchProjectKeyAction(e, onClose, confirm, () => hasCurrentProject && selectProject(null))) return;
+    dispatchProjectNavigationKey(e, query.setFocusedIndex, totalOptions);
   };
 }
 
@@ -235,14 +242,13 @@ function ProjectAssociateDialogModal({ item, onClose, onAssociate }: Readonly<{
   const filtered = filterActiveProjects(query.projects, query.filterText);
   const hasCurrentProject = Boolean(item.projectTitle);
   useLayoutEffect(() => { inputRef.current?.focus(); }, [query.isLoading]);
-
-  const selectProject = (id: string | null) => { onAssociate(id); onClose(); };
-  const onKeyDown = useProjectAssociateKeyNavigation(query, filtered, hasCurrentProject, selectProject, onClose);
+  const select = (id: string | null) => { onAssociate(id); onClose(); };
+  const onKeyDown = useProjectAssociateKeyNavigation(query, filtered, hasCurrentProject, select, onClose);
 
   return (
     <dialog className="processing-dialog" aria-modal="true" aria-label="Associate to project" open onKeyDown={onKeyDown}>
       <div className="processing-dialog__title">Associate to Project</div>
-      <ProjectAssociateDialogBody item={item} inputRef={inputRef} query={query} filtered={filtered} hasCurrentProject={hasCurrentProject} onSelect={selectProject} />
+      <ProjectAssociateDialogBody item={item} inputRef={inputRef} query={query} filtered={filtered} hasCurrentProject={hasCurrentProject} onSelect={select} />
     </dialog>
   );
 }

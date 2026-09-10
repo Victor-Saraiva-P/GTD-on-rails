@@ -18,7 +18,7 @@ public class NextActionMapper {
     }
 
     public NextActionMapper(ContextMapper contextMapper) {
-        this(contextMapper, new ProjectAssociationMapper(null));
+        this(contextMapper, new ProjectAssociationMapper());
     }
 
     /**

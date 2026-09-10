@@ -61,6 +61,9 @@ public class Item extends AuditableEntity {
     @OneToOne(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true)
     private Project project;
 
+    @OneToOne(mappedBy = "item")
+    private ProjectItem projectItem;
+
     @OneToMany(mappedBy = "item", cascade = CascadeType.REMOVE, orphanRemoval = true)
     private Set<ItemAsset> assets = new HashSet<>();
 
@@ -113,6 +116,15 @@ public class Item extends AuditableEntity {
         if (project != null && project.getItem() != this) {
             project.setItem(this);
         }
+    }
+
+    /**
+     * Records the owning project link for this item.
+     *
+     * <p>Example: {@code item.setProjectItem(projectItem)}.</p>
+     */
+    public void setProjectItem(ProjectItem projectItem) {
+        this.projectItem = projectItem;
     }
 
 
