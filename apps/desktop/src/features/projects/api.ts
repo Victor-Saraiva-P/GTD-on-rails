@@ -8,6 +8,7 @@ type ProjectResponse = {
   deadline?: string | null;
   doneDate?: string | null;
   doneTime?: string | null;
+  actionCount?: number;
 };
 
 /**
@@ -100,5 +101,26 @@ export async function recoverProject(id: string): Promise<Project> {
 }
 
 function toProject(response: ProjectResponse): Project {
-  return { id: response.id, title: response.title, deadline: response.deadline ?? null, doneDate: response.doneDate ?? null, doneTime: response.doneTime ?? null };
+  return {
+    id: response.id,
+    title: response.title,
+    deadline: response.deadline ?? null,
+    doneDate: response.doneDate ?? null,
+    doneTime: response.doneTime ?? null,
+    actionCount: response.actionCount ?? 0
+  };
 }
+
+/**
+ * Assigns or unassigns an active project for an item.
+ *
+ * @example await assignItemProject("item-1", "project-2")
+ */
+export async function assignItemProject(itemId: string, projectId: string | null): Promise<{ projectId?: string | null; projectTitle: string | null }> {
+  return await apiJson<{ projectId?: string | null; projectTitle: string | null }>(`/items/${itemId}/project`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ projectId })
+  });
+}
+

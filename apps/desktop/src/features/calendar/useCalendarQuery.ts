@@ -17,6 +17,7 @@ import {
   updateCalendarTitle
 } from "./api";
 import { formatCalendarDate, getMondayForOffset } from "./calendarDateUtils";
+import { assignItemProject } from "../projects/api";
 import {
   calendarListWithReplacement,
   calendarListWithoutItem,
@@ -241,8 +242,29 @@ function useCalendarMutations(
     recoverDeleted: (id: string) => mutateCalendarStatus(id, state, mutations, triggerSyncStatusPolling, recoverDeletedCalendar),
     updateBody: (item: Calendar, body: ItemBody) => updateCalendarItemBody(item, body, state, mutations, triggerSyncStatusPolling),
     updateSchedule: (item: Calendar, patch: CalendarPatch) => updateCalendarItemSchedule(item, patch, state, mutations, triggerSyncStatusPolling),
-    updateTitle: (item: Calendar, title: string) => updateCalendarItemTitle(item, title, state, mutations, triggerSyncStatusPolling)
+    updateTitle: (item: Calendar, title: string) => updateCalendarItemTitle(item, title, state, mutations, triggerSyncStatusPolling),
+    assignProject: (item: Calendar, projectId: string | null) => assignCalendarItemProject(item, projectId, state, mutations, triggerSyncStatusPolling)
   };
+}
+
+async function assignCalendarItemProject(
+  item: Calendar,
+  projectId: string | null,
+  state: CalendarDataState,
+  mutations: CalendarMutationState,
+  poll: () => void
+): Promise<Calendar> {
+  mutations.setIsUpdating(true);
+  try {
+    const result = await assignItemProject(item.id, projectId);
+    const updated: Calendar = { ...item, projectId: result.projectId ?? projectId, projectTitle: result.projectTitle ?? null };
+    replaceCalendar(state, updated);
+    state.setErrorMessage(null);
+    poll();
+    return updated;
+  } finally {
+    mutations.setIsUpdating(false);
+  }
 }
 
 export function useCalendarQuery(subview: CalendarSubview) {

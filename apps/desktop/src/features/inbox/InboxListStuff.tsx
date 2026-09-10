@@ -1,5 +1,6 @@
 import type { KeyboardEvent } from "react";
 import { InlineTitleInput } from "../../components/InlineTitleInput";
+import { ProjectAssociationMarker } from "../projects/ProjectAssociationMarker";
 import type { Stuff } from "./types";
 
 type InboxListStuffProps = Readonly<{
@@ -47,7 +48,7 @@ function EditingInboxListStuff(props: Readonly<Omit<InboxListStuffProps, "editin
 
   return (
     <li className="tree-list__item">
-      <div className="tree-entry tree-entry--active">
+      <div className={`tree-entry tree-entry--active${props.item.projectTitle ? " tree-entry--project-associated" : ""}`}>
         <span className="tree-entry__marker">{props.selected ? "●" : "○"}</span>
         <InboxStuffGlyph glyph={props.glyph} />
         <div className="tree-entry__edit">
@@ -59,6 +60,7 @@ function EditingInboxListStuff(props: Readonly<Omit<InboxListStuffProps, "editin
           />
           {props.editingTitleError ? <p className="tree-entry__error">{props.editingTitleError}</p> : null}
         </div>
+        <ProjectAssociationMarker projectTitle={props.item.projectTitle} placement="list" />
       </div>
     </li>
   );
@@ -92,13 +94,14 @@ function ReadOnlyInboxListStuff(props: InboxListStuffProps) {
     <li className="tree-list__item">
       <button
         type="button"
-        className={`tree-entry${selected ? " tree-entry--active" : ""}`}
+        className={`tree-entry${selected ? " tree-entry--active" : ""}${item.projectTitle ? " tree-entry--project-associated" : ""}`}
         onClick={() => onSelect(item.id)}
         onDoubleClick={() => handleSelectDoubleClick(props)}
       >
         <span className="tree-entry__marker">{selected ? "●" : "○"}</span>
         <InboxStuffGlyph glyph={props.glyph} />
         <span className="tree-entry__label">{item.title}</span>
+        <ProjectAssociationMarker projectTitle={item.projectTitle} placement="list" />
       </button>
     </li>
   );

@@ -195,8 +195,16 @@ export function resetNextActionsWorkspace(model: Model) {
   model.zone.setActiveZone("next-actions-list");
 }
 
+async function assignSelectedProjectAction(model: Model, projectId: string | null) {
+  const selectedItem = model.selection.selectedItem;
+  if (!selectedItem) return;
+  const updated = await model.query.assignProject(selectedItem, projectId);
+  model.selection.setSelectedId(updated.id);
+}
+
 export function useNextActionsActions(model: Model) {
   return {
+    assignSelectedProject: (projectId: string | null) => assignSelectedProjectAction(model, projectId),
     autosaveBody: (body: ItemBody) => autosaveBodyEdit(model, body),
     cancelBodyEdit: () => clearBodyEdit(model.edit),
     cancelTitleEdit: () => clearTitleEdit(model.edit),

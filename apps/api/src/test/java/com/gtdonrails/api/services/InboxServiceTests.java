@@ -224,6 +224,6 @@ class InboxServiceTests {
     }
 
     private StuffResponseDto stuffResponse(String title) {
-        return new StuffResponseDto(UUID.randomUUID(), title, ItemBody.empty(), "STUFF", Instant.now());
+        return new StuffResponseDto(UUID.randomUUID(), title, ItemBody.empty(), "STUFF", Instant.now(), null);
     }
 }

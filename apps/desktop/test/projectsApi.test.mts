@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import test, { afterEach, describe, mock } from "node:test";
 
-import { deleteProject, fetchDeletedProjects, fetchDoneProjects, fetchProjects, markProjectDone, patchProject, processStuffToProject, recoverProject, resetProjectStatus } from "../src/features/projects/api.ts";
-import { createProjectStuff, fetchProjectActions } from "../src/features/projects/projectItems.ts";
+import { assignItemProject, deleteProject, fetchDeletedProjects, fetchDoneProjects, fetchProjects, markProjectDone, patchProject, processStuffToProject, recoverProject, resetProjectStatus } from "../src/features/projects/api.ts";
+import { createProjectStuff, deleteProjectItem, fetchProjectActions, restoreProjectItem } from "../src/features/projects/projectItems.ts";
+import { formatProjectActionCount, isProjectDead } from "../src/features/projects/types.ts";
 import type { Stuff } from "../src/features/inbox/types.ts";
 
 describe("projects API", () => {
@@ -15,34 +16,45 @@ describe("projects API", () => {
   test("fetchProjects loads project cards", async () => {
     globalThis.fetch = mock.fn(async (input) => {
       assert.ok(input.toString().endsWith("/projects"));
-      return new Response(JSON.stringify([{ id: "project-1", title: "Launch", deadline: "2028-02-29", doneDate: null, doneTime: null }]), { status: 200 });
+      return new Response(JSON.stringify([{ id: "project-1", title: "Launch", deadline: "2028-02-29", doneDate: null, doneTime: null, actionCount: 0 }]), { status: 200 });
     });
 
     const projects = await fetchProjects();
 
-    assert.deepEqual(projects, [{ id: "project-1", title: "Launch", deadline: "2028-02-29", doneDate: null, doneTime: null }]);
+    assert.deepEqual(projects, [{ id: "project-1", title: "Launch", deadline: "2028-02-29", doneDate: null, doneTime: null, actionCount: 0 }]);
+  });
+
+  test("fetchProjects preserves actionCount from API response", async () => {
+    globalThis.fetch = mock.fn(async (input) => {
+      assert.ok(input.toString().endsWith("/projects"));
+      return new Response(JSON.stringify([{ id: "project-1", title: "Launch", deadline: null, doneDate: null, doneTime: null, actionCount: 3 }]), { status: 200 });
+    });
+
+    const projects = await fetchProjects();
+
+    assert.equal(projects[0]?.actionCount, 3);
   });
 
   test("fetchDoneProjects loads completed project cards", async () => {
     globalThis.fetch = mock.fn(async (input) => {
       assert.ok(input.toString().endsWith("/projects/done"));
-      return new Response(JSON.stringify([{ id: "project-1", title: "Launch", deadline: null, doneDate: "2028-02-29", doneTime: "10:15:00" }]), { status: 200 });
+      return new Response(JSON.stringify([{ id: "project-1", title: "Launch", deadline: null, doneDate: "2028-02-29", doneTime: "10:15:00", actionCount: 0 }]), { status: 200 });
     });
 
     const projects = await fetchDoneProjects();
 
-    assert.deepEqual(projects, [{ id: "project-1", title: "Launch", deadline: null, doneDate: "2028-02-29", doneTime: "10:15:00" }]);
+    assert.deepEqual(projects, [{ id: "project-1", title: "Launch", deadline: null, doneDate: "2028-02-29", doneTime: "10:15:00", actionCount: 0 }]);
   });
 
   test("fetchDeletedProjects loads deleted project cards", async () => {
     globalThis.fetch = mock.fn(async (input) => {
       assert.ok(input.toString().endsWith("/projects/deleted"));
-      return new Response(JSON.stringify([{ id: "project-1", title: "Launch", deadline: null, doneDate: null, doneTime: null }]), { status: 200 });
+      return new Response(JSON.stringify([{ id: "project-1", title: "Launch", deadline: null, doneDate: null, doneTime: null, actionCount: 0 }]), { status: 200 });
     });
 
     const projects = await fetchDeletedProjects();
 
-    assert.deepEqual(projects, [{ id: "project-1", title: "Launch", deadline: null, doneDate: null, doneTime: null }]);
+    assert.deepEqual(projects, [{ id: "project-1", title: "Launch", deadline: null, doneDate: null, doneTime: null, actionCount: 0 }]);
   });
 
   test("processStuffToProject posts optional deadline", async () => {
@@ -151,6 +163,66 @@ describe("projects API", () => {
 
     assert.equal(item.projectId, "project-1");
     assert.equal(item.title, "Buy paste");
+  });
+
+  test("assignItemProject sends PUT with projectId", async () => {
+    globalThis.fetch = mock.fn(async (input, init) => {
+      assert.ok(input.toString().endsWith("/items/item-1/project"));
+      assert.equal(init?.method, "PUT");
+      assert.equal(init?.body, JSON.stringify({ projectId: "project-2" }));
+      return new Response(JSON.stringify({ projectTitle: "Project Two" }), { status: 200 });
+    });
+
+    const result = await assignItemProject("item-1", "project-2");
+
+    assert.equal(result.projectTitle, "Project Two");
+  });
+
+  test("assignItemProject unassigns project when null", async () => {
+    globalThis.fetch = mock.fn(async (input, init) => {
+      assert.ok(input.toString().endsWith("/items/item-1/project"));
+      assert.equal(init?.method, "PUT");
+      assert.equal(init?.body, JSON.stringify({ projectId: null }));
+      return new Response(JSON.stringify({ projectTitle: null }), { status: 200 });
+    });
+
+    const result = await assignItemProject("item-1", null);
+
+    assert.equal(result.projectTitle, null);
+  });
+
+  test("deleteProjectItem sends DELETE to /items/{id}", async () => {
+    globalThis.fetch = mock.fn(async (input, init) => {
+      assert.ok(input.toString().endsWith("/items/item-1"));
+      assert.equal(init?.method, "DELETE");
+      return new Response(null, { status: 204 });
+    });
+
+    await deleteProjectItem("item-1");
+  });
+
+  test("restoreProjectItem sends POST to /items/{id}/restore", async () => {
+    globalThis.fetch = mock.fn(async (input, init) => {
+      assert.ok(input.toString().endsWith("/items/item-1/restore"));
+      assert.equal(init?.method, "POST");
+      return new Response(null, { status: 204 });
+    });
+
+    await restoreProjectItem("item-1");
+  });
+
+  test("formatProjectActionCount formats singular and plural", () => {
+    assert.equal(formatProjectActionCount(0), "0 actions");
+    assert.equal(formatProjectActionCount(1), "1 action");
+    assert.equal(formatProjectActionCount(5), "5 actions");
+  });
+
+  test("isProjectDead identifies active projects without actions", () => {
+    assert.equal(isProjectDead({ id: "p1", title: "Active No Actions", actionCount: 0 }, "active"), true);
+    assert.equal(isProjectDead({ id: "p1", title: "Active With Actions", actionCount: 2 }, "active"), false);
+    assert.equal(isProjectDead({ id: "p1", title: "Completed With No Actions", actionCount: 0, doneDate: "2026-01-01" }, "active"), false);
+    assert.equal(isProjectDead({ id: "p1", title: "In Completed Subview", actionCount: 0 }, "completed"), false);
+    assert.equal(isProjectDead({ id: "p1", title: "In Deleted Subview", actionCount: 0 }, "deleted"), false);
   });
 });
 

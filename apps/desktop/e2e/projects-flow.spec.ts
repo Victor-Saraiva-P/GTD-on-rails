@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { convertStuffToProjectApi, createAndSelectInboxStuff, createStuffApi, openApp, resetTestData, uniqueLabel } from "./support/app";
+import { apiBaseUrl, convertStuffToProjectApi, createAndSelectInboxStuff, createStuffApi, openApp, resetTestData, uniqueLabel } from "./support/app";
 
 test.beforeEach(async ({ page, request }) => {
   await resetTestData(request);
@@ -53,6 +53,62 @@ test("moves down to the project card below", async ({ page, request }) => {
   await expect(firstCard).toHaveClass(/project-card--active/);
   await page.keyboard.press("j");
   await expect(rowBelowCard).toHaveClass(/project-card--active/);
+});
+
+test("shows the project association marker on the project action row", async ({ page, request }) => {
+  const projectTitle = uniqueLabel("Project marker");
+  const project = await createStuffApi(request, projectTitle);
+  await convertStuffToProjectApi(request, project.id);
+  const itemResponse = await request.post(`${apiBaseUrl}/projects/${project.id}/items/stuff`, { data: { title: "Stay rich" } });
+  expect(itemResponse.ok()).toBeTruthy();
+
+  await page.reload();
+  await page.keyboard.press("Space");
+  await page.keyboard.press("p");
+  const projectCard = page.getByRole("button", { name: projectTitle, exact: false });
+  await expect(projectCard).toBeVisible();
+  await projectCard.click();
+  await page.keyboard.press("Enter");
+
+  const marker = page.locator(".project-association-marker--list");
+  await expect(marker).toHaveText(`P${projectTitle}`);
+  await expect(marker.locator(".project-association-marker__glyph")).toHaveCSS("color", "rgb(134, 96, 239)");
+  await expect(marker.locator(".project-association-marker__title")).toHaveCSS("color", "rgb(138, 129, 124)");
+  const markerTop = await marker.evaluate((element) => element.getBoundingClientRect().top);
+  const actionTop = await marker.locator("xpath=../..").evaluate((element) => element.getBoundingClientRect().top);
+  expect(Math.abs(markerTop - actionTop)).toBeLessThan(10);
+});
+
+test("associates inbox stuff with an active project using P keybind and unassigns with Delete", async ({ page, request }) => {
+  const projectTitle = uniqueLabel("Project assign");
+  const stuffTitle = uniqueLabel("Inbox stuff assign");
+  const project = await createStuffApi(request, projectTitle);
+  await convertStuffToProjectApi(request, project.id);
+  await createStuffApi(request, stuffTitle);
+
+  await openApp(page);
+  const stuffButton = page.getByRole("button", { name: stuffTitle });
+  await expect(stuffButton).toBeVisible();
+  await stuffButton.click();
+
+  await page.keyboard.press("P");
+  const dialog = page.getByRole("dialog", { name: "Associate to project" });
+  await expect(dialog).toBeVisible();
+
+  const targetProjectOption = dialog.getByRole("button", { name: projectTitle, exact: false });
+  await expect(targetProjectOption).toBeVisible();
+  await targetProjectOption.click();
+
+  await expect(dialog).not.toBeVisible();
+  const marker = page.locator(".project-association-marker--list");
+  await expect(marker).toHaveText(`P${projectTitle}`);
+
+  await page.keyboard.press("P");
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press("Delete");
+
+  await expect(dialog).not.toBeVisible();
+  await expect(page.locator(".project-association-marker--list")).not.toBeVisible();
 });
 
 test("marks project done, edits it in completed projects, and restores it", async ({ page, request }) => {

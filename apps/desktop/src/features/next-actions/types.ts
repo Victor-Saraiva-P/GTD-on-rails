@@ -33,6 +33,8 @@ export type NextActionResponse = {
   status: string;
   schedule?: ScheduleWindow;
   contexts?: Array<{ id: string; name: string; iconUrl?: string }>;
+  projectId?: string | null;
+  projectTitle?: string | null;
 };
 
 /**

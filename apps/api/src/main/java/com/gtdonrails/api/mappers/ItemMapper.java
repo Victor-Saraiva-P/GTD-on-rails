@@ -13,9 +13,11 @@ import org.springframework.stereotype.Component;
 public class ItemMapper {
 
     private final ContextMapper contextMapper;
+    private final ProjectAssociationMapper projectAssociationMapper;
 
-    public ItemMapper(ContextMapper contextMapper) {
+    public ItemMapper(ContextMapper contextMapper, ProjectAssociationMapper projectAssociationMapper) {
         this.contextMapper = contextMapper;
+        this.projectAssociationMapper = projectAssociationMapper;
     }
 
     /**
@@ -38,7 +40,9 @@ public class ItemMapper {
                 .filter(context -> !context.isDeleted())
                 .sorted(Comparator.comparing(context -> context.getName().toLowerCase()))
                 .map(contextMapper::toResponse)
-                .toList()
+                .toList(),
+            projectAssociationMapper.projectIdFor(item),
+            projectAssociationMapper.titleFor(item)
         );
     }
 

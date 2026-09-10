@@ -61,6 +61,9 @@ public class Item extends AuditableEntity {
     @OneToOne(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true)
     private Project project;
 
+    @OneToOne(mappedBy = "item")
+    private ProjectItem projectItem;
+
     @OneToMany(mappedBy = "item", cascade = CascadeType.REMOVE, orphanRemoval = true)
     private Set<ItemAsset> assets = new HashSet<>();
 
@@ -114,6 +117,16 @@ public class Item extends AuditableEntity {
             project.setItem(this);
         }
     }
+
+    /**
+     * Records the owning project link for this item.
+     *
+     * <p>Example: {@code item.setProjectItem(projectItem)}.</p>
+     */
+    public void setProjectItem(ProjectItem projectItem) {
+        this.projectItem = projectItem;
+    }
+
 
     /**
      * Explicitly classifies this item as inbox stuff.

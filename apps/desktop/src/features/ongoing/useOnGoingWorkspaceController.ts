@@ -148,6 +148,16 @@ function selectOnGoingId(selection: OnGoingSelection, id: string | null) {
   selection.setPendingSelectedId(id);
 }
 
+async function assignSelectedProjectAction(model: OnGoingModel, projectId: string | null): Promise<void> {
+  const selected = model.selection.selectedItem;
+  if (!selected) return;
+  if (selected.type === "next-action") {
+    await model.query.nextActionsActions.assignProject(selected.item, projectId);
+  } else {
+    await model.query.calendarsActions.assignProject(selected.item, projectId);
+  }
+}
+
 export function useOnGoingWorkspaceController() {
   const query = useOnGoingUnifiedQuery();
   const selection = useOnGoingSelection(query.items);
@@ -199,6 +209,7 @@ export function useOnGoingWorkspaceController() {
     markAsDone: () => mutateSelected(model, "markAsDone"),
     restoreSelected: () => mutateSelected(model, "restoreSelected"),
     deleteSelected: () => mutateSelected(model, "deleteSelected"),
+    assignSelectedProject: (projectId: string | null) => assignSelectedProjectAction(model, projectId),
   };
 }
 

@@ -14,6 +14,20 @@ public record CalendarResponseDto(
     LocalDate scheduledDate,
     LocalTime scheduledTime,
     String status,
-    ScheduleWindow schedule
+    ScheduleWindow schedule,
+    UUID projectId,
+    String projectTitle
 ) {
+    public CalendarResponseDto(
+        UUID id,
+        String title,
+        ItemBody body,
+        LocalDate scheduledDate,
+        LocalTime scheduledTime,
+        String status,
+        ScheduleWindow schedule,
+        String projectTitle
+    ) {
+        this(id, title, body, scheduledDate, scheduledTime, status, schedule, null, projectTitle);
+    }
 }

@@ -37,6 +37,8 @@ These shortcuts are available in the Calendars workspace when a modal dialog or 
 | `e` | Edit the selected calendar scheduled date and optional time. |
 | `Enter` | Edit the selected calendar title in Today and Weekly list panels. |
 | `Space Enter` | Open the selected calendar full detail page. |
+| `P` | Associate the selected calendar to a project. |
+| `gd` | Open the owner project detail page of the selected calendar. |
 | `o` | Mark the selected Today Due or Weekly calendar as On Going and open its On Going calendar detail page. |
 | `H` | Move the Weekly view one week backward. |
 | `L` | Move the Weekly view one week forward. |
@@ -44,6 +46,14 @@ These shortcuts are available in the Calendars workspace when a modal dialog or 
 | `h` / `l` | Move Weekly focus to the previous or next day. |
 
 In the calendar schedule edit dialog opened with `e`, pressing `t` in the Scheduled date field fills the field with today's local date without saving until `Enter` is pressed.
+
+## Item Navigation
+
+These shortcuts are available on items associated with projects across Inbox, Next Actions, Ongoing Next Actions, Calendars, and Project Detail.
+
+| Shortcut | Action |
+| --- | --- |
+| `gd` | Navigate directly to the owner project detail page of the selected item. |
 
 ## Shared Body Formatting
 

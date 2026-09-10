@@ -140,6 +140,8 @@ function toNextAction(item: NextActionResponse): NextAction {
     deadline: item.deadline ?? null,
     contexts: item.contexts ?? [],
     status: item.status,
-    schedule: item.schedule
+    schedule: item.schedule,
+    projectId: item.projectId ?? null,
+    projectTitle: item.projectTitle ?? null
   };
 }

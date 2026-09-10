@@ -69,9 +69,9 @@ class ProjectControllerTests {
     void setUp() {
         mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).build();
         cacheInvalidationService.evictAll();
-        projectItemRepository.deleteAll();
-        projectRepository.deleteAll();
-        itemRepository.deleteAll();
+        projectItemRepository.deleteAllInBatch();
+        projectRepository.deleteAllInBatch();
+        itemRepository.deleteAllInBatch();
     }
 
     @Test
@@ -223,14 +223,50 @@ class ProjectControllerTests {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$", hasSize(3)))
             .andExpect(jsonPath("$[0].kind").value("STUFF"))
+            .andExpect(jsonPath("$[0].projectTitle").value("Replace CPU"))
             .andExpect(jsonPath("$[1].kind").value("CALENDAR"))
+            .andExpect(jsonPath("$[1].projectTitle").value("Replace CPU"))
             .andExpect(jsonPath("$[1].scheduledDate").value("2026-01-01"))
             .andExpect(jsonPath("$[2].kind").value("NEXT_ACTION"))
+            .andExpect(jsonPath("$[2].projectTitle").value("Replace CPU"))
             .andExpect(jsonPath("$[2].deadline").value("2026-02-01"))
             .andExpect(jsonPath("$[2].energy").value(4.5))
             .andExpect(jsonPath("$[2].estimatedTime").value("PT1H30M"))
             .andExpect(jsonPath("$[2].contexts", hasSize(1)))
             .andExpect(jsonPath("$[2].contexts[0].name").value("hardware"));
+    }
+
+    @Test
+    void listsProjectsWithActionCountExcludingStuff() throws Exception {
+        Project project = saveProject("Build keyboard");
+        Project emptyProject = saveProject("Empty outcome");
+        UUID nextActionId = createProjectStuff(project, "Lube switches");
+        UUID calendarId = createProjectStuff(project, "Soldering session");
+        createProjectStuff(project, "Buy solder wire");
+        convertToNextAction(nextActionId);
+        convertToCalendar(calendarId);
+
+        mockMvc.perform(get("/projects"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(2)))
+            .andExpect(jsonPath("$[0].id").value(project.getItemId().toString()))
+            .andExpect(jsonPath("$[0].actionCount").value(2))
+            .andExpect(jsonPath("$[1].id").value(emptyProject.getItemId().toString()))
+            .andExpect(jsonPath("$[1].actionCount").value(0));
+    }
+
+    private void convertToNextAction(UUID stuffId) throws Exception {
+        mockMvc.perform(post("/inbox/{id}/next-action", stuffId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"energy\":2,\"estimatedTime\":{\"hours\":1,\"minutes\":30},\"contextIds\":[]}"))
+            .andExpect(status().isNoContent());
+    }
+
+    private void convertToCalendar(UUID stuffId) throws Exception {
+        mockMvc.perform(post("/inbox/{id}/calendar", stuffId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"scheduledDate\":\"2026-03-01\"}"))
+            .andExpect(status().isNoContent());
     }
 
     private Project saveProject(String title) {

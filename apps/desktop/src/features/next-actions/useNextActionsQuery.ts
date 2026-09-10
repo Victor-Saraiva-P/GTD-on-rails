@@ -15,6 +15,7 @@ import {
   updateNextActionBody,
   updateNextActionTitle
 } from "./api";
+import { assignItemProject } from "../projects/api";
 
 type NextActionsQuery = ReturnType<typeof useNextActionsQuery>;
 export type NextActionsLoadState = ReturnType<typeof useNextActionsLoadState>;
@@ -130,7 +131,8 @@ export function useNextActionsMutations(state: NextActionsLoadState, mutations: 
     restoreStatus: (id: string) => optimisticRemoveAction(id, state, triggerSyncStatusPolling, resetNextActionStatus, mutations.setIsUpdating),
     restoreItem: (id: string) => restoreItem(id, mutations, reload, triggerSyncStatusPolling),
     updateBody: (item: NextAction, body: ItemBody) => updateBody(item, body, state, mutations, triggerSyncStatusPolling),
-    updateTitle: (item: NextAction, title: string) => updateTitle(item, title, state, mutations, triggerSyncStatusPolling)
+    updateTitle: (item: NextAction, title: string) => updateTitle(item, title, state, mutations, triggerSyncStatusPolling),
+    assignProject: (item: NextAction, projectId: string | null) => assignProjectAction(item, projectId, state, mutations, triggerSyncStatusPolling)
   };
 }
 
@@ -173,6 +175,25 @@ async function updateTitle(item: NextAction, title: string, state: NextActionsLo
   mutations.setIsUpdating(true);
   try {
     const updated = await updateNextActionTitle(item, title);
+    state.setItems((items) => replaceItem(items, updated));
+    completeMutation(state, poll);
+    return updated;
+  } finally {
+    mutations.setIsUpdating(false);
+  }
+}
+
+async function assignProjectAction(
+  item: NextAction,
+  projectId: string | null,
+  state: NextActionsLoadState,
+  mutations: NextActionsMutationState,
+  poll: () => void
+): Promise<NextAction> {
+  mutations.setIsUpdating(true);
+  try {
+    const result = await assignItemProject(item.id, projectId);
+    const updated: NextAction = { ...item, projectId: result.projectId ?? projectId, projectTitle: result.projectTitle ?? null };
     state.setItems((items) => replaceItem(items, updated));
     completeMutation(state, poll);
     return updated;

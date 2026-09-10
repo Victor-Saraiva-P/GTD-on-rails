@@ -11,12 +11,14 @@ import java.util.UUID;
 
 import com.gtdonrails.api.config.CacheNames;
 import com.gtdonrails.api.dtos.inbox.CreateStuffRequestDto;
+import com.gtdonrails.api.dtos.item.ItemResponseDto;
 import com.gtdonrails.api.dtos.project.ProjectItemResponseDto;
 import com.gtdonrails.api.entities.Item;
 import com.gtdonrails.api.entities.Project;
 import com.gtdonrails.api.entities.ProjectItem;
 import com.gtdonrails.api.enums.ItemStatus;
 import com.gtdonrails.api.exceptions.item.ItemNotFoundException;
+import com.gtdonrails.api.mappers.ItemMapper;
 import com.gtdonrails.api.normalizers.ItemTextNormalizer;
 import com.gtdonrails.api.repositories.ItemRepository;
 import com.gtdonrails.api.dtos.context.ContextResponseDto;
@@ -36,25 +38,27 @@ public class ProjectItemService {
     private final ItemRepository itemRepository;
     private final ItemTextNormalizer itemTextNormalizer;
     private final ContextMapper contextMapper;
+    private final ItemMapper itemMapper;
     private final CacheInvalidationService cacheInvalidationService;
     private final AfterCommitExecutor afterCommitExecutor;
+    private final jakarta.persistence.EntityManager entityManager;
 
     public ProjectItemService(
-        ProjectRepository projectRepository,
-        ProjectItemRepository projectItemRepository,
-        ItemRepository itemRepository,
-        ItemTextNormalizer itemTextNormalizer,
-        ContextMapper contextMapper,
-        CacheInvalidationService cacheInvalidationService,
-        AfterCommitExecutor afterCommitExecutor
+        ProjectRepository projectRepository, ProjectItemRepository projectItemRepository,
+        ItemRepository itemRepository, ItemTextNormalizer itemTextNormalizer,
+        ContextMapper contextMapper, ItemMapper itemMapper,
+        CacheInvalidationService cacheInvalidationService, AfterCommitExecutor afterCommitExecutor,
+        jakarta.persistence.EntityManager entityManager
     ) {
         this.projectRepository = projectRepository;
         this.projectItemRepository = projectItemRepository;
         this.itemRepository = itemRepository;
         this.itemTextNormalizer = itemTextNormalizer;
         this.contextMapper = contextMapper;
+        this.itemMapper = itemMapper;
         this.cacheInvalidationService = cacheInvalidationService;
         this.afterCommitExecutor = afterCommitExecutor;
+        this.entityManager = entityManager;
     }
 
     /**
@@ -74,6 +78,26 @@ public class ProjectItemService {
     }
 
     /**
+     * Associates or disassociates an active item with an active project.
+     *
+     * <p>Example: {@code projectItemService.assignProject(itemId, projectId)}.</p>
+     */
+    @Transactional
+    public ItemResponseDto assignProject(UUID itemId, UUID projectId) {
+        Item item = itemRepository.findByIdAndDeletedAtIsNull(itemId)
+            .orElseThrow(() -> new ItemNotFoundException("item ID '" + itemId + "' not found; expected existing active item UUID"));
+        projectItemRepository.deleteByItemId(itemId);
+        if (projectId != null) {
+            Project project = findActiveProject(projectId);
+            projectItemRepository.insertProjectItem(project.getItemId(), itemId);
+        }
+        entityManager.flush();
+        entityManager.refresh(item);
+        afterCommitExecutor.run(cacheInvalidationService::evictItemMutation);
+        return itemMapper.toResponse(item);
+    }
+
+    /**
      * Lists actionable or clarifiable items associated with one project.
      *
      * <p>Example: {@code projectItemService.listProjectActions(projectId)}.</p>
@@ -88,13 +112,18 @@ public class ProjectItemService {
             .toList();
     }
 
+    /**
+     * Constructs the URI pointing to a created project item within inbox.
+     *
+     * <p>Example: {@code projectItemService.inboxLocation(response)}.</p>
+     */
     public URI inboxLocation(ProjectItemResponseDto response) {
         return URI.create("/inbox/" + response.id());
     }
 
     private Project findActiveProject(UUID projectId) {
         return projectRepository.findByItemIdAndItem_DeletedAtIsNull(projectId)
-            .orElseThrow(() -> new ItemNotFoundException("project " + projectId + " not found"));
+            .orElseThrow(() -> new ItemNotFoundException("project ID '" + projectId + "' not found; expected existing active project UUID"));
     }
 
     private Comparator<ProjectItem> projectActionOrdering() {
@@ -153,6 +182,7 @@ public class ProjectItemService {
         Item item = projectItem.getItem();
         return new ProjectItemResponseDto(
             projectItem.getProject().getItemId(),
+            projectItem.getProject().getItem().getTitle().value(),
             item.getId(),
             item.getStatus().name(),
             item.getTitle().value(),

@@ -153,6 +153,8 @@ function toCalendar(item: CalendarResponse): Calendar {
     scheduledTime: item.scheduledTime ?? null,
     status: item.status,
     schedule: item.schedule,
-    createdAt: ""
+    createdAt: "",
+    projectId: item.projectId ?? null,
+    projectTitle: item.projectTitle ?? null
   };
 }

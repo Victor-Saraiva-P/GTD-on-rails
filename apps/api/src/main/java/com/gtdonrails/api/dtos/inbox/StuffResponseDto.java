@@ -10,6 +10,11 @@ public record StuffResponseDto(
     String title,
     ItemBody body,
     String status,
-    Instant createdAt
+    Instant createdAt,
+    UUID projectId,
+    String projectTitle
 ) {
+    public StuffResponseDto(UUID id, String title, ItemBody body, String status, Instant createdAt, String projectTitle) {
+        this(id, title, body, status, createdAt, null, projectTitle);
+    }
 }

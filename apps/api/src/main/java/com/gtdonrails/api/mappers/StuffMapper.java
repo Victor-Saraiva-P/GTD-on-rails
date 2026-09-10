@@ -7,6 +7,12 @@ import org.springframework.stereotype.Component;
 @Component
 public class StuffMapper {
 
+    private final ProjectAssociationMapper projectAssociationMapper;
+
+    public StuffMapper(ProjectAssociationMapper projectAssociationMapper) {
+        this.projectAssociationMapper = projectAssociationMapper;
+    }
+
     /**
      * Maps a stuff item into the inbox-specific API response.
      *
@@ -18,7 +24,9 @@ public class StuffMapper {
             item.getTitle().value(),
             item.getBody(),
             item.getStatus().name(),
-            item.getCreatedAt()
+            item.getCreatedAt(),
+            projectAssociationMapper.projectIdFor(item),
+            projectAssociationMapper.titleFor(item)
         );
     }
 }

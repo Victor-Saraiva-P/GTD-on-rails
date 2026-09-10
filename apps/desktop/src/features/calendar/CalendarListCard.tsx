@@ -3,6 +3,7 @@ import { InlineTitleInput } from "../../components/InlineTitleInput";
 import type { Calendar } from "./types";
 import { calendarItemIconText } from "../lists/listThemes";
 import { trimCalendarDisplayTime } from "./calendarDateUtils";
+import { ProjectAssociationMarker } from "../projects/ProjectAssociationMarker";
 
 type CalendarListCardProps = Readonly<{
   archiveStatus?: "deleted";
@@ -61,12 +62,13 @@ function EditingCalendarCard(props: Readonly<Omit<CalendarListCardProps, "editin
 
   return (
     <li className="tree-list__item">
-      <div className="tree-entry tree-entry--active calendar-item-entry">
+      <div className={`tree-entry tree-entry--active calendar-item-entry${props.item.projectTitle ? " calendar-item-entry--project-associated" : ""}`}>
         <CalendarGlyph archiveStatus={props.archiveStatus} status={props.item.status} />
         <div className="tree-entry__edit">
           <InlineTitleInput initialValue={props.editingTitle} onBlur={props.onCommitEditing} onEditKeyDown={handleKeyDown} onValueChange={props.onEditingTitleChange} />
           {props.editingTitleError ? <p className="tree-entry__error">{props.editingTitleError}</p> : null}
         </div>
+        <ProjectAssociationMarker projectTitle={props.item.projectTitle} placement="list" />
         {displayTime ? (
           <span className="calendar-entry__time">
             <span aria-hidden="true">⏱</span>
@@ -94,12 +96,13 @@ function ReadOnlyCalendarCard(props: CalendarListCardProps) {
     <li className="tree-list__item">
       <button
         type="button"
-        className={`tree-entry calendar-item-entry${selected ? " tree-entry--active" : ""}`}
+        className={`tree-entry calendar-item-entry${selected ? " tree-entry--active" : ""}${item.projectTitle ? " calendar-item-entry--project-associated" : ""}`}
         onClick={() => onSelect(item.id)}
         onDoubleClick={() => handleSelectDoubleClick(props)}
       >
         <CalendarGlyph archiveStatus={props.archiveStatus} status={item.status} />
         <span className="tree-entry__label">{item.title}</span>
+        <ProjectAssociationMarker projectTitle={item.projectTitle} placement="list" />
         {displayTime ? (
           <span className="calendar-entry__time">
             <span aria-hidden="true">⏱</span>

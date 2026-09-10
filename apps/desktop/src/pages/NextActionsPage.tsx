@@ -16,6 +16,10 @@ import { nextActionsListTheme } from "../features/lists/listThemes";
 import { CurrentAvailabilityDialog } from "../features/next-actions/CurrentAvailabilityDialog";
 import { NextActionEditDialog } from "../features/next-actions/NextActionEditDialog";
 import { NextActionsList } from "../features/next-actions/NextActionsList";
+import { ProjectAssociateDialog } from "../features/projects/ProjectAssociateDialog";
+import { useProjectAssociateDialog } from "../features/projects/useProjectAssociateDialog";
+import { openOwnerProject as triggerOpenOwnerProject } from "../features/projects/ownerProjectNavigation";
+import type { Project } from "../features/projects/types";
 import type { ContextItem } from "../features/contexts/types";
 import type { NextActionPatch } from "../features/next-actions/types";
 import type { NextActionsWorkspaceController } from "../features/next-actions/useNextActionsWorkspaceController";
@@ -23,6 +27,8 @@ import type { NextActionsWorkspaceController } from "../features/next-actions/us
 type NextActionsPageProps = Readonly<{
   controller: NextActionsWorkspaceController;
   selectOnGoingAction: (id: string | null) => void;
+  openOwnerProject?: (projectId: string, projectTitle?: string | null) => void;
+  projects?: Project[];
 }>;
 
 type NextActionControllerProps = Readonly<{
@@ -90,6 +96,22 @@ async function markAsOnGoingAndOpenDetail(
   setActiveScreen("ongoing-next-action-detail-page");
 }
 
+function openProjectAssociateFromKeybind(controller: NextActionsWorkspaceController, openProjectAssociate: () => void) {
+  if (canEditSelected(controller)) {
+    openProjectAssociate();
+  }
+}
+
+function openOwnerProjectFromKeybind(
+  controller: NextActionsWorkspaceController,
+  openOwnerProject?: (projectId: string, projectTitle?: string | null) => void,
+  projects: Project[] = []
+) {
+  if (canEditSelected(controller)) {
+    triggerOpenOwnerProject(controller.selectedItem, openOwnerProject, projects);
+  }
+}
+
 function buildNextActionBindings(
   controller: NextActionsWorkspaceController,
   setActiveScreen: (screen: ScreenId) => void,
@@ -98,7 +120,10 @@ function buildNextActionBindings(
   openAttrs: () => void,
   openLink: () => void,
   openAsset: () => void,
-  isAttrsOpen: boolean
+  openProjectAssociate: () => void,
+  isAttrsOpen: boolean,
+  openOwnerProject?: (projectId: string, projectTitle?: string | null) => void,
+  projects: Project[] = []
 ) {
   return [
     nextActionBinding("next-actions.switch-forward", "]", "Open completed next actions", "next-actions-list", () => switchNextActionsView(controller, setActiveScreen, "done-next-actions")),
@@ -113,6 +138,10 @@ function buildNextActionBindings(
     nextActionBinding("next-actions.clear-current-availability-list", "C", "Clear current availability", "next-actions-list", controller.resetCurrentAvailability),
     nextActionBinding("next-actions.attrs-list", "E", "Edit next action attributes", "next-actions-list", () => canEditSelected(controller) && openAttrs()),
     nextActionBinding("next-actions.attrs-detail", "E", "Edit next action attributes", "next-action-detail", () => canEditSelected(controller) && openAttrs()),
+    nextActionBinding("next-actions.associate-project-list", "P", "Associate to project", "next-actions-list", () => openProjectAssociateFromKeybind(controller, openProjectAssociate)),
+    nextActionBinding("next-actions.associate-project-detail", "P", "Associate to project", "next-action-detail", () => openProjectAssociateFromKeybind(controller, openProjectAssociate)),
+    nextActionBinding("next-actions.open-owner-project-list", "d", "Open owner project", "next-actions-list", () => openOwnerProjectFromKeybind(controller, openOwnerProject, projects), false, ["g", "d"]),
+    nextActionBinding("next-actions.open-owner-project-detail", "d", "Open owner project", "next-action-detail", () => openOwnerProjectFromKeybind(controller, openOwnerProject, projects), false, ["g", "d"]),
     nextActionBinding("next-actions.ongoing-list", "o", "Mark as on going", "next-actions-list", () => runAsync(canEditSelected(controller), () => markAsOnGoingAndOpenDetail(controller, selectOnGoingAction, setActiveScreen), "Failed to mark as on going")),
     nextActionBinding("next-actions.ongoing-detail", "o", "Mark as on going", "next-action-detail", () => runAsync(canEditSelected(controller), () => markAsOnGoingAndOpenDetail(controller, selectOnGoingAction, setActiveScreen), "Failed to mark as on going")),
     nextActionBinding("next-actions.order-list", "O", "Cycle ordering", "next-actions-list", controller.toggleOrder),
@@ -141,9 +170,36 @@ function buildNextActionBindings(
   ];
 }
 
-function useNextActionBindings(controller: NextActionsWorkspaceController, selectOnGoingAction: (id: string | null) => void, openCurrentAvailability: () => void, openAttrs: () => void, openLink: () => void, openAsset: () => void, isAttrsOpen: boolean) {
+function useNextActionBindings(
+  controller: NextActionsWorkspaceController,
+  selectOnGoingAction: (id: string | null) => void,
+  openCurrentAvailability: () => void,
+  openAttrs: () => void,
+  openLink: () => void,
+  openAsset: () => void,
+  openProjectAssociate: () => void,
+  isAttrsOpen: boolean,
+  openOwnerProject?: (projectId: string, projectTitle?: string | null) => void,
+  projects: Project[] = []
+) {
   const { setActiveScreen } = useActiveScreen();
-  const bindings = useMemo(() => buildNextActionBindings(controller, setActiveScreen, selectOnGoingAction, openCurrentAvailability, openAttrs, openLink, openAsset, isAttrsOpen), [controller, setActiveScreen, selectOnGoingAction, openCurrentAvailability, openAttrs, openLink, openAsset, isAttrsOpen]);
+  const bindings = useMemo(
+    () =>
+      buildNextActionBindings(
+        controller,
+        setActiveScreen,
+        selectOnGoingAction,
+        openCurrentAvailability,
+        openAttrs,
+        openLink,
+        openAsset,
+        openProjectAssociate,
+        isAttrsOpen,
+        openOwnerProject,
+        projects
+      ),
+    [controller, setActiveScreen, selectOnGoingAction, openCurrentAvailability, openAttrs, openLink, openAsset, openProjectAssociate, isAttrsOpen, openOwnerProject, projects]
+  );
   useRegisterKeybinds(bindings);
 }
 
@@ -274,21 +330,23 @@ function NextActionViews({ controller }: NextActionControllerProps) {
  *
  * @example <NextActionsPage controller={controller} />
  */
-export function NextActionsPage({ controller, selectOnGoingAction }: NextActionsPageProps) {
+export function NextActionsPage({ controller, selectOnGoingAction, openOwnerProject, projects = [] }: NextActionsPageProps) {
   const contextsQuery = useContextsQuery();
   const [isCurrentAvailabilityOpen, setIsCurrentAvailabilityOpen] = useState(false);
   const [isAttrsOpen, setIsAttrsOpen] = useState(false);
+  const projectAssociate = useProjectAssociateDialog();
   const [isLinkOpen, setIsLinkOpen] = useState(false);
   const [isAssetOpen, setIsAssetOpen] = useState(false);
-  const isPickerOpen = isAttrsOpen || isCurrentAvailabilityOpen;
+  const isPickerOpen = isAttrsOpen || isCurrentAvailabilityOpen || projectAssociate.isOpen;
   const openCurrentAvailability = useCallback(() => !isPickerOpen && setIsCurrentAvailabilityOpen(true), [isPickerOpen]);
   const openAttrs = useCallback(() => !isPickerOpen && setIsAttrsOpen(true), [isPickerOpen]);
+  const openProjectAssociate = useCallback(() => !isPickerOpen && projectAssociate.open(), [isPickerOpen, projectAssociate]);
   const openLink = useCallback(() => setIsLinkOpen(true), []);
   const openAsset = useCallback(() => setIsAssetOpen(true), []);
   useKeybindScreen("next-actions");
   useNextActionZone(controller);
   useNextActionAssetPreload(controller);
-  useNextActionBindings(controller, selectOnGoingAction, openCurrentAvailability, openAttrs, openLink, openAsset, isAttrsOpen);
+  useNextActionBindings(controller, selectOnGoingAction, openCurrentAvailability, openAttrs, openLink, openAsset, openProjectAssociate, isAttrsOpen, openOwnerProject, projects);
 
   return (
     <ListWorkspace theme={nextActionsListTheme} currentClassName="list-workspace__current--next-actions" currentLabel={<NextActionsFooterLabel controller={controller} />} modeLabel={controller.vimMode ?? undefined}>
@@ -300,6 +358,12 @@ export function NextActionsPage({ controller, selectOnGoingAction }: NextActions
       </Suspense>
       {isCurrentAvailabilityOpen ? <CurrentAvailabilityDialog contextIds={controller.contexts.map((context) => context.id)} energy={controller.currentEnergy} timeMinutes={controller.currentTimeMinutes} onApply={(contextIds, energy, timeMinutes) => applyCurrentAvailability(controller, contextsQuery.contexts, contextIds, energy, timeMinutes, () => setIsCurrentAvailabilityOpen(false))} onClose={() => setIsCurrentAvailabilityOpen(false)} /> : null}
       {isAttrsOpen && controller.selectedItem ? <NextActionEditDialog item={controller.selectedItem} onSave={(patch) => saveAttributes(controller, patch, () => setIsAttrsOpen(false))} onClose={() => setIsAttrsOpen(false)} /> : null}
+      <ProjectAssociateDialog
+        item={controller.selectedItem}
+        isOpen={projectAssociate.isOpen}
+        onClose={projectAssociate.close}
+        onAssociate={controller.assignSelectedProject}
+      />
     </ListWorkspace>
   );
 }

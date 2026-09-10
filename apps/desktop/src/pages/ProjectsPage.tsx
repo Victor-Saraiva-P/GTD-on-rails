@@ -87,7 +87,7 @@ function ProjectsBody({ controller }: ProjectsControllerProps) {
   if (controller.isLoading) return <p className="pane-state">Loading {projectLabel(controller).toLowerCase()}...</p>;
   if (controller.errorMessage) return <RetryState message={controller.errorMessage} onRetry={controller.reload} />;
   if (controller.projects.length === 0) return <p className="pane-state">{projectEmptyMessage(controller)}</p>;
-  return <ProjectsList items={controller.projects} selectedId={controller.selectedItem?.id ?? ""} onSelect={controller.setSelectedId} />;
+  return <ProjectsList items={controller.projects} selectedId={controller.selectedItem?.id ?? ""} onSelect={controller.setSelectedId} activeSubview={controller.activeSubview} />;
 }
 
 function projectEmptyMessage(controller: ProjectsWorkspaceController): string {

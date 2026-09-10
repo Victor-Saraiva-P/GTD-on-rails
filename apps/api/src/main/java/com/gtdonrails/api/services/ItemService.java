@@ -102,7 +102,7 @@ public class ItemService {
     @Transactional
     public void restoreItem(UUID id) {
         Item item = itemRepository.findById(id)
-            .orElseThrow(() -> new ItemNotFoundException("item not found"));
+            .orElseThrow(() -> new ItemNotFoundException("item ID '" + id + "' not found; expected existing item UUID"));
         item.restore();
         itemAssetService.reconcileBodyAssetReferences(id, item.getBody());
         itemRepository.save(item);
@@ -112,7 +112,7 @@ public class ItemService {
 
     private Item findItem(UUID id) {
         return itemRepository.findByIdAndDeletedAtIsNull(id)
-            .orElseThrow(() -> new ItemNotFoundException("item not found"));
+            .orElseThrow(() -> new ItemNotFoundException("item ID '" + id + "' not found; expected existing active item UUID"));
     }
 
     private void requestCalendarEventUpsertAfterCommit(UUID itemId, Item item) {

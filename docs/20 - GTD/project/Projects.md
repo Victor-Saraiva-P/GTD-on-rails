@@ -8,7 +8,7 @@ This page is the umbrella documentation for the projects list.
 
 ## Projects List
 
-The projects page is the list of active project outcomes. It shows project cards with the project title, optional deadline, and the purple `P` project glyph.
+The projects page is the list of active project outcomes. It shows project cards with the project title, optional deadline, the purple `P` project glyph, and the count of active actions. Active projects without any active next actions or calendar entries display an alert indicator (`! 0 actions`) to signal stalled projects needing an action.
 
 Active projects with a deadline appear as all-day entries on the external Project agenda for the deadline date. Active projects without a deadline do not appear on an external agenda.
 
@@ -42,6 +42,11 @@ Project stuff created from this page remains normal stuff and also appears in In
 | --- | --- | --- |
 | `a` | Project Actions View | Add project stuff. |
 | `p` | Project Actions View | Process selected project stuff into a next action or calendar item. |
+| `P` | Project Actions View or Detail | Associate selected project item to project. |
+| `gd` | Project Actions View or Detail | Open owner project detail page. |
+| `d` | Project Actions View or Detail | Delete selected project item. |
+| `u` | Project Actions View or Detail | Undo last deletion. |
+| `Ctrl+r` | Project Actions View or Detail | Redo last deletion. |
 | `Enter` | Project Actions View | Edit selected project item title. |
 | `l` | Project Actions View | Focus the selected project item detail/body. |
 | `j` | Project Actions View | Move selection to the next project item. |

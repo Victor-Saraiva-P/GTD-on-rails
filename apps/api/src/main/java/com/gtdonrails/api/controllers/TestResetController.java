@@ -52,10 +52,10 @@ public class TestResetController {
     @PostMapping("/reset")
     @Transactional
     public ResponseEntity<Void> reset() {
-        projectItemRepository.deleteAll();
-        projectRepository.deleteAll();
-        itemRepository.deleteAll();
-        contextRepository.deleteAll();
+        projectItemRepository.deleteAllInBatch();
+        projectRepository.deleteAllInBatch();
+        itemRepository.deleteAllInBatch();
+        contextRepository.deleteAllInBatch();
         cacheInvalidationService.evictAll();
         return ResponseEntity.noContent().build();
     }

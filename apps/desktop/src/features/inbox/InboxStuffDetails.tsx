@@ -9,6 +9,7 @@ import type { Calendar } from "../calendar/types";
 import { formatScheduleDateTime, type NextAction } from "../next-actions/types";
 import { buildApiUrl } from "../../config/env";
 import { ContextNameWithIcon } from "../contexts/ContextNameWithIcon";
+import { ProjectAssociationMarker } from "../projects/ProjectAssociationMarker";
 
 const LazyItemBodyMarkdownEditor = lazy(async () => {
   const module = await import("./ItemBodyMarkdownEditor");
@@ -46,6 +47,8 @@ function InboxDetailHeader({ item, showCreatedMeta = true }: Readonly<Pick<Inbox
   if (item.contexts && item.contexts.length > 0) {
     metaParts.push(<ContextMetaList contexts={item.contexts} />);
   }
+
+  if (item.projectTitle) metaParts.push(<ProjectAssociationMarker projectTitle={item.projectTitle} />);
 
   return (
     <>
@@ -114,6 +117,7 @@ function NextActionDetailHeader({ item }: Readonly<Pick<InboxStuffDetailsProps, 
         {item.energy !== undefined && item.energy !== null ? <span className="next-action-meta__item"><NextActionMetaIcon src={energyIcon} />{formatEnergyValue(item.energy)}</span> : null}
         {estimatedMinutes ? <span className="next-action-meta__item"><NextActionMetaIcon src={estimatedTimeIcon} />{estimatedMinutes}</span> : null}
         {deadline ? <span className="next-action-meta__item"><NextActionMetaIcon src={scheduleIcon} />{deadline}</span> : null}
+        <ProjectAssociationMarker projectTitle={item.projectTitle} />
       </div>
       {(startedAt || endedAt) && (
         <div className="next-action-meta" aria-label="Next action schedule">
@@ -136,6 +140,9 @@ function CalendarDetailHeader({ item }: Readonly<Pick<InboxStuffDetailsProps, "i
       <h1 className="inbox-detail__title">{metadata.title}</h1>
       <CalendarScheduleMetaRow label="Calendar stated schedule" value={metadata.statedSchedule} />
       <CalendarScheduleMetaRow label="Calendar actual schedule" value={metadata.actualSchedule} />
+      <div className="next-action-meta" aria-label="Calendar project">
+        <ProjectAssociationMarker projectTitle={item.projectTitle} />
+      </div>
       <div className="inbox-detail__divider" />
     </>
   );
