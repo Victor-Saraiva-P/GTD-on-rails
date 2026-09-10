@@ -61,11 +61,11 @@ class ItemControllerTests {
     void setUp() {
         mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).build();
         cacheInvalidationService.evictAll();
-        projectItemRepository.deleteAll();
-        itemAssetRepository.deleteAll();
-        projectRepository.deleteAll();
-        itemRepository.deleteAll();
-        contextRepository.deleteAll();
+        projectItemRepository.deleteAllInBatch();
+        itemAssetRepository.deleteAllInBatch();
+        projectRepository.deleteAllInBatch();
+        itemRepository.deleteAllInBatch();
+        contextRepository.deleteAllInBatch();
     }
 
     @Test

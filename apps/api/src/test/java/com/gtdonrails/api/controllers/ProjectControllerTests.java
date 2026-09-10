@@ -69,9 +69,9 @@ class ProjectControllerTests {
     void setUp() {
         mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).build();
         cacheInvalidationService.evictAll();
-        projectItemRepository.deleteAll();
-        projectRepository.deleteAll();
-        itemRepository.deleteAll();
+        projectItemRepository.deleteAllInBatch();
+        projectRepository.deleteAllInBatch();
+        itemRepository.deleteAllInBatch();
     }
 
     @Test

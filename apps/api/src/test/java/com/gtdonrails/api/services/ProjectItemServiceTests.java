@@ -53,6 +53,9 @@ class ProjectItemServiceTests {
     @Mock
     private CacheInvalidationService cacheInvalidationService;
 
+    @Mock
+    private jakarta.persistence.EntityManager entityManager;
+
     private ProjectItemService projectItemService;
     private Project project;
     private UUID projectId;
@@ -67,7 +70,8 @@ class ProjectItemServiceTests {
             contextMapper,
             itemMapper,
             cacheInvalidationService,
-            new AfterCommitExecutor());
+            new AfterCommitExecutor(),
+            entityManager);
 
         projectId = UUID.randomUUID();
         Item projectItem = new Item(new Title("Main Project"), null);
