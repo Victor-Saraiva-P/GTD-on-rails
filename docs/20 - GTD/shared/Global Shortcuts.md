@@ -38,7 +38,7 @@ These shortcuts are available in the Calendars workspace when a modal dialog or 
 | `Enter` | Edit the selected calendar title in Today and Weekly list panels. |
 | `Space Enter` | Open the selected calendar full detail page. |
 | `P` | Associate the selected calendar to a project. |
-| `gp` | Open the owner project detail page of the selected calendar. |
+| `gd` | Open the owner project detail page of the selected calendar. |
 | `o` | Mark the selected Today Due or Weekly calendar as On Going and open its On Going calendar detail page. |
 | `H` | Move the Weekly view one week backward. |
 | `L` | Move the Weekly view one week forward. |
@@ -53,7 +53,7 @@ These shortcuts are available on items associated with projects across Inbox, Ne
 
 | Shortcut | Action |
 | --- | --- |
-| `gp` | Navigate directly to the owner project detail page of the selected item. |
+| `gd` | Navigate directly to the owner project detail page of the selected item. |
 
 ## Shared Body Formatting
 

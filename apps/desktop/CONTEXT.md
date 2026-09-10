@@ -49,10 +49,10 @@ A desktop state transition applied immediately in the user interface for high-fr
 _Avoid_: Local save, offline queue, draft
 
 **Project-associated item**:
-An item linked to exactly one project. Lists and detail views identify it with the purple `P` project glyph followed by the project's literal title.
-_Avoid_: project label, project breadcrumb, project navigation
+An item linked to exactly one project. Lists and detail views identify it with the purple `P` project glyph followed by the project's literal title, and allow direct keyboard navigation to its owner project via `gd`.
+_Avoid_: project label, project breadcrumb
 
 **Project association marker**:
-The visual `P project title` marker shown only for project-associated items. It is informational, is not a navigation control, and is omitted when no valid project title is available.
+The visual `P project title` marker shown only for project-associated items. It is informational, is not a clickable navigation control, and is omitted when no valid project title is available.
 _Avoid_: project link, project action
 

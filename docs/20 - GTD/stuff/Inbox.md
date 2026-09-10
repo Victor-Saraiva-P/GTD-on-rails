@@ -30,7 +30,7 @@ Processing stuff into a project opens the Projects page after the project is cre
 | `Ctrl+r` | List | Redo last action. |
 | `p` | List | Process selected stuff. |
 | `P` | List or detail | Associate selected stuff to project. |
-| `gp` | List or detail | Open owner project detail page. |
+| `gd` | List or detail | Open owner project detail page. |
 | `gg` | List | Move selection to the first item. |
 | `G` | List | Move selection to the last item. |
 | `j` | List | Move selection down. |
