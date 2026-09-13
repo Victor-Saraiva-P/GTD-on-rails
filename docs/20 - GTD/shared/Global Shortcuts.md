@@ -8,6 +8,8 @@ These shortcuts are registered globally by the desktop shell.
 
 | Shortcut | Action |
 | --- | --- |
+| `Ctrl+o` | Jump backward to the previous location in navigation history (e.g. after `gd`). |
+| `Ctrl+i` | Jump forward to the newer location in navigation history. |
 | `Space c` | Open calendars and reset the calendar workspace to Today. |
 | `Space C` | Open contexts. |
 | `Space i` | Open inbox and reset the inbox workspace. |
@@ -38,7 +40,7 @@ These shortcuts are available in the Calendars workspace when a modal dialog or 
 | `Enter` | Edit the selected calendar title in Today and Weekly list panels. |
 | `Space Enter` | Open the selected calendar full detail page. |
 | `P` | Associate the selected calendar to a project. |
-| `gd` | Open the owner project detail page of the selected calendar. |
+| `gd` | Open the owner project detail page of the selected calendar and focus it. |
 | `o` | Mark the selected Today Due or Weekly calendar as On Going and open its On Going calendar detail page. |
 | `H` | Move the Weekly view one week backward. |
 | `L` | Move the Weekly view one week forward. |
@@ -49,11 +51,12 @@ In the calendar schedule edit dialog opened with `e`, pressing `t` in the Schedu
 
 ## Item Navigation
 
-These shortcuts are available on items associated with projects across Inbox, Next Actions, Ongoing Next Actions, Calendars, and Project Detail.
+These shortcuts navigate between items and their owner projects or destination workspaces.
 
-| Shortcut | Action |
-| --- | --- |
-| `gd` | Navigate directly to the owner project detail page of the selected item. |
+| Shortcut | Scope | Action |
+| --- | --- | --- |
+| `gd` | Inbox, Next Actions, Ongoing Next Actions, Calendars | Navigate directly to the owner project detail page of the selected item and focus that item. |
+| `gd` | Project Detail | Navigate directly to the corresponding screen (Next Actions, Calendars, or Inbox) of the selected item and focus that item. |
 
 ## Shared Body Formatting
 
