@@ -42,6 +42,8 @@ import { useProjectsWorkspaceController } from "../features/projects/useProjects
 import type { ProjectsWorkspaceController } from "../features/projects/useProjectsWorkspaceController";
 import { useProjectDetailController } from "../features/projects/useProjectDetailController";
 import type { Project } from "../features/projects/types";
+import { useJumpListNavigation } from "../features/navigation/useJumpListNavigation";
+import type { ProjectItem } from "../features/projects/projectItems";
 
 const doneNextActionsConfig = {
   detailZone: "done-next-action-detail",
@@ -62,99 +64,26 @@ const deletedNextActionsConfig = {
 
 type AppControllers = ReturnType<typeof useAppControllers>;
 
-function openNextActionsWorkspace(controller: NextActionsWorkspaceController, setActiveScreen: (screen: ScreenId) => void) {
-  controller.resetWorkspace();
-  setActiveScreen("next-actions");
-}
-
-function openOnGoingWorkspace(
-  controller: OnGoingWorkspaceController,
-  setActiveScreen: (screen: ScreenId) => void
-) {
-  controller.resetWorkspace();
-  controller.setActiveZone("next-actions-list");
-  setActiveScreen("ongoing-next-actions");
-}
-
-function openProjectsWorkspace(
-  controller: ProjectsWorkspaceController,
-  setActiveScreen: (screen: ScreenId) => void
-) {
-  controller.resetWorkspace();
-  setActiveScreen("projects");
-}
-
 function buildNavigationBindings(
-  setActiveScreen: (screen: ScreenId) => void,
-  inboxController: InboxWorkspaceController,
-  calendarController: CalendarWorkspaceController,
-  nextActionsController: NextActionsWorkspaceController,
-  onGoingController: OnGoingWorkspaceController,
-  projectsController: ProjectsWorkspaceController
+  jumpToScreen: (screen: ScreenId, beforeNavigate?: () => void) => void,
+  goBack: () => void,
+  goForward: () => void,
+  inbox: InboxWorkspaceController,
+  calendar: CalendarWorkspaceController,
+  nextActions: NextActionsWorkspaceController,
+  ongoing: OnGoingWorkspaceController,
+  projects: ProjectsWorkspaceController
 ) {
   return [
-    {
-      id: "navigation.open-calendars",
-      key: "c",
-      description: "Open calendars",
-      leader: true,
-      sequence: ["c"],
-      runKeybind: () => {
-        calendarController.resetWorkspace();
-        setActiveScreen("calendars");
-      }
-    },
-    {
-      id: "navigation.open-contexts",
-      key: "C",
-      description: "Open contexts",
-      leader: true,
-      sequence: ["C"],
-      runKeybind: () => setActiveScreen("contexts")
-    },
-    {
-      id: "navigation.open-inbox",
-      key: "i",
-      description: "Open inbox",
-      leader: true,
-      sequence: ["i"],
-      runKeybind: () => {
-        inboxController.resetWorkspace();
-        setActiveScreen("inbox");
-      }
-    },
-    {
-      id: "navigation.open-next-actions",
-      key: "n",
-      description: "Open next actions",
-      leader: true,
-      sequence: ["n"],
-      runKeybind: () => openNextActionsWorkspace(nextActionsController, setActiveScreen)
-    },
-    {
-      id: "navigation.open-ongoing-next-actions",
-      key: "o",
-      description: "Open ongoing work",
-      leader: true,
-      sequence: ["o"],
-      runKeybind: () => openOnGoingWorkspace(onGoingController, setActiveScreen)
-    },
-    {
-      id: "navigation.open-projects",
-      key: "p",
-      description: "Open projects",
-      leader: true,
-      sequence: ["p"],
-      runKeybind: () => openProjectsWorkspace(projectsController, setActiveScreen)
-    },
-    {
-      id: "navigation.open-google-calendar-integration",
-      key: "g",
-      description: "Google Calendar Integration",
-      leader: true,
-      sequence: ["I", "g"],
-      runKeybind: () => setActiveScreen("google-calendar-integration")
-    }
+    { id: "navigation.jump-back", key: "o", ctrl: true, description: "Jump to older position", runKeybind: goBack },
+    { id: "navigation.jump-forward", key: "i", ctrl: true, description: "Jump to newer position", runKeybind: goForward },
+    { id: "navigation.open-calendars", key: "c", description: "Open calendars", leader: true, sequence: ["c"], runKeybind: () => jumpToScreen("calendars", calendar.resetWorkspace) },
+    { id: "navigation.open-contexts", key: "C", description: "Open contexts", leader: true, sequence: ["C"], runKeybind: () => jumpToScreen("contexts") },
+    { id: "navigation.open-inbox", key: "i", description: "Open inbox", leader: true, sequence: ["i"], runKeybind: () => jumpToScreen("inbox", inbox.resetWorkspace) },
+    { id: "navigation.open-next-actions", key: "n", description: "Open next actions", leader: true, sequence: ["n"], runKeybind: () => jumpToScreen("next-actions", nextActions.resetWorkspace) },
+    { id: "navigation.open-ongoing-next-actions", key: "o", description: "Open ongoing work", leader: true, sequence: ["o"], runKeybind: () => jumpToScreen("ongoing-next-actions", () => { ongoing.resetWorkspace(); ongoing.setActiveZone("next-actions-list"); }) },
+    { id: "navigation.open-projects", key: "p", description: "Open projects", leader: true, sequence: ["p"], runKeybind: () => jumpToScreen("projects", projects.resetWorkspace) },
+    { id: "navigation.open-google-calendar-integration", key: "g", description: "Google Calendar Integration", leader: true, sequence: ["I", "g"], runKeybind: () => jumpToScreen("google-calendar-integration") }
   ] satisfies KeybindDefinition[];
 }
 
@@ -280,14 +209,15 @@ function renderActiveScreen(
   controllers: AppControllers,
   setActiveScreen: (screen: ScreenId) => void,
   openProjectDetail: () => void,
-  openOwnerProject: (projectId: string, projectTitle?: string | null) => void
+  openOwnerProject: (projectId: string, projectTitle?: string | null, targetItemId?: string | null) => void,
+  openProjectItemDestination: (item: ProjectItem) => void
 ) {
   const detail = renderDetailScreens(activeScreen, controllers);
   if (detail) return detail;
   if (activeScreen === "contexts") return <ContextsPage />;
   if (activeScreen === "calendars") return <CalendarPage controller={controllers.calendars} selectOnGoingCalendar={controllers.ongoing.setSelectedId} openOwnerProject={openOwnerProject} projects={controllers.projects.projects} />;
   if (activeScreen === "projects") return <ProjectsPage controller={controllers.projects} openProjectDetail={openProjectDetail} />;
-  if (activeScreen === "project-detail") return <ProjectDetailPage controller={controllers.projectDetail} openOwnerProject={openOwnerProject} projects={controllers.projects.projects} />;
+  if (activeScreen === "project-detail") return <ProjectDetailPage controller={controllers.projectDetail} openItemDestination={openProjectItemDestination} openOwnerProject={openOwnerProject} projects={controllers.projects.projects} />;
   if (activeScreen === "deleted-inbox") return <DeletedInboxPage controller={controllers.deletedInbox} />;
   if (activeScreen === "next-actions") return <NextActionsPage controller={controllers.nextActions} selectOnGoingAction={controllers.ongoing.setSelectedId} openOwnerProject={openOwnerProject} projects={controllers.projects.projects} />;
   if (activeScreen === "ongoing-next-actions") return <OnGoingNextActionsPage controller={controllers.ongoing} selectNextAction={controllers.nextActions.setSelectedId} openOwnerProject={openOwnerProject} projects={controllers.projects.projects} />;
@@ -307,24 +237,22 @@ export function AppShell() {
   const { activeScreen, setActiveScreen } = useActiveScreen();
   const [projectDetailProject, setProjectDetailProject] = useState<Project | null>(null);
   const controllers = useAppControllers(projectDetailProject);
-  const openProjectDetail = useMemo(() => () => {
-    setProjectDetailProject(controllers.projects.selectedItem ?? null);
-    setActiveScreen("project-detail");
-  }, [controllers.projects.selectedItem, setActiveScreen]);
-  const openOwnerProject = useCallback((projectId: string, projectTitle?: string | null) => {
-    const existing = controllers.projects.projects.find((p) => p.id === projectId) ?? null;
-    const project: Project = existing ?? { id: projectId, title: projectTitle ?? "Project" };
-    controllers.projects.setSelectedId(projectId);
-    setProjectDetailProject(project);
-    setActiveScreen("project-detail");
-  }, [controllers.projects, setActiveScreen]);
+  const navigation = useJumpListNavigation({
+    activeScreen, setActiveScreen, controllers, projectDetailProject, setProjectDetailProject
+  });
+  const openProjectDetail = useCallback(() => {
+    const selected = controllers.projects.selectedItem;
+    if (!selected) return;
+    const project = controllers.projects.projects.find((p) => p.id === selected.id);
+    navigation.openOwnerProject(selected.id, project?.title ?? null, null);
+  }, [controllers.projects.projects, controllers.projects.selectedItem, navigation]);
   const navigationBindings = useMemo(
-    () => buildNavigationBindings(setActiveScreen, controllers.inbox, controllers.calendars, controllers.nextActions, controllers.ongoing, controllers.projects),
-    [setActiveScreen, controllers.inbox, controllers.calendars, controllers.nextActions, controllers.ongoing, controllers.projects]
+    () => buildNavigationBindings(navigation.jumpToScreen, navigation.goBack, navigation.goForward, controllers.inbox, controllers.calendars, controllers.nextActions, controllers.ongoing, controllers.projects),
+    [navigation.jumpToScreen, navigation.goBack, navigation.goForward, controllers.inbox, controllers.calendars, controllers.nextActions, controllers.ongoing, controllers.projects]
   );
 
   useReloadActiveScreen(activeScreen, controllers);
   useAgentStateBridge(activeScreen);
   useRegisterKeybinds(navigationBindings);
-  return renderActiveScreen(activeScreen, controllers, setActiveScreen, openProjectDetail, openOwnerProject);
+  return renderActiveScreen(activeScreen, controllers, setActiveScreen, openProjectDetail, navigation.openOwnerProject, navigation.openProjectItemDestination);
 }

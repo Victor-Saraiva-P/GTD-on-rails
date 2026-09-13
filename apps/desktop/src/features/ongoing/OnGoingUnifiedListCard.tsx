@@ -2,6 +2,7 @@ import type { KeyboardEvent } from "react";
 import { InlineTitleInput } from "../../components/InlineTitleInput";
 import type { OnGoingItemSelection } from "./combinedOnGoingState";
 import { calendarItemIconText } from "../lists/listThemes";
+import { useScrollIntoViewWhenSelected } from "../lists/useScrollIntoViewWhenSelected";
 import { ProjectAssociationMarker } from "../projects/ProjectAssociationMarker";
 
 type OnGoingUnifiedListCardProps = Readonly<{
@@ -79,10 +80,12 @@ function handleSelectDoubleClick(props: Pick<OnGoingUnifiedListCardProps, "selec
 
 function ReadOnlyUnifiedCard(props: OnGoingUnifiedListCardProps) {
   const { selection, selected, onSelect } = props;
+  const buttonRef = useScrollIntoViewWhenSelected(selected);
 
   return (
     <li className="tree-list__item">
       <button
+        ref={buttonRef}
         type="button"
         className={`tree-entry unified-item-entry${selected ? " tree-entry--active" : ""}${selection.item.projectTitle ? " tree-entry--project-associated" : ""}`}
         onClick={() => onSelect(selection.item.id)}

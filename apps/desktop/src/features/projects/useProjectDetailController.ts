@@ -77,14 +77,23 @@ export function useProjectDetailController(project: Project | null) {
   const zone = useActiveZone();
   const history = useUndoRedoHistory<ProjectItem>();
   const [isDeleting, setIsDeleting] = useState(false);
-  useProjectSelectionPruning(items, selection, edit);
+  useProjectSelectionPruning(items, query.isLoading, selection, edit);
   return buildProjectDetailController(project, query, selection, edit, zone, draft, setDraft, history, isDeleting, setIsDeleting);
 }
 
-function useProjectSelectionPruning(items: ProjectItem[], selection: ReturnType<typeof useProjectItemSelection>, edit: ReturnType<typeof useProjectDetailEditState>) {
-  useEffect(() => { if (!selection.selectedId && items[0]) selection.setSelectedId(items[0].id); }, [items, selection.selectedId]);
-  useEffect(() => { if (selection.selectedId && !items.some((item) => item.id === selection.selectedId)) selection.setSelectedId(items[0]?.id ?? null); }, [items, selection.selectedId]);
-  useEffect(() => { if (edit.editingId && !items.some((item) => item.id === edit.editingId)) clearTitleEdit(edit); }, [edit.editingId, items]);
+function useProjectSelectionPruning(items: ProjectItem[], isLoading: boolean, selection: ReturnType<typeof useProjectItemSelection>, edit: ReturnType<typeof useProjectDetailEditState>) {
+  useEffect(() => {
+    if (isLoading) return;
+    if (!selection.selectedId && items[0]) selection.setSelectedId(items[0].id);
+  }, [isLoading, items, selection.selectedId]);
+  useEffect(() => {
+    if (isLoading) return;
+    if (selection.selectedId && !items.some((item) => item.id === selection.selectedId)) selection.setSelectedId(items[0]?.id ?? null);
+  }, [isLoading, items, selection.selectedId]);
+  useEffect(() => {
+    if (isLoading) return;
+    if (edit.editingId && !items.some((item) => item.id === edit.editingId)) clearTitleEdit(edit);
+  }, [edit.editingId, isLoading, items]);
 }
 
 function buildActionOperations(

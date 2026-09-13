@@ -1,5 +1,6 @@
 import type { KeyboardEvent } from "react";
 import { InlineTitleInput } from "../../components/InlineTitleInput";
+import { useScrollIntoViewWhenSelected } from "../lists/useScrollIntoViewWhenSelected";
 import { ProjectAssociationMarker } from "../projects/ProjectAssociationMarker";
 import type { Stuff } from "./types";
 
@@ -89,10 +90,12 @@ function handleSelectDoubleClick(props: Pick<InboxListStuffProps, "item" | "sele
 
 function ReadOnlyInboxListStuff(props: InboxListStuffProps) {
   const { item, selected, onSelect } = props;
+  const buttonRef = useScrollIntoViewWhenSelected(selected);
 
   return (
     <li className="tree-list__item">
       <button
+        ref={buttonRef}
         type="button"
         className={`tree-entry${selected ? " tree-entry--active" : ""}${item.projectTitle ? " tree-entry--project-associated" : ""}`}
         onClick={() => onSelect(item.id)}

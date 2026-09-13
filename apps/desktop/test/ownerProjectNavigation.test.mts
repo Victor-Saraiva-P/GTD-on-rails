@@ -60,14 +60,14 @@ describe("ownerProjectNavigation", () => {
   });
 
   test("openOwnerProject calls callback when project is resolved", () => {
-    let calledWith: { id: string; title?: string | null } | null = null;
-    const item: OwnerProjectCandidate = { projectId: "p-1" };
+    let calledWith: { id: string; title?: string | null; targetItemId?: string | null } | null = null;
+    const item: OwnerProjectCandidate = { id: "item-123", projectId: "p-1" };
 
-    openOwnerProject(item, (id, title) => {
-      calledWith = { id, title };
+    openOwnerProject(item, (id, title, targetItemId) => {
+      calledWith = { id, title, targetItemId };
     }, projects);
 
-    assert.deepEqual(calledWith, { id: "p-1", title: "Alpha Project" });
+    assert.deepEqual(calledWith, { id: "p-1", title: "Alpha Project", targetItemId: "item-123" });
   });
 
   test("openOwnerProject does nothing when project cannot be resolved or callback omitted", () => {

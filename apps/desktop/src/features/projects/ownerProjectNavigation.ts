@@ -1,6 +1,7 @@
 import type { Project } from "./types";
 
 export type OwnerProjectCandidate = {
+  id?: string;
   projectId?: string | null;
   projectTitle?: string | null;
 };
@@ -37,12 +38,12 @@ export function resolveOwnerProject(
  */
 export function openOwnerProject(
   item: OwnerProjectCandidate | null | undefined,
-  openProjectDetail?: (projectId: string, projectTitle?: string | null) => void,
+  openProjectDetail?: (projectId: string, projectTitle?: string | null, targetItemId?: string | null) => void,
   projects: Project[] = []
 ): void {
   if (!openProjectDetail) return;
   const target = resolveOwnerProject(item, projects);
   if (target) {
-    openProjectDetail(target.projectId, target.projectTitle);
+    openProjectDetail(target.projectId, target.projectTitle, item?.id ?? null);
   }
 }

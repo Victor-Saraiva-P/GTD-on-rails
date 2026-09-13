@@ -241,6 +241,14 @@ function handleGlobalKeyDown(event: KeyboardEvent, config: KeydownConfig) {
   handleDirectKey(event, config);
 }
 
+function executeSequenceBinding(event: KeyboardEvent, config: KeydownConfig, binding: RegisteredKeybind): boolean {
+  event.preventDefault();
+  event.stopPropagation();
+  config.setDirectPath([]);
+  binding.runKeybind();
+  return true;
+}
+
 function handleDirectSequence(event: KeyboardEvent, config: KeydownConfig): boolean {
   const directBindings = matchingBindings(config).filter((binding) => !binding.leader);
   const nextDirectPath = [...config.directPathRef.current, event.key];
@@ -258,15 +266,12 @@ function handleDirectSequence(event: KeyboardEvent, config: KeydownConfig): bool
     return false;
   }
 
-  event.preventDefault();
-  event.stopPropagation();
-  config.setDirectPath([]);
-  sequenceBinding.runKeybind();
-  return true;
+  return executeSequenceBinding(event, config, sequenceBinding);
 }
 
 function handleDirectKey(event: KeyboardEvent, config: KeydownConfig) {
-  if (handleDirectSequence(event, config)) return;
+  if (event.ctrlKey) config.setDirectPath([]);
+  if (!event.ctrlKey && handleDirectSequence(event, config)) return;
   const matchingBinding = findDirectBinding(config, event);
   if (!matchingBinding) return;
   event.preventDefault();
