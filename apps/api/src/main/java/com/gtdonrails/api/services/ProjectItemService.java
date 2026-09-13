@@ -42,13 +42,17 @@ public class ProjectItemService {
     private final CacheInvalidationService cacheInvalidationService;
     private final AfterCommitExecutor afterCommitExecutor;
     private final jakarta.persistence.EntityManager entityManager;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+    private final DatabaseSyncService databaseSyncService;
 
     public ProjectItemService(
         ProjectRepository projectRepository, ProjectItemRepository projectItemRepository,
         ItemRepository itemRepository, ItemTextNormalizer itemTextNormalizer,
         ContextMapper contextMapper, ItemMapper itemMapper,
         CacheInvalidationService cacheInvalidationService, AfterCommitExecutor afterCommitExecutor,
-        jakarta.persistence.EntityManager entityManager
+        jakarta.persistence.EntityManager entityManager,
+        org.springframework.jdbc.core.JdbcTemplate jdbcTemplate,
+        @org.springframework.context.annotation.Lazy DatabaseSyncService databaseSyncService
     ) {
         this.projectRepository = projectRepository;
         this.projectItemRepository = projectItemRepository;
@@ -59,6 +63,8 @@ public class ProjectItemService {
         this.cacheInvalidationService = cacheInvalidationService;
         this.afterCommitExecutor = afterCommitExecutor;
         this.entityManager = entityManager;
+        this.jdbcTemplate = jdbcTemplate;
+        this.databaseSyncService = databaseSyncService;
     }
 
     /**
@@ -71,8 +77,9 @@ public class ProjectItemService {
         Project project = findActiveProject(projectId);
         Item item = new Item(new Title(itemTextNormalizer.normalizeTitle(request.title())), null);
         item.markAsStuff();
-        Item savedItem = itemRepository.saveAndFlush(item);
+        Item savedItem = itemRepository.save(item);
         projectItemRepository.insertProjectItem(project.getItemId(), savedItem.getId());
+        recordProjectItemOutbox(savedItem.getId(), project.getItemId(), com.gtdonrails.api.entities.SyncOutboxOperation.INSERT);
         afterCommitExecutor.run(cacheInvalidationService::evictItemMutation);
         return toResponse(new ProjectItem(project, savedItem));
     }
@@ -90,11 +97,26 @@ public class ProjectItemService {
         if (projectId != null) {
             Project project = findActiveProject(projectId);
             projectItemRepository.insertProjectItem(project.getItemId(), itemId);
+            recordProjectItemOutbox(itemId, project.getItemId(), com.gtdonrails.api.entities.SyncOutboxOperation.INSERT);
+        } else {
+            recordProjectItemOutbox(itemId, null, com.gtdonrails.api.entities.SyncOutboxOperation.DELETE);
         }
         entityManager.flush();
         entityManager.refresh(item);
         afterCommitExecutor.run(cacheInvalidationService::evictItemMutation);
         return itemMapper.toResponse(item);
+    }
+
+    private void recordProjectItemOutbox(UUID itemId, UUID projectId, com.gtdonrails.api.entities.SyncOutboxOperation operation) {
+        if (jdbcTemplate == null || databaseSyncService == null) return;
+        String payload = operation == com.gtdonrails.api.entities.SyncOutboxOperation.DELETE
+            ? "{\"item_id\":\"" + itemId + "\"}"
+            : "{\"item_id\":\"" + itemId + "\",\"project_id\":\"" + projectId + "\"}";
+        jdbcTemplate.update(
+            "insert into sync_outbox (entity_type, entity_id, operation, payload, status, retry_count) values ('project_items', ?, ?, ?, 'PENDING', 0)",
+            itemId.toString(), operation.name(), payload
+        );
+        databaseSyncService.notifyNewEvents();
     }
 
     /**

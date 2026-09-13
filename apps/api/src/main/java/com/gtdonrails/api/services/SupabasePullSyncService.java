@@ -138,6 +138,13 @@ public class SupabasePullSyncService {
         String sql = "SELECT item_id::text, project_id::text FROM gtd.project_items";
         String upsert = "INSERT INTO project_items (item_id, project_id) VALUES (?, ?) ON CONFLICT (item_id) DO UPDATE SET project_id = EXCLUDED.project_id";
         List<Object[]> rows = supabaseJdbc.query(sql, (rs, i) -> new Object[] { rs.getString(1), rs.getString(2) });
+        sqliteJdbc.update("""
+            DELETE FROM project_items
+            WHERE item_id NOT IN (
+                SELECT entity_id FROM sync_outbox
+                WHERE entity_type = 'project_items' AND status IN ('PENDING', 'PROCESSING')
+            )
+            """);
         rows.forEach(params -> sqliteJdbc.update(upsert, params));
     }
 

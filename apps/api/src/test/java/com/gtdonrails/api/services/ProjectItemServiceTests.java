@@ -56,6 +56,12 @@ class ProjectItemServiceTests {
     @Mock
     private jakarta.persistence.EntityManager entityManager;
 
+    @Mock
+    private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+
+    @Mock
+    private DatabaseSyncService databaseSyncService;
+
     private ProjectItemService projectItemService;
     private Project project;
     private UUID projectId;
@@ -71,7 +77,9 @@ class ProjectItemServiceTests {
             itemMapper,
             cacheInvalidationService,
             new AfterCommitExecutor(),
-            entityManager);
+            entityManager,
+            jdbcTemplate,
+            databaseSyncService);
 
         projectId = UUID.randomUUID();
         Item projectItem = new Item(new Title("Main Project"), null);
@@ -83,7 +91,7 @@ class ProjectItemServiceTests {
     @Test
     void createProjectStuffInsertsItemAndEvictsCache() {
         when(projectRepository.findByItemIdAndItem_DeletedAtIsNull(projectId)).thenReturn(Optional.of(project));
-        when(itemRepository.saveAndFlush(any(Item.class))).thenAnswer(invocation -> {
+        when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> {
             Item item = invocation.getArgument(0);
             ReflectionTestUtils.setField(item, "id", UUID.randomUUID());
             return item;
