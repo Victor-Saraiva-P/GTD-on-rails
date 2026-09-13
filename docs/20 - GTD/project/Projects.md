@@ -43,7 +43,7 @@ Project stuff created from this page remains normal stuff and also appears in In
 | `a` | Project Actions View | Add project stuff. |
 | `p` | Project Actions View | Process selected project stuff into a next action or calendar item. |
 | `P` | Project Actions View or Detail | Associate selected project item to project. |
-| `gd` | Project Actions View or Detail | Open owner project detail page. |
+| `gd` | Project Actions View or Detail | Open corresponding screen for selected item (Next Actions, Calendars, or Inbox) and focus it. |
 | `d` | Project Actions View or Detail | Delete selected project item. |
 | `u` | Project Actions View or Detail | Undo last deletion. |
 | `Ctrl+r` | Project Actions View or Detail | Redo last deletion. |

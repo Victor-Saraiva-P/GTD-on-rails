@@ -2,6 +2,7 @@ import type { KeyboardEvent } from "react";
 import { InlineTitleInput } from "../../components/InlineTitleInput";
 import type { Calendar } from "./types";
 import { calendarItemIconText } from "../lists/listThemes";
+import { useScrollIntoViewWhenSelected } from "../lists/useScrollIntoViewWhenSelected";
 import { trimCalendarDisplayTime } from "./calendarDateUtils";
 import { ProjectAssociationMarker } from "../projects/ProjectAssociationMarker";
 
@@ -88,27 +89,38 @@ function handleSelectDoubleClick(props: Pick<CalendarListCardProps, "item" | "se
   }
 }
 
-function ReadOnlyCalendarCard(props: CalendarListCardProps) {
-  const { item, selected, onSelect } = props;
+function CalendarCardBody({ item, archiveStatus }: Readonly<{ item: Calendar; archiveStatus?: "deleted" }>) {
   const displayTime = trimCalendarDisplayTime(item.scheduledTime);
+  return (
+    <>
+      <CalendarGlyph archiveStatus={archiveStatus} status={item.status} />
+      <span className="tree-entry__label">{item.title}</span>
+      <ProjectAssociationMarker projectTitle={item.projectTitle} placement="list" />
+      {displayTime ? (
+        <span className="calendar-entry__time">
+          <span aria-hidden="true">⏱</span>
+          <span>{displayTime}</span>
+        </span>
+      ) : null}
+    </>
+  );
+}
+
+function ReadOnlyCalendarCard(props: CalendarListCardProps) {
+  const buttonRef = useScrollIntoViewWhenSelected(props.selected);
+  const activeClass = props.selected ? " tree-entry--active" : "";
+  const projectClass = props.item.projectTitle ? " calendar-item-entry--project-associated" : "";
 
   return (
     <li className="tree-list__item">
       <button
+        ref={buttonRef}
         type="button"
-        className={`tree-entry calendar-item-entry${selected ? " tree-entry--active" : ""}${item.projectTitle ? " calendar-item-entry--project-associated" : ""}`}
-        onClick={() => onSelect(item.id)}
+        className={`tree-entry calendar-item-entry${activeClass}${projectClass}`}
+        onClick={() => props.onSelect(props.item.id)}
         onDoubleClick={() => handleSelectDoubleClick(props)}
       >
-        <CalendarGlyph archiveStatus={props.archiveStatus} status={item.status} />
-        <span className="tree-entry__label">{item.title}</span>
-        <ProjectAssociationMarker projectTitle={item.projectTitle} placement="list" />
-        {displayTime ? (
-          <span className="calendar-entry__time">
-            <span aria-hidden="true">⏱</span>
-            <span>{displayTime}</span>
-          </span>
-        ) : null}
+        <CalendarCardBody item={props.item} archiveStatus={props.archiveStatus} />
       </button>
     </li>
   );
