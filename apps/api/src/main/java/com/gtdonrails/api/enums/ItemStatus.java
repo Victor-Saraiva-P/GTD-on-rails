@@ -4,5 +4,6 @@ public enum ItemStatus {
     STUFF,
     NEXT_ACTION,
     CALENDAR,
-    PROJECT
+    PROJECT,
+    SOMEDAY_MAYBE
 }

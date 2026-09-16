@@ -111,4 +111,15 @@ public class InboxController {
         inboxService.convertStuffToProject(id, request);
         return ResponseEntity.noContent().build();
     }
+
+    /**
+     * Handles conversion from inbox stuff into a GTD someday/maybe item.
+     *
+     * <p>Example: {@code POST /inbox/018f13b2-a7f3-7c44-8f1a-9f31f65a7fd2/someday-maybe}.</p>
+     */
+    @PostMapping("/{id}/someday-maybe")
+    public ResponseEntity<Void> convertStuffToSomedayMaybe(@PathVariable UUID id) {
+        inboxService.convertStuffToSomedayMaybe(id);
+        return ResponseEntity.noContent().build();
+    }
 }

@@ -152,6 +152,20 @@ public class InboxService {
         evictCachesAfterCommit();
     }
 
+    /**
+     * Converts one inbox stuff item into a GTD someday/maybe item.
+     *
+     * <p>Example: {@code inboxService.convertStuffToSomedayMaybe(stuffId)}.</p>
+     */
+    @Transactional
+    public void convertStuffToSomedayMaybe(UUID id) {
+        Item item = findStuff(id);
+        item.convertToSomedayMaybe();
+        itemRepository.save(item);
+        requestGoogleCalendarEventSyncAfterCommit(id);
+        evictCachesAfterCommit();
+    }
+
     private Item findStuff(UUID id) {
         return itemRepository.findByIdAndStatusAndDeletedAtIsNull(id, ItemStatus.STUFF)
             .orElseThrow(() -> new ItemNotFoundException("stuff not found"));

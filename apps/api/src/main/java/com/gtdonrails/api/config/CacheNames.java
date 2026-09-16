@@ -12,13 +12,15 @@ public final class CacheNames {
     public static final String PROJECTS = "projects";
     public static final String CONTEXTS = "contexts";
     public static final String CALENDAR = "calendar";
+    public static final String SOMEDAY_MAYBE = "somedayMaybe";
 
     public static final List<String> ALL = List.of(
         INBOX,
         NEXT_ACTIONS,
         PROJECTS,
         CONTEXTS,
-        CALENDAR
+        CALENDAR,
+        SOMEDAY_MAYBE
     );
 
     private CacheNames() {
