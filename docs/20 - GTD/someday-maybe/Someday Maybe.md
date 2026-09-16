@@ -8,7 +8,7 @@ Someday/Maybe represents ideas, projects, or items that you might want to act on
 
 In GTD on Rails, Someday/Maybe is a temporary holding state:
 - When processing inbox stuff that cannot be acted upon right now, convert it to Someday/Maybe (`s`).
-- When the impediment is resolved or the time comes to reconsider the item, return it back to the Inbox (`i`), allowing it to be clarified and processed normally as actionable work.
+- When the impediment is resolved or the time comes to reconsider the item, return it back to the Inbox (`r`), allowing it to be clarified and processed normally as actionable work.
 
 ## Theme & Visual Identity
 
@@ -34,7 +34,7 @@ In GTD on Rails, Someday/Maybe is a temporary holding state:
 | `Enter` | List | Edit selected item title. |
 | `l` | List | Edit selected item body (focuses detail pane). |
 | `h` | Detail | Focus master list. |
-| `i` | List | Move selected item back to Inbox stuff (`STUFF`). |
+| `r` | List | Move selected item back to Inbox stuff (`STUFF`). |
 | `d` | List | Soft-delete selected item. |
 | `u` | List | Undo last action (e.g. deletion). |
 | `Ctrl+r` | List | Redo last undone action. |
@@ -59,3 +59,10 @@ In GTD on Rails, Someday/Maybe is a temporary holding state:
 - `POST /someday-maybe/{id}/stuff`: Reverts the Someday/Maybe item back to an inbox stuff item.
 - `DELETE /items/{id}`: Soft-deletes a Someday/Maybe item.
 - `POST /items/{id}/restore`: Restores a soft-deleted Someday/Maybe item.
+
+## Project Integration
+
+- Someday/Maybe items associated with a project appear in the Project Detail view alongside actionable items, with the Someday/Maybe glyph `S` and accent `#CA9849`.
+- Project items in `ONGOING` state also appear in Project Detail with their respective element glyph (`N` for Next Action, `C` for Calendar) and the On Going accent `#2D8C8A`.
+- Pressing `gd` on a Someday/Maybe item inside Project Detail jumps to the Someday/Maybe page (`someday-maybe`).
+- Pressing `gd` on an Ongoing item inside Project Detail jumps to the On Going page (`ongoing-next-actions`).
