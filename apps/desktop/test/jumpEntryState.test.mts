@@ -64,6 +64,7 @@ function createMockControllers(): JumpControllers & {
   ongoingMock: ReturnType<typeof createMockOnGoingController>;
   projectsMock: ReturnType<typeof createMockController>;
   projectDetailMock: ReturnType<typeof createMockController>;
+  somedayMaybeMock: ReturnType<typeof createMockController>;
 } {
   const inboxMock = createMockController("inbox-1");
   const nextActionsMock = createMockController("na-1");
@@ -74,6 +75,7 @@ function createMockControllers(): JumpControllers & {
     projects: [{ id: "p-1", title: "Project One" }] as Project[]
   };
   const projectDetailMock = createMockController("item-1");
+  const somedayMaybeMock = createMockController("sm-1");
 
   return {
     inbox: inboxMock,
@@ -87,7 +89,9 @@ function createMockControllers(): JumpControllers & {
     projects: projectsMock,
     projectsMock,
     projectDetail: projectDetailMock,
-    projectDetailMock
+    projectDetailMock,
+    somedayMaybe: somedayMaybeMock,
+    somedayMaybeMock
   };
 }
 
@@ -126,6 +130,17 @@ describe("jumpEntryState", () => {
         screen: "inbox",
         zone: "inbox-list",
         selectedItemId: "inbox-1"
+      });
+    });
+
+    test("captures someday-maybe jump entry", () => {
+      const mocks = createMockControllers();
+      const entry = getCurrentJumpEntry("someday-maybe", mocks, null);
+
+      assert.deepEqual(entry, {
+        screen: "someday-maybe",
+        zone: "someday-maybe-list",
+        selectedItemId: "sm-1"
       });
     });
   });
@@ -168,6 +183,22 @@ describe("jumpEntryState", () => {
       assert.equal(activeScreen, "next-actions");
       assert.equal(mocks.nextActionsMock.selectedIdState, "na-99");
       assert.equal(mocks.nextActionsMock.activeZoneState, "next-actions-list");
+    });
+
+    test("restores someday-maybe screen and item selection", () => {
+      const mocks = createMockControllers();
+      let activeScreen = "inbox";
+
+      applyJumpEntry(
+        { screen: "someday-maybe", selectedItemId: "sm-99" },
+        mocks,
+        (s) => { activeScreen = s; },
+        () => {}
+      );
+
+      assert.equal(activeScreen, "someday-maybe");
+      assert.equal(mocks.somedayMaybeMock.selectedIdState, "sm-99");
+      assert.equal(mocks.somedayMaybeMock.activeZoneState, "someday-maybe-list");
     });
   });
 });
