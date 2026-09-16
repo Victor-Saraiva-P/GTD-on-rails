@@ -17,6 +17,7 @@ import { activePanelZone, buildCalendarKeybinds } from "../features/calendar/cal
 import { ProjectAssociateDialog } from "../features/projects/ProjectAssociateDialog";
 import { useProjectAssociateDialog } from "../features/projects/useProjectAssociateDialog";
 import type { Project } from "../features/projects/types";
+import { useListTitleSearch } from "../features/title-search/useListTitleSearch";
 
 type CalendarPageProps = Readonly<{
   controller: CalendarWorkspaceController;
@@ -316,9 +317,29 @@ export function CalendarPage({ controller, selectOnGoingCalendar, openOwnerProje
   useCalendarZone(controller);
   useCalendarAssetPreload(controller);
   useCalendarBindings(controller, openLink, openAsset, openScheduleEdit, selectOnGoingCalendar, projectAssociate.open, openOwnerProject, projects);
+  const titleSearch = useListTitleSearch({
+    disabled: Boolean(controller.editingTitle !== "" || controller.editingBodyId),
+    items: controller.stuffs,
+    screen: "calendars",
+    selectedId: controller.selectedItem?.id ?? null,
+    setSelectedId: controller.setSelectedId,
+    zone: [
+      "calendar-today-due-panel",
+      "calendar-today-done-panel",
+      "calendar-completed-panel",
+      "calendar-deleted-panel",
+      "calendar-mon-panel",
+      "calendar-tue-panel",
+      "calendar-wed-panel",
+      "calendar-thu-panel",
+      "calendar-fri-panel",
+      "calendar-sat-panel",
+      "calendar-sun-panel"
+    ]
+  });
 
   return (
-    <ListWorkspace theme={calendarWorkspaceTheme(controller.activeSubview)} currentLabel="Calendars" modeLabel={controller.vimMode ?? undefined}>
+    <ListWorkspace theme={calendarWorkspaceTheme(controller.activeSubview)} currentLabel="Calendars" modeLabel={controller.vimMode ?? undefined} titleSearch={titleSearch}>
       <CalendarViews controller={controller} />
       <LeaderMenu />
       <Suspense fallback={null}>

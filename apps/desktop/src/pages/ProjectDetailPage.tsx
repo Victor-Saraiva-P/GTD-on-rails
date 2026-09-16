@@ -18,6 +18,7 @@ import { formatProjectActionCount } from "../features/projects/types";
 import type { Project } from "../features/projects/types";
 import type { ProjectItem } from "../features/projects/projectItems";
 import type { ProjectDetailController } from "../features/projects/useProjectDetailController";
+import { useListTitleSearch } from "../features/title-search/useListTitleSearch";
 
 type ProjectDetailPageProps = Readonly<{
   controller: ProjectDetailController;
@@ -232,9 +233,17 @@ export function ProjectDetailPage({ controller, openItemDestination }: ProjectDe
   useKeybindScreen("project-detail");
   useProjectDetailZone(controller);
   useProjectDetailBindings(controller, () => setIsProcessingOpen(true), () => setIsLinkOpen(true), () => setIsAssetOpen(true), projectAssociate.open, openItemDestination);
+  const titleSearch = useListTitleSearch({
+    disabled: Boolean(controller.editingId || controller.editingBodyId),
+    items: controller.items,
+    screen: "project-detail",
+    selectedId: controller.selectedItem?.id ?? null,
+    setSelectedId: controller.setSelectedId,
+    zone: "project-actions-list"
+  });
 
   return (
-    <ListWorkspace theme={projectsListTheme} currentLabel={projectsListTheme.label} modeLabel={controller.vimMode ?? undefined}>
+    <ListWorkspace theme={projectsListTheme} currentLabel={projectsListTheme.label} modeLabel={controller.vimMode ?? undefined} titleSearch={titleSearch}>
       <section className="inbox-terminal-layout" aria-label="Project detail">
         <ProjectDetailView controller={controller} />
       </section>

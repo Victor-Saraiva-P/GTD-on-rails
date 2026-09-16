@@ -23,6 +23,7 @@ import type { Project } from "../features/projects/types";
 import type { ContextItem } from "../features/contexts/types";
 import type { NextActionPatch } from "../features/next-actions/types";
 import type { NextActionsWorkspaceController } from "../features/next-actions/useNextActionsWorkspaceController";
+import { useListTitleSearch } from "../features/title-search/useListTitleSearch";
 
 type NextActionsPageProps = Readonly<{
   controller: NextActionsWorkspaceController;
@@ -347,9 +348,17 @@ export function NextActionsPage({ controller, selectOnGoingAction, openOwnerProj
   useNextActionZone(controller);
   useNextActionAssetPreload(controller);
   useNextActionBindings(controller, selectOnGoingAction, openCurrentAvailability, openAttrs, openLink, openAsset, openProjectAssociate, isAttrsOpen, openOwnerProject, projects);
+  const titleSearch = useListTitleSearch({
+    disabled: Boolean(controller.editingId || controller.editingBodyId),
+    items: controller.stuffs,
+    screen: "next-actions",
+    selectedId: controller.selectedItem?.id ?? null,
+    setSelectedId: controller.setSelectedId,
+    zone: "next-actions-list"
+  });
 
   return (
-    <ListWorkspace theme={nextActionsListTheme} currentClassName="list-workspace__current--next-actions" currentLabel={<NextActionsFooterLabel controller={controller} />} modeLabel={controller.vimMode ?? undefined}>
+    <ListWorkspace theme={nextActionsListTheme} currentClassName="list-workspace__current--next-actions" currentLabel={<NextActionsFooterLabel controller={controller} />} modeLabel={controller.vimMode ?? undefined} titleSearch={titleSearch}>
       <NextActionViews controller={controller} />
       <LeaderMenu />
       <Suspense fallback={null}>

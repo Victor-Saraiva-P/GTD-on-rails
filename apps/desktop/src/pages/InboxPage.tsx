@@ -19,6 +19,7 @@ import { ProjectAssociateDialog } from "../features/projects/ProjectAssociateDia
 import { useProjectAssociateDialog } from "../features/projects/useProjectAssociateDialog";
 import { openOwnerProject as triggerOpenOwnerProject } from "../features/projects/ownerProjectNavigation";
 import type { Project } from "../features/projects/types";
+import { useListTitleSearch } from "../features/title-search/useListTitleSearch";
 
 type InboxPageProps = Readonly<{
   controller: InboxWorkspaceController;
@@ -371,9 +372,17 @@ export function InboxPage({ controller, openProjects, openOwnerProject, projects
   useInboxZone(controller);
   useInboxAssetPreload(controller);
   useInboxBindings(controller, openLinkCombo, openAssetCombo, openProcessing, projectAssociate.open, openOwnerProject, projects);
+  const titleSearch = useListTitleSearch({
+    disabled: Boolean(controller.editingId || controller.editingBodyId),
+    items: controller.stuffs,
+    screen: "inbox",
+    selectedId: controller.selectedId,
+    setSelectedId: controller.setSelectedId,
+    zone: "inbox-list"
+  });
 
   return (
-    <ListWorkspace theme={inboxListTheme} currentLabel={inboxListTheme.label} modeLabel={controller.vimMode ?? undefined}>
+    <ListWorkspace theme={inboxListTheme} currentLabel={inboxListTheme.label} modeLabel={controller.vimMode ?? undefined} titleSearch={titleSearch}>
       <InboxViews controller={controller} />
       <LeaderMenu />
       <Suspense fallback={null}>

@@ -16,6 +16,7 @@ import { ProjectAssociateDialog } from "../features/projects/ProjectAssociateDia
 import { useProjectAssociateDialog } from "../features/projects/useProjectAssociateDialog";
 import { openOwnerProject as triggerOpenOwnerProject } from "../features/projects/ownerProjectNavigation";
 import type { Project } from "../features/projects/types";
+import { useListTitleSearch } from "../features/title-search/useListTitleSearch";
 
 type OnGoingNextActionsPageProps = Readonly<{
   controller: OnGoingWorkspaceController;
@@ -253,9 +254,21 @@ export function OnGoingNextActionsPage({ controller, selectNextAction, openOwner
   useOnGoingZone(controller);
   useActiveAssetPreload(controller);
   useOnGoingBindings(controller, selectNextAction, dialogState.openLink, dialogState.openAsset, dialogState.projectAssociate.open, openOwnerProject, projects);
+  const searchableItems = useMemo(
+    () => controller.stuffs.map((selection) => ({ id: selection.item.id, title: selection.item.title })),
+    [controller.stuffs]
+  );
+  const titleSearch = useListTitleSearch({
+    disabled: Boolean(controller.editingId || controller.editingBodyId),
+    items: searchableItems,
+    screen: "ongoing-next-actions",
+    selectedId: controller.selectedItem ? controller.selectedItem.item.id : null,
+    setSelectedId: controller.setSelectedId,
+    zone: ["next-actions-list", "ongoing-calendars-list"]
+  });
 
   return (
-    <ListWorkspace theme={onGoingNextActionsListTheme} currentClassName="list-workspace__current--next-actions" currentLabel={<OnGoingFooterLabel />} modeLabel={controller.vimMode ?? undefined}>
+    <ListWorkspace theme={onGoingNextActionsListTheme} currentClassName="list-workspace__current--next-actions" currentLabel={<OnGoingFooterLabel />} modeLabel={controller.vimMode ?? undefined} titleSearch={titleSearch}>
       <OnGoingViews controller={controller} />
       <LeaderMenu />
       <OnGoingDialogs controller={controller} dialogState={dialogState} />

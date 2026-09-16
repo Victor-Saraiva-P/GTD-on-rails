@@ -14,6 +14,7 @@ import { LeaderMenu } from "../features/keybinds/LeaderMenu";
 import { useActiveZone, useKeybindScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
 import type { FocusZoneId, KeybindDefinition } from "../features/keybinds/types";
 import { contextsListTheme } from "../features/lists/listThemes";
+import { useListTitleSearch } from "../features/title-search/useListTitleSearch";
 
 const DRAFT_CONTEXT_ID = "__draft_context__";
 type ContextsModel = ReturnType<typeof useContextsModel>;
@@ -524,9 +525,21 @@ export function ContextsPage() {
   useContextsZone(model);
   useContextsPruning(model);
   useContextsBindings(model, actions);
+  const contextSearchItems = useMemo(
+    () => model.selection.visibleContexts.map((c) => ({ id: c.id, title: c.name })),
+    [model.selection.visibleContexts]
+  );
+  const titleSearch = useListTitleSearch({
+    disabled: Boolean(model.edit.editingId || model.iconEditor.isIconEditorOpen),
+    items: contextSearchItems,
+    screen: "contexts",
+    selectedId: model.selection.selectedId,
+    setSelectedId: model.selection.setSelectedId,
+    zone: "context-list"
+  });
 
   return (
-    <ListWorkspace theme={contextsListTheme} currentLabel={contextsListTheme.label}>
+    <ListWorkspace theme={contextsListTheme} currentLabel={contextsListTheme.label} titleSearch={titleSearch}>
       <ContextViews model={model} actions={actions} />
       <ContextIconEditorLayer model={model} actions={actions} />
       <LeaderMenu />

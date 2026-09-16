@@ -1,6 +1,7 @@
 import { useRef, type KeyboardEvent, type MutableRefObject } from "react";
 import { InlineTitleInput } from "../../components/InlineTitleInput";
 import { buildApiUrlWithVersion } from "../../config/env.ts";
+import { TitleSearchHighlight } from "../title-search/TitleSearchHighlight";
 import type { ContextItem } from "./types";
 
 type ContextsListItemProps = Readonly<{
@@ -135,7 +136,9 @@ function ReadOnlyContextsListItem(props: ContextsListItemProps) {
       >
         <span className="tree-entry__marker">{selected ? "●" : "○"}</span>
         <ContextGlyph item={item} />
-        <span className="tree-entry__label">{item.name}</span>
+        <span className="tree-entry__label">
+          <TitleSearchHighlight title={item.name} itemId={item.id} />
+        </span>
       </button>
     </li>
   );

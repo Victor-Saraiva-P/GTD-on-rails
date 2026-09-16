@@ -1,0 +1,108 @@
+.list-title-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 30px;
+  padding: 2px 14px;
+  background: #171717;
+  border-top: 1px solid rgba(var(--list-accent-rgb, 193, 145, 56), 0.42);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.35);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: #d4d4d4;
+  z-index: 10;
+}
+
+.list-title-search__prompt {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--list-accent, #c19138);
+  font-weight: 800;
+  user-select: none;
+}
+
+.list-title-search__icon {
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.list-title-search__chevron {
+  font-size: 0.74rem;
+  opacity: 0.85;
+}
+
+.list-title-search__input {
+  flex: 1;
+  min-width: 0;
+  height: 24px;
+  padding: 0 4px;
+  background: transparent;
+  border: 0;
+  color: #f0ebe8;
+  font-family: inherit;
+  font-size: inherit;
+  outline: none;
+}
+
+.list-title-search__input::placeholder {
+  color: #6b6662;
+}
+
+.list-title-search__count {
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  background: rgba(var(--list-accent-rgb, 193, 145, 56), 0.2);
+  color: var(--list-accent, #c19138);
+  border-radius: 3px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.list-title-search__hints {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: #7a7571;
+  font-size: 0.72rem;
+}
+
+.list-title-search__hint kbd {
+  display: inline-block;
+  padding: 0 4px;
+  background: #262626;
+  color: #b0aba7;
+  border-radius: 2px;
+  border: 1px solid #383838;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.title-search-match {
+  background-color: rgba(56, 117, 184, 0.45);
+  color: #fbfbfb;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+.title-search-match--active {
+  background-color: #e27d38;
+  color: #16181a;
+  font-weight: 700;
+}
+
+.title-search-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  padding: 0 4px;
+  font-family: var(--font-mono);
+  font-size: 0.70rem;
+  font-weight: 700;
+  background-color: rgba(226, 125, 56, 0.25);
+  color: #e27d38;
+  border-radius: 3px;
+  border: 1px solid rgba(226, 125, 56, 0.4);
+  vertical-align: middle;
+}
