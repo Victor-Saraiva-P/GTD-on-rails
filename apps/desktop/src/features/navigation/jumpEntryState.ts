@@ -21,6 +21,7 @@ export type JumpControllers = {
   ongoing: OnGoingNavigableController;
   projects: NavigableController & { projects: Project[] };
   projectDetail: NavigableController;
+  somedayMaybe?: NavigableController;
 };
 
 function getSpecificJumpEntry(activeScreen: ScreenId, controllers: JumpControllers): JumpEntry | null {
@@ -38,6 +39,9 @@ function getSpecificJumpEntry(activeScreen: ScreenId, controllers: JumpControlle
   }
   if (activeScreen === "projects") {
     return { screen: "projects", zone: "projects-list", selectedItemId: controllers.projects.selectedItem?.id ?? null };
+  }
+  if (activeScreen === "someday-maybe") {
+    return { screen: "someday-maybe", zone: "someday-maybe-list", selectedItemId: controllers.somedayMaybe?.selectedItem?.id ?? null };
   }
   return null;
 }
@@ -93,6 +97,9 @@ function applyScreenJump(entry: JumpEntry, controllers: JumpControllers): void {
   } else if (entry.screen === "projects") {
     if (entry.selectedItemId) controllers.projects.setSelectedId(entry.selectedItemId);
     controllers.projects.setActiveZone?.("projects-list");
+  } else if (entry.screen === "someday-maybe") {
+    if (entry.selectedItemId) controllers.somedayMaybe?.setSelectedId(entry.selectedItemId);
+    controllers.somedayMaybe?.setActiveZone?.("someday-maybe-list");
   }
 }
 

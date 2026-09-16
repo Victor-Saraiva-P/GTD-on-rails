@@ -31,7 +31,9 @@ const zoneLabels: Record<FocusZoneId, string> = {
   "deleted-next-action-detail": "Deleted next action detail",
   "context-list": "Contexts list",
   "context-detail": "Context detail",
-  "context-icon-editor": "Context icon editor"
+  "context-icon-editor": "Context icon editor",
+  "someday-maybe-list": "Someday/Maybe list",
+  "someday-maybe-detail": "Someday/Maybe detail"
 };
 
 function leaderTitle(leaderPath: string[]): string {

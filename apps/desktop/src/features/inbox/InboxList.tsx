@@ -13,6 +13,7 @@ type InboxListProps = Readonly<{
   onCommitEditing: () => void;
   onCommitEditingAndContinue: () => void;
   onCancelEditing: () => void;
+  glyph?: string;
 }>;
 
 type InboxListItemProps = Readonly<Omit<InboxListProps, "items"> & {
