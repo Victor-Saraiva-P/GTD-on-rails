@@ -81,26 +81,29 @@ function applyProjectJump(
   controllers.projectDetail.setActiveZone?.("project-actions-list");
 }
 
-function applyScreenJump(entry: JumpEntry, controllers: JumpControllers): void {
-  if (entry.screen === "inbox") {
-    if (entry.selectedItemId) controllers.inbox.setSelectedId(entry.selectedItemId);
-    controllers.inbox.setActiveZone?.("inbox-list");
-  } else if (entry.screen === "next-actions") {
-    if (entry.selectedItemId) controllers.nextActions.setSelectedId(entry.selectedItemId);
-    controllers.nextActions.setActiveZone?.("next-actions-list");
-  } else if (entry.screen === "calendars") {
-    if (entry.selectedItemId) controllers.calendars.setSelectedId(entry.selectedItemId);
-    controllers.calendars.setActiveZone?.("calendar-today-due-panel");
-  } else if (entry.screen === "ongoing-next-actions") {
-    if (entry.selectedItemId) controllers.ongoing.setSelectedId(entry.selectedItemId);
-    controllers.ongoing.setActiveZone?.("next-actions-list");
-  } else if (entry.screen === "projects") {
-    if (entry.selectedItemId) controllers.projects.setSelectedId(entry.selectedItemId);
-    controllers.projects.setActiveZone?.("projects-list");
-  } else if (entry.screen === "someday-maybe") {
-    if (entry.selectedItemId) controllers.somedayMaybe?.setSelectedId(entry.selectedItemId);
-    controllers.somedayMaybe?.setActiveZone?.("someday-maybe-list");
+interface JumpTarget {
+  setSelectedId?: (id: string | null) => void;
+  setActiveZone?: (zone: FocusZoneId) => void;
+  zone: FocusZoneId;
+}
+
+function resolveJumpTarget(screen: ScreenId, controllers: JumpControllers): JumpTarget | null {
+  if (screen === "inbox") return { setSelectedId: controllers.inbox.setSelectedId, setActiveZone: controllers.inbox.setActiveZone, zone: "inbox-list" };
+  if (screen === "next-actions") return { setSelectedId: controllers.nextActions.setSelectedId, setActiveZone: controllers.nextActions.setActiveZone, zone: "next-actions-list" };
+  if (screen === "calendars") return { setSelectedId: controllers.calendars.setSelectedId, setActiveZone: controllers.calendars.setActiveZone, zone: "calendar-today-due-panel" };
+  if (screen === "ongoing-next-actions") return { setSelectedId: controllers.ongoing.setSelectedId, setActiveZone: controllers.ongoing.setActiveZone, zone: "next-actions-list" };
+  if (screen === "projects") return { setSelectedId: controllers.projects.setSelectedId, setActiveZone: controllers.projects.setActiveZone, zone: "projects-list" };
+  if (screen === "someday-maybe") {
+    return { setSelectedId: controllers.somedayMaybe?.setSelectedId, setActiveZone: controllers.somedayMaybe?.setActiveZone, zone: "someday-maybe-list" };
   }
+  return null;
+}
+
+function applyScreenJump(entry: JumpEntry, controllers: JumpControllers): void {
+  const target = resolveJumpTarget(entry.screen, controllers);
+  if (!target) return;
+  if (entry.selectedItemId) target.setSelectedId?.(entry.selectedItemId);
+  target.setActiveZone?.(target.zone);
 }
 
 /**

@@ -75,7 +75,7 @@ function useWorkspacePruning(model: WorkspaceModel) {
 
 async function commitTitleEdit(model: WorkspaceModel) {
   const item = model.selection.selectedItem;
-  if (!item || model.titleEdit.editingId !== item.id) return;
+  if (model.titleEdit.editingId !== item?.id) return;
   const title = model.titleEdit.editingTitle.trim();
   if (!title) {
     clearEditing(model);
@@ -98,7 +98,7 @@ async function commitTitleEdit(model: WorkspaceModel) {
 
 async function commitBodyEdit(model: WorkspaceModel, body: ItemBody) {
   const item = model.selection.selectedItem;
-  if (!item || model.bodyEdit.editingBodyId !== item.id) return;
+  if (model.bodyEdit.editingBodyId !== item?.id) return;
   if (!isSameBody(item.body, body)) {
     const updated = await model.query.updateBody(item, body);
     model.selection.setSelectedId(updated.id);
@@ -109,7 +109,7 @@ async function commitBodyEdit(model: WorkspaceModel, body: ItemBody) {
 
 async function autosaveBodyEdit(model: WorkspaceModel, body: ItemBody) {
   const item = model.selection.selectedItem;
-  if (!item || model.bodyEdit.editingBodyId !== item.id) return;
+  if (model.bodyEdit.editingBodyId !== item?.id) return;
   if (isSameBody(item.body, body)) return;
   const updated = await model.query.updateBody(item, body);
   model.selection.setSelectedId(updated.id);
@@ -251,7 +251,7 @@ export function useSomedayMaybeWorkspaceController() {
     errorMessage: model.query.errorMessage,
     isLoading: model.query.isLoading,
     isUpdating: model.query.isUpdating,
-    items: model.selection.selectedItem ? model.query.items : model.query.items,
+    items: model.query.items,
     selectedIndex: model.selection.selectedIndex,
     selectedItem: model.selection.selectedItem,
     stuffs: model.query.items,

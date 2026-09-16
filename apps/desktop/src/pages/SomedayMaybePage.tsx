@@ -1,11 +1,10 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { ListView } from "../components/ListView.tsx";
 import { ListWorkspace } from "../components/ListWorkspace.tsx";
 import { RetryState } from "../components/RetryState.tsx";
 import { buildFormattingBindings } from "../features/inbox/formattingKeybinds.ts";
 import { InboxList } from "../features/inbox/InboxList.tsx";
 import { InboxStuffDetails } from "../features/inbox/InboxStuffDetails.tsx";
-import { prefetchNearbyInboxAssets } from "../features/inbox/inboxAssetPrefetch.ts";
 import { LeaderMenu } from "../features/keybinds/LeaderMenu.tsx";
 import { useKeybindScreen, useRegisterKeybinds } from "../features/keybinds/hooks.ts";
 import type { FocusZoneId, KeybindDefinition } from "../features/keybinds/types.ts";
