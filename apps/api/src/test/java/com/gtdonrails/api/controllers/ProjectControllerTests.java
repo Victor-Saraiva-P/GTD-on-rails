@@ -255,6 +255,29 @@ class ProjectControllerTests {
             .andExpect(jsonPath("$[1].actionCount").value(0));
     }
 
+    @Test
+    void listsProjectActionsIncludingSomedayMaybeAndOngoingItems() throws Exception {
+        Project project = saveProject("Redesign office");
+        UUID somedayMaybeId = createProjectStuff(project, "Maybe repaint walls");
+        UUID ongoingActionId = createProjectStuff(project, "Assemble standing desk");
+        createProjectStuff(project, "Stuff idea");
+
+        mockMvc.perform(post("/inbox/{id}/someday-maybe", somedayMaybeId))
+            .andExpect(status().isNoContent());
+
+        convertToNextAction(ongoingActionId);
+        mockMvc.perform(post("/next-actions/{id}/ongoing", ongoingActionId))
+            .andExpect(status().isOk());
+
+        mockMvc.perform(get("/projects/{id}/items/actions", project.getItemId()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(3)))
+            .andExpect(jsonPath("$[0].kind").value("STUFF"))
+            .andExpect(jsonPath("$[1].kind").value("NEXT_ACTION"))
+            .andExpect(jsonPath("$[1].status").value("ONGOING"))
+            .andExpect(jsonPath("$[2].kind").value("SOMEDAY_MAYBE"));
+    }
+
     private void convertToNextAction(UUID stuffId) throws Exception {
         mockMvc.perform(post("/inbox/{id}/next-action", stuffId)
                 .contentType(MediaType.APPLICATION_JSON)
