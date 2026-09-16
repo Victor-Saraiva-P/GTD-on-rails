@@ -41,6 +41,24 @@ describe("projectItemDestination", () => {
     });
   });
 
+  test("resolves ONGOING to ongoing-next-actions screen and list zone", () => {
+    const item = { ...createItem("NEXT_ACTION", "og-100"), status: "ONGOING" };
+    assert.deepEqual(resolveProjectItemDestination(item), {
+      screen: "ongoing-next-actions",
+      zone: "next-actions-list",
+      selectedItemId: "og-100"
+    });
+  });
+
+  test("resolves SOMEDAY_MAYBE to someday-maybe screen and list zone", () => {
+    const item = createItem("SOMEDAY_MAYBE", "sm-200");
+    assert.deepEqual(resolveProjectItemDestination(item), {
+      screen: "someday-maybe",
+      zone: "someday-maybe-list",
+      selectedItemId: "sm-200"
+    });
+  });
+
   test("resolves STUFF to inbox screen and inbox list zone", () => {
     const item = createItem("STUFF", "stuff-300");
     assert.deepEqual(resolveProjectItemDestination(item), {
