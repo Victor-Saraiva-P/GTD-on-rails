@@ -21,8 +21,9 @@ public interface ProjectItemRepository extends JpaRepository<ProjectItem, UUID> 
         and projectItem.item.deletedAt is null
         and (
             projectItem.item.status = 'STUFF'
-            or (projectItem.item.status = 'NEXT_ACTION' and nextAction.status = 'NEXT_ACTION')
-            or (projectItem.item.status = 'CALENDAR' and calendar.status = 'CALENDAR')
+            or projectItem.item.status = 'SOMEDAY_MAYBE'
+            or (projectItem.item.status = 'NEXT_ACTION' and nextAction.status in ('NEXT_ACTION', 'ONGOING'))
+            or (projectItem.item.status = 'CALENDAR' and calendar.status in ('CALENDAR', 'ONGOING'))
         )
         """)
     List<ProjectItem> findProjectActionItems(@Param("projectId") UUID projectId);
@@ -35,8 +36,8 @@ public interface ProjectItemRepository extends JpaRepository<ProjectItem, UUID> 
         where projectItem.project.itemId = :projectId
         and projectItem.item.deletedAt is null
         and (
-            (projectItem.item.status = 'NEXT_ACTION' and nextAction.status = 'NEXT_ACTION')
-            or (projectItem.item.status = 'CALENDAR' and calendar.status = 'CALENDAR')
+            (projectItem.item.status = 'NEXT_ACTION' and nextAction.status in ('NEXT_ACTION', 'ONGOING'))
+            or (projectItem.item.status = 'CALENDAR' and calendar.status in ('CALENDAR', 'ONGOING'))
         )
         """)
     long countProjectActionItems(@Param("projectId") UUID projectId);
@@ -48,8 +49,8 @@ public interface ProjectItemRepository extends JpaRepository<ProjectItem, UUID> 
         left join projectItem.item.calendar calendar
         where projectItem.item.deletedAt is null
         and (
-            (projectItem.item.status = 'NEXT_ACTION' and nextAction.status = 'NEXT_ACTION')
-            or (projectItem.item.status = 'CALENDAR' and calendar.status = 'CALENDAR')
+            (projectItem.item.status = 'NEXT_ACTION' and nextAction.status in ('NEXT_ACTION', 'ONGOING'))
+            or (projectItem.item.status = 'CALENDAR' and calendar.status in ('CALENDAR', 'ONGOING'))
         )
         group by projectItem.project.itemId
         """)
