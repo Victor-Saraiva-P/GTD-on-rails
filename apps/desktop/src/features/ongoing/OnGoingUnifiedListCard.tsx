@@ -4,6 +4,7 @@ import type { OnGoingItemSelection } from "./combinedOnGoingState";
 import { calendarItemIconText } from "../lists/listThemes";
 import { useScrollIntoViewWhenSelected } from "../lists/useScrollIntoViewWhenSelected";
 import { ProjectAssociationMarker } from "../projects/ProjectAssociationMarker";
+import { TitleSearchHighlight } from "../title-search/TitleSearchHighlight";
 
 type OnGoingUnifiedListCardProps = Readonly<{
   selection: OnGoingItemSelection;
@@ -92,7 +93,9 @@ function ReadOnlyUnifiedCard(props: OnGoingUnifiedListCardProps) {
         onDoubleClick={() => handleSelectDoubleClick(props)}
       >
         <UnifiedGlyph selection={selection} />
-        <span className="tree-entry__label">{selection.item.title}</span>
+        <span className="tree-entry__label">
+          <TitleSearchHighlight title={selection.item.title} itemId={selection.item.id} />
+        </span>
         <ProjectAssociationMarker projectTitle={selection.item.projectTitle} placement="list" />
       </button>
     </li>

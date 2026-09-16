@@ -2,6 +2,7 @@ import type { KeyboardEvent } from "react";
 import { InlineTitleInput } from "../../components/InlineTitleInput";
 import { useScrollIntoViewWhenSelected } from "../lists/useScrollIntoViewWhenSelected";
 import { ProjectAssociationMarker } from "../projects/ProjectAssociationMarker";
+import { TitleSearchHighlight } from "../title-search/TitleSearchHighlight";
 import type { Stuff } from "./types";
 
 type InboxListStuffProps = Readonly<{
@@ -103,7 +104,9 @@ function ReadOnlyInboxListStuff(props: InboxListStuffProps) {
       >
         <span className="tree-entry__marker">{selected ? "●" : "○"}</span>
         <InboxStuffGlyph glyph={props.glyph} />
-        <span className="tree-entry__label">{item.title}</span>
+        <span className="tree-entry__label">
+          <TitleSearchHighlight title={item.title} itemId={item.id} />
+        </span>
         <ProjectAssociationMarker projectTitle={item.projectTitle} placement="list" />
       </button>
     </li>

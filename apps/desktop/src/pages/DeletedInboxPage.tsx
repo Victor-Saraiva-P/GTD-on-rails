@@ -10,6 +10,7 @@ import { useActiveScreen, useKeybindScreen, useRegisterKeybinds } from "../featu
 import type { FocusZoneId, KeybindDefinition, ScreenId } from "../features/keybinds/types";
 import { LeaderMenu } from "../features/keybinds/LeaderMenu";
 import { deletedInboxListTheme } from "../features/lists/listThemes";
+import { useListTitleSearch } from "../features/title-search/useListTitleSearch";
 
 type DeletedInboxPageProps = Readonly<{
   controller: DeletedInboxWorkspaceController;
@@ -213,9 +214,16 @@ export function DeletedInboxPage({ controller }: DeletedInboxPageProps) {
   useDeletedInboxZone(controller);
   useDeletedInboxAssetPreload(controller);
   useDeletedInboxBindings(controller);
+  const titleSearch = useListTitleSearch({
+    items: controller.stuffs,
+    screen: "deleted-inbox",
+    selectedId: controller.selectedItem?.id ?? null,
+    setSelectedId: controller.setSelectedId,
+    zone: "deleted-inbox-list"
+  });
 
   return (
-    <ListWorkspace theme={deletedInboxListTheme} currentLabel={deletedInboxListTheme.label}>
+    <ListWorkspace theme={deletedInboxListTheme} currentLabel={deletedInboxListTheme.label} titleSearch={titleSearch}>
       <DeletedViews controller={controller} />
       <LeaderMenu />
     </ListWorkspace>

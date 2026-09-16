@@ -12,6 +12,7 @@ import type { ProjectGridDirection, ProjectGridCardRect } from "../features/proj
 import { ProjectsList } from "../features/projects/ProjectsList";
 import type { ProjectPatch } from "../features/projects/types";
 import type { ProjectsWorkspaceController } from "../features/projects/useProjectsWorkspaceController";
+import { useListTitleSearch } from "../features/title-search/useListTitleSearch";
 
 type ProjectsPageProps = Readonly<{
   controller: ProjectsWorkspaceController;
@@ -120,8 +121,17 @@ export function ProjectsPage({ controller, openProjectDetail }: ProjectsPageProp
   useKeybindScreen("projects");
   useRegisterKeybinds(bindings);
   const theme = projectTheme(controller);
+  const titleSearch = useListTitleSearch({
+    disabled: isEditOpen,
+    items: controller.projects,
+    screen: "projects",
+    selectedId: controller.selectedItem?.id ?? null,
+    setSelectedId: controller.setSelectedId,
+    zone: "projects-list"
+  });
+
   return (
-    <ListWorkspace theme={theme} currentLabel={theme.label}>
+    <ListWorkspace theme={theme} currentLabel={theme.label} titleSearch={titleSearch}>
       <section className="projects-terminal-layout" aria-label={projectLabel(controller)}>
         <ListView title={projectLabel(controller)} viewIndex={1} active={controller.activeZone === "projects-list"} bodyClassName="list-pane__body--flush" className="inbox-pane inbox-pane--list projects-pane">
           <ProjectsBody controller={controller} />

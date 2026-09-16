@@ -10,6 +10,7 @@ import type { FocusZoneId, KeybindDefinition, ScreenId } from "../features/keybi
 import type { ListTheme } from "../features/lists/listThemes";
 import { NextActionsList } from "../features/next-actions/NextActionsList";
 import type { ArchivedNextActionsWorkspaceController } from "../features/next-actions/useArchivedNextActionsWorkspaceController";
+import { useListTitleSearch } from "../features/title-search/useListTitleSearch";
 
 type ArchivedNextActionsPageProps = Readonly<{
   controller: ArchivedNextActionsWorkspaceController;
@@ -198,9 +199,16 @@ export function ArchivedNextActionsPage(props: ArchivedNextActionsPageProps) {
   useArchivedZone(props);
   useArchivedAssetPreload(props.controller);
   useArchivedBindings(props);
+  const titleSearch = useListTitleSearch({
+    items: props.controller.stuffs,
+    screen: props.screen,
+    selectedId: props.controller.selectedItem?.id ?? null,
+    setSelectedId: props.controller.setSelectedId,
+    zone: props.listZone
+  });
 
   return (
-    <ListWorkspace theme={props.theme} currentLabel={props.label}>
+    <ListWorkspace theme={props.theme} currentLabel={props.label} titleSearch={titleSearch}>
       <section className="inbox-terminal-layout" aria-label={props.label}>
         <ArchivedListView {...props} />
         <ArchivedDetailView {...props} />

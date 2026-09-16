@@ -14,6 +14,7 @@ import { ProjectAssociateDialog } from "../features/projects/ProjectAssociateDia
 import type { Project } from "../features/projects/types.ts";
 import { useProjectAssociateDialog } from "../features/projects/useProjectAssociateDialog.ts";
 import type { SomedayMaybeWorkspaceController } from "../features/someday-maybe/useSomedayMaybeWorkspaceController.ts";
+import { useListTitleSearch } from "../features/title-search/useListTitleSearch";
 
 const LazyMarkdownAssetComboDialog = lazy(async () => {
   const module = await import("../features/inbox/MarkdownAssetComboDialog.tsx");
@@ -197,9 +198,17 @@ export function SomedayMaybePage({ controller, openOwnerProject, projects = [] }
     openOwnerProject,
     projects
   );
+  const titleSearch = useListTitleSearch({
+    disabled: Boolean(controller.editingId || controller.editingBodyId),
+    items: controller.items,
+    screen: "someday-maybe",
+    selectedId: controller.selectedItem?.id ?? null,
+    setSelectedId: controller.setSelectedId,
+    zone: "someday-maybe-list"
+  });
 
   return (
-    <ListWorkspace theme={theme} currentLabel={theme.label} modeLabel={controller.vimMode ?? undefined}>
+    <ListWorkspace theme={theme} currentLabel={theme.label} modeLabel={controller.vimMode ?? undefined} titleSearch={titleSearch}>
       <section className="inbox-terminal-layout" aria-label="Someday/Maybe">
         <ListView title={listTitle} viewIndex={1} active={controller.activeZone === "someday-maybe-list"} bodyClassName="list-pane__body--flush" className="inbox-pane inbox-pane--list">
           <SomedayMaybeListBody controller={controller} />

@@ -2,6 +2,7 @@ import type { KeyboardEvent } from "react";
 import { InlineTitleInput } from "../../components/InlineTitleInput";
 import { calendarItemIconText } from "../lists/listThemes";
 import { useScrollIntoViewWhenSelected } from "../lists/useScrollIntoViewWhenSelected";
+import { TitleSearchHighlight } from "../title-search/TitleSearchHighlight";
 import type { ProjectItem } from "./projectItems";
 
 type ProjectActionsListProps = Readonly<{
@@ -68,7 +69,9 @@ function ReadOnlyProjectAction(props: ProjectActionCardProps) {
     <li className="tree-list__item">
       <button ref={buttonRef} type="button" className={`tree-entry unified-item-entry${props.selected ? " tree-entry--active" : ""}`} onClick={() => props.onSelect(props.item.id)} onDoubleClick={props.onStartEditing}>
         <ProjectActionGlyph item={props.item} />
-        <span className="tree-entry__label">{props.item.title}</span>
+        <span className="tree-entry__label">
+          <TitleSearchHighlight title={props.item.title} itemId={props.item.id} />
+        </span>
       </button>
     </li>
   );

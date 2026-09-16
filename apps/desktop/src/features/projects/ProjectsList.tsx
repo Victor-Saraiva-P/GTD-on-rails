@@ -1,5 +1,6 @@
 import type { Project } from "./types";
 import { formatProjectActionCount, formatProjectDeadline, isProjectDead } from "./types";
+import { TitleSearchHighlight } from "../title-search/TitleSearchHighlight";
 
 type ProjectsListProps = Readonly<{
   items: Project[];
@@ -47,7 +48,9 @@ function ProjectCard({ item, selected, onSelect, activeSubview }: ProjectCardPro
       <button type="button" className={resolveCardClass(selected, isDead)} data-project-id={item.id} onClick={() => onSelect(item.id)}>
         <span className="project-card__heading">
           <span className="project-card__glyph" aria-hidden="true">P</span>
-          <span className="project-card__title">{item.title}</span>
+          <span className="project-card__title">
+            <TitleSearchHighlight title={item.title} itemId={item.id} />
+          </span>
         </span>
         <span className="project-card__footer">
           <span className="project-card__deadline">{deadline ?? "No deadline"}</span>

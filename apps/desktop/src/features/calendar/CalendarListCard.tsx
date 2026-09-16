@@ -5,6 +5,7 @@ import { calendarItemIconText } from "../lists/listThemes";
 import { useScrollIntoViewWhenSelected } from "../lists/useScrollIntoViewWhenSelected";
 import { trimCalendarDisplayTime } from "./calendarDateUtils";
 import { ProjectAssociationMarker } from "../projects/ProjectAssociationMarker";
+import { TitleSearchHighlight } from "../title-search/TitleSearchHighlight";
 
 type CalendarListCardProps = Readonly<{
   archiveStatus?: "deleted";
@@ -94,7 +95,9 @@ function CalendarCardBody({ item, archiveStatus }: Readonly<{ item: Calendar; ar
   return (
     <>
       <CalendarGlyph archiveStatus={archiveStatus} status={item.status} />
-      <span className="tree-entry__label">{item.title}</span>
+      <span className="tree-entry__label">
+        <TitleSearchHighlight title={item.title} itemId={item.id} />
+      </span>
       <ProjectAssociationMarker projectTitle={item.projectTitle} placement="list" />
       {displayTime ? (
         <span className="calendar-entry__time">
