@@ -10,7 +10,7 @@ This page is the umbrella documentation for the inbox list and the inbox-related
 
 The inbox is the list that holds unprocessed stuff. Its purpose is to collect without deciding too early.
 
-Inbox items should be processed later into a [[Next Actions|next action]], [[Projects|project]], reference material, project-related material, or another outcome supported by the processing flow.
+Inbox items should be processed later into a [[Next Actions|next action]], [[Projects|project]], [[Someday Maybe|someday/maybe]], reference material, project-related material, or another outcome supported by the processing flow.
 
 ## Inbox List
 

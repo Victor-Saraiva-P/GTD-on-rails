@@ -7,6 +7,7 @@ This page defines the direct GTD elements used by GTD on Rails and separates the
 - [[Stuff]]
 - [[Next Action]]
 - [[Project]]
+- [[Someday Maybe]]
 
 ## Supporting Attributes
 
@@ -20,6 +21,7 @@ This page defines the direct GTD elements used by GTD on Rails and separates the
 - [[Inbox]]
 - [[Next Actions]]
 - [[Projects]]
+- [[Someday Maybe]]
 
 Lists and pages are documented separately in [[Lists and Pages]]. For example, [[Next Action]] documents the GTD element, while [[Next Actions]] documents the next-action lists and page family.
 
