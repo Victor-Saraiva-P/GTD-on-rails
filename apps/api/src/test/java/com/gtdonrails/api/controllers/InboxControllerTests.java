@@ -243,6 +243,24 @@ class InboxControllerTests {
     }
 
     @Test
+    void convertsStuffToSomedayMaybeAndRemovesItFromInbox() throws Exception {
+        Item stuff = itemRepository.save(new Item(new Title("Learn piano"), "Captured notes"));
+
+        mockMvc.perform(post("/inbox/{id}/someday-maybe", stuff.getId()))
+            .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/inbox/{id}", stuff.getId()))
+            .andExpect(status().isNotFound());
+
+        mockMvc.perform(get("/someday-maybe"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(1)))
+            .andExpect(jsonPath("$[0].id").value(stuff.getId().toString()))
+            .andExpect(jsonPath("$[0].title").value("Learn piano"))
+            .andExpect(jsonPath("$[0].status").value("SOMEDAY_MAYBE"));
+    }
+
+    @Test
     void editsProjectTitleAndClearsDeadline() throws Exception {
         Item stuff = itemRepository.save(new Item(new Title("Old project"), null));
         mockMvc.perform(post("/inbox/{id}/project", stuff.getId())
