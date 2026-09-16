@@ -158,4 +158,46 @@ class ItemTests {
 
         assertEquals(ItemStatus.STUFF, item.getStatus());
     }
+
+    @Test
+    void convertToSomedayMaybeSetsStatus() {
+        Item item = new Item(new Title("Capture idea"), null);
+
+        item.convertToSomedayMaybe();
+
+        assertEquals(ItemStatus.SOMEDAY_MAYBE, item.getStatus());
+    }
+
+    @Test
+    void convertToSomedayMaybeRejectsNonStuff() {
+        Item item = new Item(new Title("Capture idea"), null);
+        item.convertToNextAction(java.math.BigDecimal.ONE, java.time.Duration.ZERO, java.util.Set.of(new Context("home")));
+
+        IllegalStateException exception = assertThrows(
+            IllegalStateException.class,
+            item::convertToSomedayMaybe);
+
+        assertEquals("item value 'NEXT_ACTION' is invalid; expected active STUFF without subtype", exception.getMessage());
+    }
+
+    @Test
+    void revertToStuffSetsStatus() {
+        Item item = new Item(new Title("Someday idea"), null);
+        item.convertToSomedayMaybe();
+
+        item.revertToStuff();
+
+        assertEquals(ItemStatus.STUFF, item.getStatus());
+    }
+
+    @Test
+    void revertToStuffRejectsNonSomedayMaybe() {
+        Item item = new Item(new Title("Inbox stuff"), null);
+
+        IllegalStateException exception = assertThrows(
+            IllegalStateException.class,
+            item::revertToStuff);
+
+        assertEquals("item value 'STUFF' is invalid; expected active SOMEDAY_MAYBE", exception.getMessage());
+    }
 }

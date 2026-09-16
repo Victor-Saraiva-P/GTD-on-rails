@@ -7,6 +7,7 @@ import {
   createStuff,
   deleteStuff,
   processStuff,
+  processStuffToSomedayMaybe,
   restoreStuff,
   uploadStuffAsset,
   copyLocalStuffAsset,
@@ -158,6 +159,17 @@ describe("inbox API", () => {
     });
 
     await processStuff(item, 4.5, 90, ["ctx-1"], "2028-02-29");
+  });
+
+  test("processStuffToSomedayMaybe sends POST /inbox/:id/someday-maybe", async () => {
+    const item: Stuff = { id: "5", title: "Task", body: dummyBody, status: "INBOX", createdAt: "2026-05-01T00:00:00Z" };
+    globalThis.fetch = mock.fn(async (input, init) => {
+      assert.ok(input.toString().endsWith("/inbox/5/someday-maybe"));
+      assert.equal(init?.method, "POST");
+      return new Response(null, { status: 204 });
+    });
+
+    await processStuffToSomedayMaybe(item);
   });
 
   test("assignStuffProject sends project id and returns updated stuff", async () => {

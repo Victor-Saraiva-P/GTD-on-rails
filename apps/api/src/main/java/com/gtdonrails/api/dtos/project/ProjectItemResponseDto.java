@@ -24,6 +24,24 @@ public record ProjectItemResponseDto(
     LocalDate deadline,
     BigDecimal energy,
     Duration estimatedTime,
-    List<ContextResponseDto> contexts
+    List<ContextResponseDto> contexts,
+    String status
 ) {
+    public ProjectItemResponseDto(
+        UUID projectId,
+        String projectTitle,
+        UUID id,
+        String kind,
+        String title,
+        ItemBody body,
+        Instant createdAt,
+        LocalDate scheduledDate,
+        LocalTime scheduledTime,
+        LocalDate deadline,
+        BigDecimal energy,
+        Duration estimatedTime,
+        List<ContextResponseDto> contexts
+    ) {
+        this(projectId, projectTitle, id, kind, title, body, createdAt, scheduledDate, scheduledTime, deadline, energy, estimatedTime, contexts, kind);
+    }
 }

@@ -42,7 +42,8 @@ public class CacheInvalidationService {
             CacheNames.NEXT_ACTIONS,
             CacheNames.PROJECTS,
             CacheNames.CALENDAR,
-            CacheNames.CONTEXTS
+            CacheNames.CONTEXTS,
+            CacheNames.SOMEDAY_MAYBE
         ));
     }
 

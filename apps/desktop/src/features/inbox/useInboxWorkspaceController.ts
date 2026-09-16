@@ -370,6 +370,15 @@ async function processSelectedStuffToProjectAction(model: InboxModel, deadline: 
   model.zone.setActiveZone("inbox-list");
 }
 
+async function processSelectedStuffToSomedayMaybeAction(model: InboxModel) {
+  const selectedItem = model.selection.selectedItem;
+  if (!selectedItem) return;
+  await model.query.processStuffToSomedayMaybe(selectedItem);
+  model.selection.setSelectedId(model.query.stuffs[0]?.id ?? null);
+  clearAllEditing(model);
+  model.zone.setActiveZone("inbox-list");
+}
+
 async function assignSelectedStuffProjectAction(model: InboxModel, projectId: string | null) {
   const selectedItem = model.selection.selectedItem;
   if (!selectedItem) return;
@@ -391,6 +400,7 @@ function useInboxWorkspaceActions(model: InboxModel) {
     processSelectedStuff: (energy: number | null, estimatedTimeMinutes: number | null, contextIds: string[], deadline: string | null) => processSelectedStuffAction(model, energy, estimatedTimeMinutes, contextIds, deadline),
     processSelectedStuffToCalendar: (payload: CalendarConversionPayload) => processSelectedStuffToCalendarAction(model, payload),
     processSelectedStuffToProject: (deadline: string | null) => processSelectedStuffToProjectAction(model, deadline),
+    processSelectedStuffToSomedayMaybe: () => processSelectedStuffToSomedayMaybeAction(model),
     undo: () => undoAction(model),
     redo: () => redoAction(model),
     selectFirstStuff: model.selection.selectFirstStuff,

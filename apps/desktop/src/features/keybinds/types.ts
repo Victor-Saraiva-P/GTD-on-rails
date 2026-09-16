@@ -14,7 +14,8 @@ export type ScreenId =
   | "next-action-detail-page"
   | "ongoing-next-action-detail-page"
   | "ongoing-calendar-detail-page"
-  | "google-calendar-integration";
+  | "google-calendar-integration"
+  | "someday-maybe";
 
 export type FocusZoneId =
   | "inbox-list"
@@ -45,7 +46,9 @@ export type FocusZoneId =
   | "deleted-next-action-detail"
   | "context-list"
   | "context-detail"
-  | "context-icon-editor";
+  | "context-icon-editor"
+  | "someday-maybe-list"
+  | "someday-maybe-detail";
 
 export type KeybindDefinition = {
   id: string;

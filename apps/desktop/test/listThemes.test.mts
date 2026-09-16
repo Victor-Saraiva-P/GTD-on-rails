@@ -9,9 +9,11 @@ import {
   doneNextActionsListTheme,
   doneProjectsListTheme,
   deletedProjectsListTheme,
+  deletedSomedayMaybeListTheme,
   inboxListTheme,
   nextActionsListTheme,
   projectsListTheme,
+  somedayMaybeListTheme,
   stuffDetailListTheme
 } from "../src/features/lists/listThemes.ts";
 
@@ -64,3 +66,18 @@ test("deletedProjectsListTheme uses deleted gray", () => {
   assert.equal(deletedProjectsListTheme.label, "Deleted Projects");
   assert.equal(deletedProjectsListTheme.accentColor, "#9B9B9B");
 });
+
+test("somedayMaybeListTheme defines correct default styling", () => {
+  assert.equal(somedayMaybeListTheme.id, "someday-maybe");
+  assert.equal(somedayMaybeListTheme.label, "Someday/Maybe");
+  assert.equal(somedayMaybeListTheme.accentColor, "#CA9849");
+  assert.equal(somedayMaybeListTheme.accentColorRgb, "202, 152, 73");
+});
+
+test("deletedSomedayMaybeListTheme uses deleted gray", () => {
+  assert.equal(deletedSomedayMaybeListTheme.id, "deleted-someday-maybe");
+  assert.equal(deletedSomedayMaybeListTheme.label, "Deleted Someday/Maybe");
+  assert.equal(deletedSomedayMaybeListTheme.accentColor, "#9B9B9B");
+  assert.equal(deletedSomedayMaybeListTheme.accentColorRgb, "155, 155, 155");
+});
+

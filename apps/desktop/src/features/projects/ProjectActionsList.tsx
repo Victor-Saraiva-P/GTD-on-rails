@@ -25,8 +25,10 @@ function projectItemGlyph(item: ProjectItem): string {
 }
 
 function projectItemGlyphClass(item: ProjectItem): string {
+  if (item.status === "ONGOING") return "tree-entry__glyph--project-ongoing";
   if (item.kind === "CALENDAR") return "tree-entry__glyph--project-calendar";
   if (item.kind === "NEXT_ACTION") return "tree-entry__glyph--project-next-action";
+  if (item.kind === "SOMEDAY_MAYBE") return "tree-entry__glyph--project-someday-maybe";
   return "tree-entry__glyph--project-stuff";
 }
 

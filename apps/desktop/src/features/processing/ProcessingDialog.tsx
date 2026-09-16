@@ -17,6 +17,7 @@ type ProcessingDialogProps = Readonly<{
   onProcess: (energy: number | null, estimatedTimeMinutes: number | null, contextIds: string[], deadline: string | null) => void;
   onProcessCalendar: (payload: CalendarConversionPayload) => void;
   onProcessProject: (deadline: string | null) => void;
+  onProcessSomedayMaybe?: () => void;
   allowProject?: boolean;
 }>;
 
@@ -25,7 +26,7 @@ type ProcessingDialogProps = Readonly<{
  *
  * @example <ProcessingDialog item={stuff} onClose={close} onProcess={process} />
  */
-export function ProcessingDialog({ allowProject = true, item, onClose, onProcess, onProcessCalendar, onProcessProject }: ProcessingDialogProps) {
+export function ProcessingDialog({ allowProject = true, item, onClose, onProcess, onProcessCalendar, onProcessProject, onProcessSomedayMaybe }: ProcessingDialogProps) {
   const [step, setStep] = useState<ProcessingStep>("initial");
   const [selectedContextIds, setSelectedContextIds] = useState<string[]>([]);
   const [selectedDeadline, setSelectedDeadline] = useState("");
@@ -45,6 +46,10 @@ export function ProcessingDialog({ allowProject = true, item, onClose, onProcess
 
   const handleProject = () => {
     setStep(stepAfterInitialChoice("project"));
+  };
+
+  const handleSomedayMaybe = () => {
+    onProcessSomedayMaybe?.();
   };
 
   const handleContextsSelected = (contextIds: string[]) => {
@@ -86,7 +91,7 @@ export function ProcessingDialog({ allowProject = true, item, onClose, onProcess
       <div className="processing-dialog__title">Processing</div>
       <div className="processing-dialog__content">
         {step === "initial" && (
-          <ProcessingInitialStep allowProject={allowProject} onNextAction={handleNextAction} onCalendar={handleCalendar} onProject={handleProject} onCancel={onClose} />
+          <ProcessingInitialStep allowProject={allowProject} onNextAction={handleNextAction} onCalendar={handleCalendar} onProject={handleProject} onSomedayMaybe={handleSomedayMaybe} onCancel={onClose} />
         )}
         {step === "set-calendar-date" && (
           <ProcessingCalendarDateStep date={selectedCalendarDate} onDateChange={setSelectedCalendarDate} onDateSelected={handleCalendarDateSelected} onBack={handleBack} />

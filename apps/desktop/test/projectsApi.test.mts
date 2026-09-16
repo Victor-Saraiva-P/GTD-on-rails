@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test, { afterEach, describe, mock } from "node:test";
 
 import { assignItemProject, deleteProject, fetchDeletedProjects, fetchDoneProjects, fetchProjects, markProjectDone, patchProject, processStuffToProject, recoverProject, resetProjectStatus } from "../src/features/projects/api.ts";
-import { createProjectStuff, deleteProjectItem, fetchProjectActions, restoreProjectItem } from "../src/features/projects/projectItems.ts";
+import { createProjectStuff, deleteProjectItem, fetchProjectActions, processProjectStuffToSomedayMaybe, restoreProjectItem, type ProjectItem } from "../src/features/projects/projectItems.ts";
 import { formatProjectActionCount, isProjectDead } from "../src/features/projects/types.ts";
 import type { Stuff } from "../src/features/inbox/types.ts";
 
@@ -135,7 +135,8 @@ describe("projects API", () => {
       return new Response(
         JSON.stringify([
           { id: "item-1", projectId: "project-1", kind: "STUFF", title: "Buy paste", body: null, status: "STUFF", createdAt: "2026-01-01T00:00:00Z" },
-          { id: "item-2", projectId: "project-1", kind: "NEXT_ACTION", title: "Apply paste", body: null, status: "NEXT_ACTION", createdAt: "2026-01-01T00:00:00Z", energy: 4.5, estimatedTime: "PT1H30M", contexts: [{ id: "ctx-1", name: "hardware" }] }
+          { id: "item-2", projectId: "project-1", kind: "NEXT_ACTION", title: "Apply paste", body: null, status: "ONGOING", createdAt: "2026-01-01T00:00:00Z", energy: 4.5, estimatedTime: "PT1H30M", contexts: [{ id: "ctx-1", name: "hardware" }] },
+          { id: "item-3", projectId: "project-1", kind: "SOMEDAY_MAYBE", title: "Maybe repaint", body: null, status: "SOMEDAY_MAYBE", createdAt: "2026-01-01T00:00:00Z" }
         ]),
         { status: 200 }
       );
@@ -146,9 +147,27 @@ describe("projects API", () => {
     assert.equal(items[0].kind, "STUFF");
     assert.equal(items[0].body.text, "");
     assert.equal(items[1].kind, "NEXT_ACTION");
+    assert.equal(items[1].status, "ONGOING");
     assert.equal(items[1].energy, 4.5);
     assert.deepEqual(items[1].estimatedTime, { hours: 1, minutes: 30 });
     assert.deepEqual(items[1].contexts, [{ id: "ctx-1", name: "hardware" }]);
+    assert.equal(items[2].kind, "SOMEDAY_MAYBE");
+    assert.equal(items[2].status, "SOMEDAY_MAYBE");
+  });
+
+  test("processProjectStuffToSomedayMaybe sends POST to /inbox/{id}/someday-maybe", async () => {
+    globalThis.fetch = mock.fn(async (input, init) => {
+      assert.ok(input.toString().endsWith("/inbox/item-1/someday-maybe"));
+      assert.equal(init?.method, "POST");
+      return new Response(null, { status: 204 });
+    });
+
+    const item: ProjectItem = {
+      ...stuff("item-1"),
+      kind: "STUFF",
+      projectId: "project-1"
+    };
+    await processProjectStuffToSomedayMaybe(item);
   });
 
   test("createProjectStuff posts project-scoped stuff", async () => {

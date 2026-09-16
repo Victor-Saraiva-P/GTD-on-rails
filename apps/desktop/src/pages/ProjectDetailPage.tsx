@@ -147,7 +147,7 @@ function ProjectActionBody({ controller }: ProjectDetailPageProps) {
 function ProjectItemDetailBody({ controller }: ProjectDetailPageProps) {
   const item = controller.selectedItem;
   if (!item) return <p className="pane-state">Select a project item to inspect its details.</p>;
-  return <InboxStuffDetails item={item} showCreatedMeta={item.kind === "STUFF"} metaVariant={metaVariant(item)} editing={controller.editingBodyId === item.id} onAutosaveEditing={controller.autosaveBody} onCommitEditing={controller.commitBody} onExitEditingFromNormalMode={(body) => exitProjectItemDetail(controller, body)} onCancelEditing={controller.cancelBodyEdit} onVimModeChange={controller.setVimMode} />;
+  return <InboxStuffDetails item={item} showCreatedMeta={item.kind === "STUFF" || item.kind === "SOMEDAY_MAYBE"} metaVariant={metaVariant(item)} editing={controller.editingBodyId === item.id} onAutosaveEditing={controller.autosaveBody} onCommitEditing={controller.commitBody} onExitEditingFromNormalMode={(body) => exitProjectItemDetail(controller, body)} onCancelEditing={controller.cancelBodyEdit} onVimModeChange={controller.setVimMode} />;
 }
 
 async function exitProjectItemDetail(controller: ProjectDetailController, body: ItemBody): Promise<void> {
@@ -217,6 +217,7 @@ function ProjectDetailModals(props: ProjectDetailModalsProps) {
           onProcess={(energy, minutes, contextIds, deadline) => { void props.controller.processSelectedStuff(energy, minutes, contextIds, deadline); props.setIsProcessingOpen(false); }}
           onProcessCalendar={(payload: CalendarConversionPayload) => { void props.controller.processSelectedStuffToCalendar(payload); props.setIsProcessingOpen(false); }}
           onProcessProject={() => undefined}
+          onProcessSomedayMaybe={() => { void props.controller.processSelectedStuffToSomedayMaybe(); props.setIsProcessingOpen(false); }}
         />
       ) : null}
     </>

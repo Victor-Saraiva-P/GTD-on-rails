@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { clearAssetObjectUrlCache } from "../features/inbox/assetFiles";
 import { evictBackendCache } from "../lib/api/cache.ts";
-import { useCalendarWorkspaceController, type CalendarWorkspaceController } from "../features/calendar/useCalendarWorkspaceController";
+import { useCalendarWorkspaceController } from "../features/calendar/useCalendarWorkspaceController";
 import { useDeletedInboxWorkspaceController } from "../features/inbox/useDeletedInboxWorkspaceController";
-import { useInboxWorkspaceController, type InboxWorkspaceController } from "../features/inbox/useInboxWorkspaceController";
+import { useInboxWorkspaceController } from "../features/inbox/useInboxWorkspaceController";
 import { useActiveScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
 import type { KeybindDefinition, ScreenId } from "../features/keybinds/types";
 import {
@@ -35,15 +35,14 @@ import { ProjectDetailPage } from "./ProjectDetailPage";
 import { StuffDetailPage } from "./StuffDetailPage";
 import { useGoogleCalendarIntegrationController } from "../features/integrations/useGoogleCalendarIntegrationController";
 import { GoogleCalendarIntegrationPage } from "./GoogleCalendarIntegrationPage";
-import type { NextActionsWorkspaceController } from "../features/next-actions/useNextActionsWorkspaceController";
 import { useOnGoingWorkspaceController } from "../features/ongoing/useOnGoingWorkspaceController";
-import type { OnGoingWorkspaceController } from "../features/ongoing/useOnGoingWorkspaceController";
 import { useProjectsWorkspaceController } from "../features/projects/useProjectsWorkspaceController";
-import type { ProjectsWorkspaceController } from "../features/projects/useProjectsWorkspaceController";
 import { useProjectDetailController } from "../features/projects/useProjectDetailController";
 import type { Project } from "../features/projects/types";
 import { useJumpListNavigation } from "../features/navigation/useJumpListNavigation";
 import type { ProjectItem } from "../features/projects/projectItems";
+import { useSomedayMaybeWorkspaceController } from "../features/someday-maybe/useSomedayMaybeWorkspaceController";
+import { SomedayMaybePage } from "./SomedayMaybePage";
 
 const doneNextActionsConfig = {
   detailZone: "done-next-action-detail",
@@ -68,21 +67,18 @@ function buildNavigationBindings(
   jumpToScreen: (screen: ScreenId, beforeNavigate?: () => void) => void,
   goBack: () => void,
   goForward: () => void,
-  inbox: InboxWorkspaceController,
-  calendar: CalendarWorkspaceController,
-  nextActions: NextActionsWorkspaceController,
-  ongoing: OnGoingWorkspaceController,
-  projects: ProjectsWorkspaceController
+  controllers: AppControllers
 ) {
   return [
     { id: "navigation.jump-back", key: "o", ctrl: true, description: "Jump to older position", runKeybind: goBack },
     { id: "navigation.jump-forward", key: "i", ctrl: true, description: "Jump to newer position", runKeybind: goForward },
-    { id: "navigation.open-calendars", key: "c", description: "Open calendars", leader: true, sequence: ["c"], runKeybind: () => jumpToScreen("calendars", calendar.resetWorkspace) },
+    { id: "navigation.open-calendars", key: "c", description: "Open calendars", leader: true, sequence: ["c"], runKeybind: () => jumpToScreen("calendars", controllers.calendars.resetWorkspace) },
     { id: "navigation.open-contexts", key: "C", description: "Open contexts", leader: true, sequence: ["C"], runKeybind: () => jumpToScreen("contexts") },
-    { id: "navigation.open-inbox", key: "i", description: "Open inbox", leader: true, sequence: ["i"], runKeybind: () => jumpToScreen("inbox", inbox.resetWorkspace) },
-    { id: "navigation.open-next-actions", key: "n", description: "Open next actions", leader: true, sequence: ["n"], runKeybind: () => jumpToScreen("next-actions", nextActions.resetWorkspace) },
-    { id: "navigation.open-ongoing-next-actions", key: "o", description: "Open ongoing work", leader: true, sequence: ["o"], runKeybind: () => jumpToScreen("ongoing-next-actions", () => { ongoing.resetWorkspace(); ongoing.setActiveZone("next-actions-list"); }) },
-    { id: "navigation.open-projects", key: "p", description: "Open projects", leader: true, sequence: ["p"], runKeybind: () => jumpToScreen("projects", projects.resetWorkspace) },
+    { id: "navigation.open-inbox", key: "i", description: "Open inbox", leader: true, sequence: ["i"], runKeybind: () => jumpToScreen("inbox", controllers.inbox.resetWorkspace) },
+    { id: "navigation.open-next-actions", key: "n", description: "Open next actions", leader: true, sequence: ["n"], runKeybind: () => jumpToScreen("next-actions", controllers.nextActions.resetWorkspace) },
+    { id: "navigation.open-ongoing-next-actions", key: "o", description: "Open ongoing work", leader: true, sequence: ["o"], runKeybind: () => jumpToScreen("ongoing-next-actions", () => { controllers.ongoing.resetWorkspace(); controllers.ongoing.setActiveZone("next-actions-list"); }) },
+    { id: "navigation.open-projects", key: "p", description: "Open projects", leader: true, sequence: ["p"], runKeybind: () => jumpToScreen("projects", controllers.projects.resetWorkspace) },
+    { id: "navigation.open-someday-maybe", key: "s", description: "Open someday/maybe", leader: true, sequence: ["s"], runKeybind: () => jumpToScreen("someday-maybe", controllers.somedayMaybe.resetWorkspace) },
     { id: "navigation.open-google-calendar-integration", key: "g", description: "Google Calendar Integration", leader: true, sequence: ["I", "g"], runKeybind: () => jumpToScreen("google-calendar-integration") }
   ] satisfies KeybindDefinition[];
 }
@@ -98,7 +94,8 @@ function useAppControllers(projectDetailProject: Project | null) {
     ongoing: useOnGoingWorkspaceController(),
     projectDetail: useProjectDetailController(projectDetailProject),
     projects: useProjectsWorkspaceController(),
-    googleCalendarIntegration: useGoogleCalendarIntegrationController()
+    googleCalendarIntegration: useGoogleCalendarIntegrationController(),
+    somedayMaybe: useSomedayMaybeWorkspaceController()
   };
 }
 
@@ -118,6 +115,7 @@ function reloadActiveController(activeScreen: ScreenId, controllers: AppControll
   if (activeScreen === "done-next-actions") controllers.doneNextActions.reload();
   if (activeScreen === "deleted-next-actions") controllers.deletedNextActions.reload();
   if (activeScreen === "google-calendar-integration") controllers.googleCalendarIntegration.reload();
+  if (activeScreen === "someday-maybe") controllers.somedayMaybe.reload();
 }
 
 function useReloadActiveScreen(activeScreen: ScreenId, controllers: AppControllers) {
@@ -224,6 +222,7 @@ function renderActiveScreen(
   if (activeScreen === "done-next-actions") return renderDoneNextActionsPage(controllers);
   if (activeScreen === "deleted-next-actions") return renderDeletedNextActionsPage(controllers);
   if (activeScreen === "google-calendar-integration") return <GoogleCalendarIntegrationPage controller={controllers.googleCalendarIntegration} />;
+  if (activeScreen === "someday-maybe") return <SomedayMaybePage controller={controllers.somedayMaybe} openOwnerProject={openOwnerProject} projects={controllers.projects.projects} />;
 
   return <InboxPage controller={controllers.inbox} openProjects={() => openProjectsAfterProcessing(controllers, setActiveScreen)} openOwnerProject={openOwnerProject} projects={controllers.projects.projects} />;
 }
@@ -247,8 +246,8 @@ export function AppShell() {
     navigation.openOwnerProject(selected.id, project?.title ?? null, null);
   }, [controllers.projects.projects, controllers.projects.selectedItem, navigation]);
   const navigationBindings = useMemo(
-    () => buildNavigationBindings(navigation.jumpToScreen, navigation.goBack, navigation.goForward, controllers.inbox, controllers.calendars, controllers.nextActions, controllers.ongoing, controllers.projects),
-    [navigation.jumpToScreen, navigation.goBack, navigation.goForward, controllers.inbox, controllers.calendars, controllers.nextActions, controllers.ongoing, controllers.projects]
+    () => buildNavigationBindings(navigation.jumpToScreen, navigation.goBack, navigation.goForward, controllers),
+    [navigation.jumpToScreen, navigation.goBack, navigation.goForward, controllers]
   );
 
   useReloadActiveScreen(activeScreen, controllers);

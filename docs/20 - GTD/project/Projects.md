@@ -34,16 +34,16 @@ Active projects with a deadline appear as all-day entries on the external Projec
 
 The project detail page is a fullscreen page for one active project. Its first subview is the Project Actions View, titled with the project title and using the project purple page theme.
 
-The Project Actions View is a unified list of project items with a detail preview pane beside it. It shows captured project stuff first, calendar items second, next actions with deadlines third, and next actions without deadlines last.
+The Project Actions View is a unified list of project items with a detail preview pane beside it. It shows captured project stuff first, ongoing items second, calendar items third, next actions with deadlines fourth, next actions without deadlines fifth, and someday/maybe items last.
 
-Project stuff created from this page remains normal stuff and also appears in Inbox until processed. Processing project stuff can turn it into a next action or calendar item; the resulting item remains in the Project Actions View and also appears in its global page.
+Project stuff created from this page remains normal stuff and also appears in Inbox until processed. Processing project stuff can turn it into a next action, calendar item, or someday/maybe item; the resulting item remains in the Project Actions View and also appears in its global page.
 
 | Shortcut | Scope | Action |
 | --- | --- | --- |
 | `a` | Project Actions View | Add project stuff. |
-| `p` | Project Actions View | Process selected project stuff into a next action or calendar item. |
+| `p` | Project Actions View | Process selected project stuff into a next action, calendar, or someday/maybe item. |
 | `P` | Project Actions View or Detail | Associate selected project item to project. |
-| `gd` | Project Actions View or Detail | Open corresponding screen for selected item (Next Actions, Calendars, or Inbox) and focus it. |
+| `gd` | Project Actions View or Detail | Open corresponding screen for selected item (Next Actions, Ongoing Actions, Calendars, Someday/Maybe, or Inbox) and focus it. |
 | `d` | Project Actions View or Detail | Delete selected project item. |
 | `u` | Project Actions View or Detail | Undo last deletion. |
 | `Ctrl+r` | Project Actions View or Detail | Redo last deletion. |

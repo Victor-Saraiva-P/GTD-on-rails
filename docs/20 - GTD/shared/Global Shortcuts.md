@@ -16,14 +16,17 @@ These shortcuts are registered globally by the desktop shell.
 | `Space n` | Open next actions. |
 | `Space o` | Open on going next actions. |
 | `Space p` | Open projects. |
+| `Space s` | Open someday/maybe. |
 
 Calendars use `[` and `]` inside the page to cycle through Today, Weekly, Completed, and Deleted subviews.
 
 Projects use `[` and `]` inside the page to cycle between Projects and Completed Projects.
 
+Someday/Maybe uses `[` and `]` inside the page to cycle between Someday/Maybe and Deleted Someday/Maybe.
+
 ## Master Lists
 
-These shortcuts are available in master-list focus zones for Inbox, Deleted Inbox, Next Actions, Ongoing Next Actions, Done Next Actions, Deleted Next Actions, Projects, Completed Projects, and Contexts. They do not apply to Calendar panels.
+These shortcuts are available in master-list focus zones for Inbox, Deleted Inbox, Next Actions, Ongoing Next Actions, Done Next Actions, Deleted Next Actions, Projects, Completed Projects, Someday/Maybe, Deleted Someday/Maybe, and Contexts. They do not apply to Calendar panels.
 
 | Shortcut | Action |
 | --- | --- |

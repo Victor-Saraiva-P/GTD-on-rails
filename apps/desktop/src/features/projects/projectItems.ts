@@ -1,11 +1,11 @@
 import { apiJson } from "../../lib/api/apiClient.ts";
-import { deleteStuff, processStuff, restoreStuff, updateStuffBody, updateStuffTitle } from "../inbox/api.ts";
+import { deleteStuff, processStuff, processStuffToSomedayMaybe, restoreStuff, updateStuffBody, updateStuffTitle } from "../inbox/api.ts";
 import type { ItemBody, Stuff } from "../inbox/types.ts";
 import { processStuffToCalendar } from "../calendar/api.ts";
 import type { CalendarConversionPayload } from "../calendar/types.ts";
 import { parseEstimatedTime } from "../next-actions/types.ts";
 
-export type ProjectItemKind = "STUFF" | "NEXT_ACTION" | "CALENDAR";
+export type ProjectItemKind = "STUFF" | "NEXT_ACTION" | "CALENDAR" | "SOMEDAY_MAYBE";
 
 export type ProjectItem = Stuff & {
   kind: ProjectItemKind;
@@ -47,6 +47,10 @@ export async function processProjectStuff(item: ProjectItem, energy: number | nu
 
 export async function processProjectStuffToCalendar(item: ProjectItem, payload: CalendarConversionPayload): Promise<void> {
   await processStuffToCalendar(item, payload);
+}
+
+export async function processProjectStuffToSomedayMaybe(item: ProjectItem): Promise<void> {
+  await processStuffToSomedayMaybe(item);
 }
 
 export { deleteStuff as deleteProjectItem, restoreStuff as restoreProjectItem };

@@ -177,6 +177,29 @@ public class Item extends AuditableEntity {
         return createdProject;
     }
 
+    /**
+     * Converts this active inbox stuff item into a GTD someday/maybe item.
+     *
+     * <p>Example: {@code item.convertToSomedayMaybe()}.</p>
+     */
+    public void convertToSomedayMaybe() {
+        requireActiveStuffWithoutSubtype();
+        status = ItemStatus.SOMEDAY_MAYBE;
+    }
+
+    /**
+     * Reverts this active someday/maybe item back into inbox stuff.
+     *
+     * <p>Example: {@code item.revertToStuff()}.</p>
+     */
+    public void revertToStuff() {
+        if (status != ItemStatus.SOMEDAY_MAYBE || isDeleted()) {
+            throw new IllegalStateException(
+                "item value '" + status + "' is invalid; expected active SOMEDAY_MAYBE");
+        }
+        status = ItemStatus.STUFF;
+    }
+
     @PrePersist
     void prePersist() {
         initializeAuditTimestamps();

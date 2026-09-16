@@ -132,3 +132,18 @@ export const googleCalendarIntegrationTheme: ListTheme = {
   accentColor: "#4285F4",
   accentColorRgb: "66, 133, 244"
 };
+
+export const somedayMaybeListTheme: ListTheme = {
+  id: "someday-maybe",
+  label: "Someday/Maybe",
+  accentColor: "#CA9849",
+  accentColorRgb: "202, 152, 73"
+};
+
+export const deletedSomedayMaybeListTheme: ListTheme = {
+  id: "deleted-someday-maybe",
+  label: "Deleted Someday/Maybe",
+  accentColor: deletedInboxListTheme.accentColor,
+  accentColorRgb: deletedInboxListTheme.accentColorRgb
+};
+

@@ -211,6 +211,20 @@ class InboxServiceTests {
         verify(cacheInvalidationService).evictItemMutation();
     }
 
+    @Test
+    void convertStuffToSomedayMaybeSetsStatusAndEvictsCache() {
+        UUID stuffId = UUID.randomUUID();
+        Item stuff = new Item(new Title("Someday idea"), null);
+        when(itemRepository.findByIdAndStatusAndDeletedAtIsNull(stuffId, ItemStatus.STUFF)).thenReturn(Optional.of(stuff));
+
+        inboxService.convertStuffToSomedayMaybe(stuffId);
+
+        assertEquals(ItemStatus.SOMEDAY_MAYBE, stuff.getStatus());
+        verify(itemRepository).save(stuff);
+        verify(googleCalendarEventQueueService).requestUpsert(stuffId);
+        verify(cacheInvalidationService).evictItemMutation();
+    }
+
     private ConvertStuffToNextActionRequestDto convertRequest(UUID contextId) {
         return convertRequest(List.of(contextId));
     }

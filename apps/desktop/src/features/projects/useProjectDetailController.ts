@@ -5,7 +5,7 @@ import { isSameBody } from "../inbox/types";
 import { useActiveZone } from "../keybinds/hooks";
 import { assignItemProject } from "./api";
 import type { Project } from "./types";
-import { createProjectStuff, deleteProjectItem, fetchProjectActions, processProjectStuff, processProjectStuffToCalendar, restoreProjectItem, updateProjectItemBody, updateProjectItemTitle, type ProjectItem } from "./projectItems";
+import { createProjectStuff, deleteProjectItem, fetchProjectActions, processProjectStuff, processProjectStuffToCalendar, processProjectStuffToSomedayMaybe, restoreProjectItem, updateProjectItemBody, updateProjectItemTitle, type ProjectItem } from "./projectItems";
 import { projectItemsWithDraft } from "./projectDetailItems";
 import { useUndoRedoHistory } from "../history/useUndoRedoHistory";
 import { deleteProjectItemAction, executeProjectItemUndo, executeProjectItemRedo } from "./projectDetailItemActions";
@@ -181,6 +181,7 @@ function buildProcessOperations(
   return {
     processSelectedStuff: (energy: number | null, minutes: number | null, contextIds: string[], deadline: string | null) => processSelectedStuff(selection.selectedItem, energy, minutes, contextIds, deadline, query.reload),
     processSelectedStuffToCalendar: (payload: CalendarConversionPayload) => processSelectedStuffToCalendar(selection.selectedItem, payload, query.reload),
+    processSelectedStuffToSomedayMaybe: () => processSelectedStuffToSomedayMaybe(selection.selectedItem, query.reload),
     assignSelectedProject: (projectId: string | null) => assignSelectedProject(selection.selectedItem, projectId, query.reload)
   };
 }
@@ -289,6 +290,11 @@ async function processSelectedStuff(item: ProjectItem | null, energy: number | n
 async function processSelectedStuffToCalendar(item: ProjectItem | null, payload: CalendarConversionPayload, reload: () => void) {
   if (item?.kind !== "STUFF") return;
   await processProjectStuffToCalendar(item, payload); reload();
+}
+
+async function processSelectedStuffToSomedayMaybe(item: ProjectItem | null, reload: () => void) {
+  if (item?.kind !== "STUFF") return;
+  await processProjectStuffToSomedayMaybe(item); reload();
 }
 
 async function assignSelectedProject(item: ProjectItem | null, projectId: string | null, reload: () => void) {

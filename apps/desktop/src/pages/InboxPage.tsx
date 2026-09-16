@@ -363,6 +363,10 @@ export function InboxPage({ controller, openProjects, openOwnerProject, projects
     void controller.processSelectedStuffToProject(deadline).then(openProjects);
     setIsProcessingOpen(false);
   };
+  const processSelectedSomedayMaybeItem = () => {
+    void controller.processSelectedStuffToSomedayMaybe();
+    setIsProcessingOpen(false);
+  };
   useKeybindScreen("inbox");
   useInboxZone(controller);
   useInboxAssetPreload(controller);
@@ -376,7 +380,7 @@ export function InboxPage({ controller, openProjects, openOwnerProject, projects
         {isLinkComboOpen ? <LazyMarkdownLinkComboDialog onClose={() => setIsLinkComboOpen(false)} /> : null}
         {isAssetComboOpen && controller.selectedItem ? <LazyMarkdownAssetComboDialog itemId={controller.selectedItem.id} onClose={() => setIsAssetComboOpen(false)} /> : null}
       </Suspense>
-      {isProcessingOpen && controller.selectedItem ? <ProcessingDialog item={controller.selectedItem} onClose={() => setIsProcessingOpen(false)} onProcess={processSelectedItem} onProcessCalendar={processSelectedCalendarItem} onProcessProject={processSelectedProjectItem} /> : null}
+      {isProcessingOpen && controller.selectedItem ? <ProcessingDialog item={controller.selectedItem} onClose={() => setIsProcessingOpen(false)} onProcess={processSelectedItem} onProcessCalendar={processSelectedCalendarItem} onProcessProject={processSelectedProjectItem} onProcessSomedayMaybe={processSelectedSomedayMaybeItem} /> : null}
       <ProjectAssociateDialog
         item={controller.selectedItem}
         isOpen={projectAssociate.isOpen}

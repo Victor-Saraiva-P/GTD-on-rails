@@ -16,7 +16,9 @@ import com.gtdonrails.api.dtos.project.ProjectItemResponseDto;
 import com.gtdonrails.api.entities.Item;
 import com.gtdonrails.api.entities.Project;
 import com.gtdonrails.api.entities.ProjectItem;
+import com.gtdonrails.api.enums.CalendarStatus;
 import com.gtdonrails.api.enums.ItemStatus;
+import com.gtdonrails.api.enums.NextActionStatus;
 import com.gtdonrails.api.exceptions.item.ItemNotFoundException;
 import com.gtdonrails.api.mappers.ItemMapper;
 import com.gtdonrails.api.normalizers.ItemTextNormalizer;
@@ -159,9 +161,22 @@ public class ProjectItemService {
     private int kindRank(ProjectItem projectItem) {
         ItemStatus status = projectItem.getItem().getStatus();
         if (status == ItemStatus.STUFF) return 0;
-        if (status == ItemStatus.CALENDAR) return 1;
-        if (hasNextActionDeadline(projectItem)) return 2;
-        return 3;
+        if (isOngoing(projectItem)) return 1;
+        if (status == ItemStatus.CALENDAR) return 2;
+        if (hasNextActionDeadline(projectItem)) return 3;
+        if (status == ItemStatus.NEXT_ACTION) return 4;
+        return 5;
+    }
+
+    private boolean isOngoing(ProjectItem projectItem) {
+        Item item = projectItem.getItem();
+        if (item.getStatus() == ItemStatus.NEXT_ACTION && item.getNextAction() != null) {
+            return item.getNextAction().getStatus() == NextActionStatus.ONGOING;
+        }
+        if (item.getStatus() == ItemStatus.CALENDAR && item.getCalendar() != null) {
+            return item.getCalendar().getStatus() == CalendarStatus.ONGOING;
+        }
+        return false;
     }
 
     private boolean hasNextActionDeadline(ProjectItem projectItem) {
@@ -200,6 +215,17 @@ public class ProjectItemService {
             .toList();
     }
 
+    private String resolveItemStatus(ProjectItem projectItem) {
+        Item item = projectItem.getItem();
+        if (item.getStatus() == ItemStatus.NEXT_ACTION && item.getNextAction() != null) {
+            return item.getNextAction().getStatus().name();
+        }
+        if (item.getStatus() == ItemStatus.CALENDAR && item.getCalendar() != null) {
+            return item.getCalendar().getStatus().name();
+        }
+        return item.getStatus().name();
+    }
+
     private ProjectItemResponseDto toResponse(ProjectItem projectItem) {
         Item item = projectItem.getItem();
         return new ProjectItemResponseDto(
@@ -215,7 +241,8 @@ public class ProjectItemService {
             nextActionDeadline(projectItem),
             nextActionEnergy(projectItem),
             nextActionEstimatedTime(projectItem),
-            nextActionContexts(projectItem)
+            nextActionContexts(projectItem),
+            resolveItemStatus(projectItem)
         );
     }
 }

@@ -193,6 +193,17 @@ function buildEstimatedTimePayload(estimatedTimeMinutes: number | null): Estimat
 }
 
 /**
+ * Converts an inbox stuff item into a someday/maybe item.
+ *
+ * @example await processStuffToSomedayMaybe(stuff)
+ */
+export async function processStuffToSomedayMaybe(item: Stuff): Promise<void> {
+  await apiFetch(`/inbox/${item.id}/someday-maybe`, {
+    method: "POST"
+  });
+}
+
+/**
  * Assigns or removes project association for one stuff item.
  *
  * @example await assignStuffProject(stuff, projectId)
