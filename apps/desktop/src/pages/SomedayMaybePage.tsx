@@ -81,7 +81,6 @@ function buildActionBindings(
   return [
     somedayMaybeBinding("someday-maybe.edit-title", "Enter", "Edit title", "someday-maybe-list", controller.startEditingTitle),
     somedayMaybeBinding("someday-maybe.edit-body", "l", "Edit body", "someday-maybe-list", controller.startEditingBody),
-    somedayMaybeBinding("someday-maybe.revert", "i", "Move to inbox", "someday-maybe-list", () => void controller.revertSelectedToStuff()),
     somedayMaybeBinding("someday-maybe.delete", "d", "Delete item", "someday-maybe-list", () => void controller.deleteSelected()),
     somedayMaybeBinding("someday-maybe.undo", "u", "Undo", "someday-maybe-list", () => void controller.undo()),
     { ...somedayMaybeBinding("someday-maybe.redo", "r", "Redo", "someday-maybe-list", () => void controller.redo()), ctrl: true },
@@ -92,6 +91,13 @@ function buildActionBindings(
       if (canEditSelected(controller)) triggerOpenOwnerProject(controller.selectedItem, openOwnerProject, projects);
     }, false, ["g", "d"]),
     somedayMaybeBinding("someday-maybe.which-key", "k", "Show available keybinds", "someday-maybe-list", () => undefined, true)
+  ];
+}
+
+function buildActiveBindings(controller: SomedayMaybeWorkspaceController): KeybindDefinition[] {
+  if (controller.activeSubview !== "active") return [];
+  return [
+    somedayMaybeBinding("someday-maybe.revert", "r", "Move to inbox", "someday-maybe-list", () => void controller.revertSelectedToStuff())
   ];
 }
 
@@ -114,6 +120,7 @@ function useSomedayMaybeBindings(
   const bindings = useMemo(() => [
     ...buildNavigationBindings(controller),
     ...buildActionBindings(controller, openProjectAssociate, openOwnerProject, projects),
+    ...buildActiveBindings(controller),
     ...buildDeletedBindings(controller),
     ...buildFormattingBindings("someday-maybe", openLinkCombo, openAssetCombo, "someday-maybe-detail")
   ], [controller, openLinkCombo, openAssetCombo, openProjectAssociate, openOwnerProject, projects]);
