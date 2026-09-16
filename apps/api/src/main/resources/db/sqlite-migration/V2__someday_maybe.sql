@@ -1,8 +1,8 @@
 create table items_new (
     id text primary key,
-    title varchar(200) not null,
+    title text not null,
     body text not null default '{"text":"","inlineMarks":[],"lineBlocks":[],"blockEntities":[]}',
-    status varchar(50) not null check (status in ('STUFF', 'NEXT_ACTION', 'CALENDAR', 'PROJECT', 'SOMEDAY_MAYBE')),
+    status text not null check (status in ('STUFF', 'NEXT_ACTION', 'CALENDAR', 'PROJECT', 'SOMEDAY_MAYBE')),
     created_at timestamp not null,
     updated_at timestamp not null,
     deleted_at timestamp,
