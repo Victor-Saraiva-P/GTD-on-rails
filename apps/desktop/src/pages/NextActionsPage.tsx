@@ -250,6 +250,11 @@ function NextActionsListBody({ controller }: NextActionControllerProps) {
   return <NextActionsListReady controller={controller} />;
 }
 
+function selectNextActionItem(controller: NextActionsWorkspaceController, id: string): void {
+  controller.setSelectedId(id);
+  controller.setActiveZone("next-actions-list");
+}
+
 function NextActionsListReady({ controller }: NextActionControllerProps) {
   return (
     <NextActionsList
@@ -258,7 +263,7 @@ function NextActionsListReady({ controller }: NextActionControllerProps) {
       selectedId={controller.selectedItem?.id ?? ""}
       editingId={controller.editingId}
       editingTitle={controller.editingTitle}
-      onSelect={controller.setSelectedId}
+      onSelect={(id) => selectNextActionItem(controller, id)}
       onEditingTitleChange={controller.setEditingTitle}
       onStartEditing={controller.startTitleEdit}
       onCommitEditing={() => commitTitle(controller)}

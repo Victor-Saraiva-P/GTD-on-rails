@@ -250,6 +250,11 @@ async function exitBodyEditingFromNormalMode(controller: InboxWorkspaceControlle
   controller.setActiveZone("inbox-list");
 }
 
+function selectInboxStuff(controller: InboxWorkspaceController, id: string): void {
+  controller.setSelectedId(id);
+  controller.setActiveZone("inbox-list");
+}
+
 function InboxListReady({ controller }: InboxControllerProps) {
   return (
     <InboxList
@@ -258,7 +263,7 @@ function InboxListReady({ controller }: InboxControllerProps) {
       selectedId={controller.selectedItem?.id ?? ""}
       editingId={controller.editingId}
       editingTitle={controller.editingTitle}
-      onSelect={controller.setSelectedId}
+      onSelect={(id) => selectInboxStuff(controller, id)}
       onEditingTitleChange={controller.setEditingTitle}
       onStartEditing={controller.startEditingSelectedStuff}
       onCommitEditing={() => commitStuffTitle(controller)}

@@ -79,11 +79,29 @@ function HintBadgeItem({ hint, buffer }: Readonly<{ hint: PositionedHint; buffer
   const badgeClass = isMatch ? "gtd-hint-badge" : "gtd-hint-badge gtd-hint-badge--dim";
 
   return (
-    <span key={hint.label} className={badgeClass} style={{ left: hint.left, top: hint.top }}>
+    <span
+      key={hint.label}
+      data-hint-label={hint.label}
+      className={badgeClass}
+      style={{ left: hint.left, top: hint.top }}
+    >
       {matched ? <span className="gtd-hint-badge__matched">{matched}</span> : null}
       {remaining}
     </span>
   );
+}
+
+function useHintTargetAttributes(hints: PositionedHint[]) {
+  useEffect(() => {
+    for (const hint of hints) {
+      hint.element.setAttribute("data-hint-label", hint.label);
+    }
+    return () => {
+      for (const hint of hints) {
+        hint.element.removeAttribute("data-hint-label");
+      }
+    };
+  }, [hints]);
 }
 
 function useHintKeyboardListener(
@@ -126,6 +144,7 @@ export function HintOverlay({ onExit }: Readonly<{ onExit: () => void }>) {
     [hints, buffer]
   );
 
+  useHintTargetAttributes(hints);
   useHintMatchEffect(buffer, matching, onExit);
   useHintKeyboardListener(setBuffer, onExit);
 

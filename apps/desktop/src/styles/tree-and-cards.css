@@ -144,13 +144,30 @@
 }
 
 .tree-entry--active {
-  background: #2e2e2e;
-  color: #d4d4d4;
+  background: rgba(var(--list-accent-rgb, 204, 120, 47), 0.18);
+  box-shadow: inset 3px 0 0 var(--list-accent, #cc782f);
+  color: #ffffff;
 }
 
 .tree-list--inbox .tree-entry--active {
-  background: rgba(var(--list-accent-rgb), 0.14);
-  color: #f0e8e4;
+  background: rgba(var(--list-accent-rgb), 0.2);
+  box-shadow: inset 3px 0 0 var(--list-accent), inset 0 0 0 1px rgba(var(--list-accent-rgb), 0.4);
+  color: #ffffff;
+}
+
+.tree-list--inbox .tree-entry--active:hover,
+.tree-list--inbox .tree-entry--active:focus,
+.tree-list--inbox .tree-entry--active:focus-visible {
+  background: rgba(var(--list-accent-rgb), 0.24);
+  box-shadow: inset 3px 0 0 var(--list-accent), inset 0 0 0 1px rgba(var(--list-accent-rgb), 0.55);
+  color: #ffffff;
+  outline: none;
+}
+
+.list-pane--active .tree-list--inbox .tree-entry--active {
+  background: rgba(var(--list-accent-rgb), 0.24);
+  box-shadow: inset 3px 0 0 var(--list-accent), inset 0 0 0 1px rgba(var(--list-accent-rgb), 0.48);
+  color: #ffffff;
 }
 
 .tree-entry__marker {
