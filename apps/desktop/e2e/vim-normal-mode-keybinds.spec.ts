@@ -49,6 +49,44 @@ test("Space h opens hint mode and Escape exits it", async ({ page }) => {
   await expect(page.locator(".gtd-hint-overlay")).not.toBeVisible();
 });
 
+test("Hint mode isolates keys and restores full keyboard navigation on target selection", async ({ page }) => {
+  const item1 = uniqueLabel("Hint target 1");
+  const item2 = uniqueLabel("Hint target 2");
+  await openApp(page);
+  await createInboxStuffFromKeyboard(page, item1);
+  await createInboxStuffFromKeyboard(page, item2);
+
+  // Open hint mode
+  await page.keyboard.press("Space");
+  await page.keyboard.press("h");
+  await expect(page.locator(".gtd-hint-overlay")).toBeVisible();
+
+  // Find badge for item1
+  const badgeText = await page.evaluate((targetText) => {
+    const buttons = Array.from(document.querySelectorAll("button.tree-entry"));
+    const idx = buttons.findIndex((b) => b.textContent?.includes(targetText));
+    if (idx === -1) return null;
+    const badges = Array.from(document.querySelectorAll(".gtd-hint-badge"));
+    return badges[idx]?.textContent ?? null;
+  }, item1);
+
+  expect(badgeText).toBeTruthy();
+  for (const char of badgeText!) {
+    await page.keyboard.press(char);
+  }
+
+  // Hint overlay should dismiss and item1 should be active
+  await expect(page.locator(".gtd-hint-overlay")).not.toBeVisible();
+  await expect(page.getByRole("button", { name: new RegExp(item1) })).toHaveClass(/tree-entry--active/);
+
+  // Keyboard navigation should work immediately (j/k)
+  await page.keyboard.press("j");
+  await expect(page.getByRole("button", { name: new RegExp(item1) })).not.toHaveClass(/tree-entry--active/);
+
+  await page.keyboard.press("k");
+  await expect(page.getByRole("button", { name: new RegExp(item1) })).toHaveClass(/tree-entry--active/);
+});
+
 test("Vim normal mode argument awaiting does not trigger leader menu", async ({ page }) => {
   const title = uniqueLabel("Vim argument awaiting");
   await openApp(page);
