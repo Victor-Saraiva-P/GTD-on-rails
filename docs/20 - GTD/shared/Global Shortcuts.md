@@ -17,6 +17,7 @@ These shortcuts are registered globally by the desktop shell.
 | `Space o` | Open on going next actions. |
 | `Space p` | Open projects. |
 | `Space s` | Open someday/maybe. |
+| `Space h` | Open Hint Mode to jump directly to any visible UI element. |
 
 Calendars use `[` and `]` inside the page to cycle through Today, Weekly, Completed, and Deleted subviews.
 
@@ -86,6 +87,16 @@ These shortcuts are available in body/detail editing zones that register markdow
 | `Space t c`   | Format selected inline text as code.                 |
 | `Space t t`   | Clear inline formatting.                             |
 | `Space g d`   | Open the link or asset at the cursor target.         |
+
+## Markdown Editor Vim Motions
+
+These motions and operators enhance editing inside the markdown body editor:
+
+| Shortcut | Scope | Action |
+| --- | --- | --- |
+| `]]` | Body editor | Jump to next markdown heading (`#`, `##`, etc.) with jumplist support. |
+| `[[` | Body editor | Jump to previous markdown heading with jumplist support. |
+| `y` | Body editor | Yank selection with visual highlight pulse and synchronization to system clipboard. |
 
 ## Discoverability
 
