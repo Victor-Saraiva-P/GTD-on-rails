@@ -34,6 +34,17 @@ function buildPositionedHints(): PositionedHint[] {
   });
 }
 
+function isModifierKey(key: string): boolean {
+  return (
+    key === "Shift" ||
+    key === "Control" ||
+    key === "Alt" ||
+    key === "Meta" ||
+    key === "CapsLock" ||
+    key === "AltGraph"
+  );
+}
+
 function handleHintKey(
   event: KeyboardEvent,
   setBuffer: (updater: (prev: string) => string) => void,
@@ -52,16 +63,54 @@ function handleHintKey(
   onExit();
 }
 
-function isModifierKey(key: string): boolean {
-  return key === "Shift" || key === "Control" || key === "Alt" || key === "Meta";
-}
-
-function triggerHintTarget(target: PositionedHint, onExit: () => void) {
-  setTimeout(() => {
-    target.element.focus();
+function triggerHintTarget(target: PositionedHint, onExit: () => void): () => void {
+  const timer = setTimeout(() => {
     target.element.click();
+    target.element.focus();
     onExit();
   }, 40);
+  return () => clearTimeout(timer);
+}
+
+function HintBadgeItem({ hint, buffer }: Readonly<{ hint: PositionedHint; buffer: string }>) {
+  const isMatch = hint.label.startsWith(buffer);
+  const matched = isMatch ? buffer : "";
+  const remaining = isMatch ? hint.label.slice(buffer.length) : hint.label;
+  const badgeClass = isMatch ? "gtd-hint-badge" : "gtd-hint-badge gtd-hint-badge--dim";
+
+  return (
+    <span key={hint.label} className={badgeClass} style={{ left: hint.left, top: hint.top }}>
+      {matched ? <span className="gtd-hint-badge__matched">{matched}</span> : null}
+      {remaining}
+    </span>
+  );
+}
+
+function useHintKeyboardListener(
+  setBuffer: (updater: (prev: string) => string) => void,
+  onExit: () => void
+) {
+  useEffect(() => {
+    const listener = (event: KeyboardEvent) => handleHintKey(event, setBuffer, onExit);
+    window.addEventListener("keydown", listener, true);
+    return () => window.removeEventListener("keydown", listener, true);
+  }, [onExit, setBuffer]);
+}
+
+function useHintMatchEffect(
+  buffer: string,
+  matching: PositionedHint[],
+  onExit: () => void
+) {
+  useEffect(() => {
+    if (buffer.length > 0 && matching.length === 1) {
+      return triggerHintTarget(matching[0], onExit);
+    }
+    if (buffer.length > 0 && matching.length === 0) {
+      onExit();
+    }
+    return undefined;
+  }, [buffer, matching, onExit]);
 }
 
 /**
@@ -72,45 +121,21 @@ function triggerHintTarget(target: PositionedHint, onExit: () => void) {
 export function HintOverlay({ onExit }: Readonly<{ onExit: () => void }>) {
   const [buffer, setBuffer] = useState("");
   const hints = useMemo(() => buildPositionedHints(), []);
-
   const matching = useMemo(
     () => hints.filter((hint) => hint.label.startsWith(buffer)),
     [hints, buffer]
   );
 
-  useEffect(() => {
-    if (buffer.length > 0 && matching.length === 1) {
-      triggerHintTarget(matching[0], onExit);
-    } else if (buffer.length > 0 && matching.length === 0) {
-      onExit();
-    }
-  }, [buffer, matching, onExit]);
-
-  useEffect(() => {
-    const listener = (event: KeyboardEvent) => handleHintKey(event, setBuffer, onExit);
-    window.addEventListener("keydown", listener, true);
-    return () => window.removeEventListener("keydown", listener, true);
-  }, [onExit]);
+  useHintMatchEffect(buffer, matching, onExit);
+  useHintKeyboardListener(setBuffer, onExit);
 
   if (hints.length === 0 || typeof document === "undefined") return null;
 
   return createPortal(
-    <div className="gtd-hint-overlay" role="dialog" aria-label="Keyboard hint overlay">
-      {hints.map((hint) => {
-        const isMatch = hint.label.startsWith(buffer);
-        const matched = buffer;
-        const remaining = hint.label.slice(buffer.length);
-        return (
-          <span
-            key={hint.label}
-            className={isMatch ? "gtd-hint-badge" : "gtd-hint-badge gtd-hint-badge--dim"}
-            style={{ left: hint.left, top: hint.top }}
-          >
-            {matched && <span className="gtd-hint-badge__matched">{matched}</span>}
-            {remaining}
-          </span>
-        );
-      })}
+    <div className="gtd-hint-overlay" role="dialog" aria-modal="true" aria-label="Keyboard hint overlay">
+      {hints.map((hint) => (
+        <HintBadgeItem key={hint.label} hint={hint} buffer={buffer} />
+      ))}
     </div>,
     document.body
   );
