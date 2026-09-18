@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { createInboxStuffFromKeyboard, openApp, uniqueLabel } from "./support/app";
+import { createInboxStuffFromKeyboard, createStuffApi, openApp, resetTestData, uniqueLabel } from "./support/app";
+
+test.beforeEach(async ({ request }) => {
+  await resetTestData(request);
+});
 
 test("direct global keybinds do not override vim normal mode keys", async ({ page }) => {
   const title = uniqueLabel("Vim normal keys");
@@ -49,35 +53,41 @@ test("Space h opens hint mode and Escape exits it", async ({ page }) => {
   await expect(page.locator(".gtd-hint-overlay")).not.toBeVisible();
 });
 
-test("Hint mode isolates keys and restores full keyboard navigation on target selection", async ({ page }) => {
+test("Hint mode isolates keys and restores full keyboard navigation on target selection", async ({ page, request }) => {
   const item1 = uniqueLabel("Hint target 1");
   const item2 = uniqueLabel("Hint target 2");
+  await createStuffApi(request, item1);
+  await createStuffApi(request, item2);
   await openApp(page);
-  await createInboxStuffFromKeyboard(page, item1);
-  await createInboxStuffFromKeyboard(page, item2);
+  await expect(page.getByRole("button", { name: new RegExp(item1) })).toBeVisible();
+  await expect(page.getByRole("button", { name: new RegExp(item2) })).toBeVisible();
 
   // Open hint mode
   await page.keyboard.press("Space");
   await page.keyboard.press("h");
   await expect(page.locator(".gtd-hint-overlay")).toBeVisible();
 
-  // Find badge for item1
-  const badgeText = await page.evaluate((targetText) => {
-    const buttons = Array.from(document.querySelectorAll("button.tree-entry"));
-    const idx = buttons.findIndex((b) => b.textContent?.includes(targetText));
-    if (idx === -1) return null;
-    const badges = Array.from(document.querySelectorAll(".gtd-hint-badge"));
-    return badges[idx]?.textContent ?? null;
-  }, item1);
+  // Find badge for item1 using data-hint-label
+  const getBadgeText = () =>
+    page.evaluate((targetText) => {
+      const button = Array.from(document.querySelectorAll("button.tree-entry"))
+        .find((b) => b.textContent?.includes(targetText));
+      return button?.getAttribute("data-hint-label") ?? null;
+    }, item1);
 
-  expect(badgeText).toBeTruthy();
-  for (const char of badgeText!) {
+  await expect.poll(getBadgeText).not.toBeNull();
+  const badgeText = (await getBadgeText())!;
+
+  for (const char of badgeText) {
     await page.keyboard.press(char);
   }
 
-  // Hint overlay should dismiss and item1 should be active
+  // Hint overlay should dismiss and item1 should be active with orange accent
   await expect(page.locator(".gtd-hint-overlay")).not.toBeVisible();
-  await expect(page.getByRole("button", { name: new RegExp(item1) })).toHaveClass(/tree-entry--active/);
+  const selectedButton = page.getByRole("button", { name: new RegExp(item1) });
+  await expect(selectedButton).toHaveClass(/tree-entry--active/);
+  const boxShadow = await selectedButton.evaluate((el) => window.getComputedStyle(el).boxShadow);
+  expect(boxShadow).toContain("204, 120, 47");
 
   // Keyboard navigation should work immediately (j/k)
   await page.keyboard.press("j");
