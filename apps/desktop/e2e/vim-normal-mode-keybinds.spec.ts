@@ -1,13 +1,10 @@
 import { expect, test } from "@playwright/test";
-import { createInboxStuffFromKeyboard, createStuffApi, openApp, resetTestData, uniqueLabel } from "./support/app";
-
-test.beforeEach(async ({ request }) => {
-  await resetTestData(request);
-});
+import { createInboxStuffFromKeyboard, openApp, uniqueLabel } from "./support/app";
 
 test("direct global keybinds do not override vim normal mode keys", async ({ page }) => {
   const title = uniqueLabel("Vim normal keys");
   await openApp(page);
+  await page.locator(".inbox-pane--list").click();
 
   await createInboxStuffFromKeyboard(page, title);
   await expect(page.getByRole("button", { name: title })).toBeVisible();
@@ -53,27 +50,29 @@ test("Space h opens hint mode and Escape exits it", async ({ page }) => {
   await expect(page.locator(".gtd-hint-overlay")).not.toBeVisible();
 });
 
-test("Hint mode isolates keys and restores full keyboard navigation on target selection", async ({ page, request }) => {
-  const item1 = uniqueLabel("Hint target 1");
-  const item2 = uniqueLabel("Hint target 2");
-  await createStuffApi(request, item1);
-  await createStuffApi(request, item2);
+test("Hint mode isolates keys and restores full keyboard navigation on target selection", async ({ page }) => {
   await openApp(page);
-  await expect(page.getByRole("button", { name: new RegExp(item1) })).toBeVisible();
-  await expect(page.getByRole("button", { name: new RegExp(item2) })).toBeVisible();
+  const items = page.locator("button.tree-entry");
+  if ((await items.count()) < 2) {
+    await createInboxStuffFromKeyboard(page, uniqueLabel("Hint 1"));
+    await page.keyboard.press("Escape");
+    await createInboxStuffFromKeyboard(page, uniqueLabel("Hint 2"));
+    await page.keyboard.press("Escape");
+  }
+
+  const item1Button = items.first();
+  const item2Button = items.nth(1);
+  await expect(item1Button).toBeVisible();
+  await expect(item2Button).toBeVisible();
 
   // Open hint mode
   await page.keyboard.press("Space");
+  await expect(page.locator(".leader-menu")).toBeVisible();
   await page.keyboard.press("h");
   await expect(page.locator(".gtd-hint-overlay")).toBeVisible();
 
   // Find badge for item1 using data-hint-label
-  const getBadgeText = () =>
-    page.evaluate((targetText) => {
-      const button = Array.from(document.querySelectorAll("button.tree-entry"))
-        .find((b) => b.textContent?.includes(targetText));
-      return button?.getAttribute("data-hint-label") ?? null;
-    }, item1);
+  const getBadgeText = () => item1Button.evaluate((btn) => btn.getAttribute("data-hint-label"));
 
   await expect.poll(getBadgeText).not.toBeNull();
   const badgeText = (await getBadgeText())!;
@@ -84,22 +83,30 @@ test("Hint mode isolates keys and restores full keyboard navigation on target se
 
   // Hint overlay should dismiss and item1 should be active with orange accent
   await expect(page.locator(".gtd-hint-overlay")).not.toBeVisible();
-  const selectedButton = page.getByRole("button", { name: new RegExp(item1) });
-  await expect(selectedButton).toHaveClass(/tree-entry--active/);
-  const boxShadow = await selectedButton.evaluate((el) => window.getComputedStyle(el).boxShadow);
+  await expect(item1Button).toHaveClass(/tree-entry--active/);
+  const boxShadow = await item1Button.evaluate((el) => window.getComputedStyle(el).boxShadow);
   expect(boxShadow).toContain("204, 120, 47");
 
   // Keyboard navigation should work immediately (j/k)
   await page.keyboard.press("j");
-  await expect(page.getByRole("button", { name: new RegExp(item1) })).not.toHaveClass(/tree-entry--active/);
+  await expect(item1Button).not.toHaveClass(/tree-entry--active/);
+  // Verify unselected item1 does not retain a gray ghost highlight
+  const item1Bg = await item1Button.evaluate((el) => window.getComputedStyle(el).backgroundColor);
+  expect(item1Bg).toBe("rgba(0, 0, 0, 0)");
+
+  // Item2 should now be active and have DOM focus
+  await expect(item2Button).toHaveClass(/tree-entry--active/);
+  await expect(item2Button).toBeFocused();
 
   await page.keyboard.press("k");
-  await expect(page.getByRole("button", { name: new RegExp(item1) })).toHaveClass(/tree-entry--active/);
+  await expect(item1Button).toHaveClass(/tree-entry--active/);
+  await expect(item1Button).toBeFocused();
 });
 
 test("Vim normal mode argument awaiting does not trigger leader menu", async ({ page }) => {
   const title = uniqueLabel("Vim argument awaiting");
   await openApp(page);
+  await page.locator(".inbox-pane--list").click();
   await createInboxStuffFromKeyboard(page, title);
   await page.keyboard.press("l");
   await expect(page.locator(".cm-content")).toBeVisible();
