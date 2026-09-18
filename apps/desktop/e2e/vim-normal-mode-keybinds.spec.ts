@@ -37,3 +37,39 @@ test("direct global keybinds do not override vim normal mode keys", async ({ pag
   // Verify the stuff is still in the list
   await expect(page.getByRole("button", { name: title })).toBeVisible();
 });
+
+test("Space h opens hint mode and Escape exits it", async ({ page }) => {
+  await openApp(page);
+  await page.keyboard.press("Space");
+  await expect(page.locator(".leader-menu")).toBeVisible();
+  await page.keyboard.press("h");
+  await expect(page.locator(".leader-menu")).not.toBeVisible();
+  await expect(page.locator(".gtd-hint-overlay")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".gtd-hint-overlay")).not.toBeVisible();
+});
+
+test("Vim normal mode argument awaiting does not trigger leader menu", async ({ page }) => {
+  const title = uniqueLabel("Vim argument awaiting");
+  await openApp(page);
+  await createInboxStuffFromKeyboard(page, title);
+  await page.keyboard.press("l");
+  await expect(page.locator(".cm-content")).toBeVisible();
+
+  // Enter text
+  await page.keyboard.press("i");
+  await page.keyboard.type("abc");
+  await page.keyboard.press("Escape");
+
+  // Move back one char
+  await page.keyboard.press("h");
+
+  // Type 'r' then Space: replaces 'b' with Space. Leader menu should NOT open!
+  await page.keyboard.press("r");
+  await page.keyboard.press(" ");
+  await expect(page.locator(".leader-menu")).not.toBeVisible();
+
+  // Check content has space
+  await expect(page.locator(".cm-content")).toContainText("a c");
+});
+
