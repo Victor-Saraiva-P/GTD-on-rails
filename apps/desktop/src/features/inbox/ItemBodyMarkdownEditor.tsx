@@ -28,6 +28,9 @@ import { type ItemBody, type BlockEntity } from "./types";
 import { INSERT_MARKDOWN_LINK_EVENT, type InsertMarkdownLinkEventDetail } from "./markdownLinks";
 import { findOpenableEditorTarget } from "./openEditorTarget";
 import { openAssetWithDefaultApp, openExternalUrl } from "./openExternalResource";
+import { getActiveEditorView, registerActiveEditorView } from "../keybinds/activeEditorRegistry.ts";
+import { registerHeadingMotions } from "./cmHeadingMotion.ts";
+import { wireYankHighlight, yankHighlightExtension } from "./cmYankHighlight.ts";
 
 export type MarkdownBodySaveState = "saved" | "unsaved" | "saving" | "error";
 
@@ -514,6 +517,9 @@ function useCodeMirrorEditorView(
       }
     }
 
+    wireYankHighlight();
+    registerHeadingMotions();
+
     const view = new EditorView({
       parent: editorParentRef.current,
       state: EditorState.create({
@@ -526,6 +532,7 @@ function useCodeMirrorEditorView(
           history(),
           drawSelection(),
           highlightActiveLine(),
+          yankHighlightExtension,
           EditorState.readOnly.of(props.readOnly === true),
           EditorView.editable.of(!props.readOnly),
           EditorView.lineWrapping,
@@ -537,6 +544,16 @@ function useCodeMirrorEditorView(
             autosaveAfterFinishedEdit(update.view, update.docChanged || update.transactions.some(tr => tr.effects.some(e => e.is(itemBodyStateEffect))), props.readOnly === true, autosaveTrackerRef, onAutosaveRef, onVimModeChangeRef, setSaveState);
           }),
           EditorView.domEventHandlers({
+            focus: () => {
+              registerActiveEditorView(view);
+              return false;
+            },
+            blur: () => {
+              if (getActiveEditorView() === view) {
+                registerActiveEditorView(null);
+              }
+              return false;
+            },
             keydown: (event, v) => {
               const isEscape = event.key === "Escape";
               const isCtrlH = event.key === "h" && event.ctrlKey;
@@ -558,12 +575,18 @@ function useCodeMirrorEditorView(
     });
     
     editorViewRef.current = view;
-    if (!props.readOnly) view.focus();
+    if (!props.readOnly) {
+      view.focus();
+      registerActiveEditorView(view);
+    }
     const initialMode = getCM(view)?.state?.vim?.insertMode ? "INSERT" : "NORMAL";
     view.contentDOM.dataset.vimMode = initialMode === "INSERT" ? "insert" : "normal";
     onVimModeChangeRef.current?.(initialMode);
 
     return () => {
+      if (getActiveEditorView() === view) {
+        registerActiveEditorView(null);
+      }
       view.destroy();
       editorViewRef.current = null;
     };
