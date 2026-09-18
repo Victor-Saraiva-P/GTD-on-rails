@@ -13,8 +13,10 @@ export function useScrollIntoViewWhenSelected<T extends HTMLElement = HTMLButton
   const elementRef = useRef<T>(null);
 
   useEffect(() => {
-    if (selected) {
-      elementRef.current?.scrollIntoView({ block: "nearest" });
+    if (!selected) return;
+    elementRef.current?.scrollIntoView({ block: "nearest" });
+    if (document.activeElement?.classList.contains("tree-entry")) {
+      elementRef.current?.focus({ preventScroll: true });
     }
   }, [selected]);
 

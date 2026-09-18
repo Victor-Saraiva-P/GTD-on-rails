@@ -132,14 +132,16 @@
   white-space: nowrap;
 }
 
-.tree-entry:hover,
+.tree-entry:focus,
 .tree-entry:focus-visible {
-  background: #2e2e2e;
   outline: none;
 }
 
-.tree-list--inbox .tree-entry:hover,
-.tree-list--inbox .tree-entry:focus-visible {
+.tree-entry:hover {
+  background: #2e2e2e;
+}
+
+.tree-list--inbox .tree-entry:hover {
   background: rgba(255, 255, 255, 0.04);
 }
 
