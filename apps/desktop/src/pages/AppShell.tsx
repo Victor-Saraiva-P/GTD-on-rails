@@ -5,6 +5,7 @@ import { useCalendarWorkspaceController } from "../features/calendar/useCalendar
 import { useDeletedInboxWorkspaceController } from "../features/inbox/useDeletedInboxWorkspaceController";
 import { useInboxWorkspaceController } from "../features/inbox/useInboxWorkspaceController";
 import { useActiveScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
+import { HintOverlay } from "../features/keybinds/HintOverlay.tsx";
 import type { KeybindDefinition, ScreenId } from "../features/keybinds/types";
 import {
   deleteNextAction,
@@ -67,7 +68,8 @@ function buildNavigationBindings(
   jumpToScreen: (screen: ScreenId, beforeNavigate?: () => void) => void,
   goBack: () => void,
   goForward: () => void,
-  controllers: AppControllers
+  controllers: AppControllers,
+  openHintMode: () => void
 ) {
   return [
     { id: "navigation.jump-back", key: "o", ctrl: true, description: "Jump to older position", runKeybind: goBack },
@@ -79,7 +81,8 @@ function buildNavigationBindings(
     { id: "navigation.open-ongoing-next-actions", key: "o", description: "Open ongoing work", leader: true, sequence: ["o"], runKeybind: () => jumpToScreen("ongoing-next-actions", () => { controllers.ongoing.resetWorkspace(); controllers.ongoing.setActiveZone("next-actions-list"); }) },
     { id: "navigation.open-projects", key: "p", description: "Open projects", leader: true, sequence: ["p"], runKeybind: () => jumpToScreen("projects", controllers.projects.resetWorkspace) },
     { id: "navigation.open-someday-maybe", key: "s", description: "Open someday/maybe", leader: true, sequence: ["s"], runKeybind: () => jumpToScreen("someday-maybe", controllers.somedayMaybe.resetWorkspace) },
-    { id: "navigation.open-google-calendar-integration", key: "g", description: "Google Calendar Integration", leader: true, sequence: ["I", "g"], runKeybind: () => jumpToScreen("google-calendar-integration") }
+    { id: "navigation.open-google-calendar-integration", key: "g", description: "Google Calendar Integration", leader: true, sequence: ["I", "g"], runKeybind: () => jumpToScreen("google-calendar-integration") },
+    { id: "navigation.open-hint-mode", key: "h", description: "Hint mode (jump to UI element)", leader: true, sequence: ["h"], runKeybind: openHintMode }
   ] satisfies KeybindDefinition[];
 }
 
@@ -232,26 +235,54 @@ function renderActiveScreen(
  *
  * @example <AppShell />
  */
-export function AppShell() {
-  const { activeScreen, setActiveScreen } = useActiveScreen();
-  const [projectDetailProject, setProjectDetailProject] = useState<Project | null>(null);
-  const controllers = useAppControllers(projectDetailProject);
-  const navigation = useJumpListNavigation({
-    activeScreen, setActiveScreen, controllers, projectDetailProject, setProjectDetailProject
-  });
-  const openProjectDetail = useCallback(() => {
+function useOpenProjectDetail(
+  controllers: AppControllers,
+  navigation: ReturnType<typeof useJumpListNavigation>
+) {
+  return useCallback(() => {
     const selected = controllers.projects.selectedItem;
     if (!selected) return;
     const project = controllers.projects.projects.find((p) => p.id === selected.id);
     navigation.openOwnerProject(selected.id, project?.title ?? null, null);
   }, [controllers.projects.projects, controllers.projects.selectedItem, navigation]);
-  const navigationBindings = useMemo(
-    () => buildNavigationBindings(navigation.jumpToScreen, navigation.goBack, navigation.goForward, controllers),
-    [navigation.jumpToScreen, navigation.goBack, navigation.goForward, controllers]
+}
+
+function useAppShellBindings(
+  navigation: ReturnType<typeof useJumpListNavigation>,
+  controllers: AppControllers,
+  openHintMode: () => void
+) {
+  return useMemo(
+    () => buildNavigationBindings(navigation.jumpToScreen, navigation.goBack, navigation.goForward, controllers, openHintMode),
+    [navigation.jumpToScreen, navigation.goBack, navigation.goForward, controllers, openHintMode]
   );
+}
+
+/**
+ * Selects the active desktop page and wires shared navigation keybindings.
+ *
+ * @example <AppShell />
+ */
+export function AppShell() {
+  const { activeScreen, setActiveScreen } = useActiveScreen();
+  const [projectDetailProject, setProjectDetailProject] = useState<Project | null>(null);
+  const [isHintModeActive, setIsHintModeActive] = useState(false);
+  const controllers = useAppControllers(projectDetailProject);
+  const navigation = useJumpListNavigation({
+    activeScreen, setActiveScreen, controllers, projectDetailProject, setProjectDetailProject
+  });
+  const openProjectDetail = useOpenProjectDetail(controllers, navigation);
+  const openHintMode = useCallback(() => setIsHintModeActive(true), []);
+  const closeHintMode = useCallback(() => setIsHintModeActive(false), []);
+  const navigationBindings = useAppShellBindings(navigation, controllers, openHintMode);
 
   useReloadActiveScreen(activeScreen, controllers);
   useAgentStateBridge(activeScreen);
   useRegisterKeybinds(navigationBindings);
-  return renderActiveScreen(activeScreen, controllers, setActiveScreen, openProjectDetail, navigation.openOwnerProject, navigation.openProjectItemDestination);
+  return (
+    <>
+      {renderActiveScreen(activeScreen, controllers, setActiveScreen, openProjectDetail, navigation.openOwnerProject, navigation.openProjectItemDestination)}
+      {isHintModeActive && <HintOverlay onExit={closeHintMode} />}
+    </>
+  );
 }
