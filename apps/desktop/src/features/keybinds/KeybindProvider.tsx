@@ -9,6 +9,7 @@ import {
   useRef,
   useState
 } from "react";
+import { isVimEditorAwaitingArgument } from "./isVimAwaitingArgument.ts";
 import type { FocusZoneId, KeybindDefinition, ScreenId } from "./types";
 
 type RegisteredKeybind = KeybindDefinition & {
@@ -226,6 +227,9 @@ function handleGlobalKeyDown(event: KeyboardEvent, config: KeydownConfig) {
   }
 
   if (event.key === " " && !event.ctrlKey) {
+    if (isVimKeybindTarget(event.target) && isVimEditorAwaitingArgument()) {
+      return;
+    }
     event.preventDefault();
     event.stopPropagation();
     config.openLeaderMenu();
