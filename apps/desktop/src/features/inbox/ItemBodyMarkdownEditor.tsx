@@ -1,4 +1,4 @@
-import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
+import { history, historyKeymap } from "@codemirror/commands";
 import { EditorSelection, RangeSetBuilder, StateEffect, StateField, ChangeSet } from "@codemirror/state";
 import { EditorState } from "@codemirror/state";
 import { Decoration, drawSelection, EditorView, highlightActiveLine, keymap, lineNumbers, ViewPlugin, WidgetType, type ViewUpdate, type DecorationSet } from "@codemirror/view";
@@ -30,7 +30,10 @@ import { findOpenableEditorTarget } from "./openEditorTarget";
 import { openAssetWithDefaultApp, openExternalUrl } from "./openExternalResource";
 import { getActiveEditorView, registerActiveEditorView } from "../keybinds/activeEditorRegistry.ts";
 import { registerHeadingMotions } from "./cmHeadingMotion.ts";
+import { registerDisplayLineMotions } from "./cmDisplayLineMotion.ts";
 import { wireYankHighlight, yankHighlightExtension } from "./cmYankHighlight.ts";
+import { vimClipboardPasteExtension } from "./cmClipboardPaste.ts";
+import { buildVimAwareDefaultKeymap } from "./cmVimKeymaps.ts";
 
 export type MarkdownBodySaveState = "saved" | "unsaved" | "saving" | "error";
 
@@ -519,6 +522,7 @@ function useCodeMirrorEditorView(
 
     wireYankHighlight();
     registerHeadingMotions();
+    registerDisplayLineMotions();
 
     const view = new EditorView({
       parent: editorParentRef.current,
@@ -533,6 +537,7 @@ function useCodeMirrorEditorView(
           drawSelection(),
           highlightActiveLine(),
           yankHighlightExtension,
+          vimClipboardPasteExtension,
           EditorState.readOnly.of(props.readOnly === true),
           EditorView.editable.of(!props.readOnly),
           EditorView.lineWrapping,
@@ -569,7 +574,7 @@ function useCodeMirrorEditorView(
              saveMarkdownBody(onAutosaveRef.current ?? onSaveRef.current, editorViewRef.current?.state.field(itemBodyStateField) as ItemBody, setSaveState);
              return true;
           } }]),
-          keymap.of([...historyKeymap, ...defaultKeymap])
+          keymap.of([...historyKeymap, ...buildVimAwareDefaultKeymap()])
         ]
       })
     });
