@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { createInboxStuffFromKeyboard, openApp, uniqueLabel } from "./support/app";
+import { createInboxStuffFromKeyboard, createStuffApi, openApp, uniqueLabel } from "./support/app";
 
 test("direct global keybinds do not override vim normal mode keys", async ({ page }) => {
   const title = uniqueLabel("Vim normal keys");
@@ -50,15 +50,11 @@ test("Space h opens hint mode and Escape exits it", async ({ page }) => {
   await expect(page.locator(".gtd-hint-overlay")).not.toBeVisible();
 });
 
-test("Hint mode isolates keys and restores full keyboard navigation on target selection", async ({ page }) => {
+test("Hint mode isolates keys and restores full keyboard navigation on target selection", async ({ page, request }) => {
+  await createStuffApi(request, uniqueLabel("Hint 1"));
+  await createStuffApi(request, uniqueLabel("Hint 2"));
   await openApp(page);
   const items = page.locator("button.tree-entry");
-  if ((await items.count()) < 2) {
-    await createInboxStuffFromKeyboard(page, uniqueLabel("Hint 1"));
-    await page.keyboard.press("Escape");
-    await createInboxStuffFromKeyboard(page, uniqueLabel("Hint 2"));
-    await page.keyboard.press("Escape");
-  }
 
   const item1Button = items.first();
   const item2Button = items.nth(1);
@@ -126,5 +122,48 @@ test("Vim normal mode argument awaiting does not trigger leader menu", async ({ 
 
   // Check content has space
   await expect(page.locator(".cm-content")).toContainText("a c");
+});
+
+test("Vim editor supports heading motions and display boundary actions", async ({ page }) => {
+  const title = uniqueLabel("Vim editor motions");
+  await openApp(page);
+  await page.locator(".inbox-pane--list").click();
+  await createInboxStuffFromKeyboard(page, title);
+  await page.keyboard.press("l");
+  await expect(page.locator(".cm-content")).toBeVisible();
+
+  // Enter structured markdown text
+  await page.keyboard.press("i");
+  await page.keyboard.type("Intro\n# First Header\nBody\n# Second Header");
+  await page.keyboard.press("Escape");
+  await expect(page.getByLabel("Editing mode")).toContainText("NORMAL");
+
+  // Jump to first line
+  await page.keyboard.press("g");
+  await page.keyboard.press("g");
+
+  // Heading motion forward: ]] jumps to "# First Header"
+  await page.keyboard.press("]");
+  await page.keyboard.press("]");
+
+  // A enters insert mode at end of the line
+  await page.keyboard.press("A");
+  await expect(page.getByLabel("Editing mode")).toContainText("INSERT");
+  await page.keyboard.type(" - edited");
+  await page.keyboard.press("Escape");
+  await expect(page.getByLabel("Editing mode")).toContainText("NORMAL");
+  await expect(page.locator(".cm-content")).toContainText("# First Header - edited");
+
+  // Heading motion forward to second header
+  await page.keyboard.press("]");
+  await page.keyboard.press("]");
+
+  // Heading motion backward to first header
+  await page.keyboard.press("[");
+  await page.keyboard.press("[");
+
+  // Exit editor with Escape and return to list
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".inbox-pane--list.list-pane--active")).toBeVisible();
 });
 

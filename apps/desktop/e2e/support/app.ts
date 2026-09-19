@@ -69,6 +69,7 @@ export async function createInboxStuffFromKeyboard(page: Page, title: string): P
   await expect(input).toBeVisible();
   await input.fill(title);
   await input.press("Enter");
+  await expect(input).not.toBeVisible();
 }
 
 export async function createAndSelectInboxStuff(page: Page, title: string): Promise<void> {
