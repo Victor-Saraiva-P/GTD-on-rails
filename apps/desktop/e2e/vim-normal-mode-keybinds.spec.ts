@@ -303,6 +303,105 @@ test("Vim normal mode o continues list item and Ctrl-Enter toggles checkbox", as
   await expect(page.locator(".cm-line").nth(1)).toHaveText("- [ ] Beta");
 });
 
+test("Clicking heading fold arrow collapses and expands section", async ({ page }) => {
+  const title = uniqueLabel("Heading fold arrow");
+  await openApp(page);
+  await page.locator(".inbox-pane--list").click();
+  await createInboxStuffFromKeyboard(page, title);
+  await page.keyboard.press("l");
+  await expect(page.locator(".cm-content")).toBeVisible();
 
+  await page.keyboard.press("i");
+  await page.keyboard.type("# Section One\nBody line 1\nBody line 2\n# Section Two\nOther line");
+  await page.keyboard.press("Escape");
 
+  await expect(page.locator(".cm-heading-fold-arrow")).toHaveCount(2);
+  const firstArrow = page.locator(".cm-heading-fold-arrow").nth(0);
+  await expect(firstArrow).toHaveText("▾");
 
+  // Click arrow to fold Section One
+  await firstArrow.click();
+  await expect(firstArrow).toHaveText("▸");
+  await expect(page.locator(".cm-foldPlaceholder")).toBeVisible();
+  await expect(page.locator(".cm-content")).not.toContainText("Body line 1");
+  await expect(page.locator(".cm-content")).toContainText("Section Two");
+
+  // Click arrow again to expand Section One
+  await firstArrow.click();
+  await expect(firstArrow).toHaveText("▾");
+  await expect(page.locator(".cm-foldPlaceholder")).not.toBeVisible();
+  await expect(page.locator(".cm-content")).toContainText("Body line 1");
+});
+
+test("Vim normal mode za, zM, and zR toggle and batch fold headings", async ({ page }) => {
+  const title = uniqueLabel("Vim za fold toggle");
+  await openApp(page);
+  await page.locator(".inbox-pane--list").click();
+  await createInboxStuffFromKeyboard(page, title);
+  await page.keyboard.press("l");
+  await expect(page.locator(".cm-content")).toBeVisible();
+
+  await page.keyboard.press("i");
+  await page.keyboard.type("# Alpha\nContent Alpha\n# Beta\nContent Beta");
+  await page.keyboard.press("Escape");
+
+  // Move cursor to top (line 1 # Alpha)
+  await page.keyboard.press("g");
+  await page.keyboard.press("g");
+
+  // za folds Alpha
+  await page.keyboard.press("z");
+  await page.keyboard.press("a");
+  await expect(page.locator(".cm-foldPlaceholder")).toHaveCount(1);
+  await expect(page.locator(".cm-content")).not.toContainText("Content Alpha");
+  await expect(page.locator(".cm-content")).toContainText("Content Beta");
+
+  // za toggles back open
+  await page.keyboard.press("z");
+  await page.keyboard.press("a");
+  await expect(page.locator(".cm-foldPlaceholder")).toHaveCount(0);
+  await expect(page.locator(".cm-content")).toContainText("Content Alpha");
+
+  // zM folds all headings
+  await page.keyboard.press("z");
+  await page.keyboard.press("Shift+M");
+  await expect(page.locator(".cm-foldPlaceholder")).toHaveCount(2);
+
+  // zR unfolds all headings
+  await page.keyboard.press("z");
+  await page.keyboard.press("Shift+R");
+  await expect(page.locator(".cm-foldPlaceholder")).toHaveCount(0);
+  await expect(page.locator(".cm-content")).toContainText("Content Alpha");
+  await expect(page.locator(".cm-content")).toContainText("Content Beta");
+});
+
+test("Leader shortcut Space m f toggles heading fold in stuff-detail", async ({ page }) => {
+  const title = uniqueLabel("Space m f fold toggle");
+  await openApp(page);
+  await page.locator(".inbox-pane--list").click();
+  await createInboxStuffFromKeyboard(page, title);
+  await page.keyboard.press("l");
+  await expect(page.locator(".cm-content")).toBeVisible();
+
+  await page.keyboard.press("i");
+  await page.keyboard.type("# Alpha\nContent Alpha");
+  await page.keyboard.press("Escape");
+
+  // Move cursor to line 1
+  await page.keyboard.press("g");
+  await page.keyboard.press("g");
+
+  // Space m f toggles fold
+  await page.keyboard.press("Space");
+  await page.keyboard.press("m");
+  await page.keyboard.press("f");
+  await expect(page.locator(".cm-foldPlaceholder")).toHaveCount(1);
+  await expect(page.locator(".cm-content")).not.toContainText("Content Alpha");
+
+  // Space m f toggles back open
+  await page.keyboard.press("Space");
+  await page.keyboard.press("m");
+  await page.keyboard.press("f");
+  await expect(page.locator(".cm-foldPlaceholder")).toHaveCount(0);
+  await expect(page.locator(".cm-content")).toContainText("Content Alpha");
+});
