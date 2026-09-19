@@ -167,3 +167,39 @@ test("Vim editor supports heading motions and display boundary actions", async (
   await expect(page.locator(".inbox-pane--list.list-pane--active")).toBeVisible();
 });
 
+test("Space k opens which-key cheat sheet dialog, filters shortcuts, and closes on Escape", async ({ page }) => {
+  await openApp(page);
+  await page.keyboard.press("Space");
+  await expect(page.locator(".leader-menu")).toBeVisible();
+  await page.keyboard.press("k");
+  await expect(page.locator(".leader-menu")).not.toBeVisible();
+  await expect(page.locator(".which-key-dialog")).toBeVisible();
+  await expect(page.locator(".which-key-dialog__badge")).toContainText("Which-Key");
+
+  await page.locator(".which-key-dialog__search").fill("Add new stuff");
+  await expect(page.locator(".which-key-dialog__item")).toHaveCount(1);
+  await expect(page.locator(".which-key-dialog__desc")).toContainText("Add new stuff");
+
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".which-key-dialog")).not.toBeVisible();
+});
+
+test("Vim insert mode exits to normal mode on typing jk sequence", async ({ page }) => {
+  const title = uniqueLabel("Vim jk insert escape");
+  await openApp(page);
+  await page.locator(".inbox-pane--list").click();
+  await createInboxStuffFromKeyboard(page, title);
+  await page.keyboard.press("l");
+  await expect(page.locator(".cm-content")).toBeVisible();
+
+  await page.keyboard.press("i");
+  await expect(page.getByLabel("Editing mode")).toContainText("INSERT");
+  await page.keyboard.type("quick test");
+
+  await page.keyboard.type("jk");
+  await expect(page.getByLabel("Editing mode")).toContainText("NORMAL");
+  await expect(page.locator(".cm-content")).toContainText("quick test");
+  await expect(page.locator(".cm-content")).not.toContainText("jk");
+});
+
+
