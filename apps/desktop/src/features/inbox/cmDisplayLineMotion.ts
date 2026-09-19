@@ -189,8 +189,8 @@ let displayLinesRegistered = false;
 function mapBoundaryCommands(): void {
   const contexts = ["normal", "visual", "operatorPending"] as const;
   for (const context of contexts) {
-    Vim.mapCommand("$", "motion", "zenMoveToDisplayLineBoundary", { forward: true, inclusive: true }, { context });
-    Vim.mapCommand("g0", "motion", "zenMoveToDisplayLineBoundary", { forward: false }, { context });
+    Vim.mapCommand("$", "motion", "gtdMoveToDisplayLineBoundary", { forward: true, inclusive: true }, { context });
+    Vim.mapCommand("g0", "motion", "gtdMoveToDisplayLineBoundary", { forward: false }, { context });
   }
 }
 
@@ -203,15 +203,15 @@ export function registerDisplayLineMotions(): void {
   if (displayLinesRegistered) return;
   displayLinesRegistered = true;
 
-  Vim.defineMotion("zenMoveByDisplayLine", moveByDisplayLineMotion as never);
-  Vim.defineMotion("zenMoveToDisplayLineBoundary", moveToDisplayBoundaryMotion as never);
-  Vim.defineAction("zenEnterInsertAtDisplayLineBoundary", enterInsertAtDisplayBoundaryAction as never);
+  Vim.defineMotion("gtdMoveByDisplayLine", moveByDisplayLineMotion as never);
+  Vim.defineMotion("gtdMoveToDisplayLineBoundary", moveToDisplayBoundaryMotion as never);
+  Vim.defineAction("gtdEnterInsertAtDisplayLineBoundary", enterInsertAtDisplayBoundaryAction as never);
 
   for (const context of ["normal", "visual"] as const) {
-    Vim.mapCommand("j", "motion", "zenMoveByDisplayLine", { forward: true, linewise: true }, { context });
-    Vim.mapCommand("k", "motion", "zenMoveByDisplayLine", { forward: false, linewise: true }, { context });
+    Vim.mapCommand("j", "motion", "gtdMoveByDisplayLine", { forward: true, linewise: true }, { context });
+    Vim.mapCommand("k", "motion", "gtdMoveByDisplayLine", { forward: false, linewise: true }, { context });
   }
   mapBoundaryCommands();
-  Vim.mapCommand("A", "action", "zenEnterInsertAtDisplayLineBoundary", { forward: true }, { context: "normal", isEdit: true });
-  Vim.mapCommand("I", "action", "zenEnterInsertAtDisplayLineBoundary", { forward: false }, { context: "normal", isEdit: true });
+  Vim.mapCommand("A", "action", "gtdEnterInsertAtDisplayLineBoundary", { forward: true }, { context: "normal", isEdit: true });
+  Vim.mapCommand("I", "action", "gtdEnterInsertAtDisplayLineBoundary", { forward: false }, { context: "normal", isEdit: true });
 }

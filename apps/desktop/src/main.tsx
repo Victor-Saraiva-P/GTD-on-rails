@@ -5,7 +5,7 @@ import { SyncStatusProvider } from "./features/sync-status/SyncStatusProvider";
 import { ConnectivityBlocker } from "./features/connectivity/ConnectivityBlocker";
 import { DatabaseReadinessBlocker } from "./features/database-readiness/DatabaseReadinessBlocker";
 import { DatabaseReadinessProvider } from "./features/database-readiness/DatabaseReadinessProvider";
-import { ZenModeProvider } from "./features/zen-mode/ZenModeContext";
+import { ZoomModeProvider } from "./features/zoom-mode/ZoomModeContext";
 import { BootLoader } from "./components/BootLoader";
 import { AppShell } from "./pages/AppShell";
 import "./styles.css";
@@ -19,7 +19,7 @@ if (!app) {
 ReactDOM.createRoot(app).render(
   <React.StrictMode>
     <KeybindProvider>
-      <ZenModeProvider>
+      <ZoomModeProvider>
         <BootLoader>
           <DatabaseReadinessProvider>
             <SyncStatusProvider>
@@ -29,7 +29,7 @@ ReactDOM.createRoot(app).render(
             </SyncStatusProvider>
           </DatabaseReadinessProvider>
         </BootLoader>
-      </ZenModeProvider>
+      </ZoomModeProvider>
     </KeybindProvider>
   </React.StrictMode>
 );

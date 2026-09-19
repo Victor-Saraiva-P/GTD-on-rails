@@ -76,10 +76,10 @@ let headingsRegistered = false;
 export function registerHeadingMotions(): void {
   if (headingsRegistered) return;
   headingsRegistered = true;
-  Vim.defineMotion("zenMoveToHeading", moveToHeadingMotion as never);
+  Vim.defineMotion("gtdMoveToHeading", moveToHeadingMotion as never);
   const contexts = ["normal", "visual", "operatorPending"] as const;
   for (const context of contexts) {
-    Vim.mapCommand("]]", "motion", "zenMoveToHeading", { forward: true, toJumplist: true }, { context });
-    Vim.mapCommand("[[", "motion", "zenMoveToHeading", { forward: false, toJumplist: true }, { context });
+    Vim.mapCommand("]]", "motion", "gtdMoveToHeading", { forward: true, toJumplist: true }, { context });
+    Vim.mapCommand("[[", "motion", "gtdMoveToHeading", { forward: false, toJumplist: true }, { context });
   }
 }

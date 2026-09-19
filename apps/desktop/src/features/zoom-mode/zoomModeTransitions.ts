@@ -13,10 +13,10 @@ const ZONE_DETAIL_MAP: Readonly<Record<string, string>> = {
 };
 
 /**
- * Resolves the matching detail zone for a given list focus zone when entering Zen Mode.
+ * Resolves the matching detail zone for a given list focus zone when entering Zoom Mode.
  *
- * @example resolveZenDetailZone("inbox-list") // "stuff-detail"
+ * @example resolveZoomDetailZone("inbox-list") // "stuff-detail"
  */
-export function resolveZenDetailZone(activeZone: string): string | null {
+export function resolveZoomDetailZone(activeZone: string): string | null {
   return ZONE_DETAIL_MAP[activeZone] ?? null;
 }
