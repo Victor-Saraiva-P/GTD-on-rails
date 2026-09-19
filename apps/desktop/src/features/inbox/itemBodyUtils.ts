@@ -1,5 +1,23 @@
-import { ChangeSet } from "@codemirror/state";
+import { ChangeSet, StateEffect, StateField } from "@codemirror/state";
 import { type ItemBody, type InlineMark, type LineBlock, type BlockEntity } from "./types.ts";
+
+export const itemBodyStateEffect = StateEffect.define<ItemBody>();
+
+export const itemBodyStateField = StateField.define<ItemBody>({
+  create() {
+    return { text: "", inlineMarks: [], lineBlocks: [], blockEntities: [] };
+  },
+  update(value, tr) {
+    let nextValue = mapBodyRangesThroughChanges(value, tr.changes);
+    for (const e of tr.effects) {
+      if (e.is(itemBodyStateEffect)) {
+        nextValue = { ...nextValue, ...e.value };
+      }
+    }
+    nextValue.text = tr.state.doc.toString();
+    return reconcileBlockEntityTokenRanges(nextValue);
+  }
+});
 
 const ASSET_TOKEN_PATTERN = /(\[\[asset:([0-9a-fA-F-]{36})]]|\[asset:([0-9a-fA-F-]{36})]|⟦asset:([0-9a-fA-F-]{36})⟧)/g;
 

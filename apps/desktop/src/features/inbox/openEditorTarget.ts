@@ -4,6 +4,8 @@ export type OpenableEditorTarget =
   | { type: "link"; url: string }
   | { type: "asset"; entity: BlockEntity };
 
+const MD_LINK_RE = /\[([^\]]*)\]\(([^)]+)\)/g;
+
 /**
  * Finds the link or asset at the current editor cursor.
  *
@@ -14,7 +16,21 @@ export function findOpenableEditorTarget(body: ItemBody, cursorPosition: number)
   if (entity) return { type: "asset", entity };
 
   const link = body.inlineMarks.find((mark) => linkContainsCursor(mark, cursorPosition));
-  return link?.attrs?.href ? { type: "link", url: link.attrs.href } : null;
+  if (link?.attrs?.href) return { type: "link", url: link.attrs.href };
+
+  const nativeLinkUrl = findMarkdownLinkAtPosition(body.text, cursorPosition);
+  return nativeLinkUrl ? { type: "link", url: nativeLinkUrl } : null;
+}
+
+function findMarkdownLinkAtPosition(text: string, pos: number): string | null {
+  for (const match of text.matchAll(MD_LINK_RE)) {
+    const from = match.index ?? 0;
+    const to = from + match[0].length;
+    if (pos >= from && pos <= to) {
+      return match[2].trim();
+    }
+  }
+  return null;
 }
 
 function linkContainsCursor(mark: InlineMark, cursorPosition: number): boolean {
