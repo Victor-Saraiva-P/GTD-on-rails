@@ -105,6 +105,9 @@ These motions and operators enhance editing inside the markdown body editor:
 | `y` | Body editor | Yank selection with visual highlight pulse and synchronization to system clipboard. |
 | `p` / `P` | Body editor | Paste from system clipboard into the editor in normal and visual mode. |
 | `jk` | Body editor (Insert mode) | Exit insert mode immediately to normal mode without reaching for physical Escape. |
+| `Enter` | Body editor (Insert mode) | Automatically continue lists (`- `, `* `, `1. `) and checklists (`- [ ] `); pressing on an empty marker exits the list. |
+| `o` / `O` | Body editor (Normal mode) | Open a new line below/above continuing current list or checklist marker into insert mode. |
+| `Ctrl+Enter` | Body editor | Toggle checkbox between `[ ]` and `[x]` on current line or selection; turns plain text into a task. |
 
 ## Discoverability
 
