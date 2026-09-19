@@ -81,6 +81,7 @@ These shortcuts are available in body/detail editing zones that register markdow
 | `Space m 1`   | Format current block as heading 1.                   |
 | `Space m 2`   | Format current block as heading 2.                   |
 | `Space m 3`   | Format current block as heading 3.                   |
+| `Space m f`   | Toggle heading fold for current heading block.       |
 | `Space m a`   | Insert an asset.                                     |
 | `Space t b`   | Format selected inline text as bold.                 |
 | `Space t i`   | Format selected inline text as italic.               |
@@ -102,6 +103,13 @@ These motions and operators enhance editing inside the markdown body editor:
 | `I` | Body editor | Enter insert mode at the beginning of the current visible display row. |
 | `]]` | Body editor | Jump to next markdown heading (`#`, `##`, etc.) with jumplist support. |
 | `[[` | Body editor | Jump to previous markdown heading with jumplist support. |
+| `za` | Body editor (Normal mode) | Toggle heading fold at cursor or enclosing heading section. |
+| `zc` | Body editor (Normal mode) | Close (fold) heading section at cursor. |
+| `zo` | Body editor (Normal mode) | Open (unfold) heading section at cursor. |
+| `zM` | Body editor (Normal mode) | Fold all heading sections in document. |
+| `zR` | Body editor (Normal mode) | Unfold all heading sections in document. |
+| `:fold` / `:unfold` | Body editor (Ex mode) | Fold or unfold heading section at cursor. |
+| `:foldall` / `:unfoldall` | Body editor (Ex mode) | Fold or unfold all heading sections in document. |
 | `y` | Body editor | Yank selection with visual highlight pulse and synchronization to system clipboard. |
 | `p` / `P` | Body editor | Paste from system clipboard into the editor in normal and visual mode. |
 | `jk` | Body editor (Insert mode) | Exit insert mode immediately to normal mode without reaching for physical Escape. |
