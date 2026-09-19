@@ -239,5 +239,70 @@ test("Zoom Mode exits cleanly when pressing Escape", async ({ page }) => {
   await expect(page.locator(".inbox-pane--list")).toBeVisible();
 });
 
+test("Markdown editor automatically continues list items on Enter and exits on empty marker", async ({ page }) => {
+  const title = uniqueLabel("List continuation enter");
+  await openApp(page);
+  await page.locator(".inbox-pane--list").click();
+  await createInboxStuffFromKeyboard(page, title);
+  await page.keyboard.press("l");
+  await expect(page.locator(".cm-content")).toBeVisible();
+
+  await page.keyboard.press("i");
+  await page.keyboard.type("- [ ] First item");
+  await page.keyboard.press("Enter");
+
+  await expect(page.locator(".cm-line")).toHaveCount(2);
+  await expect(page.locator(".cm-line").nth(0)).toHaveText("- [ ] First item");
+  await expect(page.locator(".cm-line").nth(1)).toHaveText("- [ ] ");
+
+  await page.keyboard.type("Second item");
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".cm-line")).toHaveCount(3);
+  await expect(page.locator(".cm-line").nth(1)).toHaveText("- [ ] Second item");
+  await expect(page.locator(".cm-line").nth(2)).toHaveText("- [ ] ");
+
+  // Pressing Enter on empty list item clears the marker, leaving a clean line
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".cm-line")).toHaveCount(3);
+  await expect(page.locator(".cm-line").nth(0)).toHaveText("- [ ] First item");
+  await expect(page.locator(".cm-line").nth(1)).toHaveText("- [ ] Second item");
+  await expect(page.locator(".cm-line").nth(2)).toHaveText("");
+
+  // Next text typed on line 3 is normal text without list marker
+  await page.keyboard.type("Plain paragraph");
+  await expect(page.locator(".cm-line").nth(2)).toHaveText("Plain paragraph");
+});
+
+test("Vim normal mode o continues list item and Ctrl-Enter toggles checkbox", async ({ page }) => {
+  const title = uniqueLabel("Vim o continuation and toggle");
+  await openApp(page);
+  await page.locator(".inbox-pane--list").click();
+  await createInboxStuffFromKeyboard(page, title);
+  await page.keyboard.press("l");
+  await expect(page.locator(".cm-content")).toBeVisible();
+
+  await page.keyboard.press("i");
+  await page.keyboard.type("- [ ] Alpha");
+  await page.keyboard.press("Escape");
+
+  // In normal mode, 'o' opens line below continuing list
+  await page.keyboard.press("o");
+  await expect(page.getByLabel("Editing mode")).toContainText("INSERT");
+  await page.keyboard.type("Beta");
+  await page.keyboard.press("Escape");
+
+  await expect(page.locator(".cm-line")).toHaveCount(2);
+  await expect(page.locator(".cm-line").nth(0)).toHaveText("- [ ] Alpha");
+  await expect(page.locator(".cm-line").nth(1)).toHaveText("- [ ] Beta");
+
+  // Ctrl-Enter toggles checkbox
+  await page.keyboard.press("Control+Enter");
+  await expect(page.locator(".cm-line").nth(1)).toHaveText("- [x] Beta");
+
+  await page.keyboard.press("Control+Enter");
+  await expect(page.locator(".cm-line").nth(1)).toHaveText("- [ ] Beta");
+});
+
+
 
 
