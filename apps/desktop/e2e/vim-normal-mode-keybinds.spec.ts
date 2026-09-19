@@ -202,4 +202,41 @@ test("Vim insert mode exits to normal mode on typing jk sequence", async ({ page
   await expect(page.locator(".cm-content")).not.toContainText("jk");
 });
 
+test("Space z toggles Zen Mode expanding detail pane and hiding side list", async ({ page }) => {
+  const title = uniqueLabel("Zen Mode toggle");
+  await openApp(page);
+  await page.locator(".inbox-pane--list").click();
+  await createInboxStuffFromKeyboard(page, title);
+
+  await page.keyboard.press("Space");
+  await expect(page.locator(".leader-menu")).toBeVisible();
+  await page.keyboard.press("z");
+
+  await expect(page.locator(".list-workspace")).toHaveClass(/list-workspace--zen/);
+  await expect(page.locator(".inbox-pane--list")).not.toBeVisible();
+  await expect(page.locator(".inbox-pane--detail")).toBeVisible();
+  await expect(page.locator(".zen-mode-exit-button")).toBeVisible();
+
+  await page.keyboard.press("Space");
+  await page.keyboard.press("z");
+  await expect(page.locator(".list-workspace")).not.toHaveClass(/list-workspace--zen/);
+  await expect(page.locator(".inbox-pane--list")).toBeVisible();
+});
+
+test("Zen Mode exits cleanly when pressing Escape", async ({ page }) => {
+  const title = uniqueLabel("Zen Mode exit");
+  await openApp(page);
+  await page.locator(".inbox-pane--list").click();
+  await createInboxStuffFromKeyboard(page, title);
+
+  await page.keyboard.press("Space");
+  await page.keyboard.press("z");
+  await expect(page.locator(".list-workspace")).toHaveClass(/list-workspace--zen/);
+
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".list-workspace")).not.toHaveClass(/list-workspace--zen/);
+  await expect(page.locator(".inbox-pane--list")).toBeVisible();
+});
+
+
 
