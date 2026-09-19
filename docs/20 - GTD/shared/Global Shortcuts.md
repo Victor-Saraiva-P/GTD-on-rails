@@ -18,6 +18,7 @@ These shortcuts are registered globally by the desktop shell.
 | `Space p` | Open projects. |
 | `Space s` | Open someday/maybe. |
 | `Space h` | Open Hint Mode to jump directly to any visible UI element. |
+| `Space z` | Toggle Zen / Focus Mode (collapses side lists into a centered, distraction-free reading and writing canvas; exit with `Esc` or `Space z`). |
 
 Calendars use `[` and `]` inside the page to cycle through Today, Weekly, Completed, and Deleted subviews.
 
