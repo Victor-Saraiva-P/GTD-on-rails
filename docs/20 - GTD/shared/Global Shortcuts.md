@@ -103,12 +103,13 @@ These motions and operators enhance editing inside the markdown body editor:
 | `[[` | Body editor | Jump to previous markdown heading with jumplist support. |
 | `y` | Body editor | Yank selection with visual highlight pulse and synchronization to system clipboard. |
 | `p` / `P` | Body editor | Paste from system clipboard into the editor in normal and visual mode. |
+| `jk` | Body editor (Insert mode) | Exit insert mode immediately to normal mode without reaching for physical Escape. |
 
 ## Discoverability
 
 | Shortcut  | Action                                                           |
 | --------- | ---------------------------------------------------------------- |
-| `Space k` | Show available keybindings for the active screen and focus zone. |
+| `Space k` | Open interactive Which-Key cheat sheet dialog for the active focus zone with search filtering and category groupings. |
 
 ## Conflict Rule
 
