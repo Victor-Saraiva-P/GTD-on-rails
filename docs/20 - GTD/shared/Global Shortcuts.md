@@ -94,9 +94,15 @@ These motions and operators enhance editing inside the markdown body editor:
 
 | Shortcut | Scope | Action |
 | --- | --- | --- |
+| `j` / `k` | Body editor | Move down/up by visual display row in soft-wrapped text (counts like `3j` or visual line mode move by logical lines). |
+| `$` | Body editor | Move to the end of the current visible display row (or logical end when count > 1). |
+| `g0` | Body editor | Move to the beginning of the current visible display row. |
+| `A` | Body editor | Enter insert mode at the end of the current visible display row. |
+| `I` | Body editor | Enter insert mode at the beginning of the current visible display row. |
 | `]]` | Body editor | Jump to next markdown heading (`#`, `##`, etc.) with jumplist support. |
 | `[[` | Body editor | Jump to previous markdown heading with jumplist support. |
 | `y` | Body editor | Yank selection with visual highlight pulse and synchronization to system clipboard. |
+| `p` / `P` | Body editor | Paste from system clipboard into the editor in normal and visual mode. |
 
 ## Discoverability
 
