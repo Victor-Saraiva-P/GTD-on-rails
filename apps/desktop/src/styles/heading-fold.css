@@ -1,0 +1,64 @@
+/* Markdown Heading Fold Indicator and Placeholder */
+
+.cm-heading-line {
+  position: relative;
+}
+
+.cm-heading-fold-arrow {
+  position: relative;
+  z-index: 5;
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25em;
+  height: 1.25em;
+  margin-right: 0.35rem;
+  font-size: 0.85em;
+  color: #a89984;
+  cursor: pointer;
+  user-select: none;
+  border-radius: 3px;
+  vertical-align: middle;
+  transition:
+    color 120ms ease,
+    background-color 120ms ease,
+    opacity 120ms ease;
+  opacity: 0.45;
+}
+
+.cm-heading-line:hover .cm-heading-fold-arrow,
+.cm-activeLine.cm-heading-line .cm-heading-fold-arrow,
+.cm-heading-fold-arrow:hover,
+.cm-heading-fold-arrow.is-folded {
+  opacity: 1;
+}
+
+.cm-heading-fold-arrow:hover {
+  color: #fbf1c7;
+  background-color: rgba(255, 255, 255, 0.12);
+}
+
+.cm-heading-fold-arrow.is-folded {
+  color: #fabd2f;
+}
+
+.cm-foldPlaceholder {
+  display: inline-block;
+  background: #3c3836;
+  border: 1px solid #665c54;
+  color: #ebdbb2;
+  border-radius: 3px;
+  padding: 0 6px;
+  margin: 0 4px;
+  font-size: 0.8em;
+  line-height: 1.4;
+  cursor: pointer;
+  user-select: none;
+}
+
+.cm-foldPlaceholder:hover {
+  background: #504945;
+  color: #fbf1c7;
+  border-color: #fabd2f;
+}

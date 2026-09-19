@@ -13,7 +13,8 @@ import {
   FORMAT_NUMBERED_LIST_EVENT,
   FORMAT_NORMAL_TEXT_EVENT,
   FORMAT_QUOTE_EVENT,
-  OPEN_CURSOR_TARGET_EVENT
+  OPEN_CURSOR_TARGET_EVENT,
+  FORMAT_TOGGLE_FOLD_EVENT
 } from "./bodyEditorEvents.ts";
 import type { KeybindDefinition, ScreenId } from "../keybinds/types.ts";
 
@@ -52,6 +53,7 @@ export function buildFormattingBindings(screen: ScreenId, openLinkComboCb?: () =
     b("format-h1", "1", "Format as Heading 1", () => dispatchFormat(FORMAT_HEADING_EVENT, { level: 1 }), ["m", "1"]),
     b("format-h2", "2", "Format as Heading 2", () => dispatchFormat(FORMAT_HEADING_EVENT, { level: 2 }), ["m", "2"]),
     b("format-h3", "3", "Format as Heading 3", () => dispatchFormat(FORMAT_HEADING_EVENT, { level: 3 }), ["m", "3"]),
+    b("format-toggle-fold", "f", "Toggle Heading Fold", () => dispatchFormat(FORMAT_TOGGLE_FOLD_EVENT), ["m", "f"]),
     b("format-asset", "a", "Insert Asset", () => openAssetComboCb?.(), ["m", "a"]),
     b("format-bold", "b", "Format as Bold", () => dispatchFormat(FORMAT_BOLD_EVENT), ["t", "b"]),
     b("format-italic", "i", "Format as Italic", () => dispatchFormat(FORMAT_ITALIC_EVENT), ["t", "i"]),

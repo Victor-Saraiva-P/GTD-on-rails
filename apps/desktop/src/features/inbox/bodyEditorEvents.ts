@@ -13,3 +13,4 @@ export const FORMAT_ITALIC_EVENT = "gtd:format-italic";
 export const FORMAT_CODE_EVENT = "gtd:format-code";
 export const FORMAT_CLEAR_INLINE_EVENT = "gtd:format-clear-inline";
 export const OPEN_CURSOR_TARGET_EVENT = "gtd:open-cursor-target";
+export const FORMAT_TOGGLE_FOLD_EVENT = "gtd:format-toggle-fold";

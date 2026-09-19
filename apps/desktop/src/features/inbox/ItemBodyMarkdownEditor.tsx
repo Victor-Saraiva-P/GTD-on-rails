@@ -21,7 +21,8 @@ import {
   FORMAT_NUMBERED_LIST_EVENT,
   FORMAT_NORMAL_TEXT_EVENT,
   FORMAT_QUOTE_EVENT,
-  OPEN_CURSOR_TARGET_EVENT
+  OPEN_CURSOR_TARGET_EVENT,
+  FORMAT_TOGGLE_FOLD_EVENT
 } from "./bodyEditorEvents";
 import { normalizeBodyForClient, mapBodyRangesThroughChanges, toggleInlineMark, setLineBlock, toggleChecklist, insertBlockEntity, clearLineBlock, applyInlineMark, removeInlineMarks, reconcileBlockEntityTokenRanges, bodyForPersistence } from "./itemBodyUtils";
 import { type ItemBody, type BlockEntity } from "./types";
@@ -36,6 +37,7 @@ import { vimClipboardPasteExtension } from "./cmClipboardPaste.ts";
 import { applyVimInsertEscape, buildVimAwareDefaultKeymap } from "./cmVimKeymaps.ts";
 import { handleListContinuationEnter, registerListContinuationMotions } from "./listContinuation.ts";
 import { registerCheckboxVimCommands, toggleCheckbox } from "./cmToggleCheckbox.ts";
+import { headingFoldingExtension, registerHeadingFoldVimCommands, toggleHeadingAtCursor } from "./cmHeadingFold.ts";
 
 export type MarkdownBodySaveState = "saved" | "unsaved" | "saving" | "error";
 
@@ -528,6 +530,7 @@ function useCodeMirrorEditorView(
     applyVimInsertEscape("jk");
     registerListContinuationMotions();
     registerCheckboxVimCommands();
+    registerHeadingFoldVimCommands();
 
     const view = new EditorView({
       parent: editorParentRef.current,
@@ -537,6 +540,7 @@ function useCodeMirrorEditorView(
         extensions: [
           itemBodyStateField.init(() => body),
           vim(),
+          headingFoldingExtension(),
           lineNumbers(),
           history(),
           drawSelection(),
@@ -663,6 +667,9 @@ function useCodeMirrorEditorView(
       }) as EventListener,
       [OPEN_CURSOR_TARGET_EVENT]: () => {
         if (editorViewRef.current) void openCursorTarget(editorViewRef.current);
+      },
+      [FORMAT_TOGGLE_FOLD_EVENT]: () => {
+        if (editorViewRef.current) toggleHeadingAtCursor(editorViewRef.current);
       },
       [INSERT_MARKDOWN_LINK_EVENT]: ((e: CustomEvent<InsertMarkdownLinkEventDetail>) => {
         if (editorViewRef.current) {
