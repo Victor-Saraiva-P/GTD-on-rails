@@ -7,6 +7,7 @@ import { useInboxWorkspaceController } from "../features/inbox/useInboxWorkspace
 import { useActiveScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
 import { HintOverlay } from "../features/keybinds/HintOverlay.tsx";
 import { WhichKeyDialog } from "../features/keybinds/WhichKeyDialog";
+import { useZenMode } from "../features/zen-mode/ZenModeContext";
 import type { KeybindDefinition, ScreenId } from "../features/keybinds/types";
 import {
   deleteNextAction,
@@ -65,16 +66,11 @@ const deletedNextActionsConfig = {
 
 type AppControllers = ReturnType<typeof useAppControllers>;
 
-function buildNavigationBindings(
+function buildScreenJumpBindings(
   jumpToScreen: (screen: ScreenId, beforeNavigate?: () => void) => void,
-  goBack: () => void,
-  goForward: () => void,
-  controllers: AppControllers,
-  openHintMode: () => void
-) {
+  controllers: AppControllers
+): KeybindDefinition[] {
   return [
-    { id: "navigation.jump-back", key: "o", ctrl: true, description: "Jump to older position", runKeybind: goBack },
-    { id: "navigation.jump-forward", key: "i", ctrl: true, description: "Jump to newer position", runKeybind: goForward },
     { id: "navigation.open-calendars", key: "c", description: "Open calendars", leader: true, sequence: ["c"], runKeybind: () => jumpToScreen("calendars", controllers.calendars.resetWorkspace) },
     { id: "navigation.open-contexts", key: "C", description: "Open contexts", leader: true, sequence: ["C"], runKeybind: () => jumpToScreen("contexts") },
     { id: "navigation.open-inbox", key: "i", description: "Open inbox", leader: true, sequence: ["i"], runKeybind: () => jumpToScreen("inbox", controllers.inbox.resetWorkspace) },
@@ -82,9 +78,25 @@ function buildNavigationBindings(
     { id: "navigation.open-ongoing-next-actions", key: "o", description: "Open ongoing work", leader: true, sequence: ["o"], runKeybind: () => jumpToScreen("ongoing-next-actions", () => { controllers.ongoing.resetWorkspace(); controllers.ongoing.setActiveZone("next-actions-list"); }) },
     { id: "navigation.open-projects", key: "p", description: "Open projects", leader: true, sequence: ["p"], runKeybind: () => jumpToScreen("projects", controllers.projects.resetWorkspace) },
     { id: "navigation.open-someday-maybe", key: "s", description: "Open someday/maybe", leader: true, sequence: ["s"], runKeybind: () => jumpToScreen("someday-maybe", controllers.somedayMaybe.resetWorkspace) },
-    { id: "navigation.open-google-calendar-integration", key: "g", description: "Google Calendar Integration", leader: true, sequence: ["I", "g"], runKeybind: () => jumpToScreen("google-calendar-integration") },
-    { id: "navigation.open-hint-mode", key: "h", description: "Hint mode (jump to UI element)", leader: true, sequence: ["h"], runKeybind: openHintMode }
-  ] satisfies KeybindDefinition[];
+    { id: "navigation.open-google-calendar-integration", key: "g", description: "Google Calendar Integration", leader: true, sequence: ["I", "g"], runKeybind: () => jumpToScreen("google-calendar-integration") }
+  ];
+}
+
+function buildNavigationBindings(
+  jumpToScreen: (screen: ScreenId, beforeNavigate?: () => void) => void,
+  goBack: () => void,
+  goForward: () => void,
+  controllers: AppControllers,
+  openHintMode: () => void,
+  toggleZenMode: () => void
+): KeybindDefinition[] {
+  return [
+    { id: "navigation.jump-back", key: "o", ctrl: true, description: "Jump to older position", runKeybind: goBack },
+    { id: "navigation.jump-forward", key: "i", ctrl: true, description: "Jump to newer position", runKeybind: goForward },
+    ...buildScreenJumpBindings(jumpToScreen, controllers),
+    { id: "navigation.open-hint-mode", key: "h", description: "Hint mode (jump to UI element)", leader: true, sequence: ["h"], runKeybind: openHintMode },
+    { id: "navigation.toggle-zen-mode", key: "z", description: "Toggle Zen / Focus Mode", leader: true, sequence: ["z"], runKeybind: toggleZenMode }
+  ];
 }
 
 function useAppControllers(projectDetailProject: Project | null) {
@@ -251,11 +263,12 @@ function useOpenProjectDetail(
 function useAppShellBindings(
   navigation: ReturnType<typeof useJumpListNavigation>,
   controllers: AppControllers,
-  openHintMode: () => void
+  openHintMode: () => void,
+  toggleZenMode: () => void
 ) {
   return useMemo(
-    () => buildNavigationBindings(navigation.jumpToScreen, navigation.goBack, navigation.goForward, controllers, openHintMode),
-    [navigation.jumpToScreen, navigation.goBack, navigation.goForward, controllers, openHintMode]
+    () => buildNavigationBindings(navigation.jumpToScreen, navigation.goBack, navigation.goForward, controllers, openHintMode, toggleZenMode),
+    [navigation.jumpToScreen, navigation.goBack, navigation.goForward, controllers, openHintMode, toggleZenMode]
   );
 }
 
@@ -275,12 +288,13 @@ export function AppShell() {
   const { activeScreen, setActiveScreen } = useActiveScreen();
   const [projectDetailProject, setProjectDetailProject] = useState<Project | null>(null);
   const { isHintModeActive, openHintMode, closeHintMode } = useHintModeState();
+  const { toggleZenMode } = useZenMode();
   const controllers = useAppControllers(projectDetailProject);
   const navigation = useJumpListNavigation({
     activeScreen, setActiveScreen, controllers, projectDetailProject, setProjectDetailProject
   });
   const openProjectDetail = useOpenProjectDetail(controllers, navigation);
-  const navigationBindings = useAppShellBindings(navigation, controllers, openHintMode);
+  const navigationBindings = useAppShellBindings(navigation, controllers, openHintMode, toggleZenMode);
 
   useReloadActiveScreen(activeScreen, controllers);
   useAgentStateBridge(activeScreen);

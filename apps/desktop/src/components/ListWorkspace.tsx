@@ -5,6 +5,8 @@ import { SyncStatusIndicators } from "../features/sync-status/SyncStatusIndicato
 import { TitleSearchProvider } from "../features/title-search/TitleSearchContext";
 import { ListTitleSearchBar } from "../features/title-search/ListTitleSearchBar";
 import type { TitleSearchState } from "../features/title-search/types";
+import { useZenMode } from "../features/zen-mode/ZenModeContext";
+import { ZenModeExitButton } from "../features/zen-mode/ZenModeExitButton";
 
 type ListWorkspaceProps = Readonly<PropsWithChildren<{
   theme: ListTheme;
@@ -53,9 +55,16 @@ function ListWorkspaceFooter({ currentClassName, currentLabel, modeLabel }: Read
  * @example <ListWorkspace theme={inboxListTheme} currentLabel="Inbox">...</ListWorkspace>
  */
 export function ListWorkspace({ theme, currentClassName, currentLabel, modeLabel, titleSearch, children }: ListWorkspaceProps) {
+  const { isZenMode, exitZenMode } = useZenMode();
+
   return (
     <TitleSearchProvider value={titleSearch ?? null}>
-      <main className="list-workspace" style={buildWorkspaceStyle(theme)}>
+      <main
+        className={`list-workspace${isZenMode ? " list-workspace--zen" : ""}`}
+        style={buildWorkspaceStyle(theme)}
+        data-zen-mode={isZenMode ? "true" : undefined}
+      >
+        {isZenMode && <ZenModeExitButton onExit={exitZenMode} />}
         <div className="list-workspace__viewport">{children}</div>
         {titleSearch?.isSearchOpen ? <ListTitleSearchBar search={titleSearch} /> : null}
         <ListWorkspaceFooter currentClassName={currentClassName} currentLabel={currentLabel} modeLabel={modeLabel} />
