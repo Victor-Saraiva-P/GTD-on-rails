@@ -1,5 +1,5 @@
 import { history, historyKeymap } from "@codemirror/commands";
-import { EditorSelection, RangeSetBuilder, StateEffect, StateField, ChangeSet } from "@codemirror/state";
+import { EditorSelection, Prec, RangeSetBuilder, StateEffect, StateField, ChangeSet } from "@codemirror/state";
 import { EditorState } from "@codemirror/state";
 import { Decoration, drawSelection, EditorView, highlightActiveLine, keymap, lineNumbers, ViewPlugin, WidgetType, type ViewUpdate, type DecorationSet } from "@codemirror/view";
 import { getCM, Vim, vim, type CodeMirrorV } from "@replit/codemirror-vim";
@@ -34,6 +34,8 @@ import { registerDisplayLineMotions } from "./cmDisplayLineMotion.ts";
 import { wireYankHighlight, yankHighlightExtension } from "./cmYankHighlight.ts";
 import { vimClipboardPasteExtension } from "./cmClipboardPaste.ts";
 import { applyVimInsertEscape, buildVimAwareDefaultKeymap } from "./cmVimKeymaps.ts";
+import { handleListContinuationEnter, registerListContinuationMotions } from "./listContinuation.ts";
+import { registerCheckboxVimCommands, toggleCheckbox } from "./cmToggleCheckbox.ts";
 
 export type MarkdownBodySaveState = "saved" | "unsaved" | "saving" | "error";
 
@@ -524,6 +526,8 @@ function useCodeMirrorEditorView(
     registerHeadingMotions();
     registerDisplayLineMotions();
     applyVimInsertEscape("jk");
+    registerListContinuationMotions();
+    registerCheckboxVimCommands();
 
     const view = new EditorView({
       parent: editorParentRef.current,
@@ -571,6 +575,12 @@ function useCodeMirrorEditorView(
               return true;
             }
           }),
+          Prec.highest(
+            keymap.of([
+              { key: "Enter", run: handleListContinuationEnter },
+              { key: "Mod-Enter", run: toggleCheckbox }
+            ])
+          ),
           keymap.of([{ key: "Mod-s", run: () => {
              saveMarkdownBody(onAutosaveRef.current ?? onSaveRef.current, editorViewRef.current?.state.field(itemBodyStateField) as ItemBody, setSaveState);
              return true;
