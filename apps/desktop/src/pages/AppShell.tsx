@@ -6,6 +6,7 @@ import { useDeletedInboxWorkspaceController } from "../features/inbox/useDeleted
 import { useInboxWorkspaceController } from "../features/inbox/useInboxWorkspaceController";
 import { useActiveScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
 import { HintOverlay } from "../features/keybinds/HintOverlay.tsx";
+import { WhichKeyDialog } from "../features/keybinds/WhichKeyDialog";
 import type { KeybindDefinition, ScreenId } from "../features/keybinds/types";
 import {
   deleteNextAction,
@@ -258,6 +259,13 @@ function useAppShellBindings(
   );
 }
 
+function useHintModeState() {
+  const [isHintModeActive, setIsHintModeActive] = useState(false);
+  const openHintMode = useCallback(() => setIsHintModeActive(true), []);
+  const closeHintMode = useCallback(() => setIsHintModeActive(false), []);
+  return { isHintModeActive, openHintMode, closeHintMode };
+}
+
 /**
  * Selects the active desktop page and wires shared navigation keybindings.
  *
@@ -266,14 +274,12 @@ function useAppShellBindings(
 export function AppShell() {
   const { activeScreen, setActiveScreen } = useActiveScreen();
   const [projectDetailProject, setProjectDetailProject] = useState<Project | null>(null);
-  const [isHintModeActive, setIsHintModeActive] = useState(false);
+  const { isHintModeActive, openHintMode, closeHintMode } = useHintModeState();
   const controllers = useAppControllers(projectDetailProject);
   const navigation = useJumpListNavigation({
     activeScreen, setActiveScreen, controllers, projectDetailProject, setProjectDetailProject
   });
   const openProjectDetail = useOpenProjectDetail(controllers, navigation);
-  const openHintMode = useCallback(() => setIsHintModeActive(true), []);
-  const closeHintMode = useCallback(() => setIsHintModeActive(false), []);
   const navigationBindings = useAppShellBindings(navigation, controllers, openHintMode);
 
   useReloadActiveScreen(activeScreen, controllers);
@@ -283,6 +289,7 @@ export function AppShell() {
     <>
       {renderActiveScreen(activeScreen, controllers, setActiveScreen, openProjectDetail, navigation.openOwnerProject, navigation.openProjectItemDestination)}
       {isHintModeActive && <HintOverlay onExit={closeHintMode} />}
+      <WhichKeyDialog />
     </>
   );
 }

@@ -1,6 +1,6 @@
 import { defaultKeymap } from "@codemirror/commands";
 import { type EditorView, type KeyBinding } from "@codemirror/view";
-import { getCM } from "@replit/codemirror-vim";
+import { getCM, Vim } from "@replit/codemirror-vim";
 
 const VIM_MOTION_KEYS = new Set(["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Enter", "Backspace"]);
 
@@ -57,3 +57,38 @@ export function deferEscapeKeyToVim(bindings: readonly KeyBinding[]): KeyBinding
 export function buildVimAwareDefaultKeymap(): readonly KeyBinding[] {
   return deferEscapeKeyToVim(deferMotionKeysToVim(defaultKeymap));
 }
+
+let appliedInsertEscape: string | null = null;
+
+function clearVimInsertEscape(): void {
+  if (!appliedInsertEscape) return;
+  try {
+    Vim.unmap(appliedInsertEscape, "insert");
+  } catch {
+    // Ignored if unmap fails
+  }
+  appliedInsertEscape = null;
+}
+
+function registerVimInsertEscape(sequence: string): void {
+  if (!sequence) return;
+  try {
+    Vim.map(sequence, "<Esc>", "insert");
+    appliedInsertEscape = sequence;
+  } catch {
+    // Ignored if mapping fails
+  }
+}
+
+/**
+ * Maps a key sequence (e.g. `jk`) to `<Esc>` in Vim insert mode.
+ *
+ * @example applyVimInsertEscape("jk")
+ */
+export function applyVimInsertEscape(sequence: string = "jk"): void {
+  const seq = sequence.trim();
+  if (seq === appliedInsertEscape) return;
+  clearVimInsertEscape();
+  registerVimInsertEscape(seq);
+}
+

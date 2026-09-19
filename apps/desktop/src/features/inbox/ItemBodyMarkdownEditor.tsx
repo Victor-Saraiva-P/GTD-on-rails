@@ -33,7 +33,7 @@ import { registerHeadingMotions } from "./cmHeadingMotion.ts";
 import { registerDisplayLineMotions } from "./cmDisplayLineMotion.ts";
 import { wireYankHighlight, yankHighlightExtension } from "./cmYankHighlight.ts";
 import { vimClipboardPasteExtension } from "./cmClipboardPaste.ts";
-import { buildVimAwareDefaultKeymap } from "./cmVimKeymaps.ts";
+import { applyVimInsertEscape, buildVimAwareDefaultKeymap } from "./cmVimKeymaps.ts";
 
 export type MarkdownBodySaveState = "saved" | "unsaved" | "saving" | "error";
 
@@ -523,6 +523,7 @@ function useCodeMirrorEditorView(
     wireYankHighlight();
     registerHeadingMotions();
     registerDisplayLineMotions();
+    applyVimInsertEscape("jk");
 
     const view = new EditorView({
       parent: editorParentRef.current,
@@ -584,11 +585,20 @@ function useCodeMirrorEditorView(
       view.focus();
       registerActiveEditorView(view);
     }
-    const initialMode = getCM(view)?.state?.vim?.insertMode ? "INSERT" : "NORMAL";
+    const cm = getCM(view);
+    const initialMode = cm?.state?.vim?.insertMode ? "INSERT" : "NORMAL";
     view.contentDOM.dataset.vimMode = initialMode === "INSERT" ? "insert" : "normal";
     onVimModeChangeRef.current?.(initialMode);
 
+    const onModeChange = (e: { mode?: string }) => {
+      const normalized = (e.mode?.toUpperCase() ?? "NORMAL") as "NORMAL" | "INSERT" | "VISUAL";
+      view.contentDOM.dataset.vimMode = normalized.toLowerCase();
+      onVimModeChangeRef.current?.(normalized);
+    };
+    cm?.on("vim-mode-change", onModeChange);
+
     return () => {
+      cm?.off("vim-mode-change", onModeChange);
       if (getActiveEditorView() === view) {
         registerActiveEditorView(null);
       }
