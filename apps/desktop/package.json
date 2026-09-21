@@ -4,7 +4,7 @@
   "version": "2.5.0",
   "scripts": {
     "agent:driver": "node scripts/agent-driver/server.mjs",
-    "dev": "tauri dev",
+    "dev": "tauri dev --config src-tauri/tauri.dev.conf.json",
     "dev:web": "vite --host 127.0.0.1 --port 1420 --strictPort",
     "build": "pnpm run build:web",
     "build:sidecar": "pnpm --filter @gtd-on-rails/api run bootJar && mkdir -p src-tauri/binaries && cp ../api/build/libs/api-2.5.0.jar src-tauri/binaries/gtd-api.jar",

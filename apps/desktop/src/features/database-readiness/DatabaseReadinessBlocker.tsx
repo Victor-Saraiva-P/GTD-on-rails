@@ -16,7 +16,7 @@ export function DatabaseReadinessBlocker({ children }: PropsWithChildren) {
   return (
     <dialog open aria-label={model.title} aria-modal="true" className="boot-loader connectivity-blocker">
       <div className="boot-loader__terminal">
-        <p className="boot-loader__brand">{appMetadata.name} v{appMetadata.version}</p>
+        <p className="boot-loader__brand">{appMetadata.name} v{appMetadata.version}{import.meta.env.DEV ? " [DEV]" : ""}</p>
         <p className="boot-loader__line">
           <span className="boot-loader__status">[{model.statusLabel}]</span> {model.title}
         </p>
