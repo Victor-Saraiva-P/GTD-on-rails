@@ -70,6 +70,15 @@ Its data root contains:
 
 The server provides optimistic object revisions, idempotent operation IDs, ordered cursors, physical file storage, immutable snapshots and restore.
 
+It also serves an administration dashboard at `/`. Administrative APIs live under `/v1/admin/**` and therefore use the same optional bearer-token protection as the synchronization API.
+
+Runtime network configuration:
+
+- `GTD_SYNC_SERVER_BIND_ADDRESS`: bind address, default `127.0.0.1`.
+- `GTD_SYNC_SERVER_PORT`: HTTP port, default `9473`.
+- `GTD_SYNC_SERVER_AUTH_TOKEN`: optional bearer token required for `/v1/**`.
+- `GTD_SYNC_SERVER_DATA_ROOT`: canonical server data directory.
+
 ## Backup transport
 
 Google Drive is backup transport only.
@@ -87,5 +96,13 @@ A server restore is different from temporary unavailability: the epoch mismatch 
 ## Development and staging
 
 Development and staging also use SQLite data roots. They do not require PostgreSQL Compose infrastructure.
+
+`pnpm dev` starts three processes:
+
+1. `@gtd-on-rails/sync-server`;
+2. `@gtd-on-rails/api`;
+3. `@gtd-on-rails/desktop`.
+
+The dev launcher waits for the sync-server dashboard before starting the client/API so the first synchronization attempt does not race server startup.
 
 Tests should use isolated SQLite files/directories and an isolated sync-server fixture where synchronization behavior is under test.

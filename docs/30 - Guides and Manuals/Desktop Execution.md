@@ -9,7 +9,15 @@ pnpm install
 pnpm dev
 ```
 
-The desktop frontend and local Spring Boot API run natively. PostgreSQL and Supabase are not required.
+The desktop frontend, local Spring Boot API, and personal sync server run natively. PostgreSQL and Supabase are not required.
+
+During development, `pnpm dev` starts the sync server first, waits for its dashboard to become available, then starts the local API and desktop. The default dashboard is:
+
+```text
+http://127.0.0.1:9473/
+```
+
+Development sync-server data is kept separately under `dev-gtd-sync-server/`. `pnpm dev:reset` clears both the local desktop development dataset and the development sync-server dataset.
 
 Useful checks:
 
@@ -36,6 +44,12 @@ There is no database setup wizard and no PostgreSQL client-tool installation ste
 ## Synchronization
 
 Local editing works when the sync server is offline.
+
+The sync-server dashboard exposes overview metrics, canonical objects, recent change-feed entries, physical files and backup snapshots. It can create backups, restore a snapshot and delete old snapshots.
+
+If `GTD_SYNC_SERVER_AUTH_TOKEN` is configured, all `/v1/**` management and sync APIs require the same bearer token. The dashboard page remains loadable, but asks for the token before it can read or modify server state.
+
+The sync server binds to `127.0.0.1` by default. To expose it through Tailscale, set `GTD_SYNC_SERVER_BIND_ADDRESS` to the machine's Tailscale IP or to `0.0.0.0` and protect access with Tailscale ACLs plus a bearer token.
 
 The footer shows structured/file synchronization status. Clicking a conflict or rebootstrap-required indicator opens the synchronization recovery panel.
 

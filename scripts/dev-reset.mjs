@@ -1,29 +1,42 @@
 import { rm } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { developmentRootDirectory, startDevelopment } from "./dev.mjs";
+import {
+  developmentRootDirectory,
+  startDevelopment,
+  syncServerDevelopmentRootDirectory
+} from "./dev.mjs";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 export async function resetDevelopmentData(environment = process.env) {
-  const root = path.resolve(developmentRootDirectory(environment));
-  assertDisposableDevelopmentRoot(root);
-  await rm(root, { recursive: true, force: true });
+  const roots = [
+    path.resolve(developmentRootDirectory(environment)),
+    path.resolve(syncServerDevelopmentRootDirectory(environment))
+  ];
+  for (const root of roots) {
+    assertDisposableDevelopmentRoot(root);
+    await rm(root, { recursive: true, force: true });
+  }
 }
 
 export function assertDisposableDevelopmentRoot(root) {
-  const defaultRoot = path.join(repositoryRoot, "dev-gtd-on-rails");
-  if (root === defaultRoot) return;
+  const defaults = [
+    path.join(repositoryRoot, "dev-gtd-on-rails"),
+    path.join(repositoryRoot, "dev-gtd-sync-server")
+  ];
+  if (defaults.includes(root)) return;
   const allowedParent = path.join(repositoryRoot, ".dev-data");
   if (root.startsWith(allowedParent + path.sep)) return;
   throw new Error(
-    `development reset root '${root}' is invalid; expected repository dev-gtd-on-rails or .dev-data child`
+    "development reset root '" + root
+      + "' is invalid; expected repository dev dataset or .dev-data child"
   );
 }
 
 async function main() {
   await resetDevelopmentData();
-  startDevelopment();
+  await startDevelopment();
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

@@ -10,6 +10,7 @@ import java.util.Comparator;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -20,6 +21,7 @@ public class SnapshotRestoreService {
     private final Path filesRoot;
     private final Path backupDirectory;
 
+    @Autowired
     public SnapshotRestoreService(
         SyncObjectStore store,
         @Value("${gtd.sync-server.files-root}") String filesRoot,

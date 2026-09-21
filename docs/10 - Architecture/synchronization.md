@@ -90,6 +90,23 @@ rclone copy <snapshot.zip> <configured-backup-remote>
 
 Restore swaps the file tree and canonical database under the server lock, then rotates `datasetEpoch`.
 
+## Sync-server administration
+
+The server exposes a lightweight web dashboard at `/`.
+
+The dashboard can inspect:
+
+- dataset epoch and cursor;
+- object/tombstone counts by object type;
+- canonical object payloads;
+- recent change-feed entries;
+- physical synchronized files;
+- immutable backup snapshots.
+
+Management actions include creating, restoring and deleting snapshots. Restore requires explicit confirmation in the UI because it rotates `datasetEpoch` and forces connected clients to rebootstrap.
+
+The administrative JSON endpoints are under `/v1/admin/**` and share the sync-server bearer-token policy.
+
 ## Status API
 
 `GET /sync/status` exposes file, Google Calendar and structured sync state.
