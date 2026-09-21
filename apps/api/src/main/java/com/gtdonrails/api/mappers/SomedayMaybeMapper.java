@@ -1,16 +1,25 @@
 package com.gtdonrails.api.mappers;
 
+import com.gtdonrails.api.bodydocuments.ItemBodySource;
 import com.gtdonrails.api.dtos.somedaymaybe.SomedayMaybeResponseDto;
 import com.gtdonrails.api.entities.Item;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
 public class SomedayMaybeMapper {
 
     private final ProjectAssociationMapper projectAssociationMapper;
+    private final ItemBodySource itemBodySource;
+
+    @Autowired
+    public SomedayMaybeMapper(ProjectAssociationMapper projectAssociationMapper, ItemBodySource itemBodySource) {
+        this.projectAssociationMapper = projectAssociationMapper;
+        this.itemBodySource = itemBodySource;
+    }
 
     public SomedayMaybeMapper(ProjectAssociationMapper projectAssociationMapper) {
-        this.projectAssociationMapper = projectAssociationMapper;
+        this(projectAssociationMapper, ItemBodySource.legacy());
     }
 
     /**
@@ -22,7 +31,7 @@ public class SomedayMaybeMapper {
         return new SomedayMaybeResponseDto(
             item.getId(),
             item.getTitle().value(),
-            item.getBody(),
+            itemBodySource.read(item.getId(), item.getBody()),
             item.getStatus().name(),
             item.getCreatedAt(),
             projectAssociationMapper.projectIdFor(item),

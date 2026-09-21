@@ -1,5 +1,6 @@
 package com.gtdonrails.api.controllers;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasSize;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -32,7 +33,6 @@ import org.springframework.web.context.WebApplicationContext;
 
 @SpringBootTest(properties = {
     "gtd.assets.local-directory=./build/dev-demo-controller-assets",
-    "gtd.sync.rclone.enabled=false",
     "gtd.cleanup.enabled=false",
     "gtd.google.token-encryption-key=MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
 })
@@ -99,7 +99,9 @@ class DevDemoDataControllerTests {
         mockMvc.perform(get("/next-actions").param("orderBy", "energy"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$[0].title").value("Review Tauri architecture slides before Friday demo"))
-            .andExpect(jsonPath("$[0].body.blockEntities[0].type").value("pdf"));
+            .andExpect(jsonPath("$[0].body.text", containsString("TauriSlideshow.pdf")))
+            .andExpect(jsonPath("$[0].body.text", containsString("assets/")))
+            .andExpect(jsonPath("$[0].body.blockEntities", hasSize(0)));
     }
 
     private void assertPdfAssetCopied() {

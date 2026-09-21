@@ -295,148 +295,18 @@ function entityAssetRelativePath(entity: ItemBody["blockEntities"][number]): str
 function ReadOnlyInboxStuffDetails({ item, metaVariant, showCreatedMeta }: Readonly<Pick<InboxStuffDetailsProps, "item" | "metaVariant" | "showCreatedMeta">>) {
   const body = item.body;
 
-  if (!body || !body.text) {
-    return (
-      <div className="inbox-detail">
-        <DetailHeader item={item} metaVariant={metaVariant} showCreatedMeta={showCreatedMeta} />
-        <p className="pane-state">No details yet for this stuff.</p>
-      </div>
-    );
-  }
-
-  const lines = getStuffBodyPreviewLines(body);
-  const docLength = body.text.length;
-
   return (
     <div className="inbox-detail">
       <DetailHeader item={item} metaVariant={metaVariant} showCreatedMeta={showCreatedMeta} />
-      <div className="inbox-detail__body inbox-detail__body-preview" aria-label="Selected item details">
-        {lines.map((lineText, index) => {
-           // To get exact character offset for each line, we could accumulate lengths.
-           const from = body.text.split("\n").slice(0, index).join("\n").length + (index > 0 ? 1 : 0);
-           const to = from + lineText.length;
-           
-           const blocks = body.lineBlocks.filter(b => b.from <= to && b.from >= from);
-           const block = blocks[0]; // assuming one block per line max for rendering
-           
-           const lineEntities = body.blockEntities.filter(e => e.from >= from && e.to <= to);
-
-           if (block?.type === "heading1") {
-             return (
-               <div className="inbox-detail__body-line" key={index}>
-                 <span className="inbox-detail__line-number">{index + 1}</span>
-                 <span className="inbox-detail__line-content cm-md-heading-1">
-                   {renderInlineBody(body.text, body.inlineMarks, body.blockEntities, from, to)}
-                 </span>
-               </div>
-             );
-           }
-           if (block?.type === "heading2") {
-             return (
-               <div className="inbox-detail__body-line" key={index}>
-                 <span className="inbox-detail__line-number">{index + 1}</span>
-                 <span className="inbox-detail__line-content cm-md-heading-2">
-                   {renderInlineBody(body.text, body.inlineMarks, body.blockEntities, from, to)}
-                 </span>
-               </div>
-             );
-           }
-           if (block?.type === "heading3") {
-             return (
-               <div className="inbox-detail__body-line" key={index}>
-                 <span className="inbox-detail__line-number">{index + 1}</span>
-                 <span className="inbox-detail__line-content cm-md-heading-3">
-                   {renderInlineBody(body.text, body.inlineMarks, body.blockEntities, from, to)}
-                 </span>
-               </div>
-             );
-           }
-           if (block?.type === "bullet") {
-             const indentStr = lineText.match(/^\s*/)?.[0] ?? "";
-             const level = Math.floor(indentStr.length / 2) % 3;
-             return (
-               <div className="inbox-detail__body-line" key={index}>
-                 <span className="inbox-detail__line-number">{index + 1}</span>
-                 <span className="inbox-detail__line-content">
-                   {indentStr}<span className={`cm-bullet-mark cm-bullet-level-${level}`}>• </span>
-                   {renderInlineBody(body.text, body.inlineMarks, body.blockEntities, from + indentStr.length, to)}
-                 </span>
-               </div>
-             );
-           }
-           if (block?.type === "numbered") {
-             const indentStr = lineText.match(/^\s*/)?.[0] ?? "";
-             return (
-               <div className="inbox-detail__body-line" key={index}>
-                 <span className="inbox-detail__line-number">{index + 1}</span>
-                 <span className="inbox-detail__line-content">
-                   {indentStr}<span className="cm-numbered-mark">1. </span>
-                   {renderInlineBody(body.text, body.inlineMarks, body.blockEntities, from + indentStr.length, to)}
-                 </span>
-               </div>
-             );
-           }
-           if (block?.type === "lettered") {
-             const indentStr = lineText.match(/^\s*/)?.[0] ?? "";
-             return (
-               <div className="inbox-detail__body-line" key={index}>
-                 <span className="inbox-detail__line-number">{index + 1}</span>
-                 <span className="inbox-detail__line-content">
-                   {indentStr}<span className="cm-lettered-mark">a. </span>
-                   {renderInlineBody(body.text, body.inlineMarks, body.blockEntities, from + indentStr.length, to)}
-                 </span>
-               </div>
-             );
-           }
-           if (block?.type === "checklist") {
-             const indentStr = lineText.match(/^\s*/)?.[0] ?? "";
-             const isChecked = block.attrs?.checked ?? false;
-             return (
-               <div className="inbox-detail__body-line" key={index}>
-                 <span className="inbox-detail__line-number">{index + 1}</span>
-                 <span className="inbox-detail__line-content">
-                   {indentStr}
-                   <span className={isChecked ? "cm-checklist-box cm-checklist-box--checked" : "cm-checklist-box"} />
-                   <span className={isChecked ? "cm-checklist-text cm-checklist-text--checked" : "cm-checklist-text"}>
-                     {renderInlineBody(body.text, body.inlineMarks, body.blockEntities, from + indentStr.length, to)}
-                   </span>
-                 </span>
-               </div>
-             );
-           }
-           if (block?.type === "divider") {
-             return (
-               <div className="inbox-detail__body-line" key={index}>
-                 <span className="inbox-detail__line-number">{index + 1}</span>
-                 <span className="inbox-detail__line-content">
-                   <span className="cm-divider" />
-                 </span>
-               </div>
-             );
-           }
-           if (block?.type === "quote") {
-             const indentStr = lineText.match(/^\s*/)?.[0] ?? "";
-             return (
-               <div className="inbox-detail__body-line" key={index}>
-                 <span className="inbox-detail__line-number">{index + 1}</span>
-                 <span className="inbox-detail__line-content cm-quote-line">
-                   {indentStr}<span className="cm-quote-mark">▌ </span>
-                   {renderInlineBody(body.text, body.inlineMarks, body.blockEntities, from + indentStr.length, to)}
-                 </span>
-               </div>
-             );
-           }
-
-           return (
-             <div className="inbox-detail__body-line" key={index}>
-               <span className="inbox-detail__line-number">{index + 1}</span>
-               <span className="inbox-detail__line-content">
-                 {lineText ? renderInlineBody(body.text, body.inlineMarks, body.blockEntities, from, to) : "\u00A0"}
-               </span>
-             </div>
-           );
-        })}
-      </div>
+      {!body?.text ? (
+        <p className="pane-state">No details yet for this stuff.</p>
+      ) : (
+        <div className="inbox-detail__body inbox-detail__body-preview" aria-label="Selected item details">
+          <Suspense fallback={<p className="pane-state">Loading preview...</p>}>
+            <LazyItemBodyMarkdownEditor itemId={item.id} initialBody={body} readOnly />
+          </Suspense>
+        </div>
+      )}
     </div>
   );
 }

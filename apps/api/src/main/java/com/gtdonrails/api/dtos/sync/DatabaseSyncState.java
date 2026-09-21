@@ -5,5 +5,7 @@ public enum DatabaseSyncState {
     SYNCED,
     PENDING,
     SYNCING,
-    FAILED
+    FAILED,
+    CONFLICT,
+    REBOOTSTRAP_REQUIRED
 }

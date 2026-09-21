@@ -25,13 +25,13 @@ public class ReadinessController {
     public ResponseEntity<DatabaseReadinessResponse> readiness() {
         DatabaseReadinessState state = readinessService.readinessState();
         if (state == DatabaseReadinessState.READY) {
-            return ResponseEntity.ok(new DatabaseReadinessResponse("READY", "authoritative PostgreSQL ready"));
+            return ResponseEntity.ok(new DatabaseReadinessResponse("READY", "local SQLite ready"));
         }
         if (state == DatabaseReadinessState.UPDATE_REQUIRED) {
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
                 .body(new DatabaseReadinessResponse("UPDATE_REQUIRED", "An application update is required to access the shared database schema."));
         }
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-            .body(new DatabaseReadinessResponse("UNAVAILABLE", "PostgreSQL unavailable"));
+            .body(new DatabaseReadinessResponse("UNAVAILABLE", "Local SQLite unavailable"));
     }
 }

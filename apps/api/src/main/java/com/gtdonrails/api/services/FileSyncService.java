@@ -4,16 +4,24 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import com.gtdonrails.api.config.FileSyncProperties;
 import com.gtdonrails.api.dtos.sync.FileSyncState;
 import com.gtdonrails.api.dtos.sync.FileSyncStatusDto;
+import com.gtdonrails.api.sync.FileConflictResolutionService;
+import com.gtdonrails.api.sync.LocalSyncStateStore;
+import com.gtdonrails.api.sync.SyncDatasetEpochMismatchException;
+import com.gtdonrails.api.sync.SyncFileBaseStore;
+import com.gtdonrails.api.sync.SyncFileOutboxEntry;
+import com.gtdonrails.api.sync.SyncFileOutboxStore;
+import com.gtdonrails.api.sync.SyncFileServerGateway;
+import com.gtdonrails.api.sync.SyncServerConflictException;
+import com.gtdonrails.api.sync.SyncServerGateway;
 import jakarta.annotation.PreDestroy;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -21,202 +29,238 @@ import org.springframework.stereotype.Service;
 @Service
 public class FileSyncService {
 
-    private static final Logger logger = LoggerFactory.getLogger(FileSyncService.class);
+    private static final int MAX_RETRY_ATTEMPTS = 5;
 
-    private final FileSyncProperties fileSyncProperties;
-    private final RcloneFileSyncService rcloneFileSyncService;
+    private final SyncFileOutboxStore outbox;
+    private final SyncFileServerGateway fileGateway;
+    private final SyncServerGateway stateGateway;
+    private final LocalSyncStateStore stateStore;
+    private final SyncFileBaseStore baseStore;
+    private final FileConflictResolutionService conflictResolver;
     private final Path dataRoot;
-    private final ExecutorService executorService = Executors.newSingleThreadExecutor();
-    private final Object syncLock = new Object();
+    private final boolean enabled;
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final AtomicBoolean running = new AtomicBoolean(false);
     private final AtomicBoolean pending = new AtomicBoolean(false);
 
-    private volatile FileSyncState state = FileSyncState.DISABLED;
+    private volatile FileSyncState state;
     private volatile Instant lastStartedAt;
     private volatile Instant lastFinishedAt;
     private volatile Instant lastSuccessfulSyncAt;
     private volatile String lastError;
 
+    @Autowired
     public FileSyncService(
-        FileSyncProperties fileSyncProperties,
-        RcloneFileSyncService rcloneFileSyncService,
-        @Value("${gtd.data.root-directory}") String dataRoot
+        SyncFileOutboxStore outbox,
+        SyncFileServerGateway fileGateway,
+        SyncServerGateway stateGateway,
+        LocalSyncStateStore stateStore,
+        SyncFileBaseStore baseStore,
+        FileConflictResolutionService conflictResolver,
+        @Value("${gtd.data.root-directory}") String dataRoot,
+        @Value("${gtd.sync.server.enabled:false}") boolean enabled
     ) {
-        this.fileSyncProperties = fileSyncProperties;
-        this.rcloneFileSyncService = rcloneFileSyncService;
+        this.outbox = outbox;
+        this.fileGateway = fileGateway;
+        this.stateGateway = stateGateway;
+        this.stateStore = stateStore;
+        this.baseStore = baseStore;
+        this.conflictResolver = conflictResolver;
         this.dataRoot = Path.of(dataRoot).toAbsolutePath().normalize();
-        this.state = rcloneFileSyncService.isEnabled() ? FileSyncState.SYNCED : FileSyncState.DISABLED;
+        this.enabled = enabled;
+        this.state = enabled ? FileSyncState.SYNCED : FileSyncState.DISABLED;
     }
 
-    /**
-     * Runs blocking startup File Sync before PostgreSQL opens.
-     *
-     * <p>Example: {@code fileSyncService.syncOnStartup()}.</p>
-     */
     public void syncOnStartup() throws IOException {
         Files.createDirectories(dataRoot);
-        if (!rcloneFileSyncService.isEnabled()) {
+        if (!enabled) {
             state = FileSyncState.DISABLED;
             return;
         }
-
-        runOnce(!syncCheckExists(), "startup");
+        syncNow();
     }
 
-    /**
-     * Completes a blocking File Sync before bootstrap hands off to normal startup.
-     *
-     * <p>Example: {@code fileSyncService.syncNow()}.</p>
-     */
     public void syncNow() throws IOException {
         Files.createDirectories(dataRoot);
-        if (!rcloneFileSyncService.isEnabled()) return;
-        runOnce(false, "database setup");
+        if (!enabled) return;
+        runOnce();
     }
 
-    /**
-     * Queues the periodic File Sync requested by the scheduler.
-     *
-     * <p>Example: {@code fileSyncService.requestScheduledSync()}.</p>
-     */
-    @Scheduled(fixedDelayString = "${gtd.sync.interval-ms:300000}")
+    @Scheduled(fixedDelayString = "${gtd.sync.file-interval-ms:5000}")
     public void requestScheduledSync() {
+        if (!enabled || requiresRebootstrap()) return;
+        if (outbox.pendingCount() == 0) return;
         requestSync("scheduled");
     }
 
-    /**
-     * Queues File Sync work while recording the reason for observability.
-     *
-     * <p>Example: {@code fileSyncService.requestSync("asset uploaded")}.</p>
-     */
     public void requestSync(String reason) {
-        if (!rcloneFileSyncService.isEnabled()) {
-            state = FileSyncState.DISABLED;
-            return;
-        }
-
+        if (!enabled || requiresRebootstrap()) return;
         pending.set(true);
-        submit(!syncCheckExists(), reason);
+        state = running.get() ? FileSyncState.SYNCING : FileSyncState.PENDING;
+        submit();
     }
 
-    /**
-     * Queues File Sync after the current transaction commits.
-     *
-     * <p>Example: {@code fileSyncService.requestSyncAfterCommit(executor, "asset uploaded")}.</p>
-     */
     public void requestSyncAfterCommit(AfterCommitExecutor executor, String reason) {
         executor.run(() -> requestSync(reason));
     }
 
-    /**
-     * Queues File Sync work requested directly by the API.
-     *
-     * <p>Example: {@code fileSyncService.requestManualSync()}.</p>
-     */
     public void requestManualSync() {
         requestSync("manual");
     }
 
-    /**
-     * Returns the latest File Sync state for status endpoints.
-     *
-     * <p>Example: {@code fileSyncService.status()}.</p>
-     */
     public FileSyncStatusDto status() {
-        return new FileSyncStatusDto(state, pending.get(), running.get(), lastStartedAt, lastFinishedAt, lastSuccessfulSyncAt, lastError);
+        return new FileSyncStatusDto(
+            state, pending.get(), running.get(),
+            lastStartedAt, lastFinishedAt, lastSuccessfulSyncAt, lastError
+        );
     }
 
-    private void submit(boolean bootstrap, String reason) {
+    private void submit() {
         if (!running.compareAndSet(false, true)) return;
-        executorService.submit(() -> runSyncLoop(bootstrap, reason));
+        executor.submit(this::runSyncLoop);
     }
 
-    private void runSyncLoop(boolean bootstrap, String reason) {
-        boolean shouldBootstrap = bootstrap;
+    private void runSyncLoop() {
         try {
             do {
                 pending.set(false);
-                runOnce(shouldBootstrap, reason);
-                shouldBootstrap = !syncCheckExists();
-            } while (pending.get());
+                runOnce();
+            } while (!requiresRebootstrap() && (pending.get() || outbox.pendingCount() > 0));
         } finally {
             running.set(false);
-            if (pending.get()) submit(false, "pending");
+            if (!requiresRebootstrap() && pending.get()) requestSync("pending");
         }
     }
 
-    private void runOnce(boolean bootstrap, String reason) {
+    private void runOnce() {
         lastStartedAt = Instant.now();
-        state = bootstrap ? FileSyncState.BOOTSTRAPPING : FileSyncState.SYNCING;
-        logger.atInfo()
-            .addKeyValue("event", "file_sync_started")
-            .addKeyValue("sync_mode", bootstrap ? "bootstrap" : "bisync")
-            .addKeyValue("reason", reason)
-            .log("Starting file sync");
-
+        state = FileSyncState.SYNCING;
         try {
-            performSyncAttempt(bootstrap);
+            validateDatasetEpoch();
+            if (processPending()) markSuccess();
+            else if (state != FileSyncState.CONFLICT) state = FileSyncState.FAILED;
         } catch (RuntimeException exception) {
             lastError = exception.getMessage();
-            state = FileSyncState.FAILED;
-            logger.atWarn().addKeyValue("event", "file_sync_failed").addKeyValue("reason", reason).setCause(exception).log("File sync failed");
-            throw exception;
+            state = exception instanceof SyncDatasetEpochMismatchException
+                ? FileSyncState.REBOOTSTRAP_REQUIRED
+                : FileSyncState.FAILED;
         } finally {
             lastFinishedAt = Instant.now();
         }
     }
 
-    private void performSyncAttempt(boolean bootstrap) {
-        synchronized (syncLock) {
-            runRcloneSync(bootstrap);
-            if (bootstrap) publishMissingSyncCheckAfterBootstrap();
-            markSyncSucceeded();
+    private boolean processPending() {
+        boolean successful = true;
+        List<SyncFileOutboxEntry> entries = outbox.pending();
+        for (SyncFileOutboxEntry entry : entries) {
+            successful &= processEntry(entry);
+        }
+        return successful;
+    }
+
+    private boolean processEntry(SyncFileOutboxEntry entry) {
+        outbox.markProcessing(entry.id());
+        byte[] content = localContent(entry);
+        try {
+            SyncServerGateway.SyncPushResult result = push(entry, content);
+            rememberSuccessfulPush(entry, result.revision(), content);
+            outbox.markCompleted(entry.id());
+            return true;
+        } catch (SyncServerConflictException conflict) {
+            return resolveConflict(entry, conflict);
+        } catch (RuntimeException exception) {
+            handleFailure(entry, exception);
+            return false;
         }
     }
 
-    private void runRcloneSync(boolean bootstrap) {
-        if (bootstrap) {
-            rcloneFileSyncService.bootstrapBisync(dataRoot);
+    private byte[] localContent(SyncFileOutboxEntry entry) {
+        return "DELETE".equals(entry.operation()) ? new byte[0] : readLocalFile(entry.relativePath());
+    }
+
+    private SyncServerGateway.SyncPushResult push(SyncFileOutboxEntry entry, byte[] content) {
+        long baseRevision = stateStore.revision(entry.objectType(), entry.objectId());
+        return fileGateway.push(
+            entry.operationId(), entry.objectType(), entry.objectId(), baseRevision,
+            entry.operation(), entry.relativePath(), entry.contentType(), content
+        );
+    }
+
+    private void rememberSuccessfulPush(SyncFileOutboxEntry entry, long revision, byte[] content) {
+        stateStore.updateRevision(entry.objectType(), entry.objectId(), revision);
+        if ("DELETE".equals(entry.operation())) {
+            baseStore.delete(entry.objectType(), entry.objectId());
             return;
         }
-
-        rcloneFileSyncService.bisync(dataRoot);
+        baseStore.save(entry.objectType(), entry.objectId(), revision, content);
     }
 
-    private void markSyncSucceeded() {
-        lastSuccessfulSyncAt = Instant.now();
-        lastError = null;
-        state = pending.get() ? FileSyncState.PENDING : FileSyncState.SYNCED;
+    private boolean resolveConflict(
+        SyncFileOutboxEntry entry,
+        SyncServerConflictException conflict
+    ) {
+        FileConflictResolutionService.Resolution resolution =
+            conflictResolver.resolvePushConflict(entry, conflict);
+        if (resolution.mergedAutomatically()) return true;
+        outbox.markFailed(entry.id(), conflict.getMessage(), false);
+        lastError = conflict.getMessage();
+        state = FileSyncState.CONFLICT;
+        return false;
     }
 
-    private void publishMissingSyncCheckAfterBootstrap() {
-        if (syncCheckExists()) return;
-
-        writeSyncCheckFile();
-        rcloneFileSyncService.publishBootstrapSyncCheck(dataRoot);
+    private void handleFailure(SyncFileOutboxEntry entry, RuntimeException exception) {
+        boolean retry = entry.retryCount() + 1 < MAX_RETRY_ATTEMPTS;
+        outbox.markFailed(entry.id(), exception.getMessage(), retry);
+        lastError = exception.getMessage();
     }
 
-    private void writeSyncCheckFile() {
+    private byte[] readLocalFile(String relativePath) {
+        Path path = dataRoot.resolve(relativePath).normalize();
+        if (!path.startsWith(dataRoot)) {
+            throw new IllegalArgumentException(
+                "sync file path value '" + relativePath + "' is invalid; expected path inside data root"
+            );
+        }
         try {
-            Files.writeString(syncCheckPath(), Instant.now().toString());
+            return Files.readAllBytes(path);
         } catch (IOException exception) {
-            throw new IllegalStateException("Failed to write file sync check file: " + syncCheckPath(), exception);
+            throw new IllegalStateException(
+                "Failed to read local sync file at '" + path + "'",
+                exception
+            );
         }
     }
 
-    private Path syncCheckPath() {
-        return dataRoot.resolve(fileSyncProperties.getSyncCheckFilename());
+    private void validateDatasetEpoch() {
+        SyncServerGateway.SyncRemoteState remote = stateGateway.state();
+        LocalSyncStateStore.SyncClientState local = stateStore.clientState();
+        if (local.datasetEpoch() == null || local.datasetEpoch().isBlank()) return;
+        if (local.datasetEpoch().equals(remote.datasetEpoch())) return;
+        throw new SyncDatasetEpochMismatchException(local.datasetEpoch(), remote.datasetEpoch());
     }
 
-    private boolean syncCheckExists() {
-        return Files.exists(syncCheckPath());
+    private boolean requiresRebootstrap() {
+        return state == FileSyncState.REBOOTSTRAP_REQUIRED;
+    }
+
+    public void resumeAfterRebootstrap() {
+        if (!enabled) return;
+        lastError = null;
+        state = FileSyncState.SYNCED;
+        requestSync("rebootstrap completed");
+    }
+
+    private void markSuccess() {
+        lastSuccessfulSyncAt = Instant.now();
+        lastError = null;
+        state = outbox.pendingCount() > 0 ? FileSyncState.PENDING : FileSyncState.SYNCED;
     }
 
     @PreDestroy
     void shutdown() {
-        executorService.shutdownNow();
+        executor.shutdownNow();
         try {
-            executorService.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS);
+            executor.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS);
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
         }

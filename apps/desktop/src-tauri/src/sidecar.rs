@@ -9,7 +9,6 @@ use tauri_plugin_shell::ShellExt;
 
 const SIDECAR_PROGRAM: &str = "gtd-api";
 const DEFAULT_SIDECAR_PROFILES: &str = "prod,sidecar";
-const BOOTSTRAP_PROFILE: &str = "bootstrap";
 const READY_TIMEOUT: Duration = Duration::from_secs(60);
 const READY_POLL_INTERVAL: Duration = Duration::from_millis(100);
 
@@ -35,12 +34,6 @@ struct ReadyPayload {
     host: String,
     port: u16,
     base_url: String,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct BootstrapStatus {
-    configuration_status: String,
 }
 
 impl SidecarBackendState {
@@ -105,22 +98,12 @@ pub fn start_sidecar(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> 
     }
     *started = true;
 
-    let ready_file = bootstrap_file_path();
+    let ready_file = ready_file_path();
     remove_stale_ready_file(&ready_file);
-    let (rx, child) = match spawn_backend(app, &ready_file, true) {
-        Ok(result) => result,
-        Err(error) => {
-            record_sidecar_error(app, error.to_string());
-            return Err(error);
-        }
-    };
-    app.state::<SidecarBackendState>().set_child(child);
-    monitor_sidecar_events(app.clone(), rx, true);
-    wait_for_bootstrap(
-        app.clone(),
-        ready_file.with_extension("status.json"),
-        ready_file,
-    );
+    let (rx, child) = spawn_backend(app, &ready_file)?;
+    state.set_child(child);
+    monitor_sidecar_events(app.clone(), rx);
+    wait_for_ready_file(app.clone(), ready_file);
     Ok(())
 }
 
@@ -132,32 +115,17 @@ pub fn start_sidecar_command(app: AppHandle) -> Result<(), String> {
 fn spawn_backend(
     app: &AppHandle,
     ready_file: &Path,
-    bootstrap: bool,
 ) -> Result<(tauri::async_runtime::Receiver<CommandEvent>, CommandChild), Box<dyn std::error::Error>>
 {
     let jar_path = resolve_backend_jar_path(app)?;
     let child = app
         .shell()
         .sidecar(SIDECAR_PROGRAM)?
-        .arg(format!(
-            "--spring.profiles.active={}",
-            sidecar_profiles_for(bootstrap)
-        ))
+        .arg(format!("--spring.profiles.active={}", sidecar_profiles()))
         .env("GTD_API_JAR_PATH", jar_path.as_os_str())
         .env("GTD_SIDECAR_READY_FILE", ready_file.as_os_str())
-        .env(
-            "GTD_BOOTSTRAP_STATUS_FILE",
-            ready_file.with_extension("status.json").as_os_str(),
-        )
         .spawn()?;
     Ok(child)
-}
-
-fn sidecar_profiles_for(bootstrap: bool) -> String {
-    if bootstrap {
-        return format!("{},{}", sidecar_profiles(), BOOTSTRAP_PROFILE);
-    }
-    sidecar_profiles()
 }
 
 fn resolve_backend_jar_path(app: &AppHandle) -> Result<PathBuf, String> {
@@ -205,72 +173,44 @@ fn ready_file_path() -> PathBuf {
     std::env::temp_dir().join(format!("gtd-on-rails-sidecar-{}-ready.json", std::process::id()))
 }
 
-fn bootstrap_file_path() -> PathBuf {
-    std::env::temp_dir().join(format!("gtd-on-rails-sidecar-{}-bootstrap.json", std::process::id()))
-}
-
 fn remove_stale_ready_file(ready_file: &Path) {
     let _ = std::fs::remove_file(ready_file);
     let _ = std::fs::remove_file(ready_file.with_extension("json.tmp"));
-    let _ = std::fs::remove_file(ready_file.with_extension("status.json"));
 }
 
 fn monitor_sidecar_events(
     app_handle: AppHandle,
     mut rx: tauri::async_runtime::Receiver<CommandEvent>,
-    is_bootstrap: bool,
 ) {
     tauri::async_runtime::spawn(async move {
         while let Some(event) = rx.recv().await {
-            handle_sidecar_event(&app_handle, event, is_bootstrap);
+            handle_sidecar_event(&app_handle, event);
         }
     });
 }
 
-fn handle_sidecar_event(app_handle: &AppHandle, event: CommandEvent, is_bootstrap: bool) {
+fn handle_sidecar_event(app_handle: &AppHandle, event: CommandEvent) {
     match event {
         CommandEvent::Stdout(line) => print!("{}", String::from_utf8_lossy(&line)),
         CommandEvent::Stderr(line) => eprint!("{}", String::from_utf8_lossy(&line)),
         CommandEvent::Terminated(payload) => {
-            if should_record_termination(is_bootstrap, payload.code) {
-                record_sidecar_error(
-                    app_handle,
-                    backend_exit_message(payload.code, &sidecar_profiles()),
-                );
-            }
+            record_sidecar_error(
+                app_handle,
+                backend_exit_message(payload.code, &sidecar_profiles()),
+            );
         }
         _ => {}
     }
 }
 
-fn should_record_termination(is_bootstrap: bool, code: Option<i32>) -> bool {
-    // WHY: The bootstrap process cleanly exits with code 0 once configuration is ready or
-    // setup finishes, immediately before the runtime application backend is spawned.
-    if is_bootstrap && code == Some(0) {
-        return false;
-    }
-    true
-}
-
 fn backend_exit_message(code: Option<i32>, profiles: &str) -> String {
     let exit_message = format!("backend exited with code {:?}", code);
-    if !profiles
-        .split(',')
-        .any(|profile| profile.trim() == "staging")
-    {
-        return exit_message;
-    }
-    if profiles
-        .split(',')
-        .any(|profile| profile.trim() == "staging-reset")
-    {
+    if profiles.split(',').any(|profile| profile.trim() == "staging-reset") {
         return format!(
             "{exit_message}; staging reset did not complete, no desktop data was published; fix the reported error and run pnpm staging:reset again"
         );
     }
-    format!(
-        "{exit_message}; if the staging database is unavailable, resume the Supabase project manually in its dashboard, then run pnpm staging again"
-    )
+    exit_message
 }
 
 fn wait_for_ready_file(app_handle: AppHandle, ready_file: PathBuf) {
@@ -284,108 +224,6 @@ fn wait_for_ready_file(app_handle: AppHandle, ready_file: PathBuf) {
         }
         record_sidecar_error(&app_handle, "backend readiness file timed out".to_string());
     });
-}
-
-fn wait_for_bootstrap(app_handle: AppHandle, status_file: PathBuf, ready_file: PathBuf) {
-    std::thread::spawn(move || {
-        let deadline = Instant::now() + READY_TIMEOUT;
-        while Instant::now() < deadline {
-            if let Some(status) = read_bootstrap_status(&status_file) {
-                return continue_after_bootstrap(&app_handle, &status_file, &ready_file, status);
-            }
-            std::thread::sleep(READY_POLL_INTERVAL);
-        }
-        record_sidecar_error(&app_handle, "bootstrap sidecar timed out".to_string());
-    });
-}
-
-fn read_bootstrap_status(status_file: &Path) -> Option<BootstrapStatus> {
-    let text = std::fs::read_to_string(status_file).ok()?;
-    serde_json::from_str(&text).ok()
-}
-
-fn continue_after_bootstrap(
-    app_handle: &AppHandle,
-    status_file: &Path,
-    ready_file: &Path,
-    status: BootstrapStatus,
-) {
-    let _ = std::fs::remove_file(status_file);
-    if exposes_bootstrap_configuration(&status.configuration_status) {
-        return expose_configuration_until_ready(
-            app_handle.clone(),
-            status_file.to_path_buf(),
-            ready_file.to_path_buf(),
-        );
-    }
-    if let Err(error) = bootstrap_transition(&status.configuration_status) {
-        return record_sidecar_error(app_handle, error);
-    }
-
-    let ready_file = ready_file_path();
-    remove_stale_ready_file(&ready_file);
-    let (rx, child) = match spawn_backend(app_handle, &ready_file, false) {
-        Ok(result) => result,
-        Err(error) => return record_sidecar_error(app_handle, error.to_string()),
-    };
-    app_handle.state::<SidecarBackendState>().set_child(child);
-    monitor_sidecar_events(app_handle.clone(), rx, false);
-    wait_for_ready_file(app_handle.clone(), ready_file);
-}
-
-fn exposes_bootstrap_configuration(status: &str) -> bool {
-    matches!(status, "MISSING" | "INVALID" | "REPAIR_FAILED")
-}
-
-fn expose_configuration_until_ready(
-    app_handle: AppHandle,
-    status_file: PathBuf,
-    ready_file: PathBuf,
-) {
-    let Some(payload) = read_ready_payload(&ready_file) else {
-        return record_sidecar_error(
-            &app_handle,
-            "bootstrap ready payload was missing; expected local HTTP endpoint".to_string(),
-        );
-    };
-    record_ready_payload(&app_handle, payload);
-    std::thread::spawn(move || {
-        let deadline = Instant::now() + READY_TIMEOUT;
-        while Instant::now() < deadline {
-            if let Some(status) = read_bootstrap_status(&status_file) {
-                if status.configuration_status == "READY" {
-                    return continue_after_bootstrap(
-                        &app_handle,
-                        &status_file,
-                        &ready_file,
-                        status,
-                    );
-                }
-                if status.configuration_status == "FAILED" {
-                    return record_sidecar_error(
-                        &app_handle,
-                        "database bootstrap failed; expected valid limited configuration"
-                            .to_string(),
-                    );
-                }
-            }
-            std::thread::sleep(READY_POLL_INTERVAL);
-        }
-        record_sidecar_error(
-            &app_handle,
-            "database setup timed out; expected completed setup".to_string(),
-        );
-    });
-}
-
-fn bootstrap_transition(configuration_status: &str) -> Result<(), String> {
-    if configuration_status == "READY" {
-        return Ok(());
-    }
-    Err(format!(
-        "bootstrap configuration status '{}' is invalid; expected READY",
-        configuration_status
-    ))
 }
 
 fn read_ready_payload(ready_file: &Path) -> Option<ReadyPayload> {
@@ -419,72 +257,24 @@ fn record_sidecar_base_url(app_handle: &AppHandle, base_url: String) {
 }
 
 fn record_sidecar_error(app_handle: &AppHandle, error: String) {
-    app_handle
-        .state::<SidecarBackendState>()
-        .set_error(error.clone());
+    app_handle.state::<SidecarBackendState>().set_error(error.clone());
     let _ = app_handle.emit("backend-error", error);
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        backend_exit_message, bootstrap_transition, exposes_bootstrap_configuration,
-        should_record_termination, sidecar_profiles_for, BootstrapStatus, SidecarBackendState,
-    };
+    use super::{backend_exit_message, SidecarBackendState};
 
     #[test]
-    fn bootstrap_profiles_append_bootstrap_without_replacing_runtime_profiles() {
-        assert!(sidecar_profiles_for(true).ends_with(",bootstrap"));
-        assert!(!sidecar_profiles_for(false).ends_with(",bootstrap"));
+    fn staging_reset_failure_keeps_reset_guidance() {
+        let message = backend_exit_message(Some(1), "staging,staging-reset,sidecar");
+        assert!(message.contains("staging reset did not complete"));
     }
 
     #[test]
-    fn bootstrap_status_deserializes_configuration_state() {
-        let status: BootstrapStatus = serde_json::from_str(r#"{"configurationStatus":"READY"}"#)
-            .expect("valid bootstrap status JSON");
-        assert_eq!(status.configuration_status, "READY");
-    }
-
-    #[test]
-    fn bootstrap_transition_starts_normal_sidecar_only_when_ready() {
-        assert_eq!(bootstrap_transition("READY"), Ok(()));
-        assert_eq!(
-            bootstrap_transition("INVALID"),
-            Err("bootstrap configuration status 'INVALID' is invalid; expected READY".to_string())
-        );
-    }
-
-    #[test]
-    fn invalid_bootstrap_status_exposes_repair_without_first_installation_setup() {
-        assert!(exposes_bootstrap_configuration("INVALID"));
-        assert!(exposes_bootstrap_configuration("REPAIR_FAILED"));
-        assert!(exposes_bootstrap_configuration("MISSING"));
-    }
-
-    #[test]
-    fn staging_backend_failure_explains_manual_supabase_resume() {
-        let message = backend_exit_message(Some(1), "staging,sidecar");
-        assert!(message.contains("if the staging database is unavailable"));
-    }
-
-    #[test]
-    fn production_backend_failure_keeps_generic_error() {
+    fn normal_backend_failure_is_generic() {
         let message = backend_exit_message(Some(1), "prod,sidecar");
-        assert!(!message.contains("Supabase"));
-    }
-
-    #[test]
-    fn bootstrap_clean_exit_is_not_recorded_as_error() {
-        assert!(!should_record_termination(true, Some(0)));
-        assert!(should_record_termination(true, Some(1)));
-        assert!(should_record_termination(true, None));
-    }
-
-    #[test]
-    fn runtime_backend_exit_is_always_recorded_as_error() {
-        assert!(should_record_termination(false, Some(0)));
-        assert!(should_record_termination(false, Some(1)));
-        assert!(should_record_termination(false, None));
+        assert_eq!(message, "backend exited with code Some(1)");
     }
 
     #[test]

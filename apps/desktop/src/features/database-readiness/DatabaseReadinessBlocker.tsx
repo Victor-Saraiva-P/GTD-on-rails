@@ -3,7 +3,7 @@ import { appMetadata } from "../../config/appMetadata";
 import { buildDatabaseReadinessBlockerModel, shouldBlockDatabaseInteraction } from "./databaseReadiness";
 import { useDatabaseReadiness } from "./DatabaseReadinessProvider";
 
-/** Blocks every desktop interaction until PostgreSQL can serve authoritative state.
+/** Blocks every desktop interaction until SQLite can serve authoritative state.
  *
  * @example <DatabaseReadinessBlocker><AppShell /></DatabaseReadinessBlocker>
  */

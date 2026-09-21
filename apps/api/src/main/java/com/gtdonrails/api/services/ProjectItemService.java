@@ -115,8 +115,8 @@ public class ProjectItemService {
             ? "{\"item_id\":\"" + itemId + "\"}"
             : "{\"item_id\":\"" + itemId + "\",\"project_id\":\"" + projectId + "\"}";
         jdbcTemplate.update(
-            "insert into sync_outbox (entity_type, entity_id, operation, payload, status, retry_count) values ('project_items', ?, ?, ?, 'PENDING', 0)",
-            itemId.toString(), operation.name(), payload
+            "insert into sync_outbox (operation_id, entity_type, entity_id, operation, payload, status, retry_count) values (?, 'project_items', ?, ?, ?, 'PENDING', 0)",
+            java.util.UUID.randomUUID().toString(), itemId.toString(), operation.name(), payload
         );
         databaseSyncService.notifyNewEvents();
     }

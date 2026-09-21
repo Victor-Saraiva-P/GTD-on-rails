@@ -8,6 +8,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.math.BigDecimal;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.List;
@@ -24,8 +26,6 @@ import com.gtdonrails.api.repositories.ContextRepository;
 import com.gtdonrails.api.repositories.ItemRepository;
 import com.gtdonrails.api.repositories.NextActionRepository;
 import com.gtdonrails.api.services.CacheInvalidationService;
-import com.gtdonrails.api.services.SupabasePullSyncService;
-import com.gtdonrails.api.services.SupabasePushSyncService;
 import com.gtdonrails.api.types.Title;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
@@ -34,6 +34,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
@@ -51,6 +52,7 @@ class NextActionEditPersistenceTests {
     @Autowired private ContextRepository contextRepository;
     @Autowired private CacheInvalidationService cacheInvalidationService;
     @Autowired private JdbcTemplate jdbcTemplate;
+    @Value("${gtd.data.root-directory}") private String dataRoot;
     private final ObjectMapper json = new ObjectMapper();
     private MockMvc mockMvc;
     private Context home;
@@ -71,23 +73,22 @@ class NextActionEditPersistenceTests {
         action.setDeadline(LocalDate.of(2028, 2, 29));
         actionId = nextActionRepository.save(action).getItemId();
         jdbcTemplate.update("DELETE FROM sync_outbox");
+        jdbcTemplate.update("DELETE FROM sync_file_outbox");
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"add", "replace", "clear", "remove"})
-    void contextsSurvivePushPullAndFreshRead(String operation) throws Exception {
+    void contextsSurviveEditAndProduceCanonicalSyncPayload(String operation) throws Exception {
         Set<UUID> expected = selectedContextIds(operation);
-        FakeSupabaseContextJdbc remote = new FakeSupabaseContextJdbc(actionId, localContextIds());
         jdbcTemplate.update("DELETE FROM sync_outbox");
         patchAttribute("/next-actions/" + actionId, json.writeValueAsString(java.util.Map.of("contextIds", expected)));
-        assertEquals(expected, localContextIds());
-        SupabasePushSyncService push = new SupabasePushSyncService(remote);
-        pendingActionEvents().forEach(push::pushEvent);
-        jdbcTemplate.update("UPDATE sync_outbox SET status = 'COMPLETED'");
-        new SupabasePullSyncService(remote, jdbcTemplate).pullAll();
+
         cacheInvalidationService.evictAll();
-        assertEquals(expected, localContextIds(), "Edited contexts must survive the remote pull and fresh page read");
-        assertEquals(expected, remote.savedContextIds(), "Edited contexts must reach remote storage");
+        assertEquals(expected, localContextIds(), "Edited contexts must survive a fresh local read");
+        JsonNode payload = latestPayload("next_actions");
+        Set<UUID> synced = new java.util.HashSet<>();
+        payload.get("context_ids").forEach(node -> synced.add(UUID.fromString(node.asText())));
+        assertEquals(expected, synced, "Edited contexts must be encoded in the sync-server payload");
     }
 
     private Set<UUID> selectedContextIds(String operation) throws Exception {
@@ -122,18 +123,42 @@ class NextActionEditPersistenceTests {
 
     @ParameterizedTest
     @CsvSource(delimiter = '|', value = {
-        "title|{\"title\":\"Revised title\"}|title|Revised title",
-        "body|{\"body\":{\"text\":\"Revised body\",\"inlineMarks\":[],\"lineBlocks\":[],\"blockEntities\":[]}}|body|Revised body",
-        "body|{\"body\":null}|body|''"
+        "title|{\"title\":\"Revised title\"}|title|Revised title"
     })
-    void contentEditsProduceRemotePayload(String route, String patchJson, String column, String expected) throws Exception {
+    void structuredContentEditsProduceRemotePayload(String route, String patchJson, String column, String expected) throws Exception {
         patchAttribute("/items/" + actionId + "/" + route, patchJson);
         JsonNode payload = latestPayload("items");
-        String actual = payload.get(column).asText();
-        if (column.equals("body") && !actual.equals("null")) actual = json.readTree(actual).get("text").asText();
-        assertEquals(expected, actual);
-        Item saved = itemRepository.findById(actionId).orElseThrow();
-        assertEquals(expected, column.equals("title") ? saved.getTitle().value() : saved.getBody().text());
+        assertEquals(expected, payload.get(column).asText());
+        assertEquals(expected, itemRepository.findById(actionId).orElseThrow().getTitle().value());
+    }
+
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', value = {
+        "{\"body\":{\"text\":\"Revised body\",\"inlineMarks\":[],\"lineBlocks\":[],\"blockEntities\":[]}}|Revised body",
+        "{\"body\":null}|''"
+    })
+    void bodyEditsPersistAsMarkdownFileAndFileOutbox(String patchJson, String expected) throws Exception {
+        patchAttribute("/items/" + actionId + "/body", patchJson);
+
+        Path bodyPath = Path.of(dataRoot).resolve("items").resolve(actionId.toString()).resolve("body.md");
+        assertEquals(expected, Files.readString(bodyPath));
+        assertEquals(0, structuredItemEventCount());
+        assertEquals(1, bodyFileEventCount());
+        assertEquals(expected, itemRepository.findById(actionId).orElseThrow().getBody().text());
+    }
+
+    private int structuredItemEventCount() {
+        Integer count = jdbcTemplate.queryForObject(
+            "select count(*) from sync_outbox where entity_type = 'items' and entity_id = ?",
+            Integer.class, actionId.toString());
+        return count == null ? 0 : count;
+    }
+
+    private int bodyFileEventCount() {
+        Integer count = jdbcTemplate.queryForObject(
+            "select count(*) from sync_file_outbox where object_type = 'body_document' and object_id = ? and relative_path = ?",
+            Integer.class, actionId.toString(), "items/" + actionId + "/body.md");
+        return count == null ? 0 : count;
     }
 
     @ParameterizedTest

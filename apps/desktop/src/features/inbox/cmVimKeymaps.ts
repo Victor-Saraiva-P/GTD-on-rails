@@ -10,6 +10,12 @@ export function isVimActiveAndNonInsert(view: EditorView): boolean {
   return Boolean(cm && vim && !vim.insertMode);
 }
 
+export function vimNormalModeKeepsItalicChord(view: EditorView): boolean {
+  const cm = getCM(view);
+  const vim = (cm as { state?: { vim?: { insertMode?: boolean; visualMode?: boolean } } } | null)?.state?.vim;
+  return Boolean(cm && vim && !vim.insertMode && !vim.visualMode);
+}
+
 export function isVimInModalMode(view: EditorView): boolean {
   const cm = getCM(view);
   const vim = (cm as { state?: { vim?: { insertMode?: boolean; visualMode?: boolean } } } | null)?.state?.vim;

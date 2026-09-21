@@ -1,6 +1,6 @@
 import { history, historyKeymap } from "@codemirror/commands";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
-import { ChangeSet, EditorSelection, EditorState, Prec } from "@codemirror/state";
+import { EditorSelection, EditorState, Prec } from "@codemirror/state";
 import {
   drawSelection,
   EditorView,
@@ -38,19 +38,17 @@ import {
   wrapLink
 } from "./cmFormat.ts";
 import { headingFoldingExtension, registerHeadingFoldVimCommands, toggleHeadingAtCursor } from "./cmHeadingFold.ts";
-import { livePreviewPlugin, refreshLivePreviewEffect } from "./cmLivePreview.ts";
+import { itemDocumentIdFacet, livePreviewPlugin, refreshLivePreviewEffect } from "./cmLivePreview.ts";
 import { registerDisplayLineMotions } from "./cmDisplayLineMotion.ts";
 import { registerHeadingMotions } from "./cmHeadingMotion.ts";
 import { registerCheckboxVimCommands, toggleCheckbox } from "./cmToggleCheckbox.ts";
 import { vimClipboardPasteExtension } from "./cmClipboardPaste.ts";
 import { applyVimInsertEscape, buildVimAwareDefaultKeymap } from "./cmVimKeymaps.ts";
+import { buildZenEditorKeymap } from "./cmEditorKeymaps.ts";
 import { wireYankHighlight, yankHighlightExtension } from "./cmYankHighlight.ts";
 import {
   bodyForPersistence,
-  insertBlockEntity,
-  itemBodyStateEffect,
   itemBodyStateField,
-  mapBodyRangesThroughChanges,
   normalizeBodyForClient
 } from "./itemBodyUtils.ts";
 import { handleListContinuationEnter, registerListContinuationMotions } from "./listContinuation.ts";
@@ -172,6 +170,7 @@ function createEditorExtensions(
 ) {
   return [
     itemBodyStateField.init(() => body),
+    itemDocumentIdFacet.of(props.itemId),
     markdown({ base: markdownLanguage, addKeymap: false }),
     livePreviewPlugin,
     vim(),
@@ -225,22 +224,25 @@ function createEditorExtensions(
         }
       ])
     ),
-    keymap.of([
-      { key: "Mod-b", run: (v) => toggleWrap(v, "**") },
-      { key: "Mod-i", run: (v) => toggleWrap(v, "*") },
-      { key: "Mod-e", run: (v) => toggleWrap(v, "`") },
-      { key: "Mod-k", run: (v) => wrapLink(v) },
-      {
-        key: "Mod-s",
-        run: () => {
-          if (!viewRef.current) return false;
-          saveMarkdownBody(onAutosaveRef.current ?? onSaveRef.current, viewRef.current.state.field(itemBodyStateField), setSaveState);
-          return true;
-        }
-      }
-    ]),
+    Prec.high(keymap.of([
+      ...buildZenEditorKeymap(props.readOnly === true),
+      { key: "Mod-s", run: () => saveFromKeybind(props, viewRef, onAutosaveRef, onSaveRef, setSaveState) }
+    ])),
     keymap.of([...historyKeymap, ...buildVimAwareDefaultKeymap()])
   ];
+}
+
+function saveFromKeybind(
+  props: ItemBodyMarkdownEditorProps,
+  viewRef: RefObject<EditorView | null>,
+  onAutosaveRef: MutableRefObject<ItemBodyMarkdownEditorProps["onAutosave"]>,
+  onSaveRef: MutableRefObject<ItemBodyMarkdownEditorProps["onSave"]>,
+  setSaveState: (state: MarkdownBodySaveState) => void
+): boolean {
+  if (props.readOnly || !viewRef.current) return false;
+  const callback = onAutosaveRef.current ?? onSaveRef.current;
+  saveMarkdownBody(callback, viewRef.current.state.field(itemBodyStateField), setSaveState);
+  return true;
 }
 
 function handleEditorKeydown(
@@ -363,30 +365,24 @@ function handleInsertAssetEvent(viewRef: RefObject<EditorView | null>, detail: I
   const view = viewRef.current;
   if (!view) return;
   const range = view.state.selection.main;
-  const token = `⟦asset:${detail.assetId}⟧`;
-  const changeSet = ChangeSet.of({ from: range.from, to: range.to, insert: token }, view.state.doc.length);
-  const mappedBody = mapBodyRangesThroughChanges(view.state.field(itemBodyStateField), changeSet);
-  const entityFrom = changeSet.mapPos(range.from, -1);
-  const entityTo = entityFrom + token.length;
-  const body = insertBlockEntity(mappedBody, {
-    type: detail.image ? "image" : "file",
-    from: entityFrom,
-    to: entityTo,
-    assetId: detail.assetId,
-    attrs: {
-      displayName: detail.displayName,
-      contentType: detail.contentType,
-      relativePath: detail.relativePath,
-      localPath: detail.relativePath,
-      url: detail.url
-    }
-  });
+  const displayName = escapeMarkdownLabel(detail.displayName || detail.assetId);
+  const relativePath = itemLocalAssetPath(detail);
+  const prefix = detail.image ? "!" : "";
+  const markdown = `${prefix}[${displayName}](${relativePath})`;
   view.dispatch({
-    changes: changeSet,
-    selection: EditorSelection.cursor(entityTo),
-    effects: itemBodyStateEffect.of(body)
+    changes: { from: range.from, to: range.to, insert: markdown },
+    selection: EditorSelection.cursor(range.from + markdown.length)
   });
   setTimeout(() => view.focus(), 0);
+}
+
+function itemLocalAssetPath(detail: InsertBlockEntityEventDetail): string {
+  const fileName = detail.relativePath?.split("/").pop() || detail.displayName || "asset";
+  return `assets/${detail.assetId}/${encodeURIComponent(fileName)}`;
+}
+
+function escapeMarkdownLabel(value: string): string {
+  return value.replace(/\[/g, "\\[").replace(/\]/g, "\\]");
 }
 
 function registerEditorEventHandlers(viewRef: RefObject<EditorView | null>): () => void {

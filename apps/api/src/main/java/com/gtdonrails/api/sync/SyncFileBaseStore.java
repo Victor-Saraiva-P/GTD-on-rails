@@ -1,0 +1,77 @@
+package com.gtdonrails.api.sync;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Optional;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+@Component
+public class SyncFileBaseStore {
+
+    private final Path root;
+
+    public SyncFileBaseStore(@Value("${gtd.sync.state-directory:${user.home}/.local/state/gtd-on-rails}") String stateRoot) {
+        this.root = Path.of(stateRoot).toAbsolutePath().normalize().resolve("bases");
+    }
+
+    public void save(String objectType, String objectId, long revision, byte[] content) {
+        Path directory = objectDirectory(objectType, objectId);
+        try {
+            Files.createDirectories(directory);
+            Files.write(directory.resolve("content.bin"), content);
+            Files.writeString(directory.resolve("revision"), Long.toString(revision));
+        } catch (IOException exception) {
+            throw failure("save", directory, exception);
+        }
+    }
+
+    public Optional<BaseSnapshot> read(String objectType, String objectId, long expectedRevision) {
+        Path directory = objectDirectory(objectType, objectId);
+        try {
+            if (!Files.isRegularFile(directory.resolve("content.bin"))) return Optional.empty();
+            long revision = Long.parseLong(Files.readString(directory.resolve("revision")).trim());
+            if (revision != expectedRevision) return Optional.empty();
+            return Optional.of(new BaseSnapshot(revision, Files.readAllBytes(directory.resolve("content.bin"))));
+        } catch (IOException | NumberFormatException exception) {
+            throw failure("read", directory, exception);
+        }
+    }
+
+    public void delete(String objectType, String objectId) {
+        Path directory = objectDirectory(objectType, objectId);
+        try {
+            if (!Files.exists(directory)) return;
+            try (var paths = Files.walk(directory)) {
+                for (Path path : paths.sorted(java.util.Comparator.reverseOrder()).toList()) {
+                    Files.deleteIfExists(path);
+                }
+            }
+        } catch (IOException exception) {
+            throw failure("delete", directory, exception);
+        }
+    }
+
+    private Path objectDirectory(String objectType, String objectId) {
+        return root.resolve(safeSegment(objectType)).resolve(safeSegment(objectId)).normalize();
+    }
+
+    private String safeSegment(String value) {
+        if (value != null && value.matches("[A-Za-z0-9._-]+")) return value;
+        throw new IllegalArgumentException(
+            "sync state path segment value '" + value + "' is invalid; expected safe object identifier"
+        );
+    }
+
+    private IllegalStateException failure(String action, Path path, Exception exception) {
+        return new IllegalStateException(
+            "Failed to " + action + " sync base snapshot at '" + path + "'",
+            exception
+        );
+    }
+
+    public record BaseSnapshot(long revision, byte[] content) {
+    }
+}

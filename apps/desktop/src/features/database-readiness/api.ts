@@ -2,7 +2,7 @@ import { apiFetch } from "../../lib/api/apiClient.ts";
 
 const READINESS_REQUEST_TIMEOUT_MS = 2000;
 
-/** Verifies that PostgreSQL can serve the full application state.
+/** Verifies that SQLite can serve the full application state.
  *
  * @example await fetchDatabaseReadiness()
  */

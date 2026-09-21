@@ -16,7 +16,6 @@ import com.gtdonrails.api.entities.NextAction;
 import com.gtdonrails.api.entities.OutboxTableMetadata;
 import com.gtdonrails.api.entities.Project;
 import com.gtdonrails.api.entities.ProjectItem;
-import com.gtdonrails.api.persistence.converters.ItemBodyConverter;
 import com.gtdonrails.api.types.ScheduleWindow;
 
 /**
@@ -27,7 +26,6 @@ import com.gtdonrails.api.types.ScheduleWindow;
 public class OutboxPayloadSerializer {
 
     private final ObjectMapper objectMapper;
-    private final ItemBodyConverter itemBodyConverter = new ItemBodyConverter();
 
     /**
      * Creates a serializer with a default ObjectMapper.
@@ -83,7 +81,6 @@ public class OutboxPayloadSerializer {
     private void serializeItem(ObjectNode node, Item item) {
         putString(node, "id", item.getId() != null ? item.getId().toString() : null);
         putString(node, "title", item.getTitle() != null ? item.getTitle().value() : null);
-        putString(node, "body", item.getBody() != null ? itemBodyConverter.convertToDatabaseColumn(item.getBody()) : null);
         putString(node, "status", item.getStatus() != null ? item.getStatus().name() : null);
         addAuditFields(node, item.getCreatedAt(), item.getUpdatedAt(), item.getDeletedAt());
     }

@@ -1,5 +1,8 @@
 # Use environment-specific PostgreSQL databases
 
+Status: Superseded by ADR 0004
+
+
 GTD on Rails will replace its synchronized SQLite database with PostgreSQL while keeping the local Spring Boot sidecar as the only database client. The sidecar will connect through JDBC to independent Supabase projects for production and staging, while development will use a local PostgreSQL container. Production and staging Database Connection Configuration will live in profile-specific `database.properties` files synchronized by rclone, use a dedicated non-administrative database role, and be restricted to the local owner with mode `0600`. Containers are limited to development database infrastructure; Tauri and the sidecar remain native host processes so they retain direct access to Wayland, desktop integrations, and local asset paths. Rclone becomes File Sync for assets and trusted local configuration; it no longer transports the database or runs after mutations that only change structured data. This isolates structured persistence from rclone because synchronizing a live SQLite file proved conflict-prone while independently stored files remain suitable for file synchronization.
 
 Existing production data will move through a one-time offline cutover command included in the native distribution and run only on the primary computer while both desktop installations are closed. The command will synchronize files, preserve the SQLite database as a backup, initialize PostgreSQL, import and validate the existing records, and refuse an unsafe or repeated migration. The second computer will connect to the already migrated shared database without importing its local SQLite copy.

@@ -26,7 +26,7 @@ class DatabaseRuntimeConfigurationTests {
         Properties properties = load("application.properties");
 
         assertEquals("${GTD_SCHEMA_MIN_SUPPORTED_VERSION:1}", properties.getProperty("gtd.schema.min-supported-version"));
-        assertEquals("${GTD_SCHEMA_MAX_SUPPORTED_VERSION:2}", properties.getProperty("gtd.schema.max-supported-version"));
+        assertEquals("${GTD_SCHEMA_MAX_SUPPORTED_VERSION:3}", properties.getProperty("gtd.schema.max-supported-version"));
     }
 
     private Properties load(String resourceName) throws IOException {

@@ -25,10 +25,10 @@ class DatabaseReadinessServiceTests {
     private DatabaseSchemaCompatibilityInspector compatibilityInspector;
 
     @Test
-    void reportsReadyOnlyWhenPostgresqlMatchesTheRuntimeEnvironmentAndCompletedCutover() {
+    void reportsReadyWhenSqliteMatchesTheRuntimeEnvironment() {
         when(compatibilityInspector.inspectCompatibility()).thenReturn(SchemaCompatibilityStatus.COMPATIBLE);
         when(jdbcTemplate.queryForObject(DatabaseReadinessService.READINESS_QUERY, String.class))
-            .thenReturn("PRODUCTION|READY");
+            .thenReturn("PRODUCTION");
 
         DatabaseReadinessService service = new DatabaseReadinessService(
             jdbcTemplate, compatibilityInspector, "PRODUCTION");
@@ -71,7 +71,7 @@ class DatabaseReadinessServiceTests {
     }
 
     @Test
-    void reportsUnavailableWhenPostgresqlCannotBeReached() {
+    void reportsUnavailableWhenSqliteCannotBeReached() {
         when(compatibilityInspector.inspectCompatibility()).thenReturn(SchemaCompatibilityStatus.COMPATIBLE);
         when(jdbcTemplate.queryForObject(DatabaseReadinessService.READINESS_QUERY, String.class))
             .thenThrow(new IllegalStateException("connection unavailable"));
@@ -84,23 +84,10 @@ class DatabaseReadinessServiceTests {
     }
 
     @Test
-    void reportsUnavailableWhenTheCutoverIsNotReady() {
-        when(compatibilityInspector.inspectCompatibility()).thenReturn(SchemaCompatibilityStatus.COMPATIBLE);
-        when(jdbcTemplate.queryForObject(DatabaseReadinessService.READINESS_QUERY, String.class))
-            .thenReturn("PRODUCTION|IMPORTING");
-
-        DatabaseReadinessService service = new DatabaseReadinessService(
-            jdbcTemplate, compatibilityInspector, "PRODUCTION");
-
-        assertFalse(service.isReady());
-        assertEquals(DatabaseReadinessState.UNAVAILABLE, service.readinessState());
-    }
-
-    @Test
     void isReadyReturnsCachedResultWithoutRequeryingDatabase() {
         when(compatibilityInspector.inspectCompatibility()).thenReturn(SchemaCompatibilityStatus.COMPATIBLE);
         when(jdbcTemplate.queryForObject(DatabaseReadinessService.READINESS_QUERY, String.class))
-            .thenReturn("PRODUCTION|READY");
+            .thenReturn("PRODUCTION");
 
         DatabaseReadinessService service = new DatabaseReadinessService(
             jdbcTemplate, compatibilityInspector, "PRODUCTION");

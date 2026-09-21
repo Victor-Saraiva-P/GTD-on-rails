@@ -9,7 +9,7 @@ import {
 } from "../src/features/database-readiness/databaseReadiness.ts";
 
 describe("database readiness", () => {
-  test("blocks interaction when a readiness poll or an API request finds PostgreSQL unavailable", () => {
+  test("blocks interaction when a readiness poll or an API request finds Local database unavailable", () => {
     assert.equal(shouldBlockDatabaseInteraction(false, false), true);
     assert.equal(shouldBlockDatabaseInteraction(true, true), true);
     assert.equal(shouldBlockDatabaseInteraction(true, false), false);
@@ -48,8 +48,8 @@ describe("database readiness", () => {
 
     assert.equal(model.isBlocked, true);
     assert.equal(model.statusLabel, "DATABASE");
-    assert.equal(model.title, "PostgreSQL unavailable");
-    assert.equal(model.message, "Waiting for PostgreSQL to restore authoritative application state.");
+    assert.equal(model.title, "Local database unavailable");
+    assert.equal(model.message, "Waiting for local SQLite to become available.");
   });
 
   test("builds unblocked model for ready state", () => {

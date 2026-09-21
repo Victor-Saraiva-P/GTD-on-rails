@@ -89,7 +89,7 @@ class ItemAssetServiceTests {
             () -> itemAssetService.reconcileBodyAssetReferences(itemId, bodyWithBlockEntity(assetId.toString())));
 
         assertEquals(
-            "body.blockEntities.assetId value '" + assetId + "' is invalid; expected asset owned by item '" + itemId + "'",
+            "body asset reference value '" + assetId + "' is invalid; expected asset owned by item '" + itemId + "'",
             exception.getMessage());
     }
 

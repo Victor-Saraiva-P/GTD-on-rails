@@ -1,5 +1,6 @@
 package com.gtdonrails.api.mappers;
 
+import com.gtdonrails.api.bodydocuments.ItemBodySource;
 import com.gtdonrails.api.dtos.calendar.CalendarResponseDto;
 import com.gtdonrails.api.entities.Calendar;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,14 +10,16 @@ import org.springframework.stereotype.Component;
 public class CalendarMapper {
 
     private final ProjectAssociationMapper projectAssociationMapper;
+    private final ItemBodySource itemBodySource;
 
     @Autowired
-    public CalendarMapper(ProjectAssociationMapper projectAssociationMapper) {
+    public CalendarMapper(ProjectAssociationMapper projectAssociationMapper, ItemBodySource itemBodySource) {
         this.projectAssociationMapper = projectAssociationMapper;
+        this.itemBodySource = itemBodySource;
     }
 
     public CalendarMapper() {
-        this(new ProjectAssociationMapper());
+        this(new ProjectAssociationMapper(), ItemBodySource.legacy());
     }
 
     /**
@@ -28,7 +31,7 @@ public class CalendarMapper {
         return new CalendarResponseDto(
             calendar.getItemId(),
             calendar.getItem().getTitle().value(),
-            calendar.getItem().getBody(),
+            itemBodySource.read(calendar.getItemId(), calendar.getItem().getBody()),
             calendar.getScheduledDate(),
             calendar.getScheduledTime(),
             calendar.getStatus().name(),

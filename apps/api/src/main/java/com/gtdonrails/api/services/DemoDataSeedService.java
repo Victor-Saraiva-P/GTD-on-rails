@@ -12,6 +12,8 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.gtdonrails.api.bodydocuments.ItemBodyDocumentService;
+import com.gtdonrails.api.bodydocuments.LegacyItemBodyMirror;
 import com.gtdonrails.api.entities.Calendar;
 import com.gtdonrails.api.entities.Context;
 import com.gtdonrails.api.entities.Item;
@@ -44,6 +46,8 @@ public class DemoDataSeedService {
     private static final String ERRANDS_CONTEXT = "Errands";
 
     private final AssetStorageService assetStorageService;
+    private final ItemBodyDocumentService bodyDocuments;
+    private final LegacyItemBodyMirror legacyBodyMirror;
     private final CalendarRepository calendarRepository;
     private final ContextRepository contextRepository;
     private final ItemAssetRepository itemAssetRepository;
@@ -53,6 +57,8 @@ public class DemoDataSeedService {
 
     public DemoDataSeedService(
         AssetStorageService assetStorageService,
+        ItemBodyDocumentService bodyDocuments,
+        LegacyItemBodyMirror legacyBodyMirror,
         CalendarRepository calendarRepository,
         ContextRepository contextRepository,
         ItemAssetRepository itemAssetRepository,
@@ -61,6 +67,8 @@ public class DemoDataSeedService {
         Clock clock
     ) {
         this.assetStorageService = assetStorageService;
+        this.bodyDocuments = bodyDocuments;
+        this.legacyBodyMirror = legacyBodyMirror;
         this.calendarRepository = calendarRepository;
         this.contextRepository = contextRepository;
         this.itemAssetRepository = itemAssetRepository;
@@ -163,7 +171,7 @@ public class DemoDataSeedService {
         Item item = new Item(new Title(title), body);
         NextAction nextAction = item.convertToNextAction(new BigDecimal(energy), Duration.ofMinutes(minutes), contexts);
         if (deadlineOffset != null) nextAction.setDeadline(LocalDate.now(clock).plusDays(deadlineOffset));
-        return itemRepository.save(item);
+        return saveItemWithBody(item);
     }
 
     private void saveOngoing(String title, Set<Context> contexts) {
@@ -187,13 +195,20 @@ public class DemoDataSeedService {
     private Calendar saveCalendar(String title, LocalDate date, String body) {
         Item item = new Item(new Title(title), body);
         item.convertToCalendar(date, null);
-        return itemRepository.save(item).getCalendar();
+        return saveItemWithBody(item).getCalendar();
     }
 
     private Item saveStuff(String title, String body) {
         Item item = new Item(new Title(title), body);
         item.markAsStuff();
-        return itemRepository.save(item);
+        return saveItemWithBody(item);
+    }
+
+
+    private Item saveItemWithBody(Item item) {
+        Item saved = itemRepository.save(item);
+        bodyDocuments.write(saved.getId(), saved.getBody());
+        return saved;
     }
 
     private Set<Context> contexts(String first, Map<String, Context> contexts) {
@@ -209,8 +224,8 @@ public class DemoDataSeedService {
         ItemAsset asset = new ItemAsset(item, PDF_FILE_NAME, PDF_FILE_NAME, "application/pdf", resourceSize(resource));
         copyPdfAsset(resource, asset);
         itemAssetRepository.save(asset);
-        item.setBody(pdfBody(asset));
-        itemRepository.save(item);
+        ItemBody canonical = bodyDocuments.write(item.getId(), pdfBody(asset));
+        legacyBodyMirror.write(item.getId(), canonical);
     }
 
     private void copyPdfAsset(ClassPathResource resource, ItemAsset asset) {

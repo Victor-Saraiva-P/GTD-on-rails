@@ -29,12 +29,6 @@ cp "$next_dir/binaries/gtd-api.jar" "$install_dir/binaries/gtd-api.jar.tmp"
 mv "$install_dir/binaries/gtd-api.jar.tmp" "$install_dir/binaries/gtd-api.jar"
 cp "$next_dir/gtd-api" "$install_dir/gtd-api.tmp"
 mv "$install_dir/gtd-api.tmp" "$install_dir/gtd-api"
-if [ -f "$next_dir/gtd-cutover" ]; then
-  cp "$next_dir/gtd-cutover" "$install_dir/gtd-cutover.tmp"
-  mv "$install_dir/gtd-cutover.tmp" "$install_dir/gtd-cutover"
-  chmod +x "$install_dir/gtd-cutover"
-  ln -sf "$install_dir/gtd-cutover" "$HOME/.local/bin/gtd-cutover"
-fi
 cp "$next_dir/icon.png" "$install_dir/icon.png.tmp"
 mv "$install_dir/icon.png.tmp" "$install_dir/icon.png"
 cp "$next_dir/gtd-on-rails" "$install_dir/gtd-on-rails.tmp"
@@ -233,8 +227,7 @@ fn native_update_package_dir(install_root: &Path) -> Result<PathBuf, String> {
 
 fn stage_native_update(package_dir: &Path, next_dir: &Path) -> Result<(), String> {
     validate_package_dir(package_dir)?;
-    stage_core_files(package_dir, next_dir)?;
-    stage_optional_cutover(package_dir, next_dir)
+    stage_core_files(package_dir, next_dir)
 }
 
 fn stage_core_files(package_dir: &Path, next_dir: &Path) -> Result<(), String> {
@@ -250,17 +243,6 @@ fn stage_core_files(package_dir: &Path, next_dir: &Path) -> Result<(), String> {
     copy_update_file(&package_dir.join("icon.png"), &next_dir.join("icon.png"))?;
     make_executable(&next_dir.join("gtd-on-rails"))?;
     make_executable(&next_dir.join("gtd-api"))
-}
-
-fn stage_optional_cutover(package_dir: &Path, next_dir: &Path) -> Result<(), String> {
-    if !package_dir.join("gtd-cutover").is_file() {
-        return Ok(());
-    }
-    copy_update_file(
-        &package_dir.join("gtd-cutover"),
-        &next_dir.join("gtd-cutover"),
-    )?;
-    make_executable(&next_dir.join("gtd-cutover"))
 }
 
 fn validate_package_dir(package_dir: &Path) -> Result<(), String> {
@@ -370,29 +352,30 @@ mod tests {
     use super::*;
 
     #[test]
-    fn update_script_contains_cutover_symlinking() {
-        assert!(UPDATE_SCRIPT_TEMPLATE.contains("gtd-cutover"));
-        assert!(UPDATE_SCRIPT_TEMPLATE.contains("ln -sf \"$install_dir/gtd-cutover\""));
+    fn update_script_installs_core_runtime_only() {
+        assert!(UPDATE_SCRIPT_TEMPLATE.contains("gtd-api"));
+        assert!(!UPDATE_SCRIPT_TEMPLATE.contains("gtd-cutover"));
     }
 
     #[test]
-    fn stage_native_update_copies_gtd_cutover_when_present() {
+    fn stage_native_update_copies_core_runtime() {
         let temp = std::env::temp_dir().join(format!("gtd-update-stage-test-{}", std::process::id()));
         let pkg = temp.join("pkg");
         let next = temp.join("next");
         let _ = fs::remove_dir_all(&temp);
         fs::create_dir_all(pkg.join("binaries")).unwrap();
         fs::create_dir_all(next.join("binaries")).unwrap();
-
         fs::write(pkg.join("gtd-on-rails"), b"app").unwrap();
         fs::write(pkg.join("gtd-api"), b"api").unwrap();
         fs::write(pkg.join("binaries/gtd-api.jar"), b"jar").unwrap();
         fs::write(pkg.join("icon.png"), b"icon").unwrap();
-        fs::write(pkg.join("gtd-cutover"), b"cutover").unwrap();
 
         stage_native_update(&pkg, &next).unwrap();
 
-        assert!(next.join("gtd-cutover").is_file());
+        assert!(next.join("gtd-on-rails").is_file());
+        assert!(next.join("gtd-api").is_file());
+        assert!(next.join("binaries/gtd-api.jar").is_file());
         let _ = fs::remove_dir_all(&temp);
     }
+
 }

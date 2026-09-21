@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -13,6 +14,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.gtdonrails.api.bodydocuments.ItemBodyDocumentService;
+import com.gtdonrails.api.bodydocuments.LegacyItemBodyMirror;
 import com.gtdonrails.api.dtos.item.ItemResponseDto;
 import com.gtdonrails.api.dtos.item.PatchItemBodyRequestDto;
 import com.gtdonrails.api.dtos.item.UpdateItemTitleRequestDto;
@@ -44,6 +47,12 @@ class ItemServiceTests {
     private ItemMapper itemMapper;
 
     @Mock
+    private ItemBodyDocumentService bodyDocuments;
+
+    @Mock
+    private LegacyItemBodyMirror legacyBodyMirror;
+
+    @Mock
     private ItemAssetService itemAssetService;
 
     @Captor
@@ -64,10 +73,16 @@ class ItemServiceTests {
             itemMapper,
             new ItemTextNormalizer(),
             new ItemBodyNormalizer(),
+            bodyDocuments,
+            legacyBodyMirror,
             itemAssetService,
             googleCalendarEventQueueService,
             new AfterCommitExecutor(),
             cacheInvalidationService);
+        lenient().when(bodyDocuments.write(any(UUID.class), any(ItemBody.class)))
+            .thenAnswer(invocation -> invocation.getArgument(1));
+        lenient().when(bodyDocuments.read(any(UUID.class), any(ItemBody.class)))
+            .thenAnswer(invocation -> invocation.getArgument(1));
     }
 
     @Test
@@ -121,14 +136,13 @@ class ItemServiceTests {
         ItemResponseDto expectedResponse = itemResponse("Old title", "New body");
 
         when(itemRepository.findByIdAndDeletedAtIsNull(itemId)).thenReturn(Optional.of(item));
-        stubSavedItemResponse(expectedResponse);
+        when(itemMapper.toResponse(item)).thenReturn(expectedResponse);
 
         ItemResponseDto response = itemService.patchItemBody(itemId, new PatchItemBodyRequestDto(bodyValue("New body")));
 
-        Item savedItem = capturedSavedItem();
-        assertEquals("Old title", savedItem.getTitle().value());
-        assertEquals("New body", savedItem.getBody().text());
+        assertEquals("Old title", item.getTitle().value());
         assertEquals(expectedResponse, response);
+        verify(legacyBodyMirror).write(itemId, bodyValue("New body"));
         verify(itemAssetService).reconcileBodyAssetReferences(itemId, bodyValue("New body"));
         verify(googleCalendarEventQueueService, never()).requestUpsert(itemId);
     }
@@ -138,9 +152,9 @@ class ItemServiceTests {
         UUID itemId = UUID.randomUUID();
         ItemBody body = bodyWithBlockEntity(UUID.randomUUID().toString());
 
-        when(itemRepository.findByIdAndDeletedAtIsNull(itemId))
-            .thenReturn(Optional.of(new Item(new Title("Title"), null)));
-        stubSavedItemResponse(itemResponse("Title", "file"));
+        Item item = new Item(new Title("Title"), null);
+        when(itemRepository.findByIdAndDeletedAtIsNull(itemId)).thenReturn(Optional.of(item));
+        when(itemMapper.toResponse(item)).thenReturn(itemResponse("Title", "file"));
 
         itemService.patchItemBody(itemId, new PatchItemBodyRequestDto(body));
 

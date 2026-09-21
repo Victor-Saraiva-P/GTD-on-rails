@@ -15,12 +15,12 @@ public class DatabaseReadinessService {
 
     private static final Logger logger = LoggerFactory.getLogger(DatabaseReadinessService.class);
 
-    // WHY: Querying readiness on every HTTP request is fragile over Supavisor pooled connections.
-    // A short cache prevents stale-connection exceptions from cascading into 503 flicker loops.
+    // WHY: Readiness is checked frequently by the HTTP interceptor.
+    // A short cache avoids repeated schema/identity queries on every request.
     static final long CACHE_TTL_NANOS = Duration.ofSeconds(5).toNanos();
 
     public static final String READINESS_QUERY =
-        "select d.environment || '|' || c.state from database_identity d join database_cutover c on c.id = 1 where d.id = 1";
+        "select environment from database_identity where id = 1";
 
     private final JdbcTemplate jdbcTemplate;
     private final DatabaseSchemaCompatibilityInspector compatibilityInspector;
@@ -40,7 +40,7 @@ public class DatabaseReadinessService {
         this.environment = environment;
     }
 
-    /** Reports whether the configured PostgreSQL database can safely serve the application.
+    /** Reports whether the configured local SQLite database can safely serve the application.
      * Returns cached result when available to avoid per-request database queries.
      *
      * <p>Example: {@code readinessService.isReady()}.</p>
@@ -53,7 +53,7 @@ public class DatabaseReadinessService {
     }
 
     /**
-     * Performs a fresh readiness check against PostgreSQL and updates the cache.
+     * Performs a fresh readiness check against SQLite and updates the cache.
      *
      * <p>Example: {@code readinessService.readinessState()}.</p>
      */
@@ -72,7 +72,7 @@ public class DatabaseReadinessService {
 
     private DatabaseReadinessState queryDatabaseReadiness() {
         try {
-            boolean ready = expectedReadiness().equals(jdbcTemplate.queryForObject(READINESS_QUERY, String.class));
+            boolean ready = environment.equals(jdbcTemplate.queryForObject(READINESS_QUERY, String.class));
             return ready ? DatabaseReadinessState.READY : DatabaseReadinessState.UNAVAILABLE;
         } catch (RuntimeException exception) {
             logger.atWarn()
@@ -83,7 +83,4 @@ public class DatabaseReadinessService {
         }
     }
 
-    private String expectedReadiness() {
-        return environment + "|READY";
-    }
 }

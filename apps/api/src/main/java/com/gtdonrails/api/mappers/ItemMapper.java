@@ -2,11 +2,13 @@ package com.gtdonrails.api.mappers;
 
 import java.util.Comparator;
 
+import com.gtdonrails.api.bodydocuments.ItemBodySource;
 import com.gtdonrails.api.dtos.context.ContextItemResponseDto;
 import com.gtdonrails.api.dtos.item.ItemResponseDto;
 import com.gtdonrails.api.dtos.item.ItemTimeDto;
 import com.gtdonrails.api.entities.Item;
 import com.gtdonrails.api.entities.NextAction;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -14,10 +16,21 @@ public class ItemMapper {
 
     private final ContextMapper contextMapper;
     private final ProjectAssociationMapper projectAssociationMapper;
+    private final ItemBodySource itemBodySource;
 
-    public ItemMapper(ContextMapper contextMapper, ProjectAssociationMapper projectAssociationMapper) {
+    @Autowired
+    public ItemMapper(
+        ContextMapper contextMapper,
+        ProjectAssociationMapper projectAssociationMapper,
+        ItemBodySource itemBodySource
+    ) {
         this.contextMapper = contextMapper;
         this.projectAssociationMapper = projectAssociationMapper;
+        this.itemBodySource = itemBodySource;
+    }
+
+    public ItemMapper(ContextMapper contextMapper, ProjectAssociationMapper projectAssociationMapper) {
+        this(contextMapper, projectAssociationMapper, ItemBodySource.legacy());
     }
 
     /**
@@ -31,7 +44,7 @@ public class ItemMapper {
         return new ItemResponseDto(
             item.getId(),
             item.getTitle().value(),
-            item.getBody(),
+            itemBodySource.read(item.getId(), item.getBody()),
             nextAction == null ? null : nextAction.getEnergy(),
             toTimeDto(nextAction),
             item.getStatus().name(),
@@ -60,12 +73,8 @@ public class ItemMapper {
     }
 
     private ItemTimeDto toTimeDto(NextAction nextAction) {
-        if (nextAction == null) {
-            return null;
-        }
-
+        if (nextAction == null) return null;
         long totalMinutes = nextAction.getEstimatedTime().toMinutes();
-
         return new ItemTimeDto(totalMinutes / 60, (int) (totalMinutes % 60));
     }
 }

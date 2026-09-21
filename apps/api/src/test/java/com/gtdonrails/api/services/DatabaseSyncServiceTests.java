@@ -18,6 +18,8 @@ import com.gtdonrails.api.entities.SyncOutboxEvent;
 import com.gtdonrails.api.entities.SyncOutboxOperation;
 import com.gtdonrails.api.entities.SyncOutboxStatus;
 import com.gtdonrails.api.repositories.SyncOutboxRepository;
+import com.gtdonrails.api.sync.SyncServerPullService;
+import com.gtdonrails.api.sync.SyncServerPushService;
 import org.junit.jupiter.api.Test;
 
 class DatabaseSyncServiceTests {
@@ -25,7 +27,7 @@ class DatabaseSyncServiceTests {
     @Test
     void reportsDisabledStatusWhenDatabaseSyncIsDisabled() {
         SyncOutboxRepository outboxRepository = mock(SyncOutboxRepository.class);
-        SupabasePushSyncService pushSyncService = mock(SupabasePushSyncService.class);
+        SyncServerPushService pushSyncService = mock(SyncServerPushService.class);
 
         DatabaseSyncService service = new DatabaseSyncService(outboxRepository, pushSyncService, false);
         DatabaseSyncStatusDto status = service.status();
@@ -41,7 +43,7 @@ class DatabaseSyncServiceTests {
     void reportsSyncedStatusWhenNoEventsPending() {
         SyncOutboxRepository outboxRepository = mock(SyncOutboxRepository.class);
         when(outboxRepository.countByStatus(SyncOutboxStatus.PENDING)).thenReturn(0);
-        SupabasePushSyncService pushSyncService = mock(SupabasePushSyncService.class);
+        SyncServerPushService pushSyncService = mock(SyncServerPushService.class);
 
         DatabaseSyncService service = new DatabaseSyncService(outboxRepository, pushSyncService, true);
         DatabaseSyncStatusDto status = service.status();
@@ -55,7 +57,7 @@ class DatabaseSyncServiceTests {
     void reportsPendingStatusWhenEventsAreWaiting() {
         SyncOutboxRepository outboxRepository = mock(SyncOutboxRepository.class);
         when(outboxRepository.countByStatus(SyncOutboxStatus.PENDING)).thenReturn(3);
-        SupabasePushSyncService pushSyncService = mock(SupabasePushSyncService.class);
+        SyncServerPushService pushSyncService = mock(SyncServerPushService.class);
 
         DatabaseSyncService service = new DatabaseSyncService(outboxRepository, pushSyncService, true);
         DatabaseSyncStatusDto status = service.status();
@@ -65,9 +67,9 @@ class DatabaseSyncServiceTests {
     }
 
     @Test
-    void pushesPendingEventsToSupabase() {
+    void pushesPendingEventsToSyncServer() {
         SyncOutboxRepository outboxRepository = mock(SyncOutboxRepository.class);
-        SupabasePushSyncService pushSyncService = mock(SupabasePushSyncService.class);
+        SyncServerPushService pushSyncService = mock(SyncServerPushService.class);
 
         SyncOutboxEvent event = new SyncOutboxEvent("items", "item-123", SyncOutboxOperation.INSERT, "{\"id\":\"item-123\"}");
         when(outboxRepository.findByStatusOrderByCreatedAtAsc(SyncOutboxStatus.PENDING))
@@ -84,7 +86,7 @@ class DatabaseSyncServiceTests {
     @Test
     void handlesEventPushFailureAndResetsToPending() {
         SyncOutboxRepository outboxRepository = mock(SyncOutboxRepository.class);
-        SupabasePushSyncService pushSyncService = mock(SupabasePushSyncService.class);
+        SyncServerPushService pushSyncService = mock(SyncServerPushService.class);
 
         SyncOutboxEvent event = new SyncOutboxEvent("items", "item-123", SyncOutboxOperation.INSERT, "{\"id\":\"item-123\"}");
         doThrow(new RuntimeException("Connection timeout")).when(pushSyncService).pushEvent(any());
@@ -98,10 +100,10 @@ class DatabaseSyncServiceTests {
     }
 
     @Test
-    void syncOnStartupPushesEventsAndPullsFromSupabase() {
+    void syncOnStartupPushesEventsAndPullsFromSyncServer() {
         SyncOutboxRepository outboxRepository = mock(SyncOutboxRepository.class);
-        SupabasePushSyncService pushSyncService = mock(SupabasePushSyncService.class);
-        SupabasePullSyncService pullSyncService = mock(SupabasePullSyncService.class);
+        SyncServerPushService pushSyncService = mock(SyncServerPushService.class);
+        SyncServerPullService pullSyncService = mock(SyncServerPullService.class);
 
         when(outboxRepository.findByStatusOrderByCreatedAtAsc(SyncOutboxStatus.PENDING)).thenReturn(List.of());
 
@@ -115,16 +117,16 @@ class DatabaseSyncServiceTests {
     @Test
     void syncOnStartupHandlesFailureGracefully() {
         SyncOutboxRepository outboxRepository = mock(SyncOutboxRepository.class);
-        SupabasePushSyncService pushSyncService = mock(SupabasePushSyncService.class);
-        SupabasePullSyncService pullSyncService = mock(SupabasePullSyncService.class);
+        SyncServerPushService pushSyncService = mock(SyncServerPushService.class);
+        SyncServerPullService pullSyncService = mock(SyncServerPullService.class);
 
         when(outboxRepository.findByStatusOrderByCreatedAtAsc(SyncOutboxStatus.PENDING)).thenReturn(List.of());
-        doThrow(new RuntimeException("Supabase unreachable")).when(pullSyncService).pullAll();
+        doThrow(new RuntimeException("Sync server unreachable")).when(pullSyncService).pullAll();
 
         DatabaseSyncService service = new DatabaseSyncService(outboxRepository, pushSyncService, pullSyncService, true);
         service.syncOnStartup();
 
         assertEquals(DatabaseSyncState.FAILED, service.status().state());
-        assertEquals("Supabase unreachable", service.status().lastError());
+        assertEquals("Sync server unreachable", service.status().lastError());
     }
 }

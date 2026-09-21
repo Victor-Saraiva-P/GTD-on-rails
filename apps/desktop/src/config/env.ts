@@ -70,11 +70,11 @@ export function setRuntimeApiBaseUrl(baseUrl: string | null): void {
 /**
  * Builds a Documents-relative asset path for the Tauri fs plugin.
  *
- * @example buildDocumentAssetPath("items/id/file.pdf")
+ * @example buildDocumentAssetPath("items/id/assets/asset-id/file.pdf")
  */
 export function buildDocumentAssetPath(relativePath: string): string {
   const normalizedPath = relativePath.startsWith("/") ? relativePath.slice(1) : relativePath;
-  return `${dataRootDirectoryName}/assets/${normalizedPath}`;
+  return `${dataRootDirectoryName}/${normalizedPath}`;
 }
 
 function normalizeDataRootDirectoryName(rawValue: string): string {

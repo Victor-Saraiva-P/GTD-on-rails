@@ -2,6 +2,8 @@ package com.gtdonrails.api.services;
 
 import java.util.UUID;
 
+import com.gtdonrails.api.bodydocuments.ItemBodyDocumentService;
+import com.gtdonrails.api.bodydocuments.LegacyItemBodyMirror;
 import com.gtdonrails.api.dtos.item.ItemResponseDto;
 import com.gtdonrails.api.dtos.item.PatchItemBodyRequestDto;
 import com.gtdonrails.api.dtos.item.UpdateItemTitleRequestDto;
@@ -23,6 +25,8 @@ public class ItemService {
     private final ItemMapper itemMapper;
     private final ItemTextNormalizer itemTextNormalizer;
     private final ItemBodyNormalizer itemBodyNormalizer;
+    private final ItemBodyDocumentService bodyDocuments;
+    private final LegacyItemBodyMirror legacyBodyMirror;
     private final ItemAssetService itemAssetService;
     private final GoogleCalendarEventQueueService googleCalendarEventQueueService;
     private final AfterCommitExecutor afterCommitExecutor;
@@ -33,6 +37,8 @@ public class ItemService {
         ItemMapper itemMapper,
         ItemTextNormalizer itemTextNormalizer,
         ItemBodyNormalizer itemBodyNormalizer,
+        ItemBodyDocumentService bodyDocuments,
+        LegacyItemBodyMirror legacyBodyMirror,
         ItemAssetService itemAssetService,
         GoogleCalendarEventQueueService googleCalendarEventQueueService,
         AfterCommitExecutor afterCommitExecutor,
@@ -42,6 +48,8 @@ public class ItemService {
         this.itemMapper = itemMapper;
         this.itemTextNormalizer = itemTextNormalizer;
         this.itemBodyNormalizer = itemBodyNormalizer;
+        this.bodyDocuments = bodyDocuments;
+        this.legacyBodyMirror = legacyBodyMirror;
         this.itemAssetService = itemAssetService;
         this.googleCalendarEventQueueService = googleCalendarEventQueueService;
         this.afterCommitExecutor = afterCommitExecutor;
@@ -49,19 +57,21 @@ public class ItemService {
     }
 
     /**
-     * Updates only body metadata for an active item.
+     * Updates the canonical Markdown document for an active item.
      *
      * <p>Example: {@code itemService.patchItemBody(itemId, request)}.</p>
      */
     @Transactional
     public ItemResponseDto patchItemBody(UUID id, PatchItemBodyRequestDto request) {
         Item item = findItem(id);
-        ItemBody body = itemBodyNormalizer.normalizeBody(request.body());
-        itemAssetService.reconcileBodyAssetReferences(id, body);
-        item.setBody(body);
-        ItemResponseDto response = itemMapper.toResponse(itemRepository.save(item));
+        ItemBody requested = itemBodyNormalizer.normalizeBody(request.body());
+        ItemBody canonical = bodyDocuments.write(id, requested);
+        itemAssetService.reconcileBodyAssetReferences(id, canonical);
+        // WHY: body.md is authoritative. The database column is a temporary rollback mirror
+        // and intentionally bypasses Hibernate so a body edit cannot create an items mutation.
+        legacyBodyMirror.write(id, canonical);
         evictCachesAfterCommit();
-        return response;
+        return itemMapper.toResponse(item);
     }
 
     /**
@@ -80,7 +90,7 @@ public class ItemService {
     }
 
     /**
-     * Soft deletes an active item and schedules File Sync after commit.
+     * Soft deletes an active item and its active assets.
      *
      * <p>Example: {@code itemService.deleteItem(itemId)}.</p>
      */
@@ -95,7 +105,7 @@ public class ItemService {
     }
 
     /**
-     * Restores a soft-deleted item and schedules File Sync after commit.
+     * Restores a soft-deleted item and its Markdown-referenced assets.
      *
      * <p>Example: {@code itemService.restoreItem(itemId)}.</p>
      */
@@ -104,7 +114,8 @@ public class ItemService {
         Item item = itemRepository.findById(id)
             .orElseThrow(() -> new ItemNotFoundException("item ID '" + id + "' not found; expected existing item UUID"));
         item.restore();
-        itemAssetService.reconcileBodyAssetReferences(id, item.getBody());
+        ItemBody body = bodyDocuments.read(id, item.getBody());
+        itemAssetService.reconcileBodyAssetReferences(id, body);
         itemRepository.save(item);
         requestCalendarEventUpsertAfterCommit(id, item);
         evictCachesAfterCommit();

@@ -1,4 +1,5 @@
-import type { CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
+import { SyncRecoveryPanel } from "./SyncRecoveryPanel.tsx";
 import { useSyncStatus } from "./SyncStatusProvider";
 import type {
   DatabaseSyncState,
@@ -11,7 +12,7 @@ import type {
 
 type IndicatorVisual = {
   label: string;
-  tone: "idle" | "active" | "pending" | "setup" | "error" | "disabled" | "unknown";
+  tone: "idle" | "active" | "pending" | "setup" | "error" | "warning" | "disabled" | "unknown";
   spin?: boolean;
   pulse?: boolean;
 };
@@ -40,6 +41,10 @@ function fileVisual(state: FileSyncState | null): IndicatorVisual {
       return { label: "Bootstrapping", tone: "setup", spin: true };
     case "FAILED":
       return { label: "Failed", tone: "error" };
+    case "CONFLICT":
+      return { label: "Conflict", tone: "warning", pulse: true };
+    case "REBOOTSTRAP_REQUIRED":
+      return { label: "Rebootstrap required", tone: "warning", pulse: true };
     case "DISABLED":
       return { label: "Disabled", tone: "disabled" };
     default:
@@ -74,6 +79,10 @@ function databaseVisual(state: DatabaseSyncState | null): IndicatorVisual {
       return { label: "Pending", tone: "pending", pulse: true };
     case "FAILED":
       return { label: "Failed", tone: "error" };
+    case "CONFLICT":
+      return { label: "Conflict", tone: "warning", pulse: true };
+    case "REBOOTSTRAP_REQUIRED":
+      return { label: "Rebootstrap required", tone: "warning", pulse: true };
     case "DISABLED":
       return { label: "Disabled", tone: "disabled" };
     default:
@@ -117,6 +126,7 @@ function describeDatabaseStatus(status: DatabaseSyncStatus | null, failed: boole
   const details = [
     `Database sync: ${databaseVisual(status.state).label}`,
     status.pendingCount > 0 ? `Pending: ${status.pendingCount} event${status.pendingCount === 1 ? "" : "s"}` : null,
+    status.conflictCount > 0 ? `Conflicts: ${status.conflictCount}` : null,
     status.lastSuccessfulSyncAt ? `Last success: ${formatInstant(status.lastSuccessfulSyncAt)}` : null,
     status.lastError ? `Last error: ${status.lastError}` : null
   ].filter(Boolean);
@@ -145,7 +155,7 @@ function GoogleCalendarIcon() {
   );
 }
 
-/** WHY: Cloud-with-arrow-up icon represents data flowing from local SQLite to remote Supabase. */
+/** WHY: Cloud-with-arrow-up icon represents local SQLite/file state converging with the sync server. */
 function DatabaseSyncIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" className="sync-status__svg">
@@ -160,6 +170,7 @@ type SyncIndicatorProps = Readonly<{
   title: string;
   visual: IndicatorVisual;
   icon: "calendar" | "database" | "file";
+  onClick?: () => void;
 }>;
 
 function syncIndicatorClassName(visual: IndicatorVisual): string {
@@ -184,7 +195,22 @@ function SyncIndicatorIcon({ icon }: Readonly<Pick<SyncIndicatorProps, "icon">>)
   return <FileSyncIcon />;
 }
 
-function SyncIndicator({ ariaLabel, title, visual, icon }: SyncIndicatorProps) {
+function SyncIndicator({ ariaLabel, title, visual, icon, onClick }: SyncIndicatorProps) {
+  const content = <SyncIndicatorIcon icon={icon} />;
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        className={syncIndicatorClassName(visual)}
+        aria-label={ariaLabel}
+        title={title}
+        style={syncIndicatorStyle(visual)}
+        onClick={onClick}
+      >
+        {content}
+      </button>
+    );
+  }
   return (
     <span
       className={syncIndicatorClassName(visual)}
@@ -193,7 +219,7 @@ function SyncIndicator({ ariaLabel, title, visual, icon }: SyncIndicatorProps) {
       title={title}
       style={syncIndicatorStyle(visual)}
     >
-      <SyncIndicatorIcon icon={icon} />
+      {content}
     </span>
   );
 }
@@ -206,9 +232,10 @@ type SyncStatusIndicatorRowProps = Readonly<{
   failedBeforeStatus: boolean;
   isLoading: boolean;
   status: ReturnType<typeof useSyncStatus>["status"];
+  onRecovery?: () => void;
 }>;
 
-function FileStatusIndicator({ failedBeforeStatus, isLoading, status }: SyncStatusIndicatorRowProps) {
+function FileStatusIndicator({ failedBeforeStatus, isLoading, status, onRecovery }: SyncStatusIndicatorRowProps) {
   const visual = fileVisual(status?.file.state ?? null);
 
   return (
@@ -217,6 +244,7 @@ function FileStatusIndicator({ failedBeforeStatus, isLoading, status }: SyncStat
       title={describeFileStatus(status?.file ?? null, failedBeforeStatus)}
       visual={loadingVisual(visual, isLoading)}
       icon="file"
+      onClick={needsRecovery(status?.file.state) ? onRecovery : undefined}
     />
   );
 }
@@ -234,7 +262,7 @@ function GoogleCalendarStatusIndicator({ failedBeforeStatus, isLoading, status }
   );
 }
 
-function DatabaseStatusIndicator({ failedBeforeStatus, isLoading, status }: SyncStatusIndicatorRowProps) {
+function DatabaseStatusIndicator({ failedBeforeStatus, isLoading, status, onRecovery }: SyncStatusIndicatorRowProps) {
   const visual = databaseVisual(status?.database.state ?? null);
 
   return (
@@ -243,8 +271,14 @@ function DatabaseStatusIndicator({ failedBeforeStatus, isLoading, status }: Sync
       title={describeDatabaseStatus(status?.database ?? null, failedBeforeStatus)}
       visual={loadingVisual(visual, isLoading)}
       icon="database"
+      onClick={needsRecovery(status?.database.state) || (status?.database.conflictCount ?? 0) > 0 ? onRecovery : undefined}
     />
   );
+}
+
+
+function needsRecovery(state: FileSyncState | DatabaseSyncState | undefined): boolean {
+  return state === "CONFLICT" || state === "REBOOTSTRAP_REQUIRED";
 }
 
 /**
@@ -253,16 +287,27 @@ function DatabaseStatusIndicator({ failedBeforeStatus, isLoading, status }: Sync
  * @example <SyncStatusIndicators />
  */
 export function SyncStatusIndicators() {
-  const { isLoading, isPolling, lastFetchFailed, status } = useSyncStatus();
+  const { isLoading, isPolling, lastFetchFailed, status, triggerSyncStatusPolling } = useSyncStatus();
+  const [recoveryOpen, setRecoveryOpen] = useState(false);
   const groupLabel = isPolling ? "Synchronization in progress" : "Synchronization status";
   const failedBeforeStatus = lastFetchFailed && !status;
   const loadingBeforeStatus = isLoading && !status;
+  const openRecovery = () => setRecoveryOpen(true);
 
   return (
-    <div className="sync-status" aria-label={groupLabel}>
-      <FileStatusIndicator failedBeforeStatus={failedBeforeStatus} isLoading={loadingBeforeStatus} status={status} />
-      <GoogleCalendarStatusIndicator failedBeforeStatus={failedBeforeStatus} isLoading={loadingBeforeStatus} status={status} />
-      <DatabaseStatusIndicator failedBeforeStatus={failedBeforeStatus} isLoading={loadingBeforeStatus} status={status} />
-    </div>
+    <>
+      <div className="sync-status" aria-label={groupLabel}>
+        <FileStatusIndicator failedBeforeStatus={failedBeforeStatus} isLoading={loadingBeforeStatus} status={status} onRecovery={openRecovery} />
+        <GoogleCalendarStatusIndicator failedBeforeStatus={failedBeforeStatus} isLoading={loadingBeforeStatus} status={status} />
+        <DatabaseStatusIndicator failedBeforeStatus={failedBeforeStatus} isLoading={loadingBeforeStatus} status={status} onRecovery={openRecovery} />
+      </div>
+      <SyncRecoveryPanel
+        open={recoveryOpen}
+        database={status?.database ?? null}
+        file={status?.file ?? null}
+        onClose={() => setRecoveryOpen(false)}
+        onChanged={triggerSyncStatusPolling}
+      />
+    </>
   );
 }

@@ -11,6 +11,13 @@ import com.gtdonrails.api.dtos.sync.DatabaseSyncStatusDto;
 import com.gtdonrails.api.entities.SyncOutboxEvent;
 import com.gtdonrails.api.entities.SyncOutboxStatus;
 import com.gtdonrails.api.repositories.SyncOutboxRepository;
+import com.gtdonrails.api.sync.SyncServerBootstrapService;
+import com.gtdonrails.api.sync.LocalSyncStateStore;
+import com.gtdonrails.api.sync.SyncDatasetEpochMismatchException;
+import com.gtdonrails.api.sync.SyncServerConflictException;
+import com.gtdonrails.api.sync.SyncServerRebootstrapService;
+import com.gtdonrails.api.sync.SyncServerPullService;
+import com.gtdonrails.api.sync.SyncServerPushService;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,7 +29,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Manages the outbox-based sync of local SQLite mutations to remote Supabase PostgreSQL.
+ * Manages outbox-based synchronization between local SQLite and the GTD sync server.
  *
  * <p>Example: {@code databaseSyncService.status()}.</p>
  */
@@ -34,12 +41,15 @@ public class DatabaseSyncService {
     private static final int BATCH_SIZE = 50;
 
     private final SyncOutboxRepository outboxRepository;
-    private final SupabasePushSyncService pushSyncService;
-    private final SupabasePullSyncService pullSyncService;
+    private final SyncServerPushService pushSyncService;
+    private final SyncServerPullService pullSyncService;
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
     private final AtomicBoolean running = new AtomicBoolean(false);
     private final AtomicBoolean pending = new AtomicBoolean(false);
     private final boolean enabled;
+    private final SyncServerBootstrapService bootstrapService;
+    private final SyncServerRebootstrapService rebootstrapService;
+    private final LocalSyncStateStore localSyncStateStore;
 
     private volatile DatabaseSyncState state = DatabaseSyncState.DISABLED;
     private volatile Instant lastStartedAt;
@@ -55,33 +65,42 @@ public class DatabaseSyncService {
     @Autowired
     public DatabaseSyncService(
         SyncOutboxRepository outboxRepository,
-        ObjectProvider<SupabasePushSyncService> pushSyncServiceProvider,
-        ObjectProvider<SupabasePullSyncService> pullSyncServiceProvider,
-        @Value("${gtd.sync.database.enabled:false}") boolean enabled
+        ObjectProvider<SyncServerPushService> pushSyncServiceProvider,
+        ObjectProvider<SyncServerPullService> pullSyncServiceProvider,
+        ObjectProvider<SyncServerBootstrapService> bootstrapServiceProvider,
+        ObjectProvider<SyncServerRebootstrapService> rebootstrapServiceProvider,
+        ObjectProvider<LocalSyncStateStore> localSyncStateStoreProvider,
+        @Value("${gtd.sync.server.enabled:false}") boolean enabled
     ) {
         this.outboxRepository = outboxRepository;
         this.pushSyncService = pushSyncServiceProvider.getIfAvailable();
         this.pullSyncService = pullSyncServiceProvider.getIfAvailable();
+        this.bootstrapService = bootstrapServiceProvider.getIfAvailable();
+        this.rebootstrapService = rebootstrapServiceProvider.getIfAvailable();
+        this.localSyncStateStore = localSyncStateStoreProvider.getIfAvailable();
         this.enabled = enabled && this.pushSyncService != null;
         this.state = this.enabled ? DatabaseSyncState.SYNCED : DatabaseSyncState.DISABLED;
     }
 
     DatabaseSyncService(
         SyncOutboxRepository outboxRepository,
-        SupabasePushSyncService pushSyncService,
-        SupabasePullSyncService pullSyncService,
+        SyncServerPushService pushSyncService,
+        SyncServerPullService pullSyncService,
         boolean enabled
     ) {
         this.outboxRepository = outboxRepository;
         this.pushSyncService = pushSyncService;
         this.pullSyncService = pullSyncService;
+        this.bootstrapService = null;
+        this.rebootstrapService = null;
+        this.localSyncStateStore = null;
         this.enabled = enabled && pushSyncService != null;
         this.state = this.enabled ? DatabaseSyncState.SYNCED : DatabaseSyncState.DISABLED;
     }
 
     DatabaseSyncService(
         SyncOutboxRepository outboxRepository,
-        SupabasePushSyncService pushSyncService,
+        SyncServerPushService pushSyncService,
         boolean enabled
     ) {
         this(outboxRepository, pushSyncService, null, enabled);
@@ -95,7 +114,7 @@ public class DatabaseSyncService {
     public DatabaseSyncStatusDto status() {
         int pendingCount = enabled ? countPending() : 0;
         return new DatabaseSyncStatusDto(
-            state, pending.get(), running.get(), pendingCount,
+            state, pending.get(), running.get(), pendingCount, pendingConflictCount(),
             lastStartedAt, lastFinishedAt, lastSuccessfulSyncAt, lastError);
     }
 
@@ -115,7 +134,7 @@ public class DatabaseSyncService {
      * <p>Example: {@code databaseSyncService.notifyNewEvents()}.</p>
      */
     public void notifyNewEvents() {
-        if (!enabled) return;
+        if (!enabled || requiresRebootstrap()) return;
 
         pending.set(true);
         state = running.get() ? DatabaseSyncState.SYNCING : DatabaseSyncState.PENDING;
@@ -129,7 +148,7 @@ public class DatabaseSyncService {
      */
     @Scheduled(fixedDelayString = "${gtd.sync.database.interval-ms:5000}")
     public void requestScheduledSync() {
-        if (!enabled) return;
+        if (!enabled || requiresRebootstrap()) return;
         if (countPending() == 0) return;
 
         pending.set(true);
@@ -146,10 +165,10 @@ public class DatabaseSyncService {
             do {
                 pending.set(false);
                 processBatch();
-            } while (pending.get() || countPending() > 0);
+            } while (!requiresRebootstrap() && (pending.get() || countPending() > 0));
         } finally {
             running.set(false);
-            if (countPending() > 0) submit();
+            if (!requiresRebootstrap() && countPending() > 0) submit();
         }
     }
 
@@ -173,6 +192,8 @@ public class DatabaseSyncService {
         lastStartedAt = Instant.now();
         state = DatabaseSyncState.SYNCING;
         try {
+            if (bootstrapService != null) bootstrapService.initializeIfNeeded();
+            validateDatasetEpoch();
             executeBatchSync();
             if (pullSyncService != null) pullSyncService.pullAll();
             markSyncSucceeded();
@@ -187,6 +208,7 @@ public class DatabaseSyncService {
         logBatchStart();
 
         try {
+            validateDatasetEpoch();
             executeBatchSync();
             if (pullSyncService != null) pullSyncService.pullAll();
             markSyncSucceeded();
@@ -238,7 +260,7 @@ public class DatabaseSyncService {
 
     private void handleEventFailure(SyncOutboxEvent event, RuntimeException exception) {
         event.markFailed(exception.getMessage());
-        if (event.getRetryCount() < MAX_RETRY_ATTEMPTS) {
+        if (!(exception instanceof SyncServerConflictException) && event.getRetryCount() < MAX_RETRY_ATTEMPTS) {
             event.resetToPending();
         }
 
@@ -255,18 +277,45 @@ public class DatabaseSyncService {
         lastFinishedAt = Instant.now();
         lastSuccessfulSyncAt = lastFinishedAt;
         lastError = null;
-        state = countPending() > 0 ? DatabaseSyncState.PENDING : DatabaseSyncState.SYNCED;
+        if (pendingConflictCount() > 0) state = DatabaseSyncState.CONFLICT;
+        else state = countPending() > 0 ? DatabaseSyncState.PENDING : DatabaseSyncState.SYNCED;
     }
 
     private void markSyncFailed(RuntimeException exception) {
         lastFinishedAt = Instant.now();
         lastError = exception.getMessage();
-        state = DatabaseSyncState.FAILED;
+        state = exception instanceof SyncDatasetEpochMismatchException
+            ? DatabaseSyncState.REBOOTSTRAP_REQUIRED
+            : DatabaseSyncState.FAILED;
 
         logger.atWarn()
             .addKeyValue("event", "database_sync_batch_failed")
             .setCause(exception)
             .log("Database sync batch failed");
+    }
+
+    private void validateDatasetEpoch() {
+        if (pullSyncService != null) pullSyncService.validateDatasetEpoch();
+    }
+
+    private boolean requiresRebootstrap() {
+        return state == DatabaseSyncState.REBOOTSTRAP_REQUIRED;
+    }
+
+    public SyncServerRebootstrapService.RebootstrapResult rebootstrap() {
+        if (!enabled || rebootstrapService == null) {
+            throw new IllegalStateException("sync server rebootstrap is unavailable");
+        }
+        SyncServerRebootstrapService.RebootstrapResult result = rebootstrapService.rebootstrap();
+        pending.set(false);
+        state = DatabaseSyncState.SYNCED;
+        lastError = null;
+        lastSuccessfulSyncAt = Instant.now();
+        return result;
+    }
+
+    private int pendingConflictCount() {
+        return localSyncStateStore == null ? 0 : localSyncStateStore.pendingConflictCount();
     }
 
     private int countPending() {

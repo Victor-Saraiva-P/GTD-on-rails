@@ -1,9 +1,10 @@
 import { syntaxTree } from "@codemirror/language";
-import { RangeSetBuilder, StateEffect, type EditorState } from "@codemirror/state";
+import { Facet, RangeSetBuilder, StateEffect, type EditorState } from "@codemirror/state";
 import { Decoration, type DecorationSet, EditorView, ViewPlugin, type ViewUpdate } from "@codemirror/view";
 import { getCM } from "@replit/codemirror-vim";
 
 export const refreshLivePreviewEffect = StateEffect.define<void>();
+export const itemDocumentIdFacet = Facet.define<string, string>({ combine: (values) => values[0] ?? "" });
 import {
   BulletMarkWidget,
   DividerWidget,
@@ -29,6 +30,7 @@ const SIMPLE_HIDE_NODES = new Set(["EmphasisMark", "CodeMark", "LinkMark", "Stri
 const PREFIX_HIDE_NODES = new Set(["HeaderMark", "QuoteMark"]);
 
 const STANDALONE_IMAGE_RE = /^\s*!\[([^\]]*)\]\((?:<([^>]+)>|([^)]+?))\s*\)\s*$/;
+const STANDALONE_LINK_RE = /^\s*\[([^\]]+)\]\((?:<([^>]+)>|([^)]+?))\s*\)\s*$/;
 const ASSET_TOKEN_RE = /(\[\[asset:([0-9a-fA-F-]{36})]]|\[asset:([0-9a-fA-F-]{36})]|⟦asset:([0-9a-fA-F-]{36})⟧)/;
 
 type PendingDeco = { from: number; to: number; deco: Decoration };
@@ -198,24 +200,82 @@ function processAssetLine(
 }
 
 function processMarkdownImageLine(
+  state: EditorState,
   line: { from: number; to: number; text: string },
   lineActive: boolean,
   pending: PendingDeco[]
 ): boolean {
-  const m = line.text.match(STANDALONE_IMAGE_RE);
-  if (!m) return false;
-  const alt = m[1] ?? "";
-  const href = (m[2] ?? m[3] ?? "").trim();
+  const match = line.text.match(STANDALONE_IMAGE_RE);
+  if (!match) return false;
+  const alt = match[1] ?? "";
+  const href = (match[2] ?? match[3] ?? "").trim();
+  const entity = markdownAssetEntity(state, href, alt, "image");
   pending.push({
-    from: line.to,
-    to: line.to,
-    deco: Decoration.widget({ side: 1, widget: new LiveImageWidget(alt, href, line.from) })
+    from: line.to, to: line.to,
+    deco: Decoration.widget({ side: 1, widget: new LiveImageWidget(alt, href, line.from, entity) })
   });
-  if (!lineActive) {
-    pending.push({ from: line.from, to: line.to, deco: imageSourceHide });
-    pending.push({ from: line.from, to: line.from, deco: imageEmbedLine });
-  }
+  hideStandaloneSource(line, lineActive, pending);
   return true;
+}
+
+function processMarkdownPdfLine(
+  state: EditorState,
+  line: { from: number; to: number; text: string },
+  lineActive: boolean,
+  pending: PendingDeco[]
+): boolean {
+  const match = line.text.match(STANDALONE_LINK_RE);
+  if (!match) return false;
+  const displayName = match[1] ?? "PDF";
+  const href = (match[2] ?? match[3] ?? "").trim();
+  if (!href.toLowerCase().endsWith(".pdf")) return false;
+  const entity = markdownAssetEntity(state, href, displayName, "pdf");
+  if (!entity) return false;
+  pending.push({
+    from: line.to, to: line.to,
+    deco: Decoration.widget({ side: 1, widget: new LivePdfWidget(displayName, entity) })
+  });
+  hideStandaloneSource(line, lineActive, pending);
+  return true;
+}
+
+function hideStandaloneSource(
+  line: { from: number; to: number },
+  lineActive: boolean,
+  pending: PendingDeco[]
+): void {
+  if (lineActive) return;
+  pending.push({ from: line.from, to: line.to, deco: imageSourceHide });
+  pending.push({ from: line.from, to: line.from, deco: imageEmbedLine });
+}
+
+function markdownAssetEntity(
+  state: EditorState,
+  href: string,
+  displayName: string,
+  type: "image" | "pdf"
+): BlockEntity | undefined {
+  if (!href.startsWith("assets/")) return undefined;
+  const itemId = state.facet(itemDocumentIdFacet);
+  if (!itemId) return undefined;
+  const decodedHref = decodeURIComponent(href);
+  const assetId = decodedHref.split("/")[1] ?? href;
+  return {
+    id: `markdown-${assetId}`, type, from: 0, to: 0, assetId,
+    attrs: {
+      displayName,
+      contentType: type === "image" ? imageContentType(decodedHref) : "application/pdf",
+      relativePath: `items/${itemId}/${decodedHref}`
+    }
+  };
+}
+
+function imageContentType(path: string): string {
+  if (path.toLowerCase().endsWith(".svg")) return "image/svg+xml";
+  if (path.toLowerCase().endsWith(".webp")) return "image/webp";
+  if (path.toLowerCase().endsWith(".gif")) return "image/gif";
+  if (/\.jpe?g$/i.test(path)) return "image/jpeg";
+  return "image/png";
 }
 
 function collectLineAssetDecos(
@@ -232,7 +292,7 @@ function collectLineAssetDecos(
     for (let ln = firstLine; ln <= lastLine; ln++) {
       const line = state.doc.line(ln);
       const lineActive = activeLines.has(ln);
-      if (processAssetLine(state, line, entities, lineActive, pending) || processMarkdownImageLine(line, lineActive, pending)) {
+      if (processAssetLine(state, line, entities, lineActive, pending) || processMarkdownImageLine(state, line, lineActive, pending) || processMarkdownPdfLine(state, line, lineActive, pending)) {
         replacedLines.add(ln);
       }
     }

@@ -7,6 +7,7 @@ public record DatabaseSyncStatusDto(
     boolean pending,
     boolean running,
     int pendingCount,
+    int conflictCount,
     Instant lastStartedAt,
     Instant lastFinishedAt,
     Instant lastSuccessfulSyncAt,

@@ -4,10 +4,6 @@ import { setRuntimeApiBaseUrl } from "../config/env.ts";
 import { appMetadata } from "../config/appMetadata.ts";
 import { apiFetch, apiJson, ApiRequestError } from "../lib/api/apiClient.ts";
 import { isTauriRuntime } from "../lib/tauriRuntime.ts";
-import { DatabaseSetup } from "../features/bootstrap/DatabaseSetup.tsx";
-import { DatabaseRepair } from "../features/bootstrap/DatabaseRepair.tsx";
-import { PostgresToolsRequired } from "../features/bootstrap/PostgresToolsRequired.tsx";
-import { bootstrapUiState, type BootstrapUiState } from "../features/bootstrap/databaseBootstrapState.ts";
 import { parseReadinessResponse } from "../features/database-readiness/databaseReadiness.ts";
 import { shouldCheckNativeUpdates, startupSteps, type StartupStep } from "./nativeUpdatePolicy.ts";
 import "../styles/boot-loader.css";
@@ -30,13 +26,7 @@ type NativeUpdateStatus = {
   checksumUrl: string | null;
 };
 
-type PostgresToolsStatus = {
-  available: boolean;
-  missingTools: string[];
-  manualInstallCommand: string;
-};
-
-async function pingBackend(): Promise<"ready" | "update-required" | BootstrapUiState> {
+async function pingBackend(): Promise<"ready" | "update-required" | "offline"> {
   try {
     await apiFetch("/readiness");
     return "ready";
@@ -44,12 +34,7 @@ async function pingBackend(): Promise<"ready" | "update-required" | BootstrapUiS
     if (error instanceof ApiRequestError && parseReadinessResponse(error.responseBody) === "update-required") {
       return "update-required";
     }
-    try {
-      const status = await apiJson<{ status: string }>("/bootstrap/status");
-      return bootstrapUiState(status.status);
-    } catch {
-      return "offline";
-    }
+    return "offline";
   }
 }
 
@@ -67,18 +52,6 @@ async function waitForBackendBaseUrl(): Promise<void> {
 
 async function startBackend(): Promise<void> {
   if (isTauriRuntime()) await invoke("start_sidecar_command");
-}
-
-async function checkPostgresTools(
-  setPostgresTools: (status: PostgresToolsStatus) => void
-): Promise<boolean> {
-  if (import.meta.env.DEV) return false;
-
-  const status = await invoke<PostgresToolsStatus>("postgres_tools_status");
-  if (status.available) return false;
-
-  setPostgresTools(status);
-  return true;
 }
 
 async function runStartupStep(
@@ -116,13 +89,11 @@ function requiredNativeUpdate(update: NativeUpdateStatus) {
 }
 
 async function executeStartupSteps(
-  setPostgresTools: (status: PostgresToolsStatus) => void,
   setUpdateStatus: (status: string) => void
 ): Promise<boolean> {
   const steps = startupSteps(isTauriRuntime(), import.meta.env.DEV);
   for (const step of steps) {
     try {
-      if (step === "sidecar" && (await checkPostgresTools(setPostgresTools))) return true;
       if (await runStartupStep(step, setUpdateStatus)) return true;
     } catch (stepError) {
       console.error(`Startup step '${step}' failed:`, stepError);
@@ -136,15 +107,12 @@ function useBackendHealth() {
   const [dots, setDots] = useState("");
   const [bootError, setBootError] = useState<string | null>(null);
   const [updateStatus, setUpdateStatus] = useState<string | null>(null);
-  const [setupRequired, setSetupRequired] = useState(false);
-  const [bootstrapState, setBootstrapState] = useState<BootstrapUiState | null>(null);
-  const [postgresTools, setPostgresTools] = useState<PostgresToolsStatus | null>(null);
 
   useEffect(() => {
     let timeout: number;
 
     const checkHealth = async () => {
-      if (await executeStartupSteps(setPostgresTools, setUpdateStatus)) return;
+      if (await executeStartupSteps(setUpdateStatus)) return;
       try {
         await waitForBackendBaseUrl();
       } catch (error) {
@@ -154,18 +122,12 @@ function useBackendHealth() {
       applyBackendState(await pingBackend());
     };
 
-    function applyBackendState(backendState: "ready" | "update-required" | BootstrapUiState) {
+    function applyBackendState(backendState: "ready" | "update-required" | "offline") {
       if (backendState === "ready") {
-        setSetupRequired(false);
-        setBootstrapState(null);
         setIsBooted(true);
       } else if (backendState === "update-required") {
         setUpdateStatus("Application update required: this installation is incompatible with the shared database schema. Please update the application.");
       } else {
-        if (backendState === "setup" || backendState === "repair") {
-          setSetupRequired(true);
-          setBootstrapState(backendState);
-        }
         timeout = window.setTimeout(() => void checkHealth(), PING_INTERVAL_MS);
       }
     }
@@ -187,7 +149,7 @@ function useBackendHealth() {
     return () => window.clearInterval(dotInterval);
   }, [isBooted]);
 
-  return { isBooted, dots, bootError, updateStatus, setupRequired, bootstrapState, postgresTools };
+  return { isBooted, dots, bootError, updateStatus };
 }
 
 /**
@@ -195,7 +157,7 @@ function useBackendHealth() {
  * Renders a retro terminal loading screen while waiting.
  */
 export function BootLoader({ children }: PropsWithChildren) {
-  const { isBooted, dots, bootError, updateStatus, setupRequired, bootstrapState, postgresTools } = useBackendHealth();
+  const { isBooted, dots, bootError, updateStatus } = useBackendHealth();
   const [shouldRenderLoader, setShouldRenderLoader] = useState(true);
 
   // Allow time for fade-out animation
@@ -208,7 +170,7 @@ export function BootLoader({ children }: PropsWithChildren) {
 
   return (
     <>
-      {shouldRenderLoader && !setupRequired && (
+      {shouldRenderLoader && (
         <div className={`boot-loader ${isBooted ? "boot-loader--fade-out" : ""}`}>
           <div className="boot-loader__terminal">
             <p className="boot-loader__brand">{appMetadata.name} v{appMetadata.version}</p>
@@ -237,9 +199,6 @@ export function BootLoader({ children }: PropsWithChildren) {
           </div>
         </div>
       )}
-      {bootstrapState === "setup" ? <DatabaseSetup /> : null}
-      {bootstrapState === "repair" ? <DatabaseRepair /> : null}
-      {postgresTools ? <PostgresToolsRequired {...postgresTools} onResolved={() => window.location.reload()} /> : null}
       {isBooted && children}
     </>
   );

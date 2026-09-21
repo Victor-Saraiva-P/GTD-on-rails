@@ -1,9 +1,40 @@
 # Body Content
 
-[[Stuff]] and [[Next Actions|next actions]] can contain a rich markdown body. The body supports text formatting, block formatting, links, and file assets.
+Item body content is canonical Markdown stored as a physical file.
 
-Use body content for supporting material that belongs with the item, including external visual references such as [Canva drafts](https://canva.link/pavz3zmz97r3g4v), source links, notes, and attached files.
+For an item UUID `<id>`:
 
-Assets are represented in the markdown body by asset tokens and backed by database metadata plus files in the configured asset directory.
+```text
+items/<id>/body.md
+```
 
-Body content is edited from detail views and focused detail pages such as [[Inbox]] details and [[Next Actions]] details. Shared formatting shortcuts are documented in [[Global Shortcuts]].
+The SQLite `items.body` column is currently retained only as a temporary rollback mirror during migration. Application reads use `body.md` as the authority.
+
+## Assets
+
+Item assets use stable UUID directories:
+
+```text
+items/<item-id>/assets/<asset-id>/<filename>
+```
+
+Markdown references them with relative links:
+
+```markdown
+![Architecture](assets/<asset-id>/architecture.png)
+[Specification.pdf](assets/<asset-id>/Specification.pdf)
+```
+
+The editor resolves those relative paths at runtime for previews without rewriting the Markdown file.
+
+## Migration
+
+Legacy `ItemBody` JSON is materialized into Markdown idempotently. The migration preserves supported formatting and converts legacy asset entities to relative Markdown references.
+
+Missing physical assets remain visible as broken references/diagnostics instead of being silently discarded.
+
+## Editing
+
+The desktop edits Markdown directly. Saving is local and does not wait for the sync server.
+
+Formatting/navigation includes ZenNotes-style commands such as bold, italic, code, link, strikethrough, highlight, math, checkbox, paragraph reflow, line movement and Markdown marker hopping while preserving GTD navigation and Vim semantics.

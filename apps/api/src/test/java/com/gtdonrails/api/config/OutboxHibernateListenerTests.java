@@ -2,6 +2,7 @@ package com.gtdonrails.api.config;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -59,6 +60,7 @@ class OutboxHibernateListenerTests {
 
         verify(jdbcTemplate).update(
             contains("insert into sync_outbox"),
+            anyString(),
             eq("items"),
             eq(itemId.toString()),
             eq("INSERT"),
@@ -81,6 +83,7 @@ class OutboxHibernateListenerTests {
 
         verify(jdbcTemplate).update(
             contains("insert into sync_outbox"),
+            anyString(),
             eq("items"),
             eq(itemId.toString()),
             eq("DELETE"),
@@ -96,7 +99,7 @@ class OutboxHibernateListenerTests {
 
         listener.onPostInsert(postInsertEvent);
 
-        verify(jdbcTemplate, never()).update(any(), any(), any(), any(), any());
+        verify(jdbcTemplate, never()).update(anyString(), any(Object[].class));
         verify(databaseSyncService, never()).notifyNewEvents();
     }
 

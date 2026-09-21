@@ -24,7 +24,7 @@ export function buildConnectivityBlockerModel(isBrowserOnline: boolean, syncStat
   return {
     isBlocked: !isBrowserOnline,
     title: isBrowserOnline ? "Connection active" : "No internet connection",
-    message: "The affected features are File Sync via rclone and Google Calendar.",
+    message: "The affected features are sync-server convergence and Google Calendar.",
     rows: buildSyncRows(syncStatus)
   };
 }

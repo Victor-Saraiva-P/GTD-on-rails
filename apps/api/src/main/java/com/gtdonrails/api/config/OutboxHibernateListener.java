@@ -104,8 +104,8 @@ public class OutboxHibernateListener implements PostInsertEventListener, PostUpd
 
     private void persistOutboxRecord(String tableName, String entityId, SyncOutboxOperation operation, String payload) {
         jdbcTemplate.update(
-            "insert into sync_outbox (entity_type, entity_id, operation, payload, status, retry_count) values (?, ?, ?, ?, 'PENDING', 0)",
-            tableName, entityId, operation.name(), payload
+            "insert into sync_outbox (operation_id, entity_type, entity_id, operation, payload, status, retry_count) values (?, ?, ?, ?, ?, 'PENDING', 0)",
+            java.util.UUID.randomUUID().toString(), tableName, entityId, operation.name(), payload
         );
         databaseSyncService.notifyNewEvents();
         logOutboxCapture(tableName, entityId, operation);

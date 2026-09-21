@@ -1,6 +1,7 @@
 package com.gtdonrails.api.entities;
 
 import java.time.Instant;
+import java.util.UUID;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -19,6 +20,9 @@ public class SyncOutboxEvent {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(columnDefinition = "integer")
     private Long id;
+
+    @Column(name = "operation_id", nullable = false, unique = true, updatable = false)
+    private UUID operationId = UUID.randomUUID();
 
     @Column(name = "entity_type", nullable = false)
     private String entityType;
@@ -59,6 +63,7 @@ public class SyncOutboxEvent {
     }
 
     public Long getId() { return id; }
+    public UUID getOperationId() { return operationId; }
     public String getEntityType() { return entityType; }
     public String getEntityId() { return entityId; }
     public SyncOutboxOperation getOperation() { return operation; }
@@ -89,7 +94,7 @@ public class SyncOutboxEvent {
     /**
      * Records a sync failure and increments the retry counter.
      *
-     * @example event.markFailed("Connection timeout to Supabase")
+     * @example event.markFailed("Sync server timeout")
      */
     public void markFailed(String error) {
         this.status = SyncOutboxStatus.FAILED;

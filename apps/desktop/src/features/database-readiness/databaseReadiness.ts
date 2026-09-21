@@ -41,13 +41,13 @@ export function buildDatabaseReadinessBlockerModel(status: DatabaseReadinessStat
   return {
     isBlocked: status !== "ready",
     statusLabel: "DATABASE",
-    title: "PostgreSQL unavailable",
-    message: "Waiting for PostgreSQL to restore authoritative application state.",
+    title: "Local database unavailable",
+    message: "Waiting for local SQLite to become available.",
     actionText: "Checking database connection"
   };
 }
 
-/** Reports whether normal desktop interaction must wait for PostgreSQL.
+/** Reports whether normal desktop interaction must wait for SQLite.
  *
  * @example shouldBlockDatabaseInteraction(false, false)
  */
