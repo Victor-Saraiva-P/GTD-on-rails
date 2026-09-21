@@ -59,7 +59,6 @@ export async function apiFetch(
       headers: { Accept: "application/json", ...init.headers }
     });
   } catch (error) {
-    notifyDatabaseUnavailable();
     throw error;
   }
 

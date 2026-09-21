@@ -13,7 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
 public class SyncServerBootstrapService {
@@ -33,6 +33,7 @@ public class SyncServerBootstrapService {
     private final ObjectMapper objectMapper;
     private final SyncServerGateway gateway;
     private final LocalSyncStateStore stateStore;
+    private final TransactionTemplate transactions;
     private final Path dataRoot;
 
     public SyncServerBootstrapService(
@@ -40,12 +41,14 @@ public class SyncServerBootstrapService {
         ObjectMapper objectMapper,
         SyncServerGateway gateway,
         LocalSyncStateStore stateStore,
+        TransactionTemplate transactions,
         @Value("${gtd.data.root-directory}") String dataRoot
     ) {
         this.jdbc = jdbc;
         this.objectMapper = objectMapper;
         this.gateway = gateway;
         this.stateStore = stateStore;
+        this.transactions = transactions;
         this.dataRoot = Path.of(dataRoot).toAbsolutePath().normalize();
     }
 
@@ -54,11 +57,18 @@ public class SyncServerBootstrapService {
      *
      * <p>Example: {@code bootstrap.initializeIfNeeded()}.</p>
      */
-    @Transactional
     public void initializeIfNeeded() {
         LocalSyncStateStore.SyncClientState local = stateStore.clientState();
         if (hasEpoch(local.datasetEpoch())) return;
+
         SyncServerGateway.SyncRemoteState remote = gateway.state();
+        transactions.executeWithoutResult(status -> initializeLocalState(remote));
+    }
+
+    private void initializeLocalState(SyncServerGateway.SyncRemoteState remote) {
+        LocalSyncStateStore.SyncClientState local = stateStore.clientState();
+        if (hasEpoch(local.datasetEpoch())) return;
+
         stateStore.updateClientState(remote.datasetEpoch(), 0);
         if (remote.cursor() > 0) return;
         supersedeLegacyPendingEvents();

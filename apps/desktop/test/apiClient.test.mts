@@ -55,6 +55,24 @@ describe("apiFetch", () => {
     );
   });
 
+  test("apiFetch does not announce database unavailability for transport failures", async () => {
+    const globalScope = globalThis as { window?: EventTarget };
+    const originalWindow = globalScope.window;
+    globalScope.window = new EventTarget();
+    let unavailable = false;
+    window.addEventListener(DATABASE_UNAVAILABLE_EVENT, () => { unavailable = true; });
+
+    await assert.rejects(
+      apiFetch("/sync/status", {}, async () => {
+        throw new TypeError("network timeout");
+      }),
+      /network timeout/
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.equal(unavailable, false);
+    globalScope.window = originalWindow;
+  });
+
   test("apiFetch announces a service-unavailable database response", async () => {
     const globalScope = globalThis as { window?: EventTarget };
     const originalWindow = globalScope.window;

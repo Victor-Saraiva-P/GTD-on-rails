@@ -18,7 +18,8 @@ class DatabaseRuntimeConfigurationTests {
         assertEquals("org.sqlite.JDBC", properties.getProperty("spring.datasource.driver-class-name"));
         assertEquals("org.hibernate.community.dialect.SQLiteDialect", properties.getProperty("spring.jpa.database-platform"));
         assertEquals("classpath:db/sqlite-migration", properties.getProperty("spring.flyway.locations"));
-        assertEquals("1", properties.getProperty("spring.datasource.hikari.maximum-pool-size"));
+        assertEquals("4", properties.getProperty("spring.datasource.hikari.maximum-pool-size"));
+        assertEquals("false", properties.getProperty("spring.jpa.open-in-view"));
     }
 
     @Test
