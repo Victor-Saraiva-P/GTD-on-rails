@@ -30,8 +30,6 @@ const quoteLine = Decoration.line({ class: "cm-quote-line" });
 const SIMPLE_HIDE_NODES = new Set(["EmphasisMark", "CodeMark", "LinkMark", "StrikethroughMark"]);
 const PREFIX_HIDE_NODES = new Set(["HeaderMark", "QuoteMark"]);
 
-const MARKDOWN_IMAGE_RE = /!\[([^\]\r\n]*)\]\(([^)\r\n]*)\)/;
-const MARKDOWN_LINK_RE = /\[([^\]\r\n]+)\]\(([^)\r\n]*)\)/;
 const ASSET_TOKEN_RE = /(\[\[asset:([0-9a-fA-F-]{36})]]|\[asset:([0-9a-fA-F-]{36})]|⟦asset:([0-9a-fA-F-]{36})⟧)/;
 
 type PendingDeco = { from: number; to: number; deco: Decoration };
@@ -228,16 +226,16 @@ function processMarkdownImageLine(
   lineActive: boolean,
   pending: PendingDeco[]
 ): boolean {
-  const match = MARKDOWN_IMAGE_RE.exec(line.text);
+  const match = markdownTarget(line.text, true);
   if (!match) return false;
-  const alt = match[1] ?? "";
-  const href = markdownHref(match[2] ?? "");
+  const alt = match.label;
+  const href = markdownHref(match.href);
   const entity = markdownAssetEntity(state, href, alt, "image");
   pending.push({
     from: line.to, to: line.to,
     deco: Decoration.widget({ side: 1, widget: new LiveImageWidget(alt, href, line.from, entity) })
   });
-  if (line.text.trim() === match[0]) hideStandaloneSource(line, lineActive, pending);
+  if (line.text.trim() === match.source) hideStandaloneSource(line, lineActive, pending);
   return true;
 }
 
@@ -247,10 +245,11 @@ function processMarkdownPdfLine(
   lineActive: boolean,
   pending: PendingDeco[]
 ): boolean {
-  const match = MARKDOWN_LINK_RE.exec(line.text.trim());
-  if (!match || match[0] !== line.text.trim()) return false;
-  const displayName = match[1] ?? "PDF";
-  const href = markdownHref(match[2] ?? "");
+  const trimmed = line.text.trim();
+  const match = markdownTarget(trimmed, false);
+  if (!match || match.source !== trimmed) return false;
+  const displayName = match.label || "PDF";
+  const href = markdownHref(match.href);
   if (!href.toLowerCase().endsWith(".pdf")) return false;
   const entity = markdownAssetEntity(state, href, displayName, "pdf");
   if (!entity) return false;
@@ -260,6 +259,24 @@ function processMarkdownPdfLine(
   });
   hideStandaloneSource(line, lineActive, pending);
   return true;
+}
+
+type MarkdownTarget = Readonly<{ source: string; label: string; href: string }>;
+
+function markdownTarget(text: string, image: boolean): MarkdownTarget | null {
+  const marker = image ? "![" : "[";
+  const start = text.indexOf(marker);
+  if (start < 0) return null;
+  const labelStart = start + marker.length;
+  const labelEnd = text.indexOf("](", labelStart);
+  if (labelEnd < 0) return null;
+  const hrefEnd = text.indexOf(")", labelEnd + 2);
+  if (hrefEnd < 0) return null;
+  return {
+    source: text.slice(start, hrefEnd + 1),
+    label: text.slice(labelStart, labelEnd),
+    href: text.slice(labelEnd + 2, hrefEnd)
+  };
 }
 
 function markdownHref(rawHref: string): string {

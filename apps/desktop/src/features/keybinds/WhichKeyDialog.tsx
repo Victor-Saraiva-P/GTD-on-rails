@@ -139,9 +139,6 @@ function WhichKeyModal({
         event.preventDefault();
         onClose();
       }}
-      onClick={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
     >
       <div className="which-key-dialog">
         <WhichKeyHeader activeZone={activeZone} />
