@@ -5,7 +5,7 @@ ARG2 := $(word 2,$(ARGS))
 ARG3_PLUS := $(wordlist 3,999,$(ARGS))
 ARG2_PLUS := $(wordlist 2,999,$(ARGS))
 
-.PHONY: help gtd client sync-server client-package client-install dev staging client-dev client-staging test unit integration e2e check lint
+.PHONY: help gtd client sync-server client-package client-install gtd-install dev staging client-dev client-staging test unit integration e2e check lint
 
 help:
 	@if [ "$(PRIMARY_GOAL)" = "help" ] || [ -z "$(PRIMARY_GOAL)" ]; then \
@@ -18,7 +18,8 @@ help:
 	    '  make client                 sync client using dev data' \
 	    '  make client staging         sync client using staging data' \
 	    '  make client-package         build standalone client tarball' \
-	    '  make client-install         install latest published production client' \
+	    '  make client-install [tag]   install published production client (latest or tag)' \
+	    '  make gtd-install [tag]      install published production desktop app (latest or tag)' \
 	    '' \
 	    'Test selection:' \
 	    '  make test' \
@@ -63,7 +64,12 @@ client-package:
 
 client-install:
 	@if [ "$(PRIMARY_GOAL)" = "client-install" ]; then \
-	  node scripts/install-client-release.mjs; \
+	  node scripts/install-client-release.mjs $(if $(ARG1),--tag=$(ARG1)); \
+	fi
+
+gtd-install:
+	@if [ "$(PRIMARY_GOAL)" = "gtd-install" ]; then \
+	  node scripts/install-desktop-release.mjs $(if $(ARG1),--tag=$(ARG1)); \
 	fi
 
 dev:
