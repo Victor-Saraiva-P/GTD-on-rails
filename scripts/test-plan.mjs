@@ -115,11 +115,11 @@ function listFiles(directory, predicate) {
 }
 
 function pnpmRoot(script) {
-  return command("/usr/bin/pnpm", ["run", script], root);
+  return command("pnpm", ["run", script], root);
 }
 
 function pnpmFilter(project, script) {
-  return command("/usr/bin/pnpm", ["--filter", `@gtd-on-rails/${project}`, "run", script], root);
+  return command("pnpm", ["--filter", `@gtd-on-rails/${project}`, "run", script], root);
 }
 
 function gradle(project, task, testPattern = null) {
@@ -139,7 +139,7 @@ function desktopNodeTests(files) {
 }
 
 function playwright(files) {
-  return command("/usr/bin/pnpm", ["exec", "playwright", "test", ...files], path.join(root, "apps/desktop"));
+  return command("pnpm", ["exec", "playwright", "test", ...files], path.join(root, "apps/desktop"));
 }
 
 function nodeTests(files) {
