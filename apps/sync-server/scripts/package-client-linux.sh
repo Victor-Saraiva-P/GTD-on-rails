@@ -12,7 +12,7 @@ package_dir="$release_dir/$package_name"
 archive_path="$release_dir/$package_name.tar.gz"
 jar_path="$build_dir/libs/gtd-sync-server.jar"
 
-test -f "$jar_path" || { echo "$jar_path is invalid; expected built sync client jar"; exit 1; }
+[[ -f "$jar_path" ]] || { echo "$jar_path is invalid; expected built sync client jar"; exit 1; }
 command -v jpackage >/dev/null 2>&1 || { echo "jpackage is invalid; expected JDK 21 build tooling"; exit 127; }
 
 rm -rf "$release_dir" "$jpackage_dir"

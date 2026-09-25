@@ -174,19 +174,20 @@ function renderOverview() {
   const types = Object.entries(overview.objectTypes || {})
     .map(function (entry) { return entry[0] + ": " + entry[1]; })
     .join(" · ");
-  elements.overview.innerHTML = [
+  elements.overview.replaceChildren(
     statCard("Cursor", formatNumber(overview.cursor), "Latest canonical change"),
     statCard("Objects", formatNumber(overview.objectCount), formatNumber(overview.deletedCount) + " tombstones"),
     statCard("Changes", formatNumber(overview.changeCount), formatNumber(overview.operationCount) + " operations"),
     statCard("Files", formatNumber(overview.fileCount), formatBytes(overview.fileBytes)),
     statCard("Backups", formatNumber(overview.backupCount), "Immutable snapshots"),
     statCard("Dataset epoch", shortId(overview.datasetEpoch), types || "No canonical objects")
-  ].join("");
+  );
 }
 
 function updateObjectTypes() {
   const current = elements.objectType.value;
-  const types = Object.keys((state.overview && state.overview.objectTypes) || {}).sort();
+  const types = Object.keys((state.overview && state.overview.objectTypes) || {})
+    .sort(function (left, right) { return left.localeCompare(right); });
   elements.objectType.replaceChildren(option("", "All types"));
   for (const type of types) elements.objectType.append(option(type, type));
   elements.objectType.value = types.includes(current) ? current : "";
@@ -356,11 +357,21 @@ function toast(message) {
 }
 
 function statCard(label, value, detail) {
-  return '<article class="stat">' +
-    '<div class="stat__label">' + escapeHtml(label) + "</div>" +
-    '<div class="stat__value">' + escapeHtml(String(value)) + "</div>" +
-    '<div class="stat__detail">' + escapeHtml(detail) + "</div>" +
-  "</article>";
+  const article = document.createElement("article");
+  article.className = "stat";
+  article.append(
+    statText("stat__label", label),
+    statText("stat__value", String(value)),
+    statText("stat__detail", detail)
+  );
+  return article;
+}
+
+function statText(className, value) {
+  const element = document.createElement("div");
+  element.className = className;
+  element.textContent = value;
+  return element;
 }
 
 function table(headers, rows, emptyMessage) {

@@ -244,7 +244,7 @@ function nextActionsCollectionKey(
   currentEnergy: number | null,
   orderBy: NextActionOrder
 ): string {
-  const contexts = [...contextIds].sort().join(",");
+  const contexts = [...contextIds].sort((left, right) => left.localeCompare(right)).join(",");
   return `next-actions:${orderBy}:${currentEnergy ?? "any"}:${currentTimeMinutes ?? "any"}:${contexts}`;
 }
 

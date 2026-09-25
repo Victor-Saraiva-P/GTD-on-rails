@@ -13,7 +13,7 @@ production_port="${GTD_SYNC_SERVER_PORT:-9475}"
 read_env_value() {
   local key="$1"
   local file="$2"
-  [ -f "$file" ] || return 1
+  [[ -f "$file" ]] || return 1
   awk -F= -v key="$key" '$1 == key {sub(/^[^=]*=/, ""); print; exit}' "$file"
 }
 
@@ -22,7 +22,7 @@ set_env_value() {
   local value="$2"
   local tmp_file
   tmp_file="${env_file}.tmp"
-  if [ -f "$env_file" ]; then
+  if [[ -f "$env_file" ]]; then
     awk -F= -v key="$key" -v value="$value" '
       BEGIN { replaced = 0 }
       $1 == key { print key "=" value; replaced = 1; next }
@@ -35,7 +35,7 @@ set_env_value() {
   mv "$tmp_file" "$env_file"
 }
 
-test -x "$source_dir/runtime/bin/gtd-client-runtime" || {
+[[ -x "$source_dir/runtime/bin/gtd-client-runtime" ]] || {
   echo "$source_dir/runtime/bin/gtd-client-runtime is invalid; expected bundled client runtime"
   exit 1
 }
@@ -46,7 +46,7 @@ command -v tailscale >/dev/null 2>&1 || {
 }
 
 tailscale_ip="$(tailscale ip -4 2>/dev/null | head -n 1)"
-[ -n "$tailscale_ip" ] || {
+[[ -n "$tailscale_ip" ]] || {
   echo "Tailscale IPv4 address is unavailable; expected this machine to be connected to the tailnet"
   exit 1
 }
@@ -70,11 +70,11 @@ ln -sf "$install_dir/gtd-client" "$bin_dir/gtd-client"
 
 existing_token="$(read_env_value GTD_SYNC_SERVER_AUTH_TOKEN "$env_file" || true)"
 auth_token="${GTD_SYNC_SERVER_AUTH_TOKEN:-$existing_token}"
-if [ -z "$auth_token" ]; then
+if [[ -z "$auth_token" ]]; then
   auth_token="$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')"
 fi
 
-[ -f "$env_file" ] || printf '%s\n' '# GTD on Rails production sync client configuration.' > "$env_file"
+[[ -f "$env_file" ]] || printf '%s\n' '# GTD on Rails production sync client configuration.' > "$env_file"
 set_env_value GTD_SYNC_SERVER_AUTH_TOKEN "$auth_token"
 set_env_value GTD_SYNC_SERVER_BIND_ADDRESS "$bind_address"
 set_env_value GTD_SYNC_SERVER_PORT "$production_port"

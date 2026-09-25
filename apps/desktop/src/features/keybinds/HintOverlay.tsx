@@ -94,11 +94,11 @@ function HintBadgeItem({ hint, buffer }: Readonly<{ hint: PositionedHint; buffer
 function useHintTargetAttributes(hints: PositionedHint[]) {
   useEffect(() => {
     for (const hint of hints) {
-      hint.element.setAttribute("data-hint-label", hint.label);
+      hint.element.dataset.hintLabel = hint.label;
     }
     return () => {
       for (const hint of hints) {
-        hint.element.removeAttribute("data-hint-label");
+        delete hint.element.dataset.hintLabel;
       }
     };
   }, [hints]);

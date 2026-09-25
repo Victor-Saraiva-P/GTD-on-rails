@@ -13,7 +13,7 @@ production_base_url="${GTD_SYNC_SERVER_BASE_URL:-http://pc-omarchy.tail010544.ts
 read_env_value() {
   local key="$1"
   local file="$2"
-  [ -f "$file" ] || return 1
+  [[ -f "$file" ]] || return 1
   awk -F= -v key="$key" '$1 == key {sub(/^[^=]*=/, ""); print; exit}' "$file"
 }
 
@@ -22,7 +22,7 @@ set_env_value() {
   local value="$2"
   local tmp_file
   tmp_file="${env_file}.tmp"
-  if [ -f "$env_file" ]; then
+  if [[ -f "$env_file" ]]; then
     awk -F= -v key="$key" -v value="$value" '
       BEGIN { replaced = 0 }
       $1 == key { print key "=" value; replaced = 1; next }
@@ -50,16 +50,16 @@ client_env_file="${XDG_CONFIG_HOME:-$HOME/.config}/gtd-on-rails-client.env"
 client_token="$(read_env_value GTD_SYNC_SERVER_AUTH_TOKEN "$client_env_file" || true)"
 auth_token="${GTD_SYNC_SERVER_AUTH_TOKEN:-${existing_token:-$client_token}}"
 
-if [ -z "$auth_token" ] && [ -t 0 ]; then
+if [[ -z "$auth_token" && -t 0 ]]; then
   read -r -s -p "GTD Sync Server bearer token: " auth_token
   printf '\n'
 fi
-[ -n "$auth_token" ] || {
+[[ -n "$auth_token" ]] || {
   echo "GTD_SYNC_SERVER_AUTH_TOKEN is missing; pass it in the environment or install the production client first on this machine"
   exit 1
 }
 
-[ -f "$env_file" ] || printf '%s\n' '# GTD on Rails production desktop configuration.' > "$env_file"
+[[ -f "$env_file" ]] || printf '%s\n' '# GTD on Rails production desktop configuration.' > "$env_file"
 set_env_value GTD_SYNC_SERVER_BASE_URL "$production_base_url"
 set_env_value GTD_SYNC_SERVER_AUTH_TOKEN "$auth_token"
 chmod 600 "$env_file"
