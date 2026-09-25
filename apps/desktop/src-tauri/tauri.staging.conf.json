@@ -1,0 +1,13 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "GTD on Rails Staging",
+  "identifier": "com.gtdonrails.desktop.staging",
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "GTD on Rails [STAGING]"
+      }
+    ]
+  }
+}

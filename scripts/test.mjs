@@ -1,17 +1,47 @@
 import { spawnSync } from "node:child_process";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { buildTestPlan } from "./test-plan.mjs";
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const pnpm = process.env.GTD_PNPM_EXECUTABLE ?? "pnpm";
+export function parseTestArguments(argumentsList) {
+  const options = {};
+  for (const argument of argumentsList) assignArgument(options, argument);
+  return options;
+}
 
-function run(args) {
-  const result = spawnSync(pnpm, args, { cwd: root, env: process.env, stdio: "inherit" });
-  if (result.status !== 0) {
-    throw new Error(`${pnpm} ${args.join(" ")} failed with status ${result.status}`);
+export function executeTestPlan(plan, run = spawnSync) {
+  for (const step of plan) {
+    const result = run(step.executable, step.args, {
+      cwd: step.cwd,
+      env: process.env,
+      stdio: "inherit"
+    });
+    if (result.status !== 0) throw commandFailure(step, result.status);
   }
 }
 
-run(["run", "unitTest"]);
-run(["run", "integrationTest"]);
-run(["run", "e2e"]);
+function assignArgument(options, argument) {
+  const separator = argument.indexOf("=");
+  if (!argument.startsWith("--") || separator < 3) {
+    throw new Error(`test argument '${argument}' is invalid; expected --name=value`);
+  }
+  options[argument.slice(2, separator)] = argument.slice(separator + 1);
+}
+
+function commandFailure(step, status) {
+  return new Error(
+    `${step.executable} ${step.args.join(" ")} failed with status ${status ?? "unknown"}`
+  );
+}
+
+function main() {
+  const options = parseTestArguments(process.argv.slice(2));
+  executeTestPlan(buildTestPlan(options));
+}
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+  try {
+    main();
+  } catch (error) {
+    console.error(error.message);
+    process.exit(1);
+  }
+}

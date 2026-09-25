@@ -21,6 +21,7 @@ previous_dir="$HOME/.local/share/gtd-on-rails.previous"
 while kill -0 "$current_pid" >/dev/null 2>&1; do sleep 0.2; done
 test -x "$next_dir/gtd-on-rails"
 test -x "$next_dir/gtd-api"
+test -x "$next_dir/gtd-on-rails-launcher"
 test -f "$next_dir/binaries/gtd-api.jar"
 rm -rf "$previous_dir"
 if [ -d "$install_dir" ]; then cp -a "$install_dir" "$previous_dir"; fi
@@ -33,9 +34,11 @@ cp "$next_dir/icon.png" "$install_dir/icon.png.tmp"
 mv "$install_dir/icon.png.tmp" "$install_dir/icon.png"
 cp "$next_dir/gtd-on-rails" "$install_dir/gtd-on-rails.tmp"
 mv "$install_dir/gtd-on-rails.tmp" "$install_dir/gtd-on-rails"
-chmod +x "$install_dir/gtd-on-rails" "$install_dir/gtd-api"
-ln -sf "$install_dir/gtd-on-rails" "$HOME/.local/bin/gtd-on-rails"
-printf '%s\n' '[Desktop Entry]' 'Type=Application' 'Name=GTD on Rails' "Exec=$install_dir/gtd-on-rails" "Icon=$install_dir/icon.png" 'Terminal=false' 'Categories=Utility;' > "$HOME/.local/share/applications/gtd-on-rails.desktop"
+cp "$next_dir/gtd-on-rails-launcher" "$install_dir/gtd-on-rails-launcher.tmp"
+mv "$install_dir/gtd-on-rails-launcher.tmp" "$install_dir/gtd-on-rails-launcher"
+chmod +x "$install_dir/gtd-on-rails" "$install_dir/gtd-api" "$install_dir/gtd-on-rails-launcher"
+ln -sf "$install_dir/gtd-on-rails-launcher" "$HOME/.local/bin/gtd-on-rails"
+printf '%s\n' '[Desktop Entry]' 'Type=Application' 'Name=GTD on Rails' "Exec=$HOME/.local/bin/gtd-on-rails" "Icon=$install_dir/icon.png" 'Terminal=false' 'Categories=Utility;' > "$HOME/.local/share/applications/gtd-on-rails.desktop"
 command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$HOME/.local/share/applications" || true
 rm -rf "$next_dir"
 nohup "$HOME/.local/bin/gtd-on-rails" >/dev/null 2>&1 &
@@ -115,6 +118,7 @@ fn restore_previous_installation(
 fn native_installation_is_valid(path: &std::path::Path) -> bool {
     path.join("gtd-on-rails").is_file()
         && path.join("gtd-api").is_file()
+        && path.join("gtd-on-rails-launcher").is_file()
         && path.join("binaries/gtd-api.jar").is_file()
 }
 
@@ -241,15 +245,21 @@ fn stage_core_files(package_dir: &Path, next_dir: &Path) -> Result<(), String> {
         &next_dir.join("binaries/gtd-api.jar"),
     )?;
     copy_update_file(&package_dir.join("icon.png"), &next_dir.join("icon.png"))?;
+    copy_update_file(
+        &package_dir.join("gtd-on-rails-launcher"),
+        &next_dir.join("gtd-on-rails-launcher"),
+    )?;
     make_executable(&next_dir.join("gtd-on-rails"))?;
-    make_executable(&next_dir.join("gtd-api"))
+    make_executable(&next_dir.join("gtd-api"))?;
+    make_executable(&next_dir.join("gtd-on-rails-launcher"))
 }
 
 fn validate_package_dir(package_dir: &Path) -> Result<(), String> {
     require_file(&package_dir.join("gtd-on-rails"))?;
     require_file(&package_dir.join("gtd-api"))?;
     require_file(&package_dir.join("binaries/gtd-api.jar"))?;
-    require_file(&package_dir.join("icon.png"))
+    require_file(&package_dir.join("icon.png"))?;
+    require_file(&package_dir.join("gtd-on-rails-launcher"))
 }
 
 fn require_file(path: &Path) -> Result<(), String> {

@@ -99,39 +99,55 @@ rclone File Sync
 
 - Desktop: Tauri 2, React 19, TypeScript, Vite, Rust
 - Backend: Spring Boot 4, Java 21, Gradle
-- Persistence: PostgreSQL, Flyway, Spring Data JPA, Hibernate
-- Sync and integrations: `rclone`, Google Drive, Google Calendar API
-- Tooling: pnpm, Turbo, Playwright
+- Persistence: local SQLite, Flyway, Spring Data JPA, Hibernate
+- Sync and integrations: revisioned personal sync server, `rclone` backup publication, Google Calendar API
+- Tooling: Make, pnpm, Turbo, Playwright
 
 ## Run Locally
 
 ```bash
 pnpm install
-pnpm dev
-pnpm test
-pnpm build:prod
+
+# terminal 1
+make gtd
+
+# terminal 2
+make client
 ```
+
+Development is the default environment. Use positional arguments when another environment or test selection is needed:
+
+```bash
+make gtd staging
+make client staging
+make test unit desktop itemBodyPersistence
+make integration api ProjectControllerTests
+make check desktop
+```
+
+Run `make help` for the complete command surface.
 
 Useful root commands:
 
-- `pnpm dev`: runs the desktop and API development workflows through Turbo.
-- `pnpm dev:reset`: verifies the local `DEVELOPMENT` database identity, recreates development PostgreSQL and assets, then starts development.
-- `pnpm test`: runs unit, integration, and e2e tests.
-- `pnpm check`: validates TypeScript and API checks.
-- `pnpm cutover`: runs the one-time legacy SQLite to PostgreSQL cutover command.
+- `make gtd [dev|staging]`: runs the desktop and local API.
+- `make client [dev|staging]`: runs the personal sync process separately.
+- `make client-package`: builds the standalone versioned Linux client archive.
+- `make client-install`: installs the current client build as a `systemd --user` service with autonomous updates.
+- `make test [type] [scope] [test]`: runs all tests or a positional selection.
+- `make unit [scope] [test]`, `make integration [scope] [test]`, and `make e2e [scope] [test]`: shorter test forms.
+- `make check [scope]`: validates project checks.
+- `make lint`: runs project lint tasks.
 - `pnpm build:prod`: creates the production Tauri build with the backend sidecar.
-- `pnpm build:staging`: creates the staging build using development data defaults.
-- `pnpm staging`: builds and launches the staging release binary.
-- `pnpm staging:reset`: replaces staging with the deterministic fake dataset and opens it after File Sync completes.
+- `pnpm build:staging`: creates the staging build.
 
 Tauri builds generate the binary at `apps/desktop/src-tauri/target/release/desktop`.
 
 ## Repository Structure
 
 - `apps/desktop`: Tauri 2 desktop shell with React, Vite, TypeScript, and Rust native commands.
-- `apps/api`: Spring Boot backend with Gradle, PostgreSQL persistence, sync services, and integrations.
+- `apps/api`: Spring Boot backend with Gradle, local SQLite persistence, sync services, and integrations.
+- `apps/sync-server`: personal revisioned synchronization server/client, administration dashboard, standalone packaging and self-update runtime.
 - `docs/`: project knowledge base covering GTD rules, architecture, sync, and execution guides.
-- `infra/`: optional local infrastructure for development experiments.
 - `packages/`: reserved workspace for future shared packages.
 
 ## Documentation

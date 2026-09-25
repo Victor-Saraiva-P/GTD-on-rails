@@ -40,6 +40,7 @@ apps/api/.gtd-assets-sync/
 .obsidian/workspace.json
 .obsidian/workspace-mobile.json
 dev-gtd-sync-server/
+staging-gtd-sync-server/
 
 # Sync server generated IDE/build artifacts
 apps/sync-server/bin/
