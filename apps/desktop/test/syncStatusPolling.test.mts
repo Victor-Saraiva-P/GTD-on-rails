@@ -15,6 +15,7 @@ function syncStatus(fileState: SyncStatus["file"]["state"]): SyncStatus {
       state: fileState,
       pending: false,
       running: false,
+      pendingCount: 0,
       lastStartedAt: null,
       lastFinishedAt: null,
       lastSuccessfulSyncAt: null,
@@ -24,6 +25,7 @@ function syncStatus(fileState: SyncStatus["file"]["state"]): SyncStatus {
       state: "SYNCED",
       pending: false,
       running: false,
+      pendingCount: 0,
       lastStartedAt: null,
       lastFinishedAt: null,
       lastSuccessfulSyncAt: null,
@@ -34,6 +36,7 @@ function syncStatus(fileState: SyncStatus["file"]["state"]): SyncStatus {
       pending: false,
       running: false,
       pendingCount: 0,
+      conflictCount: 0,
       lastStartedAt: null,
       lastFinishedAt: null,
       lastSuccessfulSyncAt: null,
@@ -54,7 +57,23 @@ describe("sync status polling", () => {
     assert.equal(isSettledSyncStatus(status), false);
   });
 
-  test("shouldStopSyncStatusPolling keeps startup failures observable until deadline", () => {
+  test("failed sync with pending local work keeps polling", () => {
+    const failedStatus = syncStatus("FAILED");
+    failedStatus.file.pendingCount = 1;
+
+    assert.equal(isSettledSyncStatus(failedStatus), false);
+    assert.equal(shouldStopSyncStatusPolling(failedStatus, null, 2_000), false);
+  });
+
+  test("failed Google Calendar projection with pending work keeps polling", () => {
+    const failedStatus = syncStatus("SYNCED");
+    failedStatus.googleCalendar.state = "FAILED";
+    failedStatus.googleCalendar.pendingCount = 2;
+
+    assert.equal(isSettledSyncStatus(failedStatus), false);
+  });
+
+  test("shouldStopSyncStatusPolling keeps settled startup failures observable until deadline", () => {
     const failedStatus = syncStatus("FAILED");
 
     assert.equal(shouldStopSyncStatusPolling(failedStatus, 2_000, 1_500), false);

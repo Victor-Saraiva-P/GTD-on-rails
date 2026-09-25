@@ -16,6 +16,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.Getter;
+import org.hibernate.annotations.BatchSize;
 
 @Entity
 @Table(name = "contexts")
@@ -37,6 +38,7 @@ public class Context extends AuditableEntity {
     private Set<NextAction> nextActions = new HashSet<>();
 
     @OneToMany(mappedBy = "context", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    @BatchSize(size = 64)
     private Set<ContextIconAsset> iconAssets = new HashSet<>();
 
     public Context() {

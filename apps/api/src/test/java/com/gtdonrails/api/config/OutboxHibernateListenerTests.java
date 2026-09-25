@@ -2,6 +2,7 @@ package com.gtdonrails.api.config;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -12,6 +13,7 @@ import java.util.UUID;
 import com.gtdonrails.api.entities.Item;
 import com.gtdonrails.api.entities.SyncOutboxEvent;
 import com.gtdonrails.api.entities.SyncOutboxOperation;
+import com.gtdonrails.api.services.AfterCommitExecutor;
 import com.gtdonrails.api.services.DatabaseSyncService;
 import com.gtdonrails.api.types.Title;
 import org.hibernate.event.spi.PostDeleteEvent;
@@ -23,6 +25,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @ExtendWith(MockitoExtension.class)
 class OutboxHibernateListenerTests {
@@ -42,7 +46,7 @@ class OutboxHibernateListenerTests {
 
     @BeforeEach
     void setUp() {
-        listener = new OutboxHibernateListener(jdbcTemplate, databaseSyncService);
+        listener = new OutboxHibernateListener(jdbcTemplate, databaseSyncService, new AfterCommitExecutor());
     }
 
     @Test
@@ -59,6 +63,7 @@ class OutboxHibernateListenerTests {
 
         verify(jdbcTemplate).update(
             contains("insert into sync_outbox"),
+            anyString(),
             eq("items"),
             eq(itemId.toString()),
             eq("INSERT"),
@@ -81,6 +86,7 @@ class OutboxHibernateListenerTests {
 
         verify(jdbcTemplate).update(
             contains("insert into sync_outbox"),
+            anyString(),
             eq("items"),
             eq(itemId.toString()),
             eq("DELETE"),
@@ -90,13 +96,39 @@ class OutboxHibernateListenerTests {
     }
 
     @Test
+    void defersSyncNotificationUntilTransactionCommit() throws Exception {
+        Item item = new Item(new Title("Delete later"), null);
+        UUID itemId = UUID.randomUUID();
+        setEntityId(item, itemId);
+
+        when(postDeleteEvent.getEntity()).thenReturn(item);
+        when(postDeleteEvent.getPersister()).thenReturn(persister);
+        when(persister.getRootTableName()).thenReturn("items");
+
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            listener.onPostDelete(postDeleteEvent);
+
+            verify(databaseSyncService, never()).notifyNewEvents();
+
+            for (TransactionSynchronization synchronization : TransactionSynchronizationManager.getSynchronizations()) {
+                synchronization.afterCommit();
+            }
+
+            verify(databaseSyncService).notifyNewEvents();
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
+
+    @Test
     void skipsExcludedEntitiesLikeSyncOutboxEvent() {
         SyncOutboxEvent event = new SyncOutboxEvent("items", "id-1", SyncOutboxOperation.INSERT, "{}");
         when(postInsertEvent.getEntity()).thenReturn(event);
 
         listener.onPostInsert(postInsertEvent);
 
-        verify(jdbcTemplate, never()).update(any(), any(), any(), any(), any());
+        verify(jdbcTemplate, never()).update(anyString(), any(Object[].class));
         verify(databaseSyncService, never()).notifyNewEvents();
     }
 

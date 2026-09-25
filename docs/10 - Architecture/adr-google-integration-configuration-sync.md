@@ -2,28 +2,36 @@
 
 ## Status
 
-Superseded by [Use rclone data sync instead of Git persistence sync](../adr/0001-use-rclone-data-sync-instead-of-git-persistence-sync.md).
+Superseded by the local-first personal sync-server architecture described in [[synchronization]].
 
-## Context
+## Historical context
 
-Google Calendar OAuth tokens are encrypted at rest with a Token Encryption Key. The app runs on two trusted local installations that share persistence through the private Git-backed data repository.
+This ADR described the former multi-installation model in which Google OAuth configuration and tokens lived with desktop persistence and had to be synchronized between installations.
 
-The Token Encryption Key must be stable across both installations so each backend can decrypt the same synced OAuth token rows. Launching the desktop app from a `.desktop` entry does not reliably provide shell environment variables, so the key cannot depend on `GTD_GOOGLE_TOKEN_ENCRYPTION_KEY`.
+That model is no longer authoritative.
 
-## Decision
+## Current decision
 
-`config/google.properties` is the single source of truth for Google Integration Configuration, including Google OAuth client credentials and the generated Token Encryption Key.
+Google Calendar is a server-side projection owned exclusively by `apps/sync-server`.
 
-Google Integration Configuration changes use blocking persistence sync. A credentials save or legacy Token Encryption Key repair is treated as successful only after the backend writes `google.properties` and the persistence sync service completes commit, pull, and push.
+The sync client owns:
 
-Normal GTD item persistence remains asynchronous.
+- Google OAuth client credentials;
+- OAuth access and refresh tokens;
+- GTD-managed Google Calendar identifiers;
+- the durable `google_calendar_outbox`;
+- all calls to the Google Calendar API.
+
+Desktop sidecars do not write to Google Calendar. They persist GTD state locally and synchronize ordinary canonical mutations. Relevant canonical mutations enqueue Google projection work atomically in `canonical.db`.
+
+The desktop-facing `/integrations/google-calendar/**` routes remain as a compatibility facade and proxy integration operations to the sync client.
 
 ## Consequences
 
-Google Calendar setup can block or fail with a sync-specific message when the private persistence repository cannot be safely synced.
+Multiple desktops can edit independently without becoming multiple Google Calendar writers.
 
-The UI keeps OAuth connection disabled until Configuration Status is `READY`, preventing one installation from connecting Google Calendar while the other cannot read the matching local integration state.
+Google Calendar availability does not block GTD persistence. Projection failures remain pending in the client outbox and are retried later.
 
-If a Google Integration Configuration save cannot sync, the backend rolls the local file back to its previous contents and attempts to sync the rollback without rewriting Git history.
+OAuth configuration no longer has to be replicated across desktop datasets. The sync client is the single integration authority.
 
-This does not protect against full compromise of the synced persistence repository. It protects against casual plaintext OAuth token exposure while preserving reliable two-machine operation.
+The OAuth callback must resolve to the sync client. When it is exposed through Tailscale or another non-loopback address, configure `GTD_SYNC_SERVER_PUBLIC_BASE_URL`.

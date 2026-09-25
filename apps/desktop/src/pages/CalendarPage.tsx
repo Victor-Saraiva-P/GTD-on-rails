@@ -157,15 +157,15 @@ function CalendarDetailReady({ controller }: CalendarControllerProps) {
       editing={controller.editingBodyId === item.id}
       onAutosaveEditing={(body) => controller.autosaveBody(body)}
       onCommitEditing={(body) => controller.commitBody(body)}
-      onExitEditingFromNormalMode={(body) => exitCalendarBodyEditing(controller, body)}
+      onExitEditingFromNormalMode={() => exitCalendarBodyEditing(controller)}
       onCancelEditing={controller.cancelBodyEdit}
       onVimModeChange={controller.setVimMode}
     />
   );
 }
 
-async function exitCalendarBodyEditing(controller: CalendarWorkspaceController, body: ItemBody): Promise<void> {
-  await controller.commitBody(body);
+async function exitCalendarBodyEditing(controller: CalendarWorkspaceController): Promise<void> {
+  controller.cancelBodyEdit();
   controller.setActiveZone(activePanelZone(controller.activePanel));
 }
 

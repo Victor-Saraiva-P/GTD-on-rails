@@ -85,7 +85,7 @@ class InboxServiceTests {
 
         when(itemRepository.findAllByStatusAndDeletedAtIsNullOrderByCreatedAtAsc(ItemStatus.STUFF))
             .thenReturn(List.of(stuff));
-        when(stuffMapper.toResponse(stuff)).thenReturn(expectedResponse);
+        when(stuffMapper.toListResponse(stuff)).thenReturn(expectedResponse);
 
         List<StuffResponseDto> response = inboxService.listStuff();
 
@@ -99,7 +99,7 @@ class InboxServiceTests {
 
         when(itemRepository.findAllByStatusAndDeletedAtIsNotNullOrderByUpdatedAtDesc(ItemStatus.STUFF))
             .thenReturn(List.of(stuff));
-        when(stuffMapper.toResponse(stuff)).thenReturn(expectedResponse);
+        when(stuffMapper.toListResponse(stuff)).thenReturn(expectedResponse);
 
         List<StuffResponseDto> response = inboxService.listDeletedStuff();
 

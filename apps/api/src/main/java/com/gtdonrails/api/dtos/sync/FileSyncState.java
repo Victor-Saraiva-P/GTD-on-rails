@@ -6,5 +6,7 @@ public enum FileSyncState {
     SYNCED,
     PENDING,
     SYNCING,
-    FAILED
+    FAILED,
+    CONFLICT,
+    REBOOTSTRAP_REQUIRED
 }

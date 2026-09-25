@@ -148,11 +148,11 @@ function ProjectActionBody({ controller }: ProjectDetailPageProps) {
 function ProjectItemDetailBody({ controller }: ProjectDetailPageProps) {
   const item = controller.selectedItem;
   if (!item) return <p className="pane-state">Select a project item to inspect its details.</p>;
-  return <InboxStuffDetails item={item} showCreatedMeta={item.kind === "STUFF" || item.kind === "SOMEDAY_MAYBE"} metaVariant={metaVariant(item)} editing={controller.editingBodyId === item.id} onAutosaveEditing={controller.autosaveBody} onCommitEditing={controller.commitBody} onExitEditingFromNormalMode={(body) => exitProjectItemDetail(controller, body)} onCancelEditing={controller.cancelBodyEdit} onVimModeChange={controller.setVimMode} />;
+  return <InboxStuffDetails item={item} showCreatedMeta={item.kind === "STUFF" || item.kind === "SOMEDAY_MAYBE"} metaVariant={metaVariant(item)} editing={controller.editingBodyId === item.id} onAutosaveEditing={controller.autosaveBody} onCommitEditing={controller.commitBody} onExitEditingFromNormalMode={() => exitProjectItemDetail(controller)} onCancelEditing={controller.cancelBodyEdit} onVimModeChange={controller.setVimMode} />;
 }
 
-async function exitProjectItemDetail(controller: ProjectDetailController, body: ItemBody): Promise<void> {
-  await controller.commitBody(body);
+async function exitProjectItemDetail(controller: ProjectDetailController): Promise<void> {
+  controller.cancelBodyEdit();
   controller.setActiveZone("project-actions-list");
 }
 

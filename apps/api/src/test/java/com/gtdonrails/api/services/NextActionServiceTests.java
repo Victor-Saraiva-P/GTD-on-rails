@@ -20,7 +20,6 @@ import com.gtdonrails.api.enums.NextActionStatus;
 import com.gtdonrails.api.exceptions.item.ItemNotFoundException;
 import com.gtdonrails.api.mappers.ContextMapper;
 import com.gtdonrails.api.mappers.NextActionMapper;
-import com.gtdonrails.api.repositories.ContextIconAssetRepository;
 import com.gtdonrails.api.repositories.ContextRepository;
 import com.gtdonrails.api.repositories.NextActionRepository;
 import com.gtdonrails.api.services.AssetStorageService;
@@ -56,9 +55,6 @@ class NextActionServiceTests {
     private AssetStorageService assetStorageService;
 
     @Mock
-    private ContextIconAssetRepository contextIconAssetRepository;
-
-    @Mock
     private GoogleCalendarEventQueueService googleCalendarEventQueueService;
 
     @Mock
@@ -76,7 +72,7 @@ class NextActionServiceTests {
 
     @BeforeEach
     void setUp() {
-        nextActionMapper = new NextActionMapper(new ContextMapper(assetStorageService, contextIconAssetRepository));
+        nextActionMapper = new NextActionMapper(new ContextMapper(assetStorageService));
         clock = Clock.fixed(Instant.parse("2024-01-01T10:00:00Z"), ZoneId.of("UTC"));
         nextActionService = new NextActionService(
             nextActionRepository,

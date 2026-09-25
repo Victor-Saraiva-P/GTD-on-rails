@@ -13,11 +13,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 /**
  * Configures the primary SQLite DataSource and JdbcTemplate used by JPA, Hibernate, and Flyway.
  *
- * <p>WHY: Spring Boot's DataSourceAutoConfiguration and JdbcTemplateAutoConfiguration
- * back off when secondary DataSource/JdbcTemplate beans (supabaseDataSource,
- * supabaseJdbcTemplate) are declared. Explicitly defining these primary beans
- * ensures JPA, Flyway, and all unqualified JdbcTemplate injections bind to
- * the local SQLite database.</p>
+ * <p>The application has one runtime database: local SQLite. This explicit
+ * configuration applies WAL, busy timeout, and single-writer pool settings.</p>
  *
  * <p>Example: {@code @Autowired JdbcTemplate jdbcTemplate} injects SQLite.</p>
  */
@@ -29,7 +26,7 @@ public class PrimaryDataSourceConfig {
     public DataSource dataSource(
         @Value("${spring.datasource.url}") String url,
         @Value("${spring.datasource.driver-class-name:org.sqlite.JDBC}") String driverClass,
-        @Value("${spring.datasource.hikari.maximum-pool-size:1}") int maxPoolSize,
+        @Value("${spring.datasource.hikari.maximum-pool-size:4}") int maxPoolSize,
         @Value("${spring.datasource.hikari.minimum-idle:1}") int minIdle
     ) {
         org.sqlite.SQLiteConfig sqliteConfig = new org.sqlite.SQLiteConfig();
@@ -47,9 +44,7 @@ public class PrimaryDataSourceConfig {
         return new com.zaxxer.hikari.HikariDataSource(config);
     }
 
-    /** WHY: JdbcTemplateAutoConfiguration backs off when supabaseJdbcTemplate exists.
-     * Without this bean, unqualified JdbcTemplate injection resolves to supabaseJdbcTemplate
-     * (PostgreSQL), breaking DatabaseReadinessService and schema compatibility checks. */
+    /** Provides the canonical JdbcTemplate backed by local SQLite. */
     @Bean
     @Primary
     public JdbcTemplate jdbcTemplate(@Qualifier("dataSource") DataSource dataSource) {

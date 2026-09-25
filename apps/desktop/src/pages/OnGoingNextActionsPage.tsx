@@ -229,8 +229,8 @@ function OnGoingDetailBody({ controller }: Readonly<{ controller: OnGoingWorkspa
       editing={controller.editingBodyId === selection.item.id}
       onAutosaveEditing={(body) => controller.autosaveBody(body)}
       onCommitEditing={(body) => controller.commitBody(body)}
-      onExitEditingFromNormalMode={async (body) => {
-        await controller.commitBody(body);
+      onExitEditingFromNormalMode={async () => {
+        controller.cancelBodyEdit();
         controller.setActiveZone("next-actions-list");
       }}
       onCancelEditing={controller.cancelBodyEdit}

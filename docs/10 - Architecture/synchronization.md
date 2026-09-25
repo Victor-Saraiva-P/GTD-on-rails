@@ -1,200 +1,155 @@
 # Synchronization
 
-This document describes the current GTD on Rails synchronization model for PostgreSQL-backed structured data, Google integration configuration, and file assets.
+GTD on Rails is local-first. Every desktop edits its own SQLite database and filesystem immediately; synchronization with the personal sync server happens asynchronously.
 
-The application is built for one owner using two trusted Arch Linux desktop machines. The expected operating discipline is simple: let one device finish syncing before editing the same persistence state on the other device. The app does not implement multi-user merge resolution or concurrent divergent-edit reconciliation.
+## Data ownership
 
-The infrastructure that hosts these sync processes is described in [Infrastructure](infrastructure.md). The decision to replace Git persistence sync with rclone data sync is recorded in [ADR 0001](../adr/0001-use-rclone-data-sync-instead-of-git-persistence-sync.md).
+Local runtime:
 
----
+- `gtd.db`: structured GTD metadata.
+- `items/<item-uuid>/body.md`: canonical item body.
+- `items/<item-uuid>/assets/<asset-uuid>/<filename>`: item assets.
+- context icon assets remain physical files under the data root.
+- `sync_outbox`: structured metadata mutations waiting to be pushed.
+- `sync_file_outbox`: Markdown and binary file mutations waiting to be pushed.
 
-## 1. Sync Boundaries
+The sync server is the convergence authority across devices. It stores:
 
-The system has three synchronization channels.
+- `canonical.db`: object revisions, ordered change feed, operation idempotency and dataset epoch.
+- a physical file tree containing canonical Markdown and binary assets.
+- `google_calendar_outbox`: durable external-projection work derived atomically from canonical GTD mutations.
+- Google Calendar mirror identifiers for the five GTD-managed calendars.
 
-- Database Sync pushes local SQLite mutations to the remote Supabase PostgreSQL database using a Transactional Outbox pattern.
-- File Sync uses `rclone bisync` to move file-backed state under the trusted data root between machines and Google Drive.
-- Google Calendar sync mirrors GTD items to external agendas after local domain changes.
+Clients never copy a live SQLite database between machines.
 
-The backend owns all three channels. The frontend observes status and renders visual indicators in the workspace footer.
+## Protocol
 
----
+Every sync object has:
 
-## 2. Data Root
+- `objectType`
+- `objectId`
+- monotonically increasing `revision`
+- optional SHA-256, byte length and media type
+- tombstone state for deletes
 
-File-backed state, integration configuration, assets, and the dataset marker live under:
+Every mutation carries:
 
-```text
-${gtd.data.root-directory}
-```
+- UUID `operationId`
+- `baseRevision`
+- `UPSERT` or `DELETE`
 
-Production defaults to:
+The server rejects a mutation when `baseRevision` is stale. Replaying the same `operationId` is idempotent.
 
-```text
-~/Documents/gtd-on-rails
-```
+Pull uses an ordered cursor over the server change feed.
 
-Development and staging default to:
+## Offline behavior
 
-```text
-~/Documents/dev-gtd-on-rails
-```
+Local mutations never depend on sync-server reachability. Structured changes and file changes are committed locally first and remain in `sync_outbox` or `sync_file_outbox` until synchronization succeeds.
 
-The data root contains:
+A transport or other non-conflict sync failure stops the current worker cycle instead of retrying in a hot loop. The outbox entry remains pending, and the scheduled worker retries it later. Retry counters are diagnostic only; ordinary server unavailability does not exhaust or discard a local mutation.
 
-```text
-google.properties
-database.properties
-assets/
-gtd-on-rails-sync-check
-```
+`CONFLICT` and `REBOOTSTRAP_REQUIRED` remain explicit attention states. They are not silently retried as ordinary offline failures.
 
-Asset files live under:
+## Google Calendar projection
 
-```text
-${gtd.data.root-directory}/assets
-```
+Google Calendar is owned by the sync server/client process, never by an individual desktop sidecar.
 
-Google Integration Configuration lives at:
+The local application commits GTD state to SQLite and its normal sync outbox. When a relevant `items`, `next_actions`, `calendars`, or `projects` mutation is accepted by the canonical sync server, the same SQLite transaction also upserts that item id into `google_calendar_outbox`.
 
-```text
-${gtd.data.root-directory}/google.properties
-```
+Only after canonical commit does the Google projection worker run. It reads canonical object snapshots, derives the required Google event, and updates the GTD-managed calendars. This makes the sync server the single Google Calendar writer even when several desktops are connected.
 
----
+Google OAuth client credentials and OAuth tokens are stored under the sync-server data root, not in desktop datasets. The desktop-facing integration endpoints remain on the local API as a compatibility facade, but they proxy configuration/status/reconcile requests to the sync server.
 
-## 3. File Sync Flow
+Projection failures do not roll back canonical GTD state. The outbox entry stays pending and is retried by the scheduled client worker. Process restarts therefore do not lose Google Calendar work.
 
-File Sync is exposed by `FileSyncService`.
+The default OAuth callback uses the sync server public base URL. Set `GTD_SYNC_SERVER_PUBLIC_BASE_URL` when the client is reached through Tailscale or another non-loopback address.
 
-Startup behavior:
+## Markdown conflicts
 
-- The backend creates the data root directory when needed.
-- If rclone File Sync is enabled, startup runs blocking File Sync before PostgreSQL opens.
-- If `gtd-on-rails-sync-check` is missing, startup runs bootstrap sync from remote to local.
-- After successful startup sync, the backend validates Database Connection Configuration and connects to the configured PostgreSQL environment.
+For `body_document`, the client retains the last synchronized base outside the user dataset.
 
-Runtime behavior:
+When local and remote diverge:
 
-- File-backed mutations (such as item assets, context icons, backups, and configuration saves) request File Sync after commit. Structured-only domain changes are persisted directly to PostgreSQL and do not trigger File Sync.
-- Google Integration Configuration saves write `google.properties` locally and request asynchronous File Sync.
-- Scheduled File Sync runs every `gtd.sync.interval-ms`.
-- Manual File Sync enqueues work through `POST /sync/files`.
-- File Sync runs in a single-thread executor and coalesces pending requests while one sync is already running.
+1. base, local and remote are compared.
+2. Independent line edits are merged automatically.
+3. Overlapping edits become an explicit conflict.
+4. The desktop recovery panel allows **Use local**, **Use remote**, or **Use merged**.
 
----
+Binary conflicts are never merged automatically. The user chooses local or remote.
 
-## 4. Sync Check Marker
+Conflict snapshots are stored under the private sync state directory, not inside the synchronized dataset.
 
-The marker path is:
+## Dataset epoch
 
-```text
-${gtd.data.root-directory}/gtd-on-rails-sync-check
-```
+The server exposes a stable `datasetEpoch`.
 
-When the marker exists, the backend runs incremental bisync:
+A server restore always creates a new epoch. Before any push, clients compare their stored epoch with the server epoch. A mismatch moves sync into `REBOOTSTRAP_REQUIRED` and blocks further pushes.
 
-```text
-rclone bisync <remote> <data-root> --check-access --check-filename gtd-on-rails-sync-check
-```
+Rebootstrap:
 
-When the marker is missing, the backend treats the remote as the source and runs:
+1. creates a local recovery ZIP;
+2. uses SQLite `VACUUM INTO` for a consistent database copy;
+3. archives physical bodies/assets;
+4. clears only synchronized local domain state;
+5. initializes the new epoch and cursor 0;
+6. pulls the canonical server dataset again.
 
-```text
-rclone bisync <remote> <data-root> --resync
-```
+## Backups
 
-If the marker is still missing after a successful bootstrap, the backend creates it locally and runs one bisync without `--check-access` to publish the marker.
+The sync server creates immutable ZIP snapshots containing:
 
-First publication or migration of local file-backed state to the remote is manual. The automatic bootstrap path always treats the remote as source.
+- `canonical.db`
+- `manifest.json`
+- the complete server file tree
 
----
+Snapshot creation is serialized with file mutations. SQLite WAL is checkpointed before copying the database.
 
-## 5. Configuration
-
-Current rclone remotes are profile-specific:
-
-- `prod`: `gdrive:gtd-on-rails`
-- `dev`: `gdrive:dev-gtd-on-rails`
-- `staging`: `gdrive:dev-gtd-on-rails`
-
-Current File Sync defaults are profile-specific:
-
-- `prod` and `staging`: rclone enabled by default
-- `dev`, `ci`, and `test`: rclone disabled by default
-
-Key properties:
-
-- `gtd.sync.rclone.enabled`
-- `gtd.sync.rclone.command`
-- `gtd.sync.rclone.remote`
-- `gtd.sync.interval-ms`
-- `gtd.sync.force`
-- `gtd.sync.sync-check-filename`
-
-When `gtd.sync.force` is true, the backend adds:
+Optional Google Drive publication uses:
 
 ```text
---force
+rclone copy <snapshot.zip> <configured-backup-remote>
 ```
 
----
+`rclone bisync` is not used for live application state.
 
-## 6. Status And Manual Sync
+Restore swaps the file tree and canonical database under the server lock, then rotates `datasetEpoch`.
 
-The API exposes combined sync status at:
+## Sync-server administration
 
-```text
-GET /sync/status
-```
+The server exposes a lightweight web dashboard at `/`.
 
-The response contains:
+The dashboard can inspect:
 
-- `file`: File Sync status.
-- `googleCalendar`: Google Calendar sync status.
-- `database`: Database outbox sync status.
+- dataset epoch and cursor;
+- object/tombstone counts by object type;
+- canonical object payloads;
+- recent change-feed entries;
+- physical synchronized files;
+- immutable backup snapshots.
 
-Database Sync status includes:
+Management actions include creating, restoring and deleting snapshots. Restore requires explicit confirmation in the UI because it rotates `datasetEpoch` and forces connected clients to rebootstrap.
 
-- `state`: `DISABLED`, `SYNCED`, `PENDING`, `SYNCING`, or `FAILED`.
-- `pending`: whether a sync cycle is requested.
-- `running`: whether an async worker is actively processing events.
-- `pendingCount`: number of mutations waiting in `sync_outbox`.
-- `lastStartedAt`
-- `lastFinishedAt`
-- `lastSuccessfulSyncAt`
-- `lastError`
+The administrative JSON endpoints are under `/v1/admin/**` and share the sync-server bearer-token policy.
 
-The desktop footer renders three sync indicators: File Sync, Google Calendar sync, and Database Sync.
+## Status API
 
----
+`GET /sync/status` exposes file, Google Calendar and structured sync state.
 
-## 7. Failure Behavior
+Important states include:
 
-Startup File Sync is blocking when enabled. In production and staging, a startup rclone failure prevents the API from becoming ready.
+- `SYNCED`
+- `PENDING`
+- `SYNCING`
+- `FAILED`
+- `CONFLICT`
+- `REBOOTSTRAP_REQUIRED`
 
-Runtime Database and File Sync failures do not block local editing. Database mutations are always safely persisted to the local SQLite database first. If the remote Supabase push fails, events remain in `sync_outbox` with incremented retry counts, and the background worker retries periodically.
+Conflict endpoints:
 
----
+- `GET /sync/conflicts`
+- `GET /sync/conflicts/{id}`
+- `POST /sync/conflicts/{id}/resolve`
 
-## 8. Operational Rules
+Rebootstrap endpoint:
 
-Because the project targets one owner and trusted machines, the synchronization model depends on these rules:
-
-- Allow pending outbox events to sync to Supabase before switching devices.
-- Keep `rclone` configured for the expected Google Drive remotes.
-- Treat `FAILED` sync states as operational issues to resolve before continuing long editing sessions.
-- Do not manually edit `database.properties`, `google.properties`, assets, or the sync marker while the app is running.
-
----
-
-## 9. Summary
-
-GTD on Rails currently synchronizes data with:
-
-- Local-first SQLite database for instant UI reads and writes.
-- Async Transactional Outbox pushing mutations to remote Supabase PostgreSQL.
-- `rclone bisync` over file-backed state under `${gtd.data.root-directory}`.
-- Blocking startup File Sync before the application opens.
-- Async coalesced runtime File Sync after file-backed changes.
-- UI sync indicators backed by `/sync/status`.
+- `POST /sync/rebootstrap`

@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+install_dir="${XDG_DATA_HOME:-$HOME/.local/share}/gtd-on-rails"
+config_file="${XDG_CONFIG_HOME:-$HOME/.config}/gtd-on-rails.env"
+
+if [ -f "$config_file" ]; then
+  while IFS='=' read -r key value; do
+    case "$key" in
+      GTD_*) export "$key=$value" ;;
+    esac
+  done < "$config_file"
+fi
+
+exec "$install_dir/gtd-on-rails" "$@"

@@ -40,18 +40,24 @@ function leaderTitle(leaderPath: string[]): string {
   return leaderPath.length > 0 ? `Space ${leaderPath.join(" ")}` : "Space";
 }
 
-function LeaderMenuHeader({ leaderPath }: Readonly<{ leaderPath: string[] }>) {
+function LeaderMenuHeader({ leaderPath, activeZone }: Readonly<{ leaderPath: string[]; activeZone: FocusZoneId }>) {
   return (
     <div className="leader-menu__header">
-      <span className="leader-menu__badge">Space</span>
-      <span className="leader-menu__title">{leaderTitle(leaderPath)}</span>
+      <div className="leader-menu__header-title">
+        <span className="leader-menu__badge">Space</span>
+        <span className="leader-menu__title">{leaderTitle(leaderPath)}</span>
+      </div>
+      <span className="leader-menu__zone-pill">{zoneLabels[activeZone]}</span>
     </div>
   );
 }
 
 function LeaderMenuItems({ bindings }: Readonly<{ bindings: KeybindDefinition[] }>) {
+  const isTwoColumn = bindings.length > 3;
+  const listClass = isTwoColumn ? "leader-menu__list leader-menu__list--two-column" : "leader-menu__list";
+
   return (
-    <div className="leader-menu__list" role="list">
+    <div className={listClass} role="list">
       {bindings.map((binding) => (
         <div key={binding.id} className="leader-menu__item" role="listitem">
           <kbd>{binding.key}</kbd>
@@ -87,8 +93,7 @@ export function LeaderMenu() {
 
   return (
     <div className="leader-menu" role="dialog" aria-label="Leader key menu">
-      <LeaderMenuHeader leaderPath={leaderPath} />
-      <div className="leader-menu__subtitle">{zoneLabels[activeZone]}</div>
+      <LeaderMenuHeader leaderPath={leaderPath} activeZone={activeZone} />
       <LeaderMenuItems bindings={bindings} />
       <LeaderMenuHint onClose={closeLeaderMenu} />
     </div>

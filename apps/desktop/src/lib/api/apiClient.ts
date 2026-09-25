@@ -5,6 +5,8 @@ type ApiFetchTransport = (input: string, init?: RequestInit) => Promise<Response
 
 export const DATABASE_UNAVAILABLE_EVENT = "gtd-database-unavailable";
 
+const inFlightJsonGets = new Map<string, Promise<unknown>>();
+
 /**
  * Extracts a human-readable error description from an API response body.
  *
@@ -59,17 +61,36 @@ export async function apiFetch(
       headers: { Accept: "application/json", ...init.headers }
     });
   } catch (error) {
-    notifyDatabaseUnavailable();
     throw error;
   }
 
   if (!response.ok) {
     const responseBody = await response.text();
-    if (response.status === 503) notifyDatabaseUnavailable();
+    if (isDatabaseUnavailableResponse(pathname, response.status, responseBody)) {
+      notifyDatabaseUnavailable();
+    }
     throw new ApiRequestError(response.status, responseBody);
   }
 
   return response;
+}
+
+function isDatabaseUnavailableResponse(
+  pathname: string,
+  status: number,
+  responseBody: string
+): boolean {
+  if (status !== 503) return false;
+  if (pathname === "/readiness") return true;
+
+  try {
+    const parsed: unknown = JSON.parse(responseBody);
+    if (!parsed || typeof parsed !== "object") return false;
+    const type = (parsed as Record<string, unknown>).type;
+    return typeof type === "string" && type.endsWith("/database-unavailable");
+  } catch {
+    return false;
+  }
 }
 
 function notifyDatabaseUnavailable(): void {
@@ -96,7 +117,19 @@ export async function apiJson<T>(
   init?: RequestInit,
   transport?: ApiFetchTransport
 ): Promise<T> {
-  const response = await apiFetch(pathname, init, transport);
+  if (transport !== undefined || init !== undefined) {
+    const response = await apiFetch(pathname, init, transport);
+    return response.json() as Promise<T>;
+  }
 
-  return response.json() as Promise<T>;
+  const existing = inFlightJsonGets.get(pathname);
+  if (existing) return existing as Promise<T>;
+
+  const request = apiFetch(pathname)
+    .then((response) => response.json() as Promise<T>)
+    .finally(() => {
+      if (inFlightJsonGets.get(pathname) === request) inFlightJsonGets.delete(pathname);
+    });
+  inFlightJsonGets.set(pathname, request);
+  return request;
 }

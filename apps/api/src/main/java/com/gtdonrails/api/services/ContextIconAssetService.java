@@ -9,6 +9,8 @@ import com.gtdonrails.api.exceptions.context.ContextNotFoundException;
 import com.gtdonrails.api.mappers.ContextMapper;
 import com.gtdonrails.api.repositories.ContextIconAssetRepository;
 import com.gtdonrails.api.repositories.ContextRepository;
+import com.gtdonrails.api.sync.SyncFileOutboxStore;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -23,6 +25,26 @@ public class ContextIconAssetService {
     private final FileSyncService fileSyncService;
     private final AfterCommitExecutor afterCommitExecutor;
     private final ContextMapper contextMapper;
+    private final SyncFileOutboxStore fileOutbox;
+
+    @Autowired
+    public ContextIconAssetService(
+        ContextRepository contextRepository,
+        ContextIconAssetRepository contextIconAssetRepository,
+        AssetStorageService assetStorageService,
+        FileSyncService fileSyncService,
+        AfterCommitExecutor afterCommitExecutor,
+        ContextMapper contextMapper,
+        SyncFileOutboxStore fileOutbox
+    ) {
+        this.contextRepository = contextRepository;
+        this.contextIconAssetRepository = contextIconAssetRepository;
+        this.assetStorageService = assetStorageService;
+        this.fileSyncService = fileSyncService;
+        this.afterCommitExecutor = afterCommitExecutor;
+        this.contextMapper = contextMapper;
+        this.fileOutbox = fileOutbox;
+    }
 
     public ContextIconAssetService(
         ContextRepository contextRepository,
@@ -32,12 +54,7 @@ public class ContextIconAssetService {
         AfterCommitExecutor afterCommitExecutor,
         ContextMapper contextMapper
     ) {
-        this.contextRepository = contextRepository;
-        this.contextIconAssetRepository = contextIconAssetRepository;
-        this.assetStorageService = assetStorageService;
-        this.fileSyncService = fileSyncService;
-        this.afterCommitExecutor = afterCommitExecutor;
-        this.contextMapper = contextMapper;
+        this(contextRepository, contextIconAssetRepository, assetStorageService, fileSyncService, afterCommitExecutor, contextMapper, null);
     }
 
     /**
@@ -52,7 +69,9 @@ public class ContextIconAssetService {
         ContextIconAsset iconAsset = newContextIconAsset(context, file);
         assetStorageService.storeImageAsset(iconAsset.relativePath(), file);
         contextIconAssetRepository.save(iconAsset);
-        fileSyncService.requestSyncAfterCommit(afterCommitExecutor, "context icon updated");
+        context.getIconAssets().add(iconAsset);
+        enqueueIconSync(iconAsset);
+        fileSyncService.requestSyncAfterCommit(afterCommitExecutor);
         return contextMapper.toResponse(context);
     }
 
@@ -65,7 +84,7 @@ public class ContextIconAssetService {
     public ContextResponseDto deleteContextIcon(UUID id) {
         Context context = findContext(id);
         deleteExistingIcon(context);
-        fileSyncService.requestSyncAfterCommit(afterCommitExecutor, "context icon deleted");
+        fileSyncService.requestSyncAfterCommit(afterCommitExecutor);
         return contextMapper.toResponse(context);
     }
 
@@ -76,7 +95,7 @@ public class ContextIconAssetService {
      */
     public void deleteContextIconAsset(Context context) {
         deleteExistingIcon(context);
-        fileSyncService.requestSyncAfterCommit(afterCommitExecutor, "context deleted");
+        fileSyncService.requestSyncAfterCommit(afterCommitExecutor);
     }
 
     private Context findContext(UUID id) {
@@ -105,6 +124,16 @@ public class ContextIconAssetService {
     private String contentType(String requestContentType, String fileName) {
         if (StringUtils.hasText(requestContentType)) return requestContentType;
         return assetStorageService.mediaType(fileName).toString();
+    }
+
+    private void enqueueIconSync(ContextIconAsset asset) {
+        if (fileOutbox == null) return;
+        fileOutbox.enqueueUpsert(
+            "context_icon_file",
+            asset.getId().toString(),
+            asset.relativePath(),
+            asset.getContentType()
+        );
     }
 
 }

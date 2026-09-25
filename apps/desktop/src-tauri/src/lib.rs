@@ -6,7 +6,6 @@ mod clipboard;
 mod native_update;
 mod native_update_release;
 mod pdf_preview;
-mod postgres_tools;
 mod sidecar;
 
 #[tauri::command]
@@ -140,8 +139,6 @@ pub fn run() {
             render_pdf_first_page_preview,
             native_update::native_update_check,
             native_update::native_update_install,
-            postgres_tools::postgres_tools_status,
-            postgres_tools::install_postgres_tools,
             sidecar::start_sidecar_command,
             sidecar_backend_status
         ])

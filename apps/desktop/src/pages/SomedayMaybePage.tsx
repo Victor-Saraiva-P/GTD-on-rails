@@ -143,6 +143,15 @@ function SomedayMaybeListBody({ controller }: Readonly<{ controller: SomedayMayb
     const empty = controller.activeSubview === "active" ? "No someday/maybe items." : "No deleted someday/maybe items.";
     return <p className="pane-state">{empty}</p>;
   }
+  return <SomedayMaybeListReady controller={controller} />;
+}
+
+function selectSomedayMaybeItem(controller: SomedayMaybeWorkspaceController, id: string): void {
+  controller.setSelectedId(id);
+  controller.setActiveZone("someday-maybe-list");
+}
+
+function SomedayMaybeListReady({ controller }: Readonly<{ controller: SomedayMaybeWorkspaceController }>) {
   return (
     <InboxList
       items={controller.stuffs}
@@ -150,7 +159,7 @@ function SomedayMaybeListBody({ controller }: Readonly<{ controller: SomedayMayb
       editingId={controller.editingId}
       editingTitle={controller.editingTitle}
       editingTitleError={controller.editingTitleError}
-      onSelect={(id) => controller.setSelectedId(id)}
+      onSelect={(id) => selectSomedayMaybeItem(controller, id)}
       onEditingTitleChange={controller.setEditingTitle}
       onStartEditing={controller.startEditingTitle}
       onCommitEditing={() => void controller.commitEditingTitle()}
@@ -169,7 +178,7 @@ function SomedayMaybeDetailBody({ controller }: Readonly<{ controller: SomedayMa
       editing={controller.editingBodyId === controller.selectedItem.id}
       onAutosaveEditing={controller.autosaveEditingBody}
       onCommitEditing={controller.commitEditingBody}
-      onExitEditingFromNormalMode={controller.commitEditingBody}
+      onExitEditingFromNormalMode={async () => controller.cancelEditingBody()}
       onCancelEditing={controller.cancelEditingBody}
       onVimModeChange={controller.setVimMode}
     />

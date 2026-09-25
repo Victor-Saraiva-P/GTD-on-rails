@@ -21,6 +21,7 @@ previous_dir="$HOME/.local/share/gtd-on-rails.previous"
 while kill -0 "$current_pid" >/dev/null 2>&1; do sleep 0.2; done
 test -x "$next_dir/gtd-on-rails"
 test -x "$next_dir/gtd-api"
+test -x "$next_dir/gtd-on-rails-launcher"
 test -f "$next_dir/binaries/gtd-api.jar"
 rm -rf "$previous_dir"
 if [ -d "$install_dir" ]; then cp -a "$install_dir" "$previous_dir"; fi
@@ -29,19 +30,15 @@ cp "$next_dir/binaries/gtd-api.jar" "$install_dir/binaries/gtd-api.jar.tmp"
 mv "$install_dir/binaries/gtd-api.jar.tmp" "$install_dir/binaries/gtd-api.jar"
 cp "$next_dir/gtd-api" "$install_dir/gtd-api.tmp"
 mv "$install_dir/gtd-api.tmp" "$install_dir/gtd-api"
-if [ -f "$next_dir/gtd-cutover" ]; then
-  cp "$next_dir/gtd-cutover" "$install_dir/gtd-cutover.tmp"
-  mv "$install_dir/gtd-cutover.tmp" "$install_dir/gtd-cutover"
-  chmod +x "$install_dir/gtd-cutover"
-  ln -sf "$install_dir/gtd-cutover" "$HOME/.local/bin/gtd-cutover"
-fi
 cp "$next_dir/icon.png" "$install_dir/icon.png.tmp"
 mv "$install_dir/icon.png.tmp" "$install_dir/icon.png"
 cp "$next_dir/gtd-on-rails" "$install_dir/gtd-on-rails.tmp"
 mv "$install_dir/gtd-on-rails.tmp" "$install_dir/gtd-on-rails"
-chmod +x "$install_dir/gtd-on-rails" "$install_dir/gtd-api"
-ln -sf "$install_dir/gtd-on-rails" "$HOME/.local/bin/gtd-on-rails"
-printf '%s\n' '[Desktop Entry]' 'Type=Application' 'Name=GTD on Rails' "Exec=$install_dir/gtd-on-rails" "Icon=$install_dir/icon.png" 'Terminal=false' 'Categories=Utility;' > "$HOME/.local/share/applications/gtd-on-rails.desktop"
+cp "$next_dir/gtd-on-rails-launcher" "$install_dir/gtd-on-rails-launcher.tmp"
+mv "$install_dir/gtd-on-rails-launcher.tmp" "$install_dir/gtd-on-rails-launcher"
+chmod +x "$install_dir/gtd-on-rails" "$install_dir/gtd-api" "$install_dir/gtd-on-rails-launcher"
+ln -sf "$install_dir/gtd-on-rails-launcher" "$HOME/.local/bin/gtd-on-rails"
+printf '%s\n' '[Desktop Entry]' 'Type=Application' 'Name=GTD on Rails' "Exec=$HOME/.local/bin/gtd-on-rails" "Icon=$install_dir/icon.png" 'Terminal=false' 'Categories=Utility;' > "$HOME/.local/share/applications/gtd-on-rails.desktop"
 command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$HOME/.local/share/applications" || true
 rm -rf "$next_dir"
 nohup "$HOME/.local/bin/gtd-on-rails" >/dev/null 2>&1 &
@@ -121,6 +118,7 @@ fn restore_previous_installation(
 fn native_installation_is_valid(path: &std::path::Path) -> bool {
     path.join("gtd-on-rails").is_file()
         && path.join("gtd-api").is_file()
+        && path.join("gtd-on-rails-launcher").is_file()
         && path.join("binaries/gtd-api.jar").is_file()
 }
 
@@ -233,8 +231,7 @@ fn native_update_package_dir(install_root: &Path) -> Result<PathBuf, String> {
 
 fn stage_native_update(package_dir: &Path, next_dir: &Path) -> Result<(), String> {
     validate_package_dir(package_dir)?;
-    stage_core_files(package_dir, next_dir)?;
-    stage_optional_cutover(package_dir, next_dir)
+    stage_core_files(package_dir, next_dir)
 }
 
 fn stage_core_files(package_dir: &Path, next_dir: &Path) -> Result<(), String> {
@@ -248,26 +245,21 @@ fn stage_core_files(package_dir: &Path, next_dir: &Path) -> Result<(), String> {
         &next_dir.join("binaries/gtd-api.jar"),
     )?;
     copy_update_file(&package_dir.join("icon.png"), &next_dir.join("icon.png"))?;
-    make_executable(&next_dir.join("gtd-on-rails"))?;
-    make_executable(&next_dir.join("gtd-api"))
-}
-
-fn stage_optional_cutover(package_dir: &Path, next_dir: &Path) -> Result<(), String> {
-    if !package_dir.join("gtd-cutover").is_file() {
-        return Ok(());
-    }
     copy_update_file(
-        &package_dir.join("gtd-cutover"),
-        &next_dir.join("gtd-cutover"),
+        &package_dir.join("gtd-on-rails-launcher"),
+        &next_dir.join("gtd-on-rails-launcher"),
     )?;
-    make_executable(&next_dir.join("gtd-cutover"))
+    make_executable(&next_dir.join("gtd-on-rails"))?;
+    make_executable(&next_dir.join("gtd-api"))?;
+    make_executable(&next_dir.join("gtd-on-rails-launcher"))
 }
 
 fn validate_package_dir(package_dir: &Path) -> Result<(), String> {
     require_file(&package_dir.join("gtd-on-rails"))?;
     require_file(&package_dir.join("gtd-api"))?;
     require_file(&package_dir.join("binaries/gtd-api.jar"))?;
-    require_file(&package_dir.join("icon.png"))
+    require_file(&package_dir.join("icon.png"))?;
+    require_file(&package_dir.join("gtd-on-rails-launcher"))
 }
 
 fn require_file(path: &Path) -> Result<(), String> {
@@ -370,29 +362,30 @@ mod tests {
     use super::*;
 
     #[test]
-    fn update_script_contains_cutover_symlinking() {
-        assert!(UPDATE_SCRIPT_TEMPLATE.contains("gtd-cutover"));
-        assert!(UPDATE_SCRIPT_TEMPLATE.contains("ln -sf \"$install_dir/gtd-cutover\""));
+    fn update_script_installs_core_runtime_only() {
+        assert!(UPDATE_SCRIPT_TEMPLATE.contains("gtd-api"));
+        assert!(!UPDATE_SCRIPT_TEMPLATE.contains("gtd-cutover"));
     }
 
     #[test]
-    fn stage_native_update_copies_gtd_cutover_when_present() {
+    fn stage_native_update_copies_core_runtime() {
         let temp = std::env::temp_dir().join(format!("gtd-update-stage-test-{}", std::process::id()));
         let pkg = temp.join("pkg");
         let next = temp.join("next");
         let _ = fs::remove_dir_all(&temp);
         fs::create_dir_all(pkg.join("binaries")).unwrap();
         fs::create_dir_all(next.join("binaries")).unwrap();
-
         fs::write(pkg.join("gtd-on-rails"), b"app").unwrap();
         fs::write(pkg.join("gtd-api"), b"api").unwrap();
         fs::write(pkg.join("binaries/gtd-api.jar"), b"jar").unwrap();
         fs::write(pkg.join("icon.png"), b"icon").unwrap();
-        fs::write(pkg.join("gtd-cutover"), b"cutover").unwrap();
 
         stage_native_update(&pkg, &next).unwrap();
 
-        assert!(next.join("gtd-cutover").is_file());
+        assert!(next.join("gtd-on-rails").is_file());
+        assert!(next.join("gtd-api").is_file());
+        assert!(next.join("binaries/gtd-api.jar").is_file());
         let _ = fs::remove_dir_all(&temp);
     }
+
 }

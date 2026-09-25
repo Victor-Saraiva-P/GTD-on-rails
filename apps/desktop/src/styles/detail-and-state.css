@@ -268,6 +268,7 @@
   color: rgba(255, 255, 255, 0.34);
   padding-right: var(--inbox-line-number-gap);
   padding-top: 0;
+  pointer-events: none;
 }
 
 .inbox-detail__codemirror .cm-lineNumbers .cm-gutterElement {
@@ -301,6 +302,16 @@
 
 .inbox-detail__codemirror .cm-cursorLayer {
   animation: none !important;
+}
+
+.inbox-detail__codemirror--preview .cm-cursorLayer,
+.inbox-detail__codemirror--preview .cm-selectionLayer {
+  display: none !important;
+}
+
+.inbox-detail__codemirror--preview .cm-activeLine,
+.inbox-detail__codemirror--preview .cm-activeLineGutter {
+  background: transparent;
 }
 
 .inbox-detail__codemirror .cm-cursor,

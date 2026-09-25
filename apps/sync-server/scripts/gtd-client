@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+install_dir="${GTD_CLIENT_INSTALL_DIR:-$HOME/.local/share/gtd-on-rails-client}"
+runtime="$install_dir/runtime/bin/gtd-client-runtime"
+
+test -x "$runtime" || {
+  echo "$runtime is invalid; expected installed self-contained client runtime" >&2
+  exit 1
+}
+
+export GTD_CLIENT_INSTALL_DIR="$install_dir"
+exec "$runtime" "$@"

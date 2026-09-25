@@ -75,7 +75,7 @@ class ItemAssetServiceTests {
         assertEquals("application/pdf", response.contentType());
         verify(assetStorageService).copyLocalItemAsset(any(String.class), eq(sourcePath));
         verify(itemAssetRepository).save(any());
-        verify(fileSyncService).requestSyncAfterCommit(any(AfterCommitExecutor.class), eq("local item asset copied"));
+        verify(fileSyncService).requestSyncAfterCommit(any(AfterCommitExecutor.class));
     }
 
     @Test
@@ -89,7 +89,7 @@ class ItemAssetServiceTests {
             () -> itemAssetService.reconcileBodyAssetReferences(itemId, bodyWithBlockEntity(assetId.toString())));
 
         assertEquals(
-            "body.blockEntities.assetId value '" + assetId + "' is invalid; expected asset owned by item '" + itemId + "'",
+            "body asset reference value '" + assetId + "' is invalid; expected asset owned by item '" + itemId + "'",
             exception.getMessage());
     }
 

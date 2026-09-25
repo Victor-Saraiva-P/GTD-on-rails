@@ -164,6 +164,7 @@
     right: 8px;
     width: auto;
     bottom: 8px;
+    transform: none;
   }
 
   .tree-entry__marker,

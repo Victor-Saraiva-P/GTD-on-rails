@@ -68,7 +68,7 @@ function useDatabaseReadinessValue(): DatabaseReadinessContextValue {
   return { isReady, status };
 }
 
-/** Provides global PostgreSQL availability and authoritative recovery behavior.
+/** Provides global SQLite availability and authoritative recovery behavior.
  *
  * @example <DatabaseReadinessProvider><AppShell /></DatabaseReadinessProvider>
  */
@@ -76,7 +76,7 @@ export function DatabaseReadinessProvider({ children }: PropsWithChildren) {
   return <DatabaseReadinessContext.Provider value={useDatabaseReadinessValue()}>{children}</DatabaseReadinessContext.Provider>;
 }
 
-/** Reads whether the desktop can safely interact with PostgreSQL-backed state.
+/** Reads whether the desktop can safely interact with SQLite-backed state.
  *
  * @example const { isReady, status } = useDatabaseReadiness()
  */

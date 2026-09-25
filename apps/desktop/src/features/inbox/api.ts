@@ -14,6 +14,12 @@ type StuffResponse = {
   projectTitle?: string | null;
 };
 
+type ItemBodyResponse = {
+  body: ItemBody | string | null;
+};
+
+const itemBodyRequests = new Map<string, Promise<ItemBody>>();
+
 type EstimatedTimePayload = {
   hours: number;
   minutes: number;
@@ -27,6 +33,24 @@ export type StuffAssetResponse = {
   contentType: string;
   image: boolean;
 };
+
+/**
+ * Loads one item's Markdown body on demand and coalesces concurrent requests.
+ */
+export function fetchItemBody(id: string, force = false): Promise<ItemBody> {
+  if (!force) {
+    const existing = itemBodyRequests.get(id);
+    if (existing) return existing;
+  }
+
+  const request = apiJson<ItemBodyResponse>(`/items/${id}/body`, force ? {} : undefined)
+    .then((response) => parseItemBody(response.body))
+    .finally(() => {
+      if (itemBodyRequests.get(id) === request) itemBodyRequests.delete(id);
+    });
+  if (!force) itemBodyRequests.set(id, request);
+  return request;
+}
 
 /**
  * Loads all inbox stuff from the API.
@@ -220,20 +244,18 @@ export async function assignStuffProject(item: Stuff, projectId: string | null):
   return toStuff(response);
 }
 
-function toStuff(item: StuffResponse): Stuff {
-  let parsedBody: ItemBody;
-  if (!item.body) {
-    parsedBody = { text: "", inlineMarks: [], lineBlocks: [], blockEntities: [] };
-  } else if (typeof item.body === "string") {
-    parsedBody = { text: item.body, inlineMarks: [], lineBlocks: [], blockEntities: [] };
-  } else {
-    parsedBody = item.body;
-  }
+function parseItemBody(body: ItemBody | string | null): ItemBody {
+  if (!body) return { text: "", inlineMarks: [], lineBlocks: [], blockEntities: [] };
+  if (typeof body === "string") return { text: body, inlineMarks: [], lineBlocks: [], blockEntities: [] };
+  return body;
+}
 
+function toStuff(item: StuffResponse): Stuff {
   return {
     id: item.id,
     title: item.title,
-    body: parsedBody,
+    body: parseItemBody(item.body),
+    bodyLoaded: item.body != null,
     energy: item.energy ?? null,
     estimatedTime: item.estimatedTime ?? null,
     contexts: item.contexts ?? [],

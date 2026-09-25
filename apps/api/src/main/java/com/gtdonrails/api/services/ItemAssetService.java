@@ -1,9 +1,11 @@
 package com.gtdonrails.api.services;
 
 import java.nio.file.Path;
+import java.util.HashSet;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import com.gtdonrails.api.dtos.item.CopyLocalItemAssetRequestDto;
 import com.gtdonrails.api.dtos.item.ItemAssetResponseDto;
@@ -15,6 +17,8 @@ import com.gtdonrails.api.repositories.ItemAssetRepository;
 import com.gtdonrails.api.repositories.ItemRepository;
 import com.gtdonrails.api.types.BlockEntity;
 import com.gtdonrails.api.types.ItemBody;
+import com.gtdonrails.api.sync.SyncFileOutboxStore;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -23,11 +27,32 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 public class ItemAssetService {
 
+    private static final Pattern MARKDOWN_ASSET_PATH = Pattern.compile("assets/([0-9a-fA-F-]{36})/[^)\\s]+");
+    private static final Pattern LEGACY_ASSET_TOKEN = Pattern.compile("asset:([0-9a-fA-F-]{36})");
+
     private final ItemRepository itemRepository;
     private final ItemAssetRepository itemAssetRepository;
     private final AssetStorageService assetStorageService;
     private final FileSyncService fileSyncService;
+    private final SyncFileOutboxStore fileOutbox;
     private final AfterCommitExecutor afterCommitExecutor;
+
+    @Autowired
+    public ItemAssetService(
+        ItemRepository itemRepository,
+        ItemAssetRepository itemAssetRepository,
+        AssetStorageService assetStorageService,
+        FileSyncService fileSyncService,
+        AfterCommitExecutor afterCommitExecutor,
+        SyncFileOutboxStore fileOutbox
+    ) {
+        this.itemRepository = itemRepository;
+        this.itemAssetRepository = itemAssetRepository;
+        this.assetStorageService = assetStorageService;
+        this.fileSyncService = fileSyncService;
+        this.afterCommitExecutor = afterCommitExecutor;
+        this.fileOutbox = fileOutbox;
+    }
 
     public ItemAssetService(
         ItemRepository itemRepository,
@@ -36,11 +61,7 @@ public class ItemAssetService {
         FileSyncService fileSyncService,
         AfterCommitExecutor afterCommitExecutor
     ) {
-        this.itemRepository = itemRepository;
-        this.itemAssetRepository = itemAssetRepository;
-        this.assetStorageService = assetStorageService;
-        this.fileSyncService = fileSyncService;
-        this.afterCommitExecutor = afterCommitExecutor;
+        this(itemRepository, itemAssetRepository, assetStorageService, fileSyncService, afterCommitExecutor, null);
     }
 
     /**
@@ -54,7 +75,8 @@ public class ItemAssetService {
         ItemAsset itemAsset = newItemAsset(item, file);
         assetStorageService.storeItemAsset(itemAsset.relativePath(), file);
         itemAssetRepository.save(itemAsset);
-        fileSyncService.requestSyncAfterCommit(afterCommitExecutor, "item asset uploaded");
+        enqueueAssetSync(itemAsset);
+        fileSyncService.requestSyncAfterCommit(afterCommitExecutor);
         return itemAssetResponse(itemAsset);
     }
 
@@ -70,7 +92,8 @@ public class ItemAssetService {
         ItemAsset itemAsset = newLocalItemAsset(item, sourcePath);
         assetStorageService.copyLocalItemAsset(itemAsset.relativePath(), sourcePath);
         itemAssetRepository.save(itemAsset);
-        fileSyncService.requestSyncAfterCommit(afterCommitExecutor, "local item asset copied");
+        enqueueAssetSync(itemAsset);
+        fileSyncService.requestSyncAfterCommit(afterCommitExecutor);
         return itemAssetResponse(itemAsset);
     }
 
@@ -101,10 +124,19 @@ public class ItemAssetService {
     }
 
     private Set<UUID> referencedAssetIds(ItemBody body) {
-        return body.blockEntities().stream()
-            .map(BlockEntity::assetId)
-            .map(this::parseAssetId)
-            .collect(Collectors.toSet());
+        Set<UUID> ids = new HashSet<>();
+        String text = body == null ? "" : body.text();
+        collectMarkdownAssetIds(text, MARKDOWN_ASSET_PATH, ids);
+        collectMarkdownAssetIds(text, LEGACY_ASSET_TOKEN, ids);
+        if (body != null) {
+            body.blockEntities().stream().map(BlockEntity::assetId).map(this::parseAssetId).forEach(ids::add);
+        }
+        return ids;
+    }
+
+    private void collectMarkdownAssetIds(String text, Pattern pattern, Set<UUID> ids) {
+        Matcher matcher = pattern.matcher(text == null ? "" : text);
+        while (matcher.find()) ids.add(parseAssetId(matcher.group(1)));
     }
 
     private void restoreReferencedAsset(UUID itemId, UUID assetId) {
@@ -117,7 +149,7 @@ public class ItemAssetService {
     private ItemAsset findOwnedItemAsset(UUID itemId, UUID assetId) {
         return itemAssetRepository.findByIdAndItemId(assetId, itemId)
             .orElseThrow(() -> new BusinessException(
-                "body.blockEntities.assetId value '" + assetId + "' is invalid; expected asset owned by item '" + itemId + "'"));
+                "body asset reference value '" + assetId + "' is invalid; expected asset owned by item '" + itemId + "'"));
     }
 
     private void softDeleteUnreferencedAssets(UUID itemId, Set<UUID> referencedAssetIds) {
@@ -136,7 +168,7 @@ public class ItemAssetService {
             return UUID.fromString(value);
         } catch (RuntimeException exception) {
             throw new BusinessException(
-                "body.blockEntities.assetId value '" + value + "' is invalid; expected persisted asset UUID");
+                "body asset reference value '" + value + "' is invalid; expected persisted asset UUID");
         }
     }
 
@@ -174,6 +206,16 @@ public class ItemAssetService {
             asset.getFileName(),
             asset.getContentType(),
             asset.isImage());
+    }
+
+    private void enqueueAssetSync(ItemAsset asset) {
+        if (fileOutbox == null) return;
+        fileOutbox.enqueueUpsert(
+            "item_asset_file",
+            asset.getId().toString(),
+            asset.relativePath(),
+            asset.getContentType()
+        );
     }
 
 }

@@ -47,5 +47,5 @@ test("buildApiUrlWithVersion does not add version if undefined", () => {
 
 test("buildDocumentAssetPath uses configured data root directory", () => {
   assert.equal(dataRootDirectoryName, "dev-gtd-on-rails");
-  assert.equal(buildDocumentAssetPath("items/id/file.pdf"), "dev-gtd-on-rails/assets/items/id/file.pdf");
+  assert.equal(buildDocumentAssetPath("items/id/file.pdf"), "dev-gtd-on-rails/items/id/file.pdf");
 });

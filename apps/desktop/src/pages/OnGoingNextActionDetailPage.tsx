@@ -61,15 +61,15 @@ function useDetailZone(controller: OnGoingWorkspaceController) {
   }, [controller.setActiveZone, controller.editingBodyId, controller.selectedItem, controller.startBodyEdit]);
 }
 
-async function exitBodyEditingToOnGoingActions(controller: OnGoingWorkspaceController, setActiveScreen: (screen: ScreenId) => void, body: ItemBody): Promise<void> {
-  await controller.commitBody(body);
+async function exitBodyEditingToOnGoingActions(controller: OnGoingWorkspaceController, setActiveScreen: (screen: ScreenId) => void): Promise<void> {
+  controller.cancelBodyEdit();
   controller.setActiveZone("next-actions-list");
   setActiveScreen("ongoing-next-actions");
 }
 
 function DetailReady({ controller, setActiveScreen }: DetailReadyProps) {
   if (!controller.selectedItem) return null;
-  return <InboxStuffDetails item={controller.selectedItem.item} showCreatedMeta={false} metaVariant="next-action" editing={controller.editingBodyId === controller.selectedItem.item.id} onAutosaveEditing={(body) => controller.autosaveBody(body)} onCommitEditing={(body) => controller.commitBody(body)} onExitEditingFromNormalMode={(body) => exitBodyEditingToOnGoingActions(controller, setActiveScreen, body)} onCancelEditing={controller.cancelBodyEdit} onVimModeChange={controller.setVimMode} />;
+  return <InboxStuffDetails item={controller.selectedItem.item} showCreatedMeta={false} metaVariant="next-action" editing={controller.editingBodyId === controller.selectedItem.item.id} onAutosaveEditing={(body) => controller.autosaveBody(body)} onCommitEditing={(body) => controller.commitBody(body)} onExitEditingFromNormalMode={() => exitBodyEditingToOnGoingActions(controller, setActiveScreen)} onCancelEditing={controller.cancelBodyEdit} onVimModeChange={controller.setVimMode} />;
 }
 
 function DetailBody({ controller, setActiveScreen }: DetailReadyProps) {

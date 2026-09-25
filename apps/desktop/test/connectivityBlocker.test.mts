@@ -10,6 +10,7 @@ function syncStatus(): SyncStatus {
       state: "SYNCED",
       pending: false,
       running: false,
+      pendingCount: 0,
       lastStartedAt: null,
       lastFinishedAt: null,
       lastSuccessfulSyncAt: "2026-05-01T00:00:05Z",
@@ -19,17 +20,29 @@ function syncStatus(): SyncStatus {
       state: "SYNCED",
       pending: false,
       running: false,
+      pendingCount: 0,
       lastStartedAt: null,
       lastFinishedAt: null,
       lastSuccessfulSyncAt: "2026-05-01T00:00:07Z",
+      lastError: null
+    },
+    database: {
+      state: "SYNCED",
+      pending: false,
+      running: false,
+      pendingCount: 0,
+      conflictCount: 0,
+      lastStartedAt: null,
+      lastFinishedAt: null,
+      lastSuccessfulSyncAt: "2026-05-01T00:00:09Z",
       lastError: null
     }
   };
 }
 
 describe("connectivity blocker", () => {
-  test("blocks only when browser is offline", () => {
-    assert.equal(buildConnectivityBlockerModel(false, syncStatus()).isBlocked, true);
+  test("never blocks local interaction when browser connectivity is unavailable", () => {
+    assert.equal(buildConnectivityBlockerModel(false, syncStatus()).isBlocked, false);
     assert.equal(buildConnectivityBlockerModel(true, failedSyncStatus()).isBlocked, false);
   });
 

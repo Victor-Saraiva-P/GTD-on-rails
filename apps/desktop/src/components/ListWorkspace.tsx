@@ -5,6 +5,8 @@ import { SyncStatusIndicators } from "../features/sync-status/SyncStatusIndicato
 import { TitleSearchProvider } from "../features/title-search/TitleSearchContext";
 import { ListTitleSearchBar } from "../features/title-search/ListTitleSearchBar";
 import type { TitleSearchState } from "../features/title-search/types";
+import { useZoomMode } from "../features/zoom-mode/ZoomModeContext";
+import { ZoomModeExitButton } from "../features/zoom-mode/ZoomModeExitButton";
 
 type ListWorkspaceProps = Readonly<PropsWithChildren<{
   theme: ListTheme;
@@ -13,6 +15,12 @@ type ListWorkspaceProps = Readonly<PropsWithChildren<{
   modeLabel?: string | null;
   titleSearch?: TitleSearchState | null;
 }>>;
+
+type ListWorkspaceFooterProps = Readonly<
+  Pick<ListWorkspaceProps, "currentClassName" | "currentLabel" | "modeLabel"> & {
+    isZoomMode: boolean;
+  }
+>;
 
 function buildWorkspaceStyle(theme: ListTheme): CSSProperties {
   return {
@@ -30,7 +38,23 @@ function WorkspaceBrand() {
   );
 }
 
-function ListWorkspaceFooter({ currentClassName, currentLabel, modeLabel }: Readonly<Pick<ListWorkspaceProps, "currentClassName" | "currentLabel" | "modeLabel">>) {
+function ZoomFooter({ modeLabel }: Readonly<Pick<ListWorkspaceProps, "modeLabel">>) {
+  return (
+    <footer className="list-workspace__footer" aria-label="Current list">
+      {modeLabel ? (
+        <div className="list-workspace__mode" aria-label="Editing mode">
+          <span>{modeLabel}</span>
+        </div>
+      ) : null}
+    </footer>
+  );
+}
+
+function ListWorkspaceFooter({ currentClassName, currentLabel, isZoomMode, modeLabel }: ListWorkspaceFooterProps) {
+  if (isZoomMode) {
+    return <ZoomFooter modeLabel={modeLabel} />;
+  }
+
   return (
     <footer className="list-workspace__footer" aria-label="Current list">
       <WorkspaceBrand />
@@ -53,13 +77,26 @@ function ListWorkspaceFooter({ currentClassName, currentLabel, modeLabel }: Read
  * @example <ListWorkspace theme={inboxListTheme} currentLabel="Inbox">...</ListWorkspace>
  */
 export function ListWorkspace({ theme, currentClassName, currentLabel, modeLabel, titleSearch, children }: ListWorkspaceProps) {
+  const { isZoomMode, exitZoomMode } = useZoomMode();
+
   return (
     <TitleSearchProvider value={titleSearch ?? null}>
-      <main className="list-workspace" style={buildWorkspaceStyle(theme)}>
+      <main
+        className={`list-workspace${isZoomMode ? " list-workspace--zoom" : ""}`}
+        style={buildWorkspaceStyle(theme)}
+        data-zoom-mode={isZoomMode ? "true" : undefined}
+      >
+        {isZoomMode && <ZoomModeExitButton onExit={exitZoomMode} />}
         <div className="list-workspace__viewport">{children}</div>
         {titleSearch?.isSearchOpen ? <ListTitleSearchBar search={titleSearch} /> : null}
-        <ListWorkspaceFooter currentClassName={currentClassName} currentLabel={currentLabel} modeLabel={modeLabel} />
+        <ListWorkspaceFooter
+          currentClassName={currentClassName}
+          currentLabel={currentLabel}
+          isZoomMode={isZoomMode}
+          modeLabel={modeLabel}
+        />
       </main>
     </TitleSearchProvider>
   );
 }
+

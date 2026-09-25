@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { ApiRequestError } from "../../lib/api/apiClient";
+import { mutateSharedEntityOptimistically } from "../../lib/state/optimisticSharedEntity.ts";
+import { useSharedCollectionState } from "../../lib/state/sharedEntityStore.ts";
 import { useSyncStatus } from "../sync-status/SyncStatusProvider";
+import { useDomainRevalidation } from "../sync-status/domainChanges.ts";
 import type { ItemBody } from "../inbox/types";
 import {
   deleteCalendar,
@@ -23,11 +26,21 @@ function calendarErrorMessage(error: unknown): string {
 }
 
 function useCalendarLoadState() {
-  const [items, setItems] = useState<Calendar[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const collection = useSharedCollectionState<Calendar>("calendar:ongoing");
+  const [isLoading, setIsLoading] = useState(!collection.loaded);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
-  return { errorMessage, isLoading, items, reloadToken, setErrorMessage, setIsLoading, setItems, setReloadToken };
+  return {
+    errorMessage,
+    hasSnapshot: collection.loaded,
+    isLoading,
+    items: collection.items,
+    reloadToken,
+    setErrorMessage,
+    setIsLoading,
+    setItems: collection.setItems,
+    setReloadToken
+  };
 }
 
 function useCalendarMutationState() {
@@ -37,7 +50,7 @@ function useCalendarMutationState() {
 }
 
 async function loadOnGoingCalendars(state: CalendarLoadState, cancelled: () => boolean) {
-  state.setIsLoading(true);
+  if (!state.hasSnapshot) state.setIsLoading(true);
   state.setErrorMessage(null);
   try {
     const calendars = await fetchOnGoingCalendars();
@@ -75,9 +88,9 @@ function useOnGoingCalendarMutations(
     deleteItem: (id: string) => deleteCalendarItem(id, state, mutations, triggerSyncStatusPolling),
     markAsDone: (id: string) => markOnGoingCalendarDone(id, state, mutations, triggerSyncStatusPolling),
     restoreStatus: (id: string) => restoreOnGoingCalendar(id, state, mutations, triggerSyncStatusPolling),
-    updateBody: (item: Calendar, body: ItemBody) => updateBody(item, body, state, mutations, triggerSyncStatusPolling),
-    updateTitle: (item: Calendar, title: string) => updateTitle(item, title, state, mutations, triggerSyncStatusPolling),
-    assignProject: (item: Calendar, projectId: string | null) => assignProjectAction(item, projectId, state, mutations, triggerSyncStatusPolling)
+    updateBody: (item: Calendar, body: ItemBody) => updateBody(item, body, state, triggerSyncStatusPolling),
+    updateTitle: (item: Calendar, title: string) => updateTitle(item, title, state, triggerSyncStatusPolling),
+    assignProject: (item: Calendar, projectId: string | null) => assignProjectAction(item, projectId, state, triggerSyncStatusPolling)
   };
 }
 
@@ -118,43 +131,48 @@ async function updateBody(
   item: Calendar,
   body: ItemBody,
   state: CalendarLoadState,
-  mutations: CalendarMutationState,
   poll: () => void
 ) {
-  mutations.setIsUpdating(true);
-  try { const updated = await updateCalendarBody(item, body); state.setItems((items) => replaceCalendar(items, updated)); completeCalendarMutation(state, poll); return updated; }
-  finally { mutations.setIsUpdating(false); }
+  const updated = await mutateSharedEntityOptimistically(
+    item,
+    { ...item, body },
+    () => updateCalendarBody(item, body)
+  );
+  completeCalendarMutation(state, poll);
+  return updated;
 }
 
 async function updateTitle(
   item: Calendar,
   title: string,
   state: CalendarLoadState,
-  mutations: CalendarMutationState,
   poll: () => void
 ) {
-  mutations.setIsUpdating(true);
-  try { const updated = await updateCalendarTitle(item, title); state.setItems((items) => replaceCalendar(items, updated)); completeCalendarMutation(state, poll); return updated; }
-  finally { mutations.setIsUpdating(false); }
+  const updated = await mutateSharedEntityOptimistically(
+    item,
+    { ...item, title },
+    () => updateCalendarTitle(item, title)
+  );
+  completeCalendarMutation(state, poll);
+  return updated;
 }
 
 async function assignProjectAction(
   item: Calendar,
   projectId: string | null,
   state: CalendarLoadState,
-  mutations: CalendarMutationState,
   poll: () => void
 ): Promise<Calendar> {
-  mutations.setIsUpdating(true);
-  try {
-    const result = await assignItemProject(item.id, projectId);
-    const updated: Calendar = { ...item, projectId: result.projectId ?? projectId, projectTitle: result.projectTitle ?? null };
-    state.setItems((items) => replaceCalendar(items, updated));
-    completeCalendarMutation(state, poll);
-    return updated;
-  } finally {
-    mutations.setIsUpdating(false);
-  }
+  const updated = await mutateSharedEntityOptimistically(
+    item,
+    { ...item, projectId },
+    async () => {
+      const result = await assignItemProject(item.id, projectId);
+      return { ...item, projectId: result.projectId ?? projectId, projectTitle: result.projectTitle ?? null };
+    }
+  );
+  completeCalendarMutation(state, poll);
+  return updated;
 }
 
 /**
@@ -168,5 +186,6 @@ export function useOnGoingCalendarsQuery() {
   const reload = () => state.setReloadToken((value) => value + 1);
   const actions = useOnGoingCalendarMutations(state, mutations);
   useOnGoingCalendarsLoader(state);
+  useDomainRevalidation(["items", "calendars", "body_document", "project_items"], reload);
   return { ...actions, errorMessage: state.errorMessage, isDeleting: mutations.isDeleting, isLoading: state.isLoading, isUpdating: mutations.isUpdating, items: state.items, reload };
 }

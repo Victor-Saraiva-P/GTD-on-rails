@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
+import { useSharedCollectionState } from "../../lib/state/sharedEntityStore.ts";
 import type { NextAction } from "./types.ts";
+import { useDomainRevalidation } from "../sync-status/domainChanges.ts";
 import { fetchOnGoingNextActions } from "./api.ts";
 import {
   useNextActionsMutationState,
@@ -14,20 +16,24 @@ import {
  * @example const query = useOnGoingNextActionsQuery()
  */
 export function useOnGoingNextActionsQuery() {
-  const [items, setItems] = useState<NextAction[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const collection = useSharedCollectionState<NextAction>("next-actions:ongoing");
+  const items = collection.items;
+  const setItems = collection.setItems;
+  const [isLoading, setIsLoading] = useState(!collection.loaded);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
 
-  const state: NextActionsLoadState = { errorMessage, isLoading, items, reloadToken, setErrorMessage, setIsLoading, setItems, setReloadToken };
+  const state: NextActionsLoadState = { errorMessage, hasSnapshot: collection.loaded, isLoading, items, reloadToken, setErrorMessage, setIsLoading, setItems, setReloadToken };
   const mutations = useNextActionsMutationState();
   const reload = () => setReloadToken((value) => value + 1);
   const actions = useNextActionsMutations(state, mutations, reload);
 
+  useDomainRevalidation(["items", "next_actions", "body_document", "project_items"], reload);
+
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
-      setIsLoading(true);
+      if (!collection.loaded) setIsLoading(true);
       setErrorMessage(null);
       try {
         const nextItems = await fetchOnGoingNextActions();

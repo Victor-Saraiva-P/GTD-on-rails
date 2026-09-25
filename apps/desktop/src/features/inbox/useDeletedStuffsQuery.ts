@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { ApiRequestError } from "../../lib/api/apiClient";
+import { useSharedCollectionState } from "../../lib/state/sharedEntityStore.ts";
 import { useSyncStatus } from "../sync-status/SyncStatusProvider";
+import { useDomainRevalidation } from "../sync-status/domainChanges.ts";
 import { fetchDeletedInboxStuffs, restoreStuff as restoreStuffRequest } from "./api";
 import type { Stuff } from "./types";
 
@@ -26,12 +28,22 @@ function toErrorMessage(error: unknown): string {
 }
 
 function useDeletedStuffsLoadState() {
-  const [stuffs, setStuffs] = useState<Stuff[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const collection = useSharedCollectionState<Stuff>("inbox:deleted");
+  const [isLoading, setIsLoading] = useState(!collection.loaded);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
 
-  return { errorMessage, isLoading, reloadToken, setErrorMessage, setIsLoading, setReloadToken, setStuffs, stuffs };
+  return {
+    errorMessage,
+    hasSnapshot: collection.loaded,
+    isLoading,
+    reloadToken,
+    setErrorMessage,
+    setIsLoading,
+    setReloadToken,
+    setStuffs: collection.setItems,
+    stuffs: collection.items
+  };
 }
 
 function useDeletedStuffsMutationState() {
@@ -44,12 +56,11 @@ type DeletedStuffsLoadState = ReturnType<typeof useDeletedStuffsLoadState>;
 type DeletedStuffsMutationState = ReturnType<typeof useDeletedStuffsMutationState>;
 
 function startDeletedStuffsLoad(state: DeletedStuffsLoadState) {
-  state.setIsLoading(true);
+  if (!state.hasSnapshot) state.setIsLoading(true);
   state.setErrorMessage(null);
 }
 
 function failDeletedStuffsLoad(state: DeletedStuffsLoadState, error: unknown) {
-  state.setStuffs([]);
   state.setErrorMessage(toErrorMessage(error));
 }
 
@@ -127,6 +138,7 @@ export function useDeletedStuffsQuery(): DeletedStuffsQueryState {
   const actions = useDeletedStuffsMutations(state, mutations);
 
   useDeletedStuffsLoader(state);
+  useDomainRevalidation(["items", "body_document", "project_items"], () => state.setReloadToken((value) => value + 1));
   return {
     ...actions,
     errorMessage: state.errorMessage,

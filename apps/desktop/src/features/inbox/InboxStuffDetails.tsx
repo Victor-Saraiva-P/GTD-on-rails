@@ -1,4 +1,4 @@
-import { lazy, Suspense, type CSSProperties, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import energyIcon from "../../assets/next-actions/energy icon.png";
 import estimatedTimeIcon from "../../assets/next-actions/estimated time icon.png";
 import scheduleIcon from "../../assets/next-actions/schdule-icon.png";
@@ -10,6 +10,7 @@ import { formatScheduleDateTime, type NextAction } from "../next-actions/types";
 import { buildApiUrl } from "../../config/env";
 import { ContextNameWithIcon } from "../contexts/ContextNameWithIcon";
 import { ProjectAssociationMarker } from "../projects/ProjectAssociationMarker";
+import { ensureItemBodyLoaded } from "./itemBodyLoader.ts";
 
 const LazyItemBodyMarkdownEditor = lazy(async () => {
   const module = await import("./ItemBodyMarkdownEditor");
@@ -166,27 +167,7 @@ function DetailHeader({ item, metaVariant, showCreatedMeta }: Readonly<Pick<Inbo
   return <InboxDetailHeader item={item} showCreatedMeta={showCreatedMeta} />;
 }
 
-type EditingInboxStuffDetailsProps = Readonly<Omit<InboxStuffDetailsProps, "editing" | "onCancelEditing">>;
-
 const ASSET_TOKEN_PATTERN = /(\[\[asset:([0-9a-fA-F-]{36})]]|\[asset:([0-9a-fA-F-]{36})]|⟦asset:([0-9a-fA-F-]{36})⟧)/g;
-
-function EditingInboxStuffDetails(props: EditingInboxStuffDetailsProps) {
-  return (
-    <div className="inbox-detail">
-      <DetailHeader item={props.item} metaVariant={props.metaVariant} showCreatedMeta={props.showCreatedMeta} />
-      <Suspense fallback={<p className="pane-state">Loading editor...</p>}>
-        <LazyItemBodyMarkdownEditor
-          itemId={props.item.id}
-          initialBody={props.item.body}
-          onAutosave={props.onAutosaveEditing}
-          onSave={props.onCommitEditing}
-          onExitNormalMode={props.onExitEditingFromNormalMode}
-          onVimModeChange={props.onVimModeChange}
-        />
-      </Suspense>
-    </div>
-  );
-}
 
 function findNextBoundary(marks: ItemBody["inlineMarks"], entities: ItemBody["blockEntities"], currentPos: number, from: number, to: number) {
   return Math.min(
@@ -292,151 +273,49 @@ function entityAssetRelativePath(entity: ItemBody["blockEntities"][number]): str
   return entity.attrs?.relativePath ?? entity.attrs?.localPath ?? "";
 }
 
-function ReadOnlyInboxStuffDetails({ item, metaVariant, showCreatedMeta }: Readonly<Pick<InboxStuffDetailsProps, "item" | "metaVariant" | "showCreatedMeta">>) {
-  const body = item.body;
+function BodyMarkdownSurface(props: InboxStuffDetailsProps) {
+  const [loadError, setLoadError] = useState(false);
 
-  if (!body || !body.text) {
-    return (
-      <div className="inbox-detail">
-        <DetailHeader item={item} metaVariant={metaVariant} showCreatedMeta={showCreatedMeta} />
-        <p className="pane-state">No details yet for this stuff.</p>
-      </div>
-    );
+  useEffect(() => {
+    if (props.item.bodyLoaded !== false) {
+      setLoadError(false);
+      return;
+    }
+    let active = true;
+    void ensureItemBodyLoaded(props.item).catch(() => {
+      if (active) setLoadError(true);
+    });
+    return () => {
+      active = false;
+    };
+  }, [props.item.id, props.item.bodyLoaded]);
+
+  if (props.item.bodyLoaded === false) {
+    return <p className="pane-state">{loadError ? "Failed to load body." : "Loading body..."}</p>;
   }
 
-  const lines = getStuffBodyPreviewLines(body);
-  const docLength = body.text.length;
+  const hasBody = Boolean(props.item.body?.text);
+  if (!props.editing && !hasBody) {
+    return <p className="pane-state">No details yet for this stuff.</p>;
+  }
+
+  const className = props.editing
+    ? "inbox-detail__body-surface"
+    : "inbox-detail__body inbox-detail__body-preview inbox-detail__body-surface";
 
   return (
-    <div className="inbox-detail">
-      <DetailHeader item={item} metaVariant={metaVariant} showCreatedMeta={showCreatedMeta} />
-      <div className="inbox-detail__body inbox-detail__body-preview" aria-label="Selected item details">
-        {lines.map((lineText, index) => {
-           // To get exact character offset for each line, we could accumulate lengths.
-           const from = body.text.split("\n").slice(0, index).join("\n").length + (index > 0 ? 1 : 0);
-           const to = from + lineText.length;
-           
-           const blocks = body.lineBlocks.filter(b => b.from <= to && b.from >= from);
-           const block = blocks[0]; // assuming one block per line max for rendering
-           
-           const lineEntities = body.blockEntities.filter(e => e.from >= from && e.to <= to);
-
-           if (block?.type === "heading1") {
-             return (
-               <div className="inbox-detail__body-line" key={index}>
-                 <span className="inbox-detail__line-number">{index + 1}</span>
-                 <span className="inbox-detail__line-content cm-md-heading-1">
-                   {renderInlineBody(body.text, body.inlineMarks, body.blockEntities, from, to)}
-                 </span>
-               </div>
-             );
-           }
-           if (block?.type === "heading2") {
-             return (
-               <div className="inbox-detail__body-line" key={index}>
-                 <span className="inbox-detail__line-number">{index + 1}</span>
-                 <span className="inbox-detail__line-content cm-md-heading-2">
-                   {renderInlineBody(body.text, body.inlineMarks, body.blockEntities, from, to)}
-                 </span>
-               </div>
-             );
-           }
-           if (block?.type === "heading3") {
-             return (
-               <div className="inbox-detail__body-line" key={index}>
-                 <span className="inbox-detail__line-number">{index + 1}</span>
-                 <span className="inbox-detail__line-content cm-md-heading-3">
-                   {renderInlineBody(body.text, body.inlineMarks, body.blockEntities, from, to)}
-                 </span>
-               </div>
-             );
-           }
-           if (block?.type === "bullet") {
-             const indentStr = lineText.match(/^\s*/)?.[0] ?? "";
-             const level = Math.floor(indentStr.length / 2) % 3;
-             return (
-               <div className="inbox-detail__body-line" key={index}>
-                 <span className="inbox-detail__line-number">{index + 1}</span>
-                 <span className="inbox-detail__line-content">
-                   {indentStr}<span className={`cm-bullet-mark cm-bullet-level-${level}`}>• </span>
-                   {renderInlineBody(body.text, body.inlineMarks, body.blockEntities, from + indentStr.length, to)}
-                 </span>
-               </div>
-             );
-           }
-           if (block?.type === "numbered") {
-             const indentStr = lineText.match(/^\s*/)?.[0] ?? "";
-             return (
-               <div className="inbox-detail__body-line" key={index}>
-                 <span className="inbox-detail__line-number">{index + 1}</span>
-                 <span className="inbox-detail__line-content">
-                   {indentStr}<span className="cm-numbered-mark">1. </span>
-                   {renderInlineBody(body.text, body.inlineMarks, body.blockEntities, from + indentStr.length, to)}
-                 </span>
-               </div>
-             );
-           }
-           if (block?.type === "lettered") {
-             const indentStr = lineText.match(/^\s*/)?.[0] ?? "";
-             return (
-               <div className="inbox-detail__body-line" key={index}>
-                 <span className="inbox-detail__line-number">{index + 1}</span>
-                 <span className="inbox-detail__line-content">
-                   {indentStr}<span className="cm-lettered-mark">a. </span>
-                   {renderInlineBody(body.text, body.inlineMarks, body.blockEntities, from + indentStr.length, to)}
-                 </span>
-               </div>
-             );
-           }
-           if (block?.type === "checklist") {
-             const indentStr = lineText.match(/^\s*/)?.[0] ?? "";
-             const isChecked = block.attrs?.checked ?? false;
-             return (
-               <div className="inbox-detail__body-line" key={index}>
-                 <span className="inbox-detail__line-number">{index + 1}</span>
-                 <span className="inbox-detail__line-content">
-                   {indentStr}
-                   <span className={isChecked ? "cm-checklist-box cm-checklist-box--checked" : "cm-checklist-box"} />
-                   <span className={isChecked ? "cm-checklist-text cm-checklist-text--checked" : "cm-checklist-text"}>
-                     {renderInlineBody(body.text, body.inlineMarks, body.blockEntities, from + indentStr.length, to)}
-                   </span>
-                 </span>
-               </div>
-             );
-           }
-           if (block?.type === "divider") {
-             return (
-               <div className="inbox-detail__body-line" key={index}>
-                 <span className="inbox-detail__line-number">{index + 1}</span>
-                 <span className="inbox-detail__line-content">
-                   <span className="cm-divider" />
-                 </span>
-               </div>
-             );
-           }
-           if (block?.type === "quote") {
-             const indentStr = lineText.match(/^\s*/)?.[0] ?? "";
-             return (
-               <div className="inbox-detail__body-line" key={index}>
-                 <span className="inbox-detail__line-number">{index + 1}</span>
-                 <span className="inbox-detail__line-content cm-quote-line">
-                   {indentStr}<span className="cm-quote-mark">▌ </span>
-                   {renderInlineBody(body.text, body.inlineMarks, body.blockEntities, from + indentStr.length, to)}
-                 </span>
-               </div>
-             );
-           }
-
-           return (
-             <div className="inbox-detail__body-line" key={index}>
-               <span className="inbox-detail__line-number">{index + 1}</span>
-               <span className="inbox-detail__line-content">
-                 {lineText ? renderInlineBody(body.text, body.inlineMarks, body.blockEntities, from, to) : "\u00A0"}
-               </span>
-             </div>
-           );
-        })}
-      </div>
+    <div className={className} aria-label="Selected item details">
+      <Suspense fallback={<p className="pane-state">Loading body...</p>}>
+        <LazyItemBodyMarkdownEditor
+          itemId={props.item.id}
+          initialBody={props.item.body}
+          readOnly={!props.editing}
+          onAutosave={props.onAutosaveEditing}
+          onSave={props.onCommitEditing}
+          onExitNormalMode={props.onExitEditingFromNormalMode}
+          onVimModeChange={props.onVimModeChange}
+        />
+      </Suspense>
     </div>
   );
 }
@@ -447,9 +326,10 @@ function ReadOnlyInboxStuffDetails({ item, metaVariant, showCreatedMeta }: Reado
  * @example <InboxStuffDetails item={stuff} editing={false} ... />
  */
 export function InboxStuffDetails(props: InboxStuffDetailsProps) {
-  if (props.editing) {
-    return <EditingInboxStuffDetails {...props} />;
-  }
-
-  return <ReadOnlyInboxStuffDetails item={props.item} metaVariant={props.metaVariant} showCreatedMeta={props.showCreatedMeta} />;
+  return (
+    <div className="inbox-detail">
+      <DetailHeader item={props.item} metaVariant={props.metaVariant} showCreatedMeta={props.showCreatedMeta} />
+      <BodyMarkdownSurface {...props} />
+    </div>
+  );
 }

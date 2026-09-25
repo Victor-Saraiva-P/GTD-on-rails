@@ -52,10 +52,10 @@ public class ItemAsset extends AuditableEntity {
     /**
      * Builds the persisted file path from stable asset metadata.
      *
-     * <p>Example: {@code asset.relativePath()} returns {@code items/item-id/asset-id/file.pdf}.</p>
+     * <p>Example: {@code asset.relativePath()} returns {@code items/item-id/assets/asset-id/file.pdf}.</p>
      */
     public String relativePath() {
-        return "items/" + item.getId() + "/" + id + "/" + fileName;
+        return "items/" + item.getId() + "/assets/" + id + "/" + fileName;
     }
 
     /**

@@ -1,0 +1,14 @@
+{
+  "name": "@gtd-on-rails/sync-server",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "./gradlew bootRun",
+    "build": "./gradlew build",
+    "test": "./gradlew test",
+    "unitTest": "./gradlew test",
+    "integrationTest": "./gradlew test",
+    "lint": "./gradlew check",
+    "check": "./gradlew check"
+  }
+}

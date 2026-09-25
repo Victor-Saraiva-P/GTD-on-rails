@@ -27,6 +27,7 @@ function toSomedayMaybeItem(item: SomedayMaybeResponse): SomedayMaybeItem {
     id: item.id,
     title: item.title,
     body: parseBody(item.body),
+    bodyLoaded: item.body != null,
     status: "SOMEDAY_MAYBE",
     createdAt: item.createdAt,
     projectId: item.projectId ?? null,

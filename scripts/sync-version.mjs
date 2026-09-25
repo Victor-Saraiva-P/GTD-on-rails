@@ -60,6 +60,7 @@ function versionTargets(version) {
     desktopPackageTarget(version),
     jsonPackageTarget("apps/api/package.json", version),
     replaceTarget("apps/api/build.gradle", /^version = ['"].*['"]$/m, `version = '${version}'`),
+    replaceTarget("apps/sync-server/build.gradle", /^version = ['"].*['"]$/m, `version = '${version}'`),
     replaceTarget("apps/desktop/src-tauri/tauri.conf.json", /("version":\s*)"[^"]+"/, `$1"${version}"`),
     replaceTarget("apps/desktop/src-tauri/Cargo.toml", /^version = ".*"$/m, `version = "${version}"`),
     replaceTarget("apps/desktop/src-tauri/Cargo.lock", /(name = "desktop"\nversion = )"[^"]+"/, `$1"${version}"`),

@@ -44,13 +44,13 @@ class OutboxPayloadSerializerTests {
     }
 
     @Test
-    void serializesItemPayloadWithTitleAndBodyText() throws Exception {
+    void serializesItemPayloadWithoutFileBackedBody() throws Exception {
         Item item = new Item(new Title("Test Task"), "Markdown note");
         String payload = serializer.serializeEntity(item);
         JsonNode node = objectMapper.readTree(payload);
 
         assertEquals("Test Task", node.get("title").asText());
-        assertTrue(node.get("body").asText().contains("Markdown note"));
+        assertTrue(!node.has("body"));
         assertEquals("STUFF", node.get("status").asText());
     }
 

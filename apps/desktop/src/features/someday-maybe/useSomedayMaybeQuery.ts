@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import { ApiRequestError } from "../../lib/api/apiClient.ts";
+import { optimisticMutate } from "../../lib/api/optimistic.ts";
+import { mutateSharedEntityOptimistically } from "../../lib/state/optimisticSharedEntity.ts";
+import { useSharedCollectionState } from "../../lib/state/sharedEntityStore.ts";
 import type { ItemBody } from "../inbox/types.ts";
 import { useSyncStatus } from "../sync-status/SyncStatusProvider.tsx";
+import { useDomainRevalidation } from "../sync-status/domainChanges.ts";
 import {
   assignSomedayMaybeProject,
   deleteSomedayMaybeItem,
@@ -28,21 +32,22 @@ function replaceItem(items: SomedayMaybeItem[], updated: SomedayMaybeItem): Some
   return items.map((item) => (item.id === updated.id ? updated : item));
 }
 
-function useSomedayMaybeLoadState() {
-  const [items, setItems] = useState<SomedayMaybeItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+function useSomedayMaybeLoadState(subview: SomedayMaybeSubview) {
+  const collection = useSharedCollectionState<SomedayMaybeItem>(`someday-maybe:${subview}`);
+  const [isLoading, setIsLoading] = useState(!collection.loaded);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
 
   return {
     errorMessage,
+    hasSnapshot: collection.loaded,
     isLoading,
-    items,
+    items: collection.items,
     reload: () => setReloadToken((token) => token + 1),
     reloadToken,
     setErrorMessage,
     setIsLoading,
-    setItems
+    setItems: collection.setItems
   };
 }
 
@@ -58,7 +63,7 @@ async function loadSomedayMaybeItems(
   isCancelled: () => boolean,
   state: ReturnType<typeof useSomedayMaybeLoadState>
 ) {
-  state.setIsLoading(true);
+  if (!state.hasSnapshot) state.setIsLoading(true);
   state.setErrorMessage(null);
   try {
     const nextItems = await fetchItemsForSubview(subview);
@@ -85,8 +90,14 @@ async function mutateAndFilterItem(
 ) {
   setUpdating(true);
   try {
-    await mutateAction(id);
-    state.setItems((items) => items.filter((item) => item.id !== id));
+    await optimisticMutate({
+      current: () => state.items,
+      applyOptimistic: (items) => items.filter((item) => item.id !== id),
+      set: state.setItems,
+      mutate: () => mutateAction(id),
+      onError: (error) => state.setErrorMessage(toErrorMessage(error))
+    });
+    state.setErrorMessage(null);
     poll();
   } finally {
     setUpdating(false);
@@ -94,20 +105,16 @@ async function mutateAndFilterItem(
 }
 
 async function updateAndReplaceItem(
+  item: SomedayMaybeItem,
+  optimistic: SomedayMaybeItem,
   updateAction: () => Promise<SomedayMaybeItem>,
   state: ReturnType<typeof useSomedayMaybeLoadState>,
-  setUpdating: (value: boolean) => void,
   poll: () => void
 ): Promise<SomedayMaybeItem> {
-  setUpdating(true);
-  try {
-    const updated = await updateAction();
-    state.setItems((items) => replaceItem(items, updated));
-    poll();
-    return updated;
-  } finally {
-    setUpdating(false);
-  }
+  const updated = await mutateSharedEntityOptimistically(item, optimistic, updateAction);
+  state.setErrorMessage(null);
+  poll();
+  return updated;
 }
 
 function buildSomedayMaybeMutations(
@@ -117,14 +124,14 @@ function buildSomedayMaybeMutations(
 ) {
   return {
     assignProject: (item: SomedayMaybeItem, projectId: string | null) =>
-      updateAndReplaceItem(() => assignSomedayMaybeProject(item, projectId), state, setUpdating, poll),
+      updateAndReplaceItem(item, { ...item, projectId }, () => assignSomedayMaybeProject(item, projectId), state, poll),
     deleteItem: (id: string) => mutateAndFilterItem(id, deleteSomedayMaybeItem, state, setUpdating, poll),
     recoverItem: (id: string) => mutateAndFilterItem(id, restoreSomedayMaybeItem, state, setUpdating, poll),
     revertToStuff: (id: string) => mutateAndFilterItem(id, revertSomedayMaybeToStuff, state, setUpdating, poll),
     updateBody: (item: SomedayMaybeItem, body: ItemBody) =>
-      updateAndReplaceItem(() => updateSomedayMaybeBody(item, body), state, setUpdating, poll),
+      updateAndReplaceItem(item, { ...item, body }, () => updateSomedayMaybeBody(item, body), state, poll),
     updateTitle: (item: SomedayMaybeItem, title: string) =>
-      updateAndReplaceItem(() => updateSomedayMaybeTitle(item, title), state, setUpdating, poll)
+      updateAndReplaceItem(item, { ...item, title }, () => updateSomedayMaybeTitle(item, title), state, poll)
   };
 }
 
@@ -134,9 +141,11 @@ function buildSomedayMaybeMutations(
  * @example const query = useSomedayMaybeQuery("active")
  */
 export function useSomedayMaybeQuery(subview: SomedayMaybeSubview) {
-  const state = useSomedayMaybeLoadState();
+  const state = useSomedayMaybeLoadState(subview);
   const [isUpdating, setIsUpdating] = useState(false);
   const { triggerSyncStatusPolling } = useSyncStatus();
+
+  useDomainRevalidation(["items", "body_document", "project_items"], state.reload);
 
   useEffect(() => {
     let cancelled = false;

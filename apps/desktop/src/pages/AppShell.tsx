@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { clearAssetObjectUrlCache } from "../features/inbox/assetFiles";
-import { evictBackendCache } from "../lib/api/cache.ts";
 import { useCalendarWorkspaceController } from "../features/calendar/useCalendarWorkspaceController";
 import { useDeletedInboxWorkspaceController } from "../features/inbox/useDeletedInboxWorkspaceController";
 import { useInboxWorkspaceController } from "../features/inbox/useInboxWorkspaceController";
 import { useActiveScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
+import { HintOverlay } from "../features/keybinds/HintOverlay.tsx";
+import { WhichKeyDialog } from "../features/keybinds/WhichKeyDialog";
+import { useZoomMode } from "../features/zoom-mode/ZoomModeContext";
 import type { KeybindDefinition, ScreenId } from "../features/keybinds/types";
 import {
   deleteNextAction,
@@ -63,15 +65,11 @@ const deletedNextActionsConfig = {
 
 type AppControllers = ReturnType<typeof useAppControllers>;
 
-function buildNavigationBindings(
+function buildScreenJumpBindings(
   jumpToScreen: (screen: ScreenId, beforeNavigate?: () => void) => void,
-  goBack: () => void,
-  goForward: () => void,
   controllers: AppControllers
-) {
+): KeybindDefinition[] {
   return [
-    { id: "navigation.jump-back", key: "o", ctrl: true, description: "Jump to older position", runKeybind: goBack },
-    { id: "navigation.jump-forward", key: "i", ctrl: true, description: "Jump to newer position", runKeybind: goForward },
     { id: "navigation.open-calendars", key: "c", description: "Open calendars", leader: true, sequence: ["c"], runKeybind: () => jumpToScreen("calendars", controllers.calendars.resetWorkspace) },
     { id: "navigation.open-contexts", key: "C", description: "Open contexts", leader: true, sequence: ["C"], runKeybind: () => jumpToScreen("contexts") },
     { id: "navigation.open-inbox", key: "i", description: "Open inbox", leader: true, sequence: ["i"], runKeybind: () => jumpToScreen("inbox", controllers.inbox.resetWorkspace) },
@@ -80,7 +78,24 @@ function buildNavigationBindings(
     { id: "navigation.open-projects", key: "p", description: "Open projects", leader: true, sequence: ["p"], runKeybind: () => jumpToScreen("projects", controllers.projects.resetWorkspace) },
     { id: "navigation.open-someday-maybe", key: "s", description: "Open someday/maybe", leader: true, sequence: ["s"], runKeybind: () => jumpToScreen("someday-maybe", controllers.somedayMaybe.resetWorkspace) },
     { id: "navigation.open-google-calendar-integration", key: "g", description: "Google Calendar Integration", leader: true, sequence: ["I", "g"], runKeybind: () => jumpToScreen("google-calendar-integration") }
-  ] satisfies KeybindDefinition[];
+  ];
+}
+
+function buildNavigationBindings(
+  jumpToScreen: (screen: ScreenId, beforeNavigate?: () => void) => void,
+  goBack: () => void,
+  goForward: () => void,
+  controllers: AppControllers,
+  openHintMode: () => void,
+  toggleZoomMode: () => void
+): KeybindDefinition[] {
+  return [
+    { id: "navigation.jump-back", key: "o", ctrl: true, description: "Jump to older position", runKeybind: goBack },
+    { id: "navigation.jump-forward", key: "i", ctrl: true, description: "Jump to newer position", runKeybind: goForward },
+    ...buildScreenJumpBindings(jumpToScreen, controllers),
+    { id: "navigation.open-hint-mode", key: "h", description: "Hint mode (jump to UI element)", leader: true, sequence: ["h"], runKeybind: openHintMode },
+    { id: "navigation.toggle-zoom-mode", key: "z", description: "Toggle Zoom Mode", leader: true, sequence: ["z"], runKeybind: toggleZoomMode }
+  ];
 }
 
 function useAppControllers(projectDetailProject: Project | null) {
@@ -99,37 +114,24 @@ function useAppControllers(projectDetailProject: Project | null) {
   };
 }
 
-function reloadActiveController(activeScreen: ScreenId, controllers: AppControllers): void {
-  if (activeScreen === "contexts") clearAssetObjectUrlCache();
-  if (activeScreen === "inbox") controllers.inbox.reload();
-  if (activeScreen === "deleted-inbox") controllers.deletedInbox.reload();
-  if (activeScreen === "calendars" || activeScreen === "calendar-detail-page") controllers.calendars.reload();
-  if (activeScreen === "next-actions") controllers.nextActions.reload();
-  if (activeScreen === "projects") controllers.projects.reload();
-  if (activeScreen === "project-detail") controllers.projectDetail.reload();
-  if (
-    activeScreen === "ongoing-next-actions" ||
-    activeScreen === "ongoing-next-action-detail-page" ||
-    activeScreen === "ongoing-calendar-detail-page"
-  ) controllers.ongoing.reload();
-  if (activeScreen === "done-next-actions") controllers.doneNextActions.reload();
-  if (activeScreen === "deleted-next-actions") controllers.deletedNextActions.reload();
-  if (activeScreen === "google-calendar-integration") controllers.googleCalendarIntegration.reload();
-  if (activeScreen === "someday-maybe") controllers.somedayMaybe.reload();
+function revalidateActiveScreen(activeScreen: ScreenId, controllers: AppControllers): void {
+  if (activeScreen === "inbox") return controllers.inbox.reload();
+  if (activeScreen === "deleted-inbox") return controllers.deletedInbox.reload();
+  if (activeScreen === "calendars" || activeScreen === "calendar-detail-page") return controllers.calendars.reload();
+  if (activeScreen === "next-actions") return controllers.nextActions.reload();
+  if (activeScreen === "projects") return controllers.projects.reload();
+  if (activeScreen === "project-detail") return controllers.projectDetail.reload();
+  if (activeScreen.startsWith("ongoing-")) return controllers.ongoing.reload();
+  if (activeScreen === "done-next-actions") return controllers.doneNextActions.reload();
+  if (activeScreen === "deleted-next-actions") return controllers.deletedNextActions.reload();
+  if (activeScreen === "someday-maybe") return controllers.somedayMaybe.reload();
 }
 
-function useReloadActiveScreen(activeScreen: ScreenId, controllers: AppControllers) {
+function useScreenLocalEffects(activeScreen: ScreenId, controllers: AppControllers) {
   useEffect(() => {
-    reloadActiveController(activeScreen, controllers);
+    if (activeScreen === "contexts") clearAssetObjectUrlCache();
+    revalidateActiveScreen(activeScreen, controllers);
   }, [activeScreen]);
-
-  useEffect(() => {
-    const handleFocus = () => {
-      void evictBackendCache().then(() => reloadActiveController(activeScreen, controllers));
-    };
-    window.addEventListener("focus", handleFocus);
-    return () => window.removeEventListener("focus", handleFocus);
-  }, [activeScreen, controllers]);
 }
 
 function useAgentStateBridge(activeScreen: ScreenId) {
@@ -232,26 +234,62 @@ function renderActiveScreen(
  *
  * @example <AppShell />
  */
-export function AppShell() {
-  const { activeScreen, setActiveScreen } = useActiveScreen();
-  const [projectDetailProject, setProjectDetailProject] = useState<Project | null>(null);
-  const controllers = useAppControllers(projectDetailProject);
-  const navigation = useJumpListNavigation({
-    activeScreen, setActiveScreen, controllers, projectDetailProject, setProjectDetailProject
-  });
-  const openProjectDetail = useCallback(() => {
+function useOpenProjectDetail(
+  controllers: AppControllers,
+  navigation: ReturnType<typeof useJumpListNavigation>
+) {
+  return useCallback(() => {
     const selected = controllers.projects.selectedItem;
     if (!selected) return;
     const project = controllers.projects.projects.find((p) => p.id === selected.id);
     navigation.openOwnerProject(selected.id, project?.title ?? null, null);
   }, [controllers.projects.projects, controllers.projects.selectedItem, navigation]);
-  const navigationBindings = useMemo(
-    () => buildNavigationBindings(navigation.jumpToScreen, navigation.goBack, navigation.goForward, controllers),
-    [navigation.jumpToScreen, navigation.goBack, navigation.goForward, controllers]
-  );
+}
 
-  useReloadActiveScreen(activeScreen, controllers);
+function useAppShellBindings(
+  navigation: ReturnType<typeof useJumpListNavigation>,
+  controllers: AppControllers,
+  openHintMode: () => void,
+  toggleZoomMode: () => void
+) {
+  return useMemo(
+    () => buildNavigationBindings(navigation.jumpToScreen, navigation.goBack, navigation.goForward, controllers, openHintMode, toggleZoomMode),
+    [navigation.jumpToScreen, navigation.goBack, navigation.goForward, controllers, openHintMode, toggleZoomMode]
+  );
+}
+
+function useHintModeState() {
+  const [isHintModeActive, setIsHintModeActive] = useState(false);
+  const openHintMode = useCallback(() => setIsHintModeActive(true), []);
+  const closeHintMode = useCallback(() => setIsHintModeActive(false), []);
+  return { isHintModeActive, openHintMode, closeHintMode };
+}
+
+/**
+ * Selects the active desktop page and wires shared navigation keybindings.
+ *
+ * @example <AppShell />
+ */
+export function AppShell() {
+  const { activeScreen, setActiveScreen } = useActiveScreen();
+  const [projectDetailProject, setProjectDetailProject] = useState<Project | null>(null);
+  const { isHintModeActive, openHintMode, closeHintMode } = useHintModeState();
+  const { toggleZoomMode } = useZoomMode();
+  const controllers = useAppControllers(projectDetailProject);
+  const navigation = useJumpListNavigation({
+    activeScreen, setActiveScreen, controllers, projectDetailProject, setProjectDetailProject
+  });
+  const openProjectDetail = useOpenProjectDetail(controllers, navigation);
+  const navigationBindings = useAppShellBindings(navigation, controllers, openHintMode, toggleZoomMode);
+
+  useScreenLocalEffects(activeScreen, controllers);
   useAgentStateBridge(activeScreen);
   useRegisterKeybinds(navigationBindings);
-  return renderActiveScreen(activeScreen, controllers, setActiveScreen, openProjectDetail, navigation.openOwnerProject, navigation.openProjectItemDestination);
+  return (
+    <>
+      {renderActiveScreen(activeScreen, controllers, setActiveScreen, openProjectDetail, navigation.openOwnerProject, navigation.openProjectItemDestination)}
+      {isHintModeActive && <HintOverlay onExit={closeHintMode} />}
+      <WhichKeyDialog />
+    </>
+  );
 }

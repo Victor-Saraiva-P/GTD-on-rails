@@ -149,6 +149,7 @@ function toCalendar(item: CalendarResponse): Calendar {
     id: item.id,
     title: item.title,
     body: normalizeCalendarBody(item.body),
+    bodyLoaded: item.body != null,
     scheduledDate: item.scheduledDate,
     scheduledTime: item.scheduledTime ?? null,
     status: item.status,

@@ -1,55 +1,50 @@
-import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import os from "node:os";
+import net from "node:net";
+import test from "node:test";
 import path from "node:path";
-import { composeCommand, developmentEnvironment } from "./dev.mjs";
-import { installFakeDevelopmentCommands } from "./development-test-fixtures.mjs";
-import { runScriptUntilLogContains } from "./script-test-runner.mjs";
+import {
+  assertPortAvailable,
+  developmentEnvironment,
+  developmentRootDirectory,
+  syncServerDevelopmentRootDirectory
+} from "./dev.mjs";
 
-const devScript = path.resolve("scripts/dev.mjs");
-
-test("development Compose targets only the PostgreSQL service", () => {
-  assert.deepEqual(composeCommand(["up", "-d", "postgres"]), [
-    "docker", "compose", "-f", path.resolve("infra/compose.yaml"), "up", "-d", "postgres",
-  ]);
+test("development root defaults to repository-local SQLite dataset", () => {
+  assert.equal(path.basename(developmentRootDirectory({})), "dev-gtd-on-rails");
 });
 
-test("development environment uses repository-local persistent files and disables rclone", () => {
-  const environment = developmentEnvironment({ EXISTING: "preserved" });
-  assert.equal(environment.EXISTING, "preserved");
-  assert.equal(environment.GTD_DATA_ROOT_DIRECTORY, path.resolve("dev-gtd-on-rails"));
-  assert.equal(environment.GTD_SYNC_RCLONE_ENABLED, "false");
+test("development environment enables the local sync server by default", () => {
+  const environment = developmentEnvironment({ PATH: "/tmp" });
+  assert.equal(environment.GTD_SYNC_SERVER_ENABLED, "true");
+  assert.equal(environment.GTD_SYNC_SERVER_BASE_URL, "http://127.0.0.1:9473");
+  assert.equal(environment.GTD_SYNC_SERVER_BIND_ADDRESS, "127.0.0.1");
 });
 
-test("development orchestrator starts Compose and both native processes", async () => {
-  const sandbox = await mkdtemp(path.join(os.tmpdir(), "gtd-dev-test-"));
-  try {
-    const assetFile = await createDevelopmentAsset(sandbox);
-    await installFakeDevelopmentCommands(sandbox);
-    const processOutcome = await runDevelopmentScript(sandbox, path.dirname(path.dirname(assetFile)));
-    assert.equal(processOutcome.exitCode, 143);
-    assert.equal(await readFile(assetFile, "utf8"), "preserve me");
-    assert.match(await readFile(path.join(sandbox, "docker.log"), "utf8"), /up -d postgres/);
-    assert.doesNotMatch(await readFile(path.join(sandbox, "docker.log"), "utf8"), /down -v/);
-    assert.match(await readFile(path.join(sandbox, "pnpm.log"), "utf8"), /@gtd-on-rails\/api dev/);
-    assert.match(await readFile(path.join(sandbox, "pnpm.log"), "utf8"), /@gtd-on-rails\/desktop dev/);
-  } finally {
-    await rm(sandbox, { recursive: true, force: true });
-  }
+test("sync server development data stays separate from the desktop dataset", () => {
+  assert.equal(path.basename(syncServerDevelopmentRootDirectory({})), "dev-gtd-sync-server");
+  assert.notEqual(syncServerDevelopmentRootDirectory({}), developmentRootDirectory({}));
 });
 
-async function createDevelopmentAsset(sandbox) {
-  const assetFile = path.join(sandbox, "development-data", "assets", "preserved.txt");
-  await mkdir(path.dirname(assetFile), { recursive: true });
-  await writeFile(assetFile, "preserve me");
-  return assetFile;
-}
+test("development environment preserves explicit sync settings", () => {
+  const environment = developmentEnvironment({
+    GTD_SYNC_SERVER_ENABLED: "false",
+    GTD_SYNC_SERVER_BASE_URL: "http://100.64.0.2:9473",
+    GTD_SYNC_SERVER_DATA_ROOT: "/tmp/custom-sync"
+  });
+  assert.equal(environment.GTD_SYNC_SERVER_ENABLED, "false");
+  assert.equal(environment.GTD_SYNC_SERVER_BASE_URL, "http://100.64.0.2:9473");
+  assert.equal(environment.GTD_SYNC_SERVER_DATA_ROOT, "/tmp/custom-sync");
+});
 
-function runDevelopmentScript(sandbox, developmentRoot) {
-  return runScriptUntilLogContains(devScript, developmentScriptEnvironment(sandbox, developmentRoot), path.join(path.dirname(developmentRoot), "pnpm.log"), ["@gtd-on-rails/api dev", "@gtd-on-rails/desktop dev"]);
-}
-
-function developmentScriptEnvironment(sandbox, developmentRoot) {
-  return { ...process.env, GTD_DEVELOPMENT_ROOT_DIRECTORY: developmentRoot, GTD_DOCKER_EXECUTABLE: path.join(sandbox, "docker"), GTD_PNPM_EXECUTABLE: path.join(sandbox, "pnpm"), GTD_TEST_LOG: path.join(sandbox, "docker.log"), GTD_TEST_PNPM_LOG: path.join(sandbox, "pnpm.log") };
-}
+test("port preflight rejects a port already in use", async () => {
+  const server = net.createServer();
+  await new Promise((resolve) => server.listen({ host: "127.0.0.1", port: 0 }, resolve));
+  const address = server.address();
+  assert.equal(typeof address, "object");
+  await assert.rejects(
+    () => assertPortAvailable(address.port),
+    /already in use/
+  );
+  await new Promise((resolve) => server.close(resolve));
+  await assert.doesNotReject(() => assertPortAvailable(address.port));
+});

@@ -14,7 +14,27 @@ export function findOpenableEditorTarget(body: ItemBody, cursorPosition: number)
   if (entity) return { type: "asset", entity };
 
   const link = body.inlineMarks.find((mark) => linkContainsCursor(mark, cursorPosition));
-  return link?.attrs?.href ? { type: "link", url: link.attrs.href } : null;
+  if (link?.attrs?.href) return { type: "link", url: link.attrs.href };
+
+  const nativeLinkUrl = findMarkdownLinkAtPosition(body.text, cursorPosition);
+  return nativeLinkUrl ? { type: "link", url: nativeLinkUrl } : null;
+}
+
+function findMarkdownLinkAtPosition(text: string, pos: number): string | null {
+  let searchFrom = 0;
+  while (searchFrom < text.length) {
+    const openLabel = text.indexOf("[", searchFrom);
+    if (openLabel < 0) return null;
+    const closeLabel = text.indexOf("](", openLabel + 1);
+    if (closeLabel < 0) return null;
+    const closeTarget = text.indexOf(")", closeLabel + 2);
+    if (closeTarget < 0) return null;
+    if (pos >= openLabel && pos <= closeTarget) {
+      return text.slice(closeLabel + 2, closeTarget).trim();
+    }
+    searchFrom = closeTarget + 1;
+  }
+  return null;
 }
 
 function linkContainsCursor(mark: InlineMark, cursorPosition: number): boolean {

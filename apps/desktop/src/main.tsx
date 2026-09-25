@@ -5,6 +5,7 @@ import { SyncStatusProvider } from "./features/sync-status/SyncStatusProvider";
 import { ConnectivityBlocker } from "./features/connectivity/ConnectivityBlocker";
 import { DatabaseReadinessBlocker } from "./features/database-readiness/DatabaseReadinessBlocker";
 import { DatabaseReadinessProvider } from "./features/database-readiness/DatabaseReadinessProvider";
+import { ZoomModeProvider } from "./features/zoom-mode/ZoomModeContext";
 import { BootLoader } from "./components/BootLoader";
 import { AppShell } from "./pages/AppShell";
 import "./styles.css";
@@ -18,15 +19,17 @@ if (!app) {
 ReactDOM.createRoot(app).render(
   <React.StrictMode>
     <KeybindProvider>
-      <BootLoader>
-        <DatabaseReadinessProvider>
-          <SyncStatusProvider>
-            <ConnectivityBlocker>
-              <DatabaseReadinessBlocker><AppShell /></DatabaseReadinessBlocker>
-            </ConnectivityBlocker>
-          </SyncStatusProvider>
-        </DatabaseReadinessProvider>
-      </BootLoader>
+      <ZoomModeProvider>
+        <BootLoader>
+          <DatabaseReadinessProvider>
+            <SyncStatusProvider>
+              <ConnectivityBlocker>
+                <DatabaseReadinessBlocker><AppShell /></DatabaseReadinessBlocker>
+              </ConnectivityBlocker>
+            </SyncStatusProvider>
+          </DatabaseReadinessProvider>
+        </BootLoader>
+      </ZoomModeProvider>
     </KeybindProvider>
   </React.StrictMode>
 );

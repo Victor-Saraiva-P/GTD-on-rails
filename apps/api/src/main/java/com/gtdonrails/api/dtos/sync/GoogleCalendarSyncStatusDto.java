@@ -6,6 +6,7 @@ public record GoogleCalendarSyncStatusDto(
     GoogleCalendarSyncState state,
     boolean pending,
     boolean running,
+    long pendingCount,
     Instant lastStartedAt,
     Instant lastFinishedAt,
     Instant lastSuccessfulSyncAt,

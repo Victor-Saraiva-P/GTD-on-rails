@@ -17,6 +17,8 @@ These shortcuts are registered globally by the desktop shell.
 | `Space o` | Open on going next actions. |
 | `Space p` | Open projects. |
 | `Space s` | Open someday/maybe. |
+| `Space h` | Open Hint Mode to jump directly to any visible UI element. |
+| `Space z` | Toggle Zoom Mode (collapses side lists into a centered, distraction-free reading and writing canvas; exit with `Esc` or `Space z`). |
 
 Calendars use `[` and `]` inside the page to cycle through Today, Weekly, Completed, and Deleted subviews.
 
@@ -79,6 +81,7 @@ These shortcuts are available in body/detail editing zones that register markdow
 | `Space m 1`   | Format current block as heading 1.                   |
 | `Space m 2`   | Format current block as heading 2.                   |
 | `Space m 3`   | Format current block as heading 3.                   |
+| `Space m f`   | Toggle heading fold for current heading block.       |
 | `Space m a`   | Insert an asset.                                     |
 | `Space t b`   | Format selected inline text as bold.                 |
 | `Space t i`   | Format selected inline text as italic.               |
@@ -87,11 +90,38 @@ These shortcuts are available in body/detail editing zones that register markdow
 | `Space t t`   | Clear inline formatting.                             |
 | `Space g d`   | Open the link or asset at the cursor target.         |
 
+## Markdown Editor Vim Motions
+
+These motions and operators enhance editing inside the markdown body editor:
+
+| Shortcut | Scope | Action |
+| --- | --- | --- |
+| `j` / `k` | Body editor | Move down/up by visual display row in soft-wrapped text (counts like `3j` or visual line mode move by logical lines). |
+| `$` | Body editor | Move to the end of the current visible display row (or logical end when count > 1). |
+| `g0` | Body editor | Move to the beginning of the current visible display row. |
+| `A` | Body editor | Enter insert mode at the end of the current visible display row. |
+| `I` | Body editor | Enter insert mode at the beginning of the current visible display row. |
+| `]]` | Body editor | Jump to next markdown heading (`#`, `##`, etc.) with jumplist support. |
+| `[[` | Body editor | Jump to previous markdown heading with jumplist support. |
+| `za` | Body editor (Normal mode) | Toggle heading fold at cursor or enclosing heading section. |
+| `zc` | Body editor (Normal mode) | Close (fold) heading section at cursor. |
+| `zo` | Body editor (Normal mode) | Open (unfold) heading section at cursor. |
+| `zM` | Body editor (Normal mode) | Fold all heading sections in document. |
+| `zR` | Body editor (Normal mode) | Unfold all heading sections in document. |
+| `:fold` / `:unfold` | Body editor (Ex mode) | Fold or unfold heading section at cursor. |
+| `:foldall` / `:unfoldall` | Body editor (Ex mode) | Fold or unfold all heading sections in document. |
+| `y` | Body editor | Yank selection with visual highlight pulse and synchronization to system clipboard. |
+| `p` / `P` | Body editor | Paste from system clipboard into the editor in normal and visual mode. |
+| `jk` | Body editor (Insert mode) | Exit insert mode immediately to normal mode without reaching for physical Escape. |
+| `Enter` | Body editor (Insert mode) | Automatically continue lists (`- `, `* `, `1. `) and checklists (`- [ ] `); pressing on an empty marker exits the list. |
+| `o` / `O` | Body editor (Normal mode) | Open a new line below/above continuing current list or checklist marker into insert mode. |
+| `Ctrl+Enter` | Body editor | Toggle checkbox between `[ ]` and `[x]` on current line or selection; turns plain text into a task. |
+
 ## Discoverability
 
 | Shortcut  | Action                                                           |
 | --------- | ---------------------------------------------------------------- |
-| `Space k` | Show available keybindings for the active screen and focus zone. |
+| `Space k` | Open interactive Which-Key cheat sheet dialog for the active focus zone with search filtering and category groupings. |
 
 ## Conflict Rule
 

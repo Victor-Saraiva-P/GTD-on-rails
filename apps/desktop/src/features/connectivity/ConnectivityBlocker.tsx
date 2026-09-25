@@ -50,7 +50,7 @@ function SyncStatusLine({ row }: Readonly<{ row: ConnectivitySyncRow }>) {
 }
 
 /**
- * Blocks the app while the browser reports no internet access.
+ * Preserves local interaction across connectivity changes.
  *
  * @example <ConnectivityBlocker><AppShell /></ConnectivityBlocker>
  */
@@ -65,7 +65,7 @@ export function ConnectivityBlocker({ children }: PropsWithChildren) {
   return (
     <dialog open aria-label="Offline connection status" aria-modal="true" className="boot-loader connectivity-blocker">
       <div className="boot-loader__terminal">
-        <p className="boot-loader__brand">{appMetadata.name} v{appMetadata.version}</p>
+        <p className="boot-loader__brand">{appMetadata.name} v{appMetadata.version}{import.meta.env.DEV ? " [DEV]" : ""}</p>
         <p className="boot-loader__line"><span className="boot-loader__status">[OFFLINE]</span> {model.title}</p>
         <p className="boot-loader__line connectivity-blocker__message">{model.message}</p>
         {model.rows.map((row) => <SyncStatusLine key={row.label} row={row} />)}

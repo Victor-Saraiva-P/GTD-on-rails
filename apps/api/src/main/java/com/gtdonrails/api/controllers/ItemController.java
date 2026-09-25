@@ -3,6 +3,7 @@ package com.gtdonrails.api.controllers;
 import java.util.UUID;
 
 import com.gtdonrails.api.dtos.item.AssignProjectRequestDto;
+import com.gtdonrails.api.dtos.item.ItemBodyResponseDto;
 import com.gtdonrails.api.dtos.item.ItemResponseDto;
 import com.gtdonrails.api.dtos.item.PatchItemBodyRequestDto;
 import com.gtdonrails.api.dtos.item.UpdateItemTitleRequestDto;
@@ -11,6 +12,7 @@ import com.gtdonrails.api.services.ProjectItemService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -29,6 +31,16 @@ public class ItemController {
     public ItemController(ItemService itemService, ProjectItemService projectItemService) {
         this.itemService = itemService;
         this.projectItemService = projectItemService;
+    }
+
+    /**
+     * Loads an item's body only when the desktop detail pane needs it.
+     *
+     * <p>Example: {@code GET /items/018f13b2-a7f3-7c44-8f1a-9f31f65a7fd2/body}.</p>
+     */
+    @GetMapping("/{id}/body")
+    public ItemBodyResponseDto getItemBody(@PathVariable UUID id) {
+        return itemService.getItemBody(id);
     }
 
     /**

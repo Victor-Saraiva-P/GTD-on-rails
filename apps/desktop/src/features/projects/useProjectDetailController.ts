@@ -1,4 +1,8 @@
 import { useEffect, useState } from "react";
+import { optimisticMutate } from "../../lib/api/optimistic.ts";
+import { mutateSharedEntityOptimistically } from "../../lib/state/optimisticSharedEntity.ts";
+import { useSharedCollectionState } from "../../lib/state/sharedEntityStore.ts";
+import { useDomainRevalidation } from "../sync-status/domainChanges.ts";
 import type { CalendarConversionPayload } from "../calendar/types";
 import type { ItemBody } from "../inbox/types";
 import { isSameBody } from "../inbox/types";
@@ -17,17 +21,33 @@ function draftProjectItem(projectId: string): ProjectItem {
 }
 
 function useProjectActionsQuery(projectId: string | null) {
-  const [items, setItems] = useState<ProjectItem[]>([]);
+  const collection = useSharedCollectionState<ProjectItem>(`project-actions:${projectId ?? "none"}`);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const reload = () => void loadProjectActions(projectId, setItems, setErrorMessage, setIsLoading);
+  const [isLoading, setIsLoading] = useState(Boolean(projectId) && !collection.loaded);
+  const reload = () => void loadProjectActions(
+    projectId,
+    collection.loaded,
+    collection.setItems,
+    setErrorMessage,
+    setIsLoading
+  );
   useEffect(reload, [projectId]);
-  return { errorMessage, isLoading, items, reload, setItems };
+  useDomainRevalidation(
+    ["items", "next_actions", "calendars", "projects", "project_items", "body_document"],
+    reload
+  );
+  return { errorMessage, isLoading, items: collection.items, reload, setItems: collection.setItems };
 }
 
-async function loadProjectActions(projectId: string | null, setItems: (items: ProjectItem[]) => void, setError: (value: string | null) => void, setLoading: (value: boolean) => void) {
+async function loadProjectActions(
+  projectId: string | null,
+  hasSnapshot: boolean,
+  setItems: (items: ProjectItem[]) => void,
+  setError: (value: string | null) => void,
+  setLoading: (value: boolean) => void
+) {
   if (!projectId) { setItems([]); return; }
-  setLoading(true);
+  if (!hasSnapshot) setLoading(true);
   try { setItems(await fetchProjectActions(projectId)); setError(null); }
   catch (error: unknown) { setError(error instanceof Error ? error.message : "Failed to load project actions."); }
   finally { setLoading(false); }
@@ -165,11 +185,11 @@ function buildEditorOperations(
   return {
     createNewStuff: () => createDraft(project, selection, edit, zone, setDraft),
     startTitleEdit: () => startTitleEdit(selection.selectedItem, edit),
-    commitTitle: () => commitTitle(project, selection.selectedItem, edit, draft, setDraft, query.reload, selection.setSelectedId),
+    commitTitle: () => commitTitle(project, selection.selectedItem, edit, draft, setDraft, query, selection.setSelectedId),
     cancelTitleEdit: () => clearTitleEdit(edit),
     startBodyEdit: () => startBodyEdit(selection.selectedItem, edit, zone),
-    commitBody: (body: ItemBody) => commitBody(selection.selectedItem, edit, body, query.reload),
-    autosaveBody: (body: ItemBody) => autosaveBody(selection.selectedItem, edit, body, query.reload),
+    commitBody: (body: ItemBody) => commitBody(selection.selectedItem, edit, body),
+    autosaveBody: (body: ItemBody) => autosaveBody(selection.selectedItem, edit, body),
     cancelBodyEdit: () => clearBodyEdit(edit)
   };
 }
@@ -182,7 +202,7 @@ function buildProcessOperations(
     processSelectedStuff: (energy: number | null, minutes: number | null, contextIds: string[], deadline: string | null) => processSelectedStuff(selection.selectedItem, energy, minutes, contextIds, deadline, query.reload),
     processSelectedStuffToCalendar: (payload: CalendarConversionPayload) => processSelectedStuffToCalendar(selection.selectedItem, payload, query.reload),
     processSelectedStuffToSomedayMaybe: () => processSelectedStuffToSomedayMaybe(selection.selectedItem, query.reload),
-    assignSelectedProject: (projectId: string | null) => assignSelectedProject(selection.selectedItem, projectId, query.reload)
+    assignSelectedProject: (projectId: string | null) => assignSelectedProject(selection.selectedItem, projectId, query)
   };
 }
 
@@ -247,23 +267,41 @@ function startTitleEdit(item: ProjectItem | null, edit: ReturnType<typeof usePro
   edit.setEditingId(item.id); edit.setEditingTitle(item.id === DRAFT_PROJECT_ITEM_ID ? "" : item.title); edit.setEditingTitleError(null);
 }
 
-async function saveProjectItemTitle(projectId: string, item: ProjectItem, title: string, setSelectedId?: (id: string | null) => void) {
+async function saveProjectItemTitle(
+  projectId: string,
+  item: ProjectItem,
+  title: string,
+  query: ReturnType<typeof useProjectActionsQuery>,
+  setSelectedId?: (id: string | null) => void
+) {
   if (item.id === DRAFT_PROJECT_ITEM_ID) {
     const created = await createProjectStuff(projectId, title);
+    query.setItems((items) => [...items, created]);
     setSelectedId?.(created.id);
     return;
   }
-  await updateProjectItemTitle(item, title);
+  await mutateSharedEntityOptimistically(
+    item,
+    { ...item, title },
+    () => updateProjectItemTitle(item, title)
+  );
 }
 
-async function commitTitle(project: Project | null, item: ProjectItem | null, edit: ReturnType<typeof useProjectDetailEditState>, draft: ProjectItem | null, setDraft: (item: ProjectItem | null) => void, reload: () => void, setSelectedId?: (id: string | null) => void) {
+async function commitTitle(
+  project: Project | null,
+  item: ProjectItem | null,
+  edit: ReturnType<typeof useProjectDetailEditState>,
+  draft: ProjectItem | null,
+  setDraft: (item: ProjectItem | null) => void,
+  query: ReturnType<typeof useProjectActionsQuery>,
+  setSelectedId?: (id: string | null) => void
+) {
   if (!project || !item || edit.editingId !== item.id) return;
   const title = edit.editingTitle.trim();
   if (!title) { setDraft(null); clearTitleEdit(edit); return; }
-  await saveProjectItemTitle(project.id, item, title, setSelectedId);
+  await saveProjectItemTitle(project.id, item, title, query, setSelectedId);
   if (draft?.id === DRAFT_PROJECT_ITEM_ID) setDraft(null);
   clearTitleEdit(edit);
-  reload();
 }
 
 function startBodyEdit(item: ProjectItem | null, edit: ReturnType<typeof useProjectDetailEditState>, zone: ReturnType<typeof useActiveZone>) {
@@ -271,15 +309,25 @@ function startBodyEdit(item: ProjectItem | null, edit: ReturnType<typeof useProj
   zone.setActiveZone("project-item-detail"); edit.setEditingBodyId(item.id);
 }
 
-async function commitBody(item: ProjectItem | null, edit: ReturnType<typeof useProjectDetailEditState>, body: ItemBody, reload: () => void) {
+async function commitBody(item: ProjectItem | null, edit: ReturnType<typeof useProjectDetailEditState>, body: ItemBody) {
   if (!item || edit.editingBodyId !== item.id) return;
-  if (!isSameBody(item.body, body)) await updateProjectItemBody(item, body);
-  clearBodyEdit(edit); reload();
+  if (!isSameBody(item.body, body)) {
+    await mutateSharedEntityOptimistically(
+      item,
+      { ...item, body },
+      () => updateProjectItemBody(item, body)
+    );
+  }
+  clearBodyEdit(edit);
 }
 
-async function autosaveBody(item: ProjectItem | null, edit: ReturnType<typeof useProjectDetailEditState>, body: ItemBody, reload: () => void) {
+async function autosaveBody(item: ProjectItem | null, edit: ReturnType<typeof useProjectDetailEditState>, body: ItemBody) {
   if (!item || edit.editingBodyId !== item.id || isSameBody(item.body, body)) return;
-  await updateProjectItemBody(item, body); reload();
+  await mutateSharedEntityOptimistically(
+    item,
+    { ...item, body },
+    () => updateProjectItemBody(item, body)
+  );
 }
 
 async function processSelectedStuff(item: ProjectItem | null, energy: number | null, minutes: number | null, contextIds: string[], deadline: string | null, reload: () => void) {
@@ -297,9 +345,25 @@ async function processSelectedStuffToSomedayMaybe(item: ProjectItem | null, relo
   await processProjectStuffToSomedayMaybe(item); reload();
 }
 
-async function assignSelectedProject(item: ProjectItem | null, projectId: string | null, reload: () => void) {
+async function assignSelectedProject(
+  item: ProjectItem | null,
+  projectId: string | null,
+  query: ReturnType<typeof useProjectActionsQuery>
+) {
   if (!item || item.id === DRAFT_PROJECT_ITEM_ID) return;
-  await assignItemProject(item.id, projectId); reload();
+  await optimisticMutate({
+    current: () => query.items,
+    applyOptimistic: (items) => projectId === item.projectId ? items : items.filter((candidate) => candidate.id !== item.id),
+    set: query.setItems,
+    mutate: () => mutateSharedEntityOptimistically(
+      item,
+      { ...item, projectId },
+      async () => {
+        const result = await assignItemProject(item.id, projectId);
+        return { ...item, projectId: result.projectId ?? projectId, projectTitle: result.projectTitle ?? null };
+      }
+    )
+  });
 }
 
 export type ProjectDetailController = ReturnType<typeof useProjectDetailController>;

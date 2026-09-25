@@ -1,0 +1,139 @@
+/* Zoom Mode Styles */
+
+.list-workspace--zoom {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.list-workspace--zoom .inbox-terminal-layout,
+.list-workspace--zoom .calendar-today-layout,
+.list-workspace--zoom .ongoing-terminal-layout,
+.list-workspace--zoom .ongoing-unified-layout,
+.list-workspace--zoom .weekly-terminal-layout,
+.list-workspace--zoom .projects-terminal-layout,
+.list-workspace--zoom .stuff-detail-layout {
+  grid-template-columns: minmax(0, 1fr) !important;
+  max-width: 900px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 24px 20px 48px;
+  box-sizing: border-box;
+}
+
+/* Hide all navigation / list side panes and shell chrome in Zoom Mode */
+.list-workspace--zoom .inbox-pane--list,
+.list-workspace--zoom .calendar-pane--today,
+.list-workspace--zoom .calendar-pane--scheduled,
+.list-workspace--zoom .ongoing-pane--next-actions,
+.list-workspace--zoom .ongoing-pane--calendars,
+.list-workspace--zoom .projects-terminal-layout .list-pane:first-child,
+.list-workspace--zoom .list-pane__header,
+.list-workspace--zoom .list-workspace__brand,
+.list-workspace--zoom .sync-status,
+.list-workspace--zoom .sync-status-indicators,
+.list-workspace--zoom .list-workspace__current {
+  display: none !important;
+}
+
+/* Clean borderless pane presentation in Zoom Mode */
+.list-workspace--zoom .list-pane {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.list-workspace--zoom .list-pane__body {
+  background: transparent !important;
+  padding: 0 !important;
+  overflow: visible;
+}
+
+/* Distraction-free item detail typography */
+.list-workspace--zoom .inbox-detail__title {
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: #ebdbb2;
+  margin-bottom: 12px;
+  border: none;
+}
+
+.list-workspace--zoom .inbox-detail__meta {
+  color: #928374;
+  font-size: 0.85rem;
+  margin-bottom: 16px;
+}
+
+.list-workspace--zoom .inbox-detail__divider {
+  height: 1px;
+  background: rgba(235, 219, 178, 0.08);
+  margin-bottom: 24px;
+}
+
+.list-workspace--zoom .cm-editor {
+  background: transparent !important;
+  font-size: 1.05rem;
+  line-height: 1.7;
+}
+
+.list-workspace--zoom .cm-content {
+  padding-bottom: 240px !important;
+}
+
+/* Zoom Mode Footer */
+.list-workspace--zoom .list-workspace__footer {
+  border-top: 1px solid rgba(235, 219, 178, 0.05);
+  background: transparent;
+  padding: 8px 24px;
+  justify-content: flex-end;
+}
+
+.list-workspace--zoom .list-workspace__mode {
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+}
+
+/* Floating Zoom Mode Exit Badge */
+.zoom-mode-exit-button {
+  position: fixed;
+  top: 14px;
+  right: 18px;
+  z-index: 1000;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  background: rgba(40, 40, 40, 0.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(235, 219, 178, 0.15);
+  border-radius: 9999px;
+  color: #a89984;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+  opacity: 0.7;
+}
+
+.zoom-mode-exit-button:hover {
+  opacity: 1;
+  color: #ebdbb2;
+  border-color: rgba(235, 219, 178, 0.35);
+  background: rgba(50, 48, 47, 0.95);
+  transform: translateY(-1px);
+}
+
+.zoom-mode-exit-button__pulse {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #8ec07c;
+  box-shadow: 0 0 6px #8ec07c;
+}
+
+.zoom-mode-exit-button__kbd {
+  padding: 1px 5px;
+  background: rgba(235, 219, 178, 0.1);
+  border-radius: 4px;
+  font-size: 0.7rem;
+  border: 1px solid rgba(235, 219, 178, 0.2);
+}

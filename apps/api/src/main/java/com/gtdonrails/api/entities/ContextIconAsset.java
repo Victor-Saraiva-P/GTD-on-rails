@@ -52,10 +52,10 @@ public class ContextIconAsset extends AuditableEntity {
     /**
      * Builds the persisted icon path from stable asset metadata.
      *
-     * <p>Example: {@code asset.relativePath()} returns {@code contexts/context-id/asset-id/icon.png}.</p>
+     * <p>Example: {@code asset.relativePath()} returns {@code assets/contexts/context-id/asset-id/icon.png}.</p>
      */
     public String relativePath() {
-        return "contexts/" + context.getId() + "/" + id + "/" + fileName;
+        return "assets/contexts/" + context.getId() + "/" + id + "/" + fileName;
     }
 
     @PrePersist

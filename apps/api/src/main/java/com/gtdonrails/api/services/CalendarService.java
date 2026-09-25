@@ -208,7 +208,7 @@ public class CalendarService {
     }
 
     private List<CalendarResponseDto> mapCalendars(List<Calendar> calendars) {
-        return calendars.stream().map(calendarMapper::toResponse).toList();
+        return calendars.stream().map(calendarMapper::toListResponse).toList();
     }
 
     private void requestGoogleCalendarEventSyncAfterCommit(UUID itemId) {

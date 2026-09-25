@@ -16,15 +16,15 @@ export type ConnectivityBlockerModel = {
 };
 
 /**
- * Builds the offline blocker view model from browser and sync state.
+ * Builds connectivity status without blocking local-first interaction.
  *
  * @example buildConnectivityBlockerModel(false, status)
  */
 export function buildConnectivityBlockerModel(isBrowserOnline: boolean, syncStatus: SyncStatus | null): ConnectivityBlockerModel {
   return {
-    isBlocked: !isBrowserOnline,
+    isBlocked: false,
     title: isBrowserOnline ? "Connection active" : "No internet connection",
-    message: "The affected features are File Sync via rclone and Google Calendar.",
+    message: "Local editing remains available. Sync-server convergence and Google Calendar resume when connectivity returns.",
     rows: buildSyncRows(syncStatus)
   };
 }

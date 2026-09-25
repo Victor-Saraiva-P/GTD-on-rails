@@ -1,16 +1,25 @@
 package com.gtdonrails.api.mappers;
 
+import com.gtdonrails.api.bodydocuments.ItemBodySource;
 import com.gtdonrails.api.dtos.inbox.StuffResponseDto;
 import com.gtdonrails.api.entities.Item;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
 public class StuffMapper {
 
     private final ProjectAssociationMapper projectAssociationMapper;
+    private final ItemBodySource itemBodySource;
+
+    @Autowired
+    public StuffMapper(ProjectAssociationMapper projectAssociationMapper, ItemBodySource itemBodySource) {
+        this.projectAssociationMapper = projectAssociationMapper;
+        this.itemBodySource = itemBodySource;
+    }
 
     public StuffMapper(ProjectAssociationMapper projectAssociationMapper) {
-        this.projectAssociationMapper = projectAssociationMapper;
+        this(projectAssociationMapper, ItemBodySource.legacy());
     }
 
     /**
@@ -22,7 +31,22 @@ public class StuffMapper {
         return new StuffResponseDto(
             item.getId(),
             item.getTitle().value(),
-            item.getBody(),
+            itemBodySource.read(item.getId(), item.getBody()),
+            item.getStatus().name(),
+            item.getCreatedAt(),
+            projectAssociationMapper.projectIdFor(item),
+            projectAssociationMapper.titleFor(item)
+        );
+    }
+
+    /**
+     * Maps an inbox list row without loading the Markdown body document.
+     */
+    public StuffResponseDto toListResponse(Item item) {
+        return new StuffResponseDto(
+            item.getId(),
+            item.getTitle().value(),
+            null,
             item.getStatus().name(),
             item.getCreatedAt(),
             projectAssociationMapper.projectIdFor(item),

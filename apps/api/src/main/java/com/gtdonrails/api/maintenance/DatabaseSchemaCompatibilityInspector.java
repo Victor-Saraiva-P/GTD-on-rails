@@ -27,7 +27,7 @@ public class DatabaseSchemaCompatibilityInspector {
     }
 
     /**
-     * Evaluates current PostgreSQL schema history against this sidecar's supported range.
+     * Evaluates current SQLite schema history against this sidecar's supported range.
      *
      * <p>Example: {@code inspector.inspectCompatibility()}.</p>
      */

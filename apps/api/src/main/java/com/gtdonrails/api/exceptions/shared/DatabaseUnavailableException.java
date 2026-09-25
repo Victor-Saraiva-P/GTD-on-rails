@@ -1,6 +1,6 @@
 package com.gtdonrails.api.exceptions.shared;
 
-/** Signals that PostgreSQL cannot safely serve a normal application request. */
+/** Signals that the local SQLite database cannot safely serve a normal application request. */
 public class DatabaseUnavailableException extends RuntimeException {
 
     /** Creates the unavailable-database response cause.
@@ -8,6 +8,6 @@ public class DatabaseUnavailableException extends RuntimeException {
      * <p>Example: {@code new DatabaseUnavailableException()}.</p>
      */
     public DatabaseUnavailableException() {
-        super("PostgreSQL readiness value 'unavailable' is invalid; expected connected database with matching schema, identity, and READY cutover");
+        super("SQLite readiness value 'unavailable' is invalid; expected accessible database with compatible schema and matching identity");
     }
 }

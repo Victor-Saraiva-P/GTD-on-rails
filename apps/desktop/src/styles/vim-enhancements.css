@@ -1,0 +1,45 @@
+/* Vim highlight-on-yank flash */
+.cm-yank-highlight {
+  background-color: rgba(204, 120, 47, 0.45);
+  border-radius: 2px;
+  transition: background-color 160ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+/* Hint mode overlay and badges */
+.gtd-hint-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+.gtd-hint-badge {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 5px;
+  min-width: 18px;
+  height: 18px;
+  background: #1c1c1c;
+  border: 1px solid #cc782f;
+  border-radius: 4px;
+  color: #f5f1ee;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  text-transform: uppercase;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  user-select: none;
+}
+
+.gtd-hint-badge--dim {
+  opacity: 0.35;
+}
+
+.gtd-hint-badge__matched {
+  color: #cc782f;
+}

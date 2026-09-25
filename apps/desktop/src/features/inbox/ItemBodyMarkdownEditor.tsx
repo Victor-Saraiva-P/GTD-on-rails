@@ -1,35 +1,75 @@
-import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
-import { EditorSelection, RangeSetBuilder, StateEffect, StateField, ChangeSet } from "@codemirror/state";
-import { EditorState } from "@codemirror/state";
-import { Decoration, drawSelection, EditorView, highlightActiveLine, keymap, lineNumbers, ViewPlugin, WidgetType, type ViewUpdate, type DecorationSet } from "@codemirror/view";
+import { history, historyKeymap } from "@codemirror/commands";
+import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
+import { EditorSelection, EditorState, Prec, type Extension } from "@codemirror/state";
+import {
+  drawSelection,
+  EditorView,
+  highlightActiveLine,
+  keymap,
+  lineNumbers
+} from "@codemirror/view";
 import { getCM, Vim, vim, type CodeMirrorV } from "@replit/codemirror-vim";
 import { useEffect, useRef, useState, type MutableRefObject, type RefObject } from "react";
-import { getCachedAssetObjectUrl, getCachedPdfFirstPagePreviewUrl } from "./assetFiles";
-import { INSERT_BLOCK_ENTITY_EVENT, type InsertBlockEntityEventDetail } from "./assetEditorEvents";
+import { INSERT_BLOCK_ENTITY_EVENT, type InsertBlockEntityEventDetail } from "./assetEditorEvents.ts";
 import {
   FORMAT_BOLD_EVENT,
-  FORMAT_ITALIC_EVENT,
-  FORMAT_CLEAR_INLINE_EVENT,
-  FORMAT_CODE_EVENT,
   FORMAT_BULLET_EVENT,
   FORMAT_CHECKLIST_CHECKED_EVENT,
   FORMAT_CHECKLIST_EVENT,
   FORMAT_CHECKLIST_UNCHECKED_EVENT,
+  FORMAT_CLEAR_INLINE_EVENT,
+  FORMAT_CODE_EVENT,
   FORMAT_DIVIDER_EVENT,
   FORMAT_HEADING_EVENT,
+  FORMAT_ITALIC_EVENT,
   FORMAT_LETTERED_LIST_EVENT,
-  FORMAT_NUMBERED_LIST_EVENT,
   FORMAT_NORMAL_TEXT_EVENT,
+  FORMAT_NUMBERED_LIST_EVENT,
   FORMAT_QUOTE_EVENT,
+  FORMAT_TOGGLE_FOLD_EVENT,
   OPEN_CURSOR_TARGET_EVENT
-} from "./bodyEditorEvents";
-import { normalizeBodyForClient, mapBodyRangesThroughChanges, toggleInlineMark, setLineBlock, toggleChecklist, insertBlockEntity, clearLineBlock, applyInlineMark, removeInlineMarks, reconcileBlockEntityTokenRanges, bodyForPersistence } from "./itemBodyUtils";
-import { type ItemBody, type BlockEntity } from "./types";
-import { INSERT_MARKDOWN_LINK_EVENT, type InsertMarkdownLinkEventDetail } from "./markdownLinks";
-import { findOpenableEditorTarget } from "./openEditorTarget";
-import { openAssetWithDefaultApp, openExternalUrl } from "./openExternalResource";
+} from "./bodyEditorEvents.ts";
+import {
+  clearFormatting,
+  formatMarkerBackspaceTransaction,
+  insertDivider,
+  setBlockType,
+  toggleWrap,
+  wrapLink
+} from "./cmFormat.ts";
+import { headingFoldingExtension, registerHeadingFoldVimCommands, toggleHeadingAtCursor } from "./cmHeadingFold.ts";
+import { itemDocumentIdFacet, livePreviewPlugin, refreshLivePreviewEffect } from "./cmLivePreview.ts";
+import { registerDisplayLineMotions } from "./cmDisplayLineMotion.ts";
+import { registerHeadingMotions } from "./cmHeadingMotion.ts";
+import { registerCheckboxVimCommands, toggleCheckbox } from "./cmToggleCheckbox.ts";
+import { vimClipboardPasteExtension } from "./cmClipboardPaste.ts";
+import { applyVimInsertEscape, buildVimAwareDefaultKeymap } from "./cmVimKeymaps.ts";
+import { buildZenEditorKeymap } from "./cmEditorKeymaps.ts";
+import { wireYankHighlight, yankHighlightExtension } from "./cmYankHighlight.ts";
+import {
+  bodyForPersistence,
+  itemBodyStateEffect,
+  itemBodyStateField,
+  normalizeBodyForClient
+} from "./itemBodyUtils.ts";
+import {
+  editorModeExtensions,
+  reconfigureEditorCompartments,
+  syncReadOnlyBody
+} from "./itemBodyEditorMode.ts";
+import {
+  createItemBodyPersistenceQueue,
+  type ItemBodyPersistenceQueue,
+  type ItemBodyPersistenceState
+} from "./itemBodyPersistence.ts";
+import { handleListContinuationEnter, registerListContinuationMotions } from "./listContinuation.ts";
+import { INSERT_MARKDOWN_LINK_EVENT, type InsertMarkdownLinkEventDetail } from "./markdownLinks.tsx";
+import { findOpenableEditorTarget } from "./openEditorTarget.ts";
+import { openAssetWithDefaultApp, openExternalUrl } from "./openExternalResource.ts";
+import { getActiveEditorView, registerActiveEditorView } from "../keybinds/activeEditorRegistry.ts";
+import type { ItemBody } from "./types.ts";
 
-export type MarkdownBodySaveState = "saved" | "unsaved" | "saving" | "error";
+export type MarkdownBodySaveState = ItemBodyPersistenceState;
 
 export type ItemBodyMarkdownEditorProps = Readonly<{
   itemId: string;
@@ -41,387 +81,40 @@ export type ItemBodyMarkdownEditorProps = Readonly<{
   onVimModeChange?: (mode: "NORMAL" | "INSERT" | "VISUAL") => void;
 }>;
 
-type AutosaveTracker = {
-  hasUnsavedChanges: boolean;
-  isSaving: boolean;
-  lastInsertExitAt: number | null;
-  lastInsertMode: boolean | null;
-  changeId: number;
-};
+type EditorCallbackRefs = Readonly<{
+  autosave: MutableRefObject<ItemBodyMarkdownEditorProps["onAutosave"]>;
+  save: MutableRefObject<ItemBodyMarkdownEditorProps["onSave"]>;
+  exitNormalMode: MutableRefObject<ItemBodyMarkdownEditorProps["onExitNormalMode"]>;
+  vimModeChange: MutableRefObject<ItemBodyMarkdownEditorProps["onVimModeChange"]>;
+}>;
 
 const cursorCache = new Map<string, object>();
-
-const itemBodyStateEffect = StateEffect.define<ItemBody>();
-
-const itemBodyStateField = StateField.define<ItemBody>({
-  create() {
-    return { text: "", inlineMarks: [], lineBlocks: [], blockEntities: [] };
-  },
-  update(value, tr) {
-    let nextValue = mapBodyRangesThroughChanges(value, tr.changes);
-    for (const e of tr.effects) {
-      if (e.is(itemBodyStateEffect)) {
-        nextValue = { ...nextValue, ...e.value };
-      }
-    }
-    nextValue.text = tr.state.doc.toString();
-    return reconcileBlockEntityTokenRanges(nextValue);
-  }
-});
-
-function updateChangesItemBody(update: ViewUpdate): boolean {
-  return update.transactions.some((tr) => tr.effects.some((effect) => effect.is(itemBodyStateEffect)));
-}
-
-class BlockEntityWidget extends WidgetType {
-  constructor(private entity: BlockEntity) {
-    super();
-  }
-
-  eq(other: BlockEntityWidget): boolean {
-    return this.entity.id === other.entity.id;
-  }
-
-  toDOM(): HTMLElement {
-    const el = document.createElement("span");
-    el.className = "cm-block-entity";
-    
-    if (isImageBlockEntity(this.entity)) {
-      appendImagePreview(el, this.entity);
-    } else if (isPdfBlockEntity(this.entity)) {
-      el.appendChild(pdfPreviewElement(this.entity));
-    } else {
-      const link = document.createElement("a");
-      link.textContent = `[${this.entity.type.toUpperCase()}] ${this.entity.attrs?.displayName}`;
-      link.className = "cm-markdown-link";
-      link.target = "_blank";
-      void setAssetLinkHref(el, link, this.entity);
-      el.appendChild(link);
-    }
-    return el;
-  }
-
-  destroy(dom: HTMLElement): void {
-    delete dom.dataset.objectUrl;
-  }
-}
-
-function isImageBlockEntity(entity: BlockEntity): boolean {
-  return entity.type === "image" || entity.attrs?.contentType?.startsWith("image/") === true;
-}
-
-function isPdfBlockEntity(entity: BlockEntity): boolean {
-  return entity.attrs?.contentType === "application/pdf" || entity.attrs?.url?.toLowerCase().endsWith(".pdf") === true;
-}
-
-function pdfPreviewElement(entity: BlockEntity): HTMLElement {
-  const figure = document.createElement("figure");
-  const image = document.createElement("img");
-
-  figure.className = "cm-pdf-preview";
-  image.alt = entity.attrs?.displayName || "PDF first page";
-  image.className = "cm-pdf-preview__image";
-  figure.appendChild(image);
-  void setPdfPreviewSource(figure, image, entity);
-  return figure;
-}
-
-function appendImagePreview(root: HTMLElement, entity: BlockEntity): void {
-  const img = document.createElement("img");
-  img.alt = entity.attrs?.displayName || "image";
-  img.className = "cm-markdown-image";
-  root.appendChild(img);
-  void setImagePreviewSource(root, img, entity);
-}
-
-async function setImagePreviewSource(root: HTMLElement, img: HTMLImageElement, entity: BlockEntity): Promise<void> {
-  const assetUrl = await getCachedAssetObjectUrl(entityAssetRelativePath(entity), entity.attrs?.contentType, entity.attrs?.url);
-  root.dataset.objectUrl = assetUrl.url;
-  img.src = assetUrl.url;
-}
-
-async function setPdfPreviewSource(root: HTMLElement, image: HTMLImageElement, entity: BlockEntity): Promise<void> {
-  const relativePath = entityAssetRelativePath(entity);
-  const assetUrl = await getCachedAssetObjectUrl(relativePath, entity.attrs?.contentType, entity.attrs?.url);
-  const previewUrl = await getCachedPdfFirstPagePreviewUrl(relativePath).catch(() => null);
-  root.dataset.objectUrl = previewUrl?.url ?? assetUrl.url;
-  if (previewUrl) {
-    image.src = previewUrl.url;
-    return;
-  }
-
-  image.remove();
-  root.appendChild(assetFallbackLink(entity, assetUrl.url));
-}
-
-function assetFallbackLink(entity: BlockEntity, assetUrl: string): HTMLAnchorElement {
-  const link = document.createElement("a");
-  link.textContent = `Open ${entity.attrs?.displayName || "PDF"}`;
-  link.className = "cm-markdown-link";
-  link.href = assetUrl;
-  link.target = "_blank";
-  link.rel = "noreferrer";
-  return link;
-}
-
-async function setAssetLinkHref(root: HTMLElement, link: HTMLAnchorElement, entity: BlockEntity): Promise<void> {
-  const assetUrl = await getCachedAssetObjectUrl(entityAssetRelativePath(entity), entity.attrs?.contentType, entity.attrs?.url);
-  root.dataset.objectUrl = assetUrl.url;
-  link.href = assetUrl.url;
-}
-
-function entityAssetRelativePath(entity: BlockEntity): string | undefined {
-  return entity.attrs?.relativePath ?? entity.attrs?.localPath;
-}
-
-class MarkdownLinkWidget extends WidgetType {
-  constructor(private text: string, private url: string) {
-    super();
-  }
-
-  eq(other: MarkdownLinkWidget): boolean {
-    return this.text === other.text && this.url === other.url;
-  }
-
-  toDOM(): HTMLElement {
-    const link = document.createElement("a");
-    link.className = "cm-markdown-link";
-    link.href = this.url;
-    link.rel = "noreferrer";
-    link.target = "_blank";
-    link.textContent = this.text;
-    return link;
-  }
-}
-
-class ChecklistBoxWidget extends WidgetType {
-  constructor(private checked: boolean) {
-    super();
-  }
-
-  eq(other: ChecklistBoxWidget): boolean {
-    return this.checked === other.checked;
-  }
-
-  toDOM(): HTMLElement {
-    const box = document.createElement("span");
-    box.className = this.checked ? "cm-checklist-box cm-checklist-box--checked" : "cm-checklist-box";
-    return box;
-  }
-}
-
-class DividerWidget extends WidgetType {
-  toDOM(): HTMLElement {
-    const divider = document.createElement("span");
-    divider.className = "cm-divider";
-    return divider;
-  }
-}
-
-class BulletMarkWidget extends WidgetType {
-  constructor(private level: number) { super(); }
-  eq(other: BulletMarkWidget): boolean { return this.level === other.level; }
-  toDOM(): HTMLElement {
-    const el = document.createElement("span");
-    el.className = `cm-bullet-mark cm-bullet-level-${this.level}`;
-    el.textContent = "\u2022 ";
-    return el;
-  }
-}
-
-class QuoteMarkWidget extends WidgetType {
-  toDOM(): HTMLElement {
-    const el = document.createElement("span");
-    el.className = "cm-quote-mark";
-    el.textContent = "\u258c ";
-    return el;
-  }
-}
-
-class NumberedMarkWidget extends WidgetType {
-  toDOM(): HTMLElement {
-    const el = document.createElement("span");
-    el.className = "cm-numbered-mark";
-    el.textContent = "1. ";
-    return el;
-  }
-}
-
-class LetteredMarkWidget extends WidgetType {
-  toDOM(): HTMLElement {
-    const el = document.createElement("span");
-    el.className = "cm-lettered-mark";
-    el.textContent = "a. ";
-    return el;
-  }
-}
-
-function buildLineBlockDecorations(view: EditorView, lineBlocks: ItemBody["lineBlocks"], docLength: number, decos: {from: number, to: number, deco: Decoration}[]) {
-  for (const block of lineBlocks) {
-    if (block.from > docLength) continue;
-    const validFrom = Math.max(0, block.from);
-    
-    const line = view.state.doc.lineAt(validFrom);
-
-    if (block.type === "heading1") {
-      decos.push({from: line.from, to: line.from, deco: Decoration.line({class: "cm-md-heading-1"})});
-    } else if (block.type === "heading2") {
-      decos.push({from: line.from, to: line.from, deco: Decoration.line({class: "cm-md-heading-2"})});
-    } else if (block.type === "heading3") {
-      decos.push({from: line.from, to: line.from, deco: Decoration.line({class: "cm-md-heading-3"})});
-    } else if (block.type === "bullet") {
-      decos.push({from: line.from, to: line.from, deco: Decoration.line({class: "cm-bullet-line"})});
-      const textIndent = line.text.match(/^\s*/)?.[0].length || 0;
-      const level = Math.floor(textIndent / 2) % 3;
-      decos.push({
-        from: line.from + textIndent,
-        to: line.from + textIndent,
-        deco: Decoration.widget({ widget: new BulletMarkWidget(level) })
-      });
-    } else if (block.type === "checklist") {
-      const textIndent = line.text.match(/^\s*/)?.[0].length || 0;
-      decos.push({
-        from: line.from + textIndent,
-        to: line.from + textIndent,
-        deco: Decoration.widget({
-          widget: new ChecklistBoxWidget(block.attrs?.checked ?? false)
-        })
-      });
-      const textDeco = block.attrs?.checked ? "cm-checklist-text cm-checklist-text--checked" : "cm-checklist-text";
-      decos.push({from: line.from, to: line.from, deco: Decoration.line({class: textDeco})});
-    } else if (block.type === "divider") {
-      decos.push({
-        from: line.from,
-        to: line.to,
-        deco: Decoration.replace({widget: new DividerWidget()})
-      });
-    } else if (block.type === "quote") {
-      decos.push({from: line.from, to: line.from, deco: Decoration.line({class: "cm-quote-line"})});
-      const textIndent = line.text.match(/^\s*/)?.[0].length || 0;
-      decos.push({
-        from: line.from + textIndent,
-        to: line.from + textIndent,
-        deco: Decoration.widget({ widget: new QuoteMarkWidget() })
-      });
-    } else if (block.type === "numbered") {
-      const textIndent = line.text.match(/^\s*/)?.[0].length || 0;
-      decos.push({
-        from: line.from + textIndent,
-        to: line.from + textIndent,
-        deco: Decoration.widget({ widget: new NumberedMarkWidget() })
-      });
-    } else if (block.type === "lettered") {
-      const textIndent = line.text.match(/^\s*/)?.[0].length || 0;
-      decos.push({
-        from: line.from + textIndent,
-        to: line.from + textIndent,
-        deco: Decoration.widget({ widget: new LetteredMarkWidget() })
-      });
-    }
-  }
-}
-
-function buildInlineMarkDecorations(view: EditorView, inlineMarks: ItemBody["inlineMarks"], docLength: number, decos: {from: number, to: number, deco: Decoration}[]) {
-  for (const mark of inlineMarks) {
-    if (mark.from >= docLength) continue;
-    const validFrom = Math.max(0, mark.from);
-    const validTo = Math.min(docLength, mark.to);
-    if (validFrom >= validTo) continue;
-
-    if (mark.type === "bold") {
-      decos.push({from: validFrom, to: validTo, deco: Decoration.mark({class: "cm-bold-text"})});
-    } else if (mark.type === "italic") {
-      decos.push({from: validFrom, to: validTo, deco: Decoration.mark({class: "cm-italic-text"})});
-    } else if (mark.type === "inlineCode") {
-      decos.push({from: validFrom, to: validTo, deco: Decoration.mark({class: "cm-code-text"})});
-    } else if (mark.type === "link") {
-      decos.push({from: validFrom, to: validTo, deco: Decoration.replace({widget: new MarkdownLinkWidget(view.state.sliceDoc(validFrom, validTo), mark.attrs?.href || "")})});
-    }
-  }
-}
-
-function buildBlockEntityDecorations(blockEntities: ItemBody["blockEntities"], docLength: number, decos: {from: number, to: number, deco: Decoration}[]) {
-  for (const entity of blockEntities) {
-    if (entity.from > docLength) continue;
-    const validFrom = Math.max(0, entity.from);
-    const validTo = Math.min(docLength, entity.to);
-    if (validFrom >= validTo) continue;
-    decos.push({from: validFrom, to: validTo, deco: Decoration.replace({widget: new BlockEntityWidget(entity)})});
-  }
-}
-const itemBodyDecorationsPlugin = ViewPlugin.fromClass(class {
-  decorations: DecorationSet;
-  constructor(view: EditorView) {
-    this.decorations = this.build(view);
-  }
-  update(update: ViewUpdate) {
-    if (update.docChanged || update.viewportChanged || updateChangesItemBody(update)) {
-      this.decorations = this.build(update.view);
-    }
-  }
-  build(view: EditorView) {
-    const body = view.state.field(itemBodyStateField);
-    const builder = new RangeSetBuilder<Decoration>();
-    const docLength = view.state.doc.length;
-    const decos: {from: number, to: number, deco: Decoration}[] = [];
-    buildLineBlockDecorations(view, body.lineBlocks, docLength, decos);
-    buildInlineMarkDecorations(view, body.inlineMarks, docLength, decos);
-    buildBlockEntityDecorations(body.blockEntities, docLength, decos);    decos.sort((a,b) => {
-      if (a.from !== b.from) return a.from - b.from;
-      const isLineA = a.deco.spec.line ? 1 : 0;
-      const isLineB = b.deco.spec.line ? 1 : 0;
-      if (isLineA !== isLineB) return isLineB - isLineA;
-      return a.to - b.to;
-    });
-    
-    for (const {from, to, deco} of decos) {
-      if (from <= to) {
-         try {
-           builder.add(from, to, deco);
-         } catch (e) {
-           // ignore overlapping replace/widget errors for safety
-         }
-      }
-    }
-    return builder.finish();
-  }
-}, {
-  decorations: v => v.decorations,
-  provide: plugin => EditorView.atomicRanges.of((view) => view.plugin(plugin)?.decorations ?? Decoration.none)
-});
-
 
 export function ItemBodyMarkdownEditor(props: ItemBodyMarkdownEditorProps) {
   const editorParentRef = useRef<HTMLDivElement | null>(null);
   const [, setSaveState] = useState<MarkdownBodySaveState>("saved");
-  const onAutosaveRef = useLatestCallbackRef(props.onAutosave);
-  const onSaveRef = useLatestCallbackRef(props.onSave);
-  const onExitNormalModeRef = useLatestCallbackRef(props.onExitNormalMode);
-  const onVimModeChangeRef = useLatestCallbackRef(props.onVimModeChange);
-  const autosaveTrackerRef = useRef<AutosaveTracker>({
-    hasUnsavedChanges: false,
-    isSaving: false,
-    lastInsertExitAt: null,
-    lastInsertMode: null,
-    changeId: 0
-  });
+  const callbacks = useEditorCallbackRefs(props);
+  useCodeMirrorEditorView(editorParentRef, props, callbacks, setSaveState);
+  return <EditorMount ref={editorParentRef} readOnly={props.readOnly === true} />;
+}
 
-  useCodeMirrorEditorView(
-    editorParentRef,
-    props,
-    autosaveTrackerRef,
-    onAutosaveRef,
-    onSaveRef,
-    onExitNormalModeRef,
-    onVimModeChangeRef,
-    setSaveState
-  );
+function EditorMount({ ref, readOnly }: Readonly<{
+  ref: RefObject<HTMLDivElement | null>;
+  readOnly: boolean;
+}>) {
+  const className = readOnly
+    ? "inbox-detail__codemirror inbox-detail__codemirror--preview"
+    : "inbox-detail__codemirror";
+  return <div className="inbox-detail__markdown-editor"><div ref={ref} className={className} /></div>;
+}
 
-  return (
-    <div className="inbox-detail__markdown-editor">
-      <div ref={editorParentRef} className="inbox-detail__codemirror" />
-    </div>
-  );
+function useEditorCallbackRefs(props: ItemBodyMarkdownEditorProps): EditorCallbackRefs {
+  return {
+    autosave: useLatestCallbackRef(props.onAutosave),
+    save: useLatestCallbackRef(props.onSave),
+    exitNormalMode: useLatestCallbackRef(props.onExitNormalMode),
+    vimModeChange: useLatestCallbackRef(props.onVimModeChange)
+  };
 }
 
 function useLatestCallbackRef<T>(callback: T) {
@@ -430,35 +123,6 @@ function useLatestCallbackRef<T>(callback: T) {
     callbackRef.current = callback;
   }, [callback]);
   return callbackRef;
-}
-
-function dispatchFormatToEditor(view: EditorView, updater: (body: ItemBody, from: number, to: number) => ItemBody) {
-  let body = view.state.field(itemBodyStateField);
-  for (const range of view.state.selection.ranges) {
-    const startLine = view.state.doc.lineAt(range.from);
-    const endLine = view.state.doc.lineAt(range.to);
-    for (let i = startLine.number; i <= endLine.number; i++) {
-       const line = view.state.doc.line(i);
-       body = updater(body, line.from, line.to);
-    }
-  }
-  view.dispatch({
-    effects: itemBodyStateEffect.of(body)
-  });
-  exitVisualModeAfterFormatting(view);
-}
-
-function dispatchInlineFormatToEditor(view: EditorView, updater: (body: ItemBody, from: number, to: number) => ItemBody) {
-  let body = view.state.field(itemBodyStateField);
-  for (const range of view.state.selection.ranges) {
-    if (!range.empty) {
-      body = updater(body, range.from, range.to);
-    }
-  }
-  view.dispatch({
-    effects: itemBodyStateEffect.of(body)
-  });
-  exitVisualModeAfterFormatting(view);
 }
 
 function exitVisualModeAfterFormatting(view: EditorView) {
@@ -476,266 +140,544 @@ async function openCursorTarget(view: EditorView): Promise<void> {
   return openAssetWithDefaultApp(target.entity);
 }
 
-function useCodeMirrorEditorView(
-  editorParentRef: RefObject<HTMLDivElement | null>,
-  props: ItemBodyMarkdownEditorProps,
-  autosaveTrackerRef: MutableRefObject<AutosaveTracker>,
-  onAutosaveRef: MutableRefObject<ItemBodyMarkdownEditorProps["onAutosave"]>,
-  onSaveRef: MutableRefObject<ItemBodyMarkdownEditorProps["onSave"]>,
-  onExitNormalModeRef: MutableRefObject<ItemBodyMarkdownEditorProps["onExitNormalMode"]>,
-  onVimModeChangeRef: MutableRefObject<ItemBodyMarkdownEditorProps["onVimModeChange"]>,
-  setSaveState: (state: MarkdownBodySaveState) => void
-) {
-  const editorViewRef = useRef<EditorView | null>(null);
-  
-  useEffect(() => {
-    autosaveTrackerRef.current = {
-      hasUnsavedChanges: false,
-      isSaving: false,
-      lastInsertExitAt: null,
-      lastInsertMode: null,
-      changeId: 0
-    };
-    if (!editorParentRef.current) return;
-    
-    const body = normalizeBodyForClient(props.initialBody);
-    let selection;
-    if (cursorCache.has(props.itemId)) {
-      try {
-        selection = EditorSelection.fromJSON(cursorCache.get(props.itemId));
-        for (const range of selection.ranges) {
-          if (range.from > body.text.length || range.to > body.text.length) {
-            selection = undefined;
-            break;
-          }
-        }
-      } catch {
-        selection = undefined;
-      }
-    }
-
-    const view = new EditorView({
-      parent: editorParentRef.current,
-      state: EditorState.create({
-        doc: body.text,
-        selection,
-        extensions: [
-          itemBodyStateField.init(() => body),
-          vim(),
-          lineNumbers(),
-          history(),
-          drawSelection(),
-          highlightActiveLine(),
-          EditorState.readOnly.of(props.readOnly === true),
-          EditorView.editable.of(!props.readOnly),
-          EditorView.lineWrapping,
-          itemBodyDecorationsPlugin,
-          EditorView.updateListener.of((update) => {
-            if (update.selectionSet || update.docChanged) {
-              cursorCache.set(props.itemId, update.state.selection.toJSON());
-            }
-            autosaveAfterFinishedEdit(update.view, update.docChanged || update.transactions.some(tr => tr.effects.some(e => e.is(itemBodyStateEffect))), props.readOnly === true, autosaveTrackerRef, onAutosaveRef, onVimModeChangeRef, setSaveState);
-          }),
-          EditorView.domEventHandlers({
-            keydown: (event, v) => {
-              const isEscape = event.key === "Escape";
-              const isCtrlH = event.key === "h" && event.ctrlKey;
-              if (props.readOnly || (!isEscape && !isCtrlH) || getCM(v)?.state?.vim?.insertMode !== false) {
-                return false;
-              }
-              event.preventDefault();
-              void saveAndExitOnNormalMode(v, onSaveRef.current, onExitNormalModeRef.current, setSaveState);
-              return true;
-            }
-          }),
-          keymap.of([{ key: "Mod-s", run: () => {
-             saveMarkdownBody(onAutosaveRef.current ?? onSaveRef.current, editorViewRef.current?.state.field(itemBodyStateField) as ItemBody, setSaveState);
-             return true;
-          } }]),
-          keymap.of([...historyKeymap, ...defaultKeymap])
-        ]
-      })
-    });
-    
-    editorViewRef.current = view;
-    if (!props.readOnly) view.focus();
-    const initialMode = getCM(view)?.state?.vim?.insertMode ? "INSERT" : "NORMAL";
-    view.contentDOM.dataset.vimMode = initialMode === "INSERT" ? "insert" : "normal";
-    onVimModeChangeRef.current?.(initialMode);
-
-    return () => {
-      view.destroy();
-      editorViewRef.current = null;
-    };
-  }, [props.itemId, props.readOnly]);
-
-  useEffect(() => {
-    const handlers: Record<string, EventListener> = {
-      [FORMAT_BULLET_EVENT]: () => {
-        if (editorViewRef.current) dispatchFormatToEditor(editorViewRef.current, (b, from, to) => setLineBlock(b, "bullet", from, to));
-      },
-      [FORMAT_NUMBERED_LIST_EVENT]: () => {
-        if (editorViewRef.current) dispatchFormatToEditor(editorViewRef.current, (b, from, to) => setLineBlock(b, "numbered", from, to));
-      },
-      [FORMAT_LETTERED_LIST_EVENT]: () => {
-        if (editorViewRef.current) dispatchFormatToEditor(editorViewRef.current, (b, from, to) => setLineBlock(b, "lettered", from, to));
-      },
-      [FORMAT_CHECKLIST_EVENT]: () => {
-        if (editorViewRef.current) dispatchFormatToEditor(editorViewRef.current, (b, from, to) => toggleChecklist(b, from, to, false));
-      },
-      [FORMAT_CHECKLIST_CHECKED_EVENT]: () => {
-        if (editorViewRef.current) dispatchFormatToEditor(editorViewRef.current, (b, from, to) => toggleChecklist(b, from, to, true));
-      },
-      [FORMAT_CHECKLIST_UNCHECKED_EVENT]: () => {
-        if (editorViewRef.current) dispatchFormatToEditor(editorViewRef.current, (b, from, to) => toggleChecklist(b, from, to, false));
-      },
-      [FORMAT_DIVIDER_EVENT]: () => {
-        if (editorViewRef.current) dispatchFormatToEditor(editorViewRef.current, (b, from, to) => setLineBlock(b, "divider", from, to));
-      },
-      [FORMAT_QUOTE_EVENT]: () => {
-        if (editorViewRef.current) dispatchFormatToEditor(editorViewRef.current, (b, from, to) => setLineBlock(b, "quote", from, to));
-      },
-      [FORMAT_NORMAL_TEXT_EVENT]: () => {
-        if (editorViewRef.current) dispatchFormatToEditor(editorViewRef.current, (b, from, to) => clearLineBlock(b, from, to));
-      },
-      [FORMAT_BOLD_EVENT]: () => {
-        if (editorViewRef.current) dispatchInlineFormatToEditor(editorViewRef.current, (b, from, to) => toggleInlineMark(b, "bold", from, to));
-      },
-      [FORMAT_ITALIC_EVENT]: () => {
-        if (editorViewRef.current) dispatchInlineFormatToEditor(editorViewRef.current, (b, from, to) => toggleInlineMark(b, "italic", from, to));
-      },
-      [FORMAT_CODE_EVENT]: () => {
-        if (editorViewRef.current) dispatchInlineFormatToEditor(editorViewRef.current, (b, from, to) => toggleInlineMark(b, "inlineCode", from, to));
-      },
-      [FORMAT_CLEAR_INLINE_EVENT]: () => {
-        if (editorViewRef.current) dispatchInlineFormatToEditor(editorViewRef.current, removeInlineMarks);
-      },
-      [FORMAT_HEADING_EVENT]: ((e: CustomEvent<{level: 1|2|3}>) => {
-        if (editorViewRef.current) dispatchFormatToEditor(editorViewRef.current, (b, from, to) => setLineBlock(b, `heading${e.detail?.level}` as any, from, to));
-      }) as EventListener,
-      [OPEN_CURSOR_TARGET_EVENT]: () => {
-        if (editorViewRef.current) void openCursorTarget(editorViewRef.current);
-      },
-      [INSERT_MARKDOWN_LINK_EVENT]: ((e: CustomEvent<InsertMarkdownLinkEventDetail>) => {
-        if (editorViewRef.current) {
-           const text = e.detail.text?.trim() || e.detail.url.trim();
-           if (!text || !e.detail.url.trim()) return;
-           const view = editorViewRef.current;
-           const range = view.state.selection.main;
-           const body = applyInlineMark(view.state.field(itemBodyStateField), "link", range.from, range.from + text.length, {href: e.detail.url});
-           view.dispatch({
-             changes: {from: range.from, to: range.to, insert: text},
-             selection: EditorSelection.cursor(range.from + text.length),
-             effects: itemBodyStateEffect.of(body)
-           });
-        }
-      }) as EventListener,
-      [INSERT_BLOCK_ENTITY_EVENT]: ((e: CustomEvent<InsertBlockEntityEventDetail>) => {
-        if (editorViewRef.current) {
-           const view = editorViewRef.current;
-           const range = view.state.selection.main;
-            const token = `⟦asset:${e.detail.assetId}⟧`;
-            const changeSet = ChangeSet.of({from: range.from, to: range.to, insert: token}, view.state.doc.length);
-            const mappedBody = mapBodyRangesThroughChanges(view.state.field(itemBodyStateField), changeSet);
-            const entityFrom = changeSet.mapPos(range.from, -1);
-            const entityTo = entityFrom + token.length;
-            const body = insertBlockEntity(mappedBody, {
-               type: e.detail.image ? "image" : "file",
-               from: entityFrom,
-               to: entityTo,
-               assetId: e.detail.assetId,
-                attrs: {
-                 displayName: e.detail.displayName,
-                 contentType: e.detail.contentType,
-                 relativePath: e.detail.relativePath,
-                 localPath: e.detail.relativePath,
-                 url: e.detail.url
-               }
-            });
-            view.dispatch({
-              changes: changeSet,
-              selection: EditorSelection.cursor(entityTo),
-              effects: itemBodyStateEffect.of(body)
-            });
-            setTimeout(() => view.focus(), 0);
-         }
-       }) as EventListener,
-    };
-
-    for (const [evt, handler] of Object.entries(handlers)) {
-      window.addEventListener(evt, handler);
-    }
-    return () => {
-      for (const [evt, handler] of Object.entries(handlers)) {
-        window.removeEventListener(evt, handler);
-      }
-    };
-  }, []);
+function restoreCachedSelection(itemId: string, maxLen: number): EditorSelection | undefined {
+  if (!cursorCache.has(itemId)) return undefined;
+  try {
+    const sel = EditorSelection.fromJSON(cursorCache.get(itemId));
+    const valid = sel.ranges.every((r) => r.from <= maxLen && r.to <= maxLen);
+    return valid ? sel : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
-function autosaveAfterFinishedEdit(
-  view: EditorView,
-  docChanged: boolean,
-  readOnly: boolean,
-  autosaveTrackerRef: MutableRefObject<AutosaveTracker>,
-  onAutosaveRef: MutableRefObject<ItemBodyMarkdownEditorProps["onAutosave"]>,
-  onVimModeChangeRef: MutableRefObject<ItemBodyMarkdownEditorProps["onVimModeChange"]>,
-  setSaveState: (state: MarkdownBodySaveState) => void
-) {
-  const insertMode = getCM(view)?.state?.vim?.insertMode ?? null;
-  const mode = insertMode ? "INSERT" : (getCM(view)?.state?.vim?.visualMode ? "VISUAL" : "NORMAL");
-  view.contentDOM.dataset.vimMode = mode.toLowerCase();
-  onVimModeChangeRef.current?.(mode);
+function initVimExtensions(): void {
+  wireYankHighlight();
+  registerHeadingMotions();
+  registerDisplayLineMotions();
+  applyVimInsertEscape("jk");
+  registerListContinuationMotions();
+  registerCheckboxVimCommands();
+  registerHeadingFoldVimCommands();
+}
 
-  const tracker = autosaveTrackerRef.current;
-  const exitedInsert = tracker.lastInsertMode === true && insertMode === false;
-  if (exitedInsert) {
-    tracker.lastInsertExitAt = Date.now();
-  }
-  if (docChanged) {
-    tracker.hasUnsavedChanges = true;
-    tracker.changeId += 1;
-    setSaveState("unsaved");
-  }
-  if (insertMode !== null) {
-    tracker.lastInsertMode = insertMode;
-  }
-  
-  if (readOnly || tracker.isSaving || (!tracker.hasUnsavedChanges || !(exitedInsert || (docChanged && insertMode === false)))) {
-    return;
-  }
-  const saveVersion = tracker.changeId;
-  tracker.isSaving = true;
-  setSaveState("saving");
-  onAutosaveRef.current?.(bodyForPersistence(view.state.field(itemBodyStateField))).then(() => {
-    if (tracker.changeId === saveVersion) {
-      tracker.hasUnsavedChanges = false;
-      setSaveState("saved");
+type EditorExtensionContext = Readonly<{
+  viewRef: MutableRefObject<EditorView | null>;
+  persistenceRef: MutableRefObject<ItemBodyPersistenceQueue | null>;
+  callbacks: Pick<EditorCallbackRefs, "save" | "exitNormalMode" | "vimModeChange">;
+}>;
+
+function createEditorExtensions(
+  props: ItemBodyMarkdownEditorProps,
+  body: ItemBody,
+  context: EditorExtensionContext
+) {
+  const readOnly = props.readOnly === true;
+  const interaction = readOnly ? [] : createEditingExtensions(props.itemId, context);
+  return [
+    itemBodyStateField.init(() => body),
+    itemDocumentIdFacet.of(props.itemId),
+    markdown({ base: markdownLanguage, addKeymap: false }),
+    livePreviewPlugin,
+    headingFoldingExtension(),
+    lineNumbers(),
+    EditorView.lineWrapping,
+    ...editorModeExtensions(readOnly, interaction)
+  ];
+}
+
+function createEditingExtensions(
+  itemId: string,
+  context: EditorExtensionContext
+): Extension[] {
+  const { viewRef, persistenceRef, callbacks } = context;
+  return [
+    vim(), history(), drawSelection(), highlightActiveLine(),
+    yankHighlightExtension, vimClipboardPasteExtension,
+    createEditingUpdateListener(itemId, persistenceRef, callbacks.vimModeChange),
+    createEditingDomHandlers(viewRef, persistenceRef, callbacks.save, callbacks.exitNormalMode),
+    createEditingControlKeymap(),
+    createEditingShortcutKeymap(viewRef, persistenceRef),
+    keymap.of([...historyKeymap, ...buildVimAwareDefaultKeymap()])
+  ];
+}
+
+function createEditingUpdateListener(
+  itemId: string,
+  persistenceRef: MutableRefObject<ItemBodyPersistenceQueue | null>,
+  onVimModeChangeRef: MutableRefObject<ItemBodyMarkdownEditorProps["onVimModeChange"]>
+) {
+  return EditorView.updateListener.of((update) => {
+    if (update.selectionSet || update.docChanged) {
+      cursorCache.set(itemId, update.state.selection.toJSON());
     }
-  }).catch(() => setSaveState("error")).finally(() => {
-    tracker.isSaving = false;
+    handleEditorUpdate(update.view, update.docChanged, false, persistenceRef, onVimModeChangeRef);
   });
 }
 
-async function saveAndExitOnNormalMode(
-  view: EditorView,
-  onSave: ItemBodyMarkdownEditorProps["onSave"] | undefined,
-  onExitNormalMode: ItemBodyMarkdownEditorProps["onExitNormalMode"] | undefined,
-  setSaveState: (state: MarkdownBodySaveState) => void
+function createEditingDomHandlers(
+  viewRef: MutableRefObject<EditorView | null>,
+  persistenceRef: MutableRefObject<ItemBodyPersistenceQueue | null>,
+  onSaveRef: MutableRefObject<ItemBodyMarkdownEditorProps["onSave"]>,
+  onExitNormalModeRef: MutableRefObject<ItemBodyMarkdownEditorProps["onExitNormalMode"]>
 ) {
-  setSaveState("saving");
-  const body = bodyForPersistence(view.state.field(itemBodyStateField));
-  if (onSave) await onSave(body);
-  setSaveState("saved");
-  if (onExitNormalMode) await onExitNormalMode(body);
+  return EditorView.domEventHandlers({
+    focus: () => registerEditorFocus(viewRef),
+    blur: () => clearEditorFocus(viewRef),
+    keydown: (event, view) => handleEditorKeydown(
+      event,
+      view,
+      false,
+      persistenceRef,
+      onSaveRef,
+      onExitNormalModeRef
+    )
+  });
 }
 
-async function saveMarkdownBody(
-  onSave: ItemBodyMarkdownEditorProps["onSave"] | undefined,
-  body: ItemBody,
+function registerEditorFocus(viewRef: MutableRefObject<EditorView | null>): false {
+  if (viewRef.current) registerActiveEditorView(viewRef.current);
+  return false;
+}
+
+function clearEditorFocus(viewRef: MutableRefObject<EditorView | null>): false {
+  if (viewRef.current && getActiveEditorView() === viewRef.current) registerActiveEditorView(null);
+  return false;
+}
+
+function createEditingControlKeymap() {
+  return Prec.highest(keymap.of([
+    { key: "Enter", run: handleListContinuationEnter },
+    { key: "Mod-Enter", run: toggleCheckbox },
+    { key: "Backspace", run: applyFormattingBackspace }
+  ]));
+}
+
+function applyFormattingBackspace(view: EditorView): boolean {
+  const transaction = formatMarkerBackspaceTransaction(view.state);
+  if (!transaction) return false;
+  view.dispatch(transaction);
+  return true;
+}
+
+function createEditingShortcutKeymap(
+  viewRef: MutableRefObject<EditorView | null>,
+  persistenceRef: MutableRefObject<ItemBodyPersistenceQueue | null>
+) {
+  return Prec.high(keymap.of([
+    ...buildZenEditorKeymap(false),
+    { key: "Mod-s", run: () => saveFromKeybind(viewRef, persistenceRef) }
+  ]));
+}
+
+function saveFromKeybind(
+  viewRef: RefObject<EditorView | null>,
+  persistenceRef: MutableRefObject<ItemBodyPersistenceQueue | null>
+): boolean {
+  if (!viewRef.current || !persistenceRef.current) return false;
+  void persistenceRef.current.flush(viewRef.current.state.field(itemBodyStateField));
+  return true;
+}
+
+function handleEditorKeydown(
+  e: KeyboardEvent,
+  v: EditorView,
+  readOnly: boolean | undefined,
+  persistenceRef: MutableRefObject<ItemBodyPersistenceQueue | null>,
+  onSaveRef: MutableRefObject<ItemBodyMarkdownEditorProps["onSave"]>,
+  onExitNormalModeRef: MutableRefObject<ItemBodyMarkdownEditorProps["onExitNormalMode"]>
+): boolean {
+  const isEscape = e.key === "Escape";
+  const isCtrlH = e.key === "h" && e.ctrlKey;
+  if (readOnly || (!isEscape && !isCtrlH) || getCM(v)?.state?.vim?.insertMode !== false) {
+    return false;
+  }
+  e.preventDefault();
+  void flushAndExitOnNormalMode(v, persistenceRef.current, onSaveRef.current, onExitNormalModeRef.current);
+  return true;
+}
+
+function useCodeMirrorEditorView(
+  editorParentRef: RefObject<HTMLDivElement | null>,
+  props: ItemBodyMarkdownEditorProps,
+  callbacks: EditorCallbackRefs,
   setSaveState: (state: MarkdownBodySaveState) => void
+) {
+  const viewRef = useRef<EditorView | null>(null);
+  const persistenceRef = useRef<ItemBodyPersistenceQueue | null>(null);
+  const readOnlyRef = useRef<boolean | null>(null);
+  useEditorMount(editorParentRef, props, callbacks, viewRef, persistenceRef, readOnlyRef, setSaveState);
+  useEditorModeEffect(props, callbacks, viewRef, persistenceRef, readOnlyRef, setSaveState);
+  usePreviewBodyEffect(props, viewRef);
+  useEffect(() => registerEditorEventHandlers(viewRef), []);
+}
+
+function useEditorMount(
+  parentRef: RefObject<HTMLDivElement | null>,
+  props: ItemBodyMarkdownEditorProps,
+  callbacks: EditorCallbackRefs,
+  viewRef: MutableRefObject<EditorView | null>,
+  persistenceRef: MutableRefObject<ItemBodyPersistenceQueue | null>,
+  readOnlyRef: MutableRefObject<boolean | null>,
+  setSaveState: (state: MarkdownBodySaveState) => void
+): void {
+  useEffect(() => mountEditor(
+    parentRef, props, callbacks, viewRef, persistenceRef, readOnlyRef, setSaveState
+  ), [props.itemId]);
+}
+
+function mountEditor(
+  parentRef: RefObject<HTMLDivElement | null>,
+  props: ItemBodyMarkdownEditorProps,
+  callbacks: EditorCallbackRefs,
+  viewRef: MutableRefObject<EditorView | null>,
+  persistenceRef: MutableRefObject<ItemBodyPersistenceQueue | null>,
+  readOnlyRef: MutableRefObject<boolean | null>,
+  setSaveState: (state: MarkdownBodySaveState) => void
+): (() => void) | undefined {
+  if (!parentRef.current) return;
+  const body = normalizeBodyForClient(props.initialBody);
+  const readOnly = props.readOnly === true;
+  prepareInitialEditing(readOnly, callbacks, persistenceRef, setSaveState);
+  const view = createMountedEditor(parentRef.current, props, body, viewRef, persistenceRef, callbacks);
+  viewRef.current = view;
+  readOnlyRef.current = readOnly;
+  if (!readOnly) activateEditingView(view, callbacks.vimModeChange);
+  return () => destroyMountedEditor(view, viewRef, persistenceRef, readOnlyRef);
+}
+
+function prepareInitialEditing(
+  readOnly: boolean,
+  callbacks: EditorCallbackRefs,
+  persistenceRef: MutableRefObject<ItemBodyPersistenceQueue | null>,
+  setSaveState: (state: MarkdownBodySaveState) => void
+): void {
+  if (readOnly) return;
+  initVimExtensions();
+  persistenceRef.current = createEditorPersistenceQueue(callbacks.autosave, callbacks.save, setSaveState);
+}
+
+function createMountedEditor(
+  parent: HTMLDivElement,
+  props: ItemBodyMarkdownEditorProps,
+  body: ItemBody,
+  viewRef: MutableRefObject<EditorView | null>,
+  persistenceRef: MutableRefObject<ItemBodyPersistenceQueue | null>,
+  callbacks: EditorCallbackRefs
+): EditorView {
+  const selection = props.readOnly ? undefined : restoreCachedSelection(props.itemId, body.text.length);
+  const extensions = createEditorExtensions(props, body, {
+    viewRef,
+    persistenceRef,
+    callbacks
+  });
+  return new EditorView({
+    parent,
+    state: EditorState.create({ doc: body.text, selection, extensions })
+  });
+}
+
+function destroyMountedEditor(
+  view: EditorView,
+  viewRef: MutableRefObject<EditorView | null>,
+  persistenceRef: MutableRefObject<ItemBodyPersistenceQueue | null>,
+  readOnlyRef: MutableRefObject<boolean | null>
+): void {
+  if (getActiveEditorView() === view) registerActiveEditorView(null);
+  void persistenceRef.current?.flush();
+  persistenceRef.current = null;
+  readOnlyRef.current = null;
+  view.destroy();
+  viewRef.current = null;
+}
+
+function useEditorModeEffect(
+  props: ItemBodyMarkdownEditorProps,
+  callbacks: EditorCallbackRefs,
+  viewRef: MutableRefObject<EditorView | null>,
+  persistenceRef: MutableRefObject<ItemBodyPersistenceQueue | null>,
+  readOnlyRef: MutableRefObject<boolean | null>,
+  setSaveState: (state: MarkdownBodySaveState) => void
+): void {
+  useEffect(() => applyEditorMode(
+    props, callbacks, viewRef, persistenceRef, readOnlyRef, setSaveState
+  ), [props.readOnly]);
+}
+
+function applyEditorMode(
+  props: ItemBodyMarkdownEditorProps,
+  callbacks: EditorCallbackRefs,
+  viewRef: MutableRefObject<EditorView | null>,
+  persistenceRef: MutableRefObject<ItemBodyPersistenceQueue | null>,
+  readOnlyRef: MutableRefObject<boolean | null>,
+  setSaveState: (state: MarkdownBodySaveState) => void
+): void {
+  const view = viewRef.current;
+  const readOnly = props.readOnly === true;
+  if (!view || readOnlyRef.current === readOnly) return;
+  reconfigureEditorMode(
+    view, readOnly, props.itemId, viewRef, persistenceRef, callbacks, setSaveState
+  );
+  readOnlyRef.current = readOnly;
+}
+
+function usePreviewBodyEffect(
+  props: ItemBodyMarkdownEditorProps,
+  viewRef: MutableRefObject<EditorView | null>
+): void {
+  useEffect(() => {
+    if (!props.readOnly || !viewRef.current) return;
+    syncReadOnlyBody(viewRef.current, normalizeBodyForClient(props.initialBody));
+  }, [props.initialBody, props.readOnly, props.itemId]);
+}
+
+function createEditorPersistenceQueue(
+  onAutosaveRef: MutableRefObject<ItemBodyMarkdownEditorProps["onAutosave"]>,
+  onSaveRef: MutableRefObject<ItemBodyMarkdownEditorProps["onSave"]>,
+  setSaveState: (state: MarkdownBodySaveState) => void
+): ItemBodyPersistenceQueue {
+  return createItemBodyPersistenceQueue({
+    persist: async (snapshot) => {
+      const callback = onAutosaveRef.current ?? onSaveRef.current;
+      if (callback) await callback(snapshot);
+    },
+    onStateChange: setSaveState
+  });
+}
+
+function reconfigureEditorMode(
+  view: EditorView,
+  readOnly: boolean,
+  itemId: string,
+  viewRef: MutableRefObject<EditorView | null>,
+  persistenceRef: MutableRefObject<ItemBodyPersistenceQueue | null>,
+  callbacks: EditorCallbackRefs,
+  setSaveState: (state: MarkdownBodySaveState) => void
+): void {
+  prepareModePersistence(readOnly, callbacks, persistenceRef, setSaveState, view);
+  const interaction = modeInteractionExtensions(
+    readOnly, itemId, viewRef, persistenceRef, callbacks
+  );
+  const selection = readOnly ? undefined : restoreCachedSelection(itemId, view.state.doc.length);
+  reconfigureEditorCompartments(view, readOnly, interaction, selection);
+  if (!readOnly) activateEditingView(view, callbacks.vimModeChange);
+}
+
+function prepareModePersistence(
+  readOnly: boolean,
+  callbacks: EditorCallbackRefs,
+  persistenceRef: MutableRefObject<ItemBodyPersistenceQueue | null>,
+  setSaveState: (state: MarkdownBodySaveState) => void,
+  view: EditorView
+): void {
+  if (readOnly) return deactivateEditingView(view, persistenceRef);
+  initVimExtensions();
+  persistenceRef.current ??= createEditorPersistenceQueue(callbacks.autosave, callbacks.save, setSaveState);
+}
+
+function modeInteractionExtensions(
+  readOnly: boolean,
+  itemId: string,
+  viewRef: MutableRefObject<EditorView | null>,
+  persistenceRef: MutableRefObject<ItemBodyPersistenceQueue | null>,
+  callbacks: EditorCallbackRefs
+): Extension[] {
+  if (readOnly) return [];
+  return createEditingExtensions(itemId, { viewRef, persistenceRef, callbacks });
+}
+
+function activateEditingView(
+  view: EditorView,
+  onVimModeChangeRef: MutableRefObject<ItemBodyMarkdownEditorProps["onVimModeChange"]>
+): void {
+  view.focus();
+  registerActiveEditorView(view);
+  setupVimModeTracker(view, onVimModeChangeRef);
+}
+
+function deactivateEditingView(
+  view: EditorView,
+  persistenceRef: MutableRefObject<ItemBodyPersistenceQueue | null>
+): void {
+  if (getActiveEditorView() === view) registerActiveEditorView(null);
+  const persistence = persistenceRef.current;
+  persistenceRef.current = null;
+  if (persistence) void persistence.flush();
+  delete view.contentDOM.dataset.vimMode;
+}
+
+function setupVimModeTracker(
+  view: EditorView,
+  onVimModeChangeRef: MutableRefObject<ItemBodyMarkdownEditorProps["onVimModeChange"]>
+): void {
+  const cm = getCM(view);
+  publishVimMode(view, cm?.state?.vim?.insertMode ? "INSERT" : "NORMAL", onVimModeChangeRef);
+  cm?.on("vim-mode-change", (event: { mode?: string }) => {
+    const mode = (event.mode?.toUpperCase() ?? "NORMAL") as "NORMAL" | "INSERT" | "VISUAL";
+    publishVimMode(view, mode, onVimModeChangeRef);
+    scheduleLivePreviewRefresh(view);
+  });
+}
+
+function publishVimMode(
+  view: EditorView,
+  mode: "NORMAL" | "INSERT" | "VISUAL",
+  callbackRef: MutableRefObject<ItemBodyMarkdownEditorProps["onVimModeChange"]>
+): void {
+  view.contentDOM.dataset.vimMode = mode.toLowerCase();
+  callbackRef.current?.(mode);
+}
+
+function scheduleLivePreviewRefresh(view: EditorView): void {
+  queueMicrotask(() => {
+    try {
+      view.dispatch({ effects: refreshLivePreviewEffect.of() });
+    } catch {
+      // The view can be destroyed between Vim's event and this microtask.
+    }
+  });
+}
+
+function runFormatCommand(viewRef: RefObject<EditorView | null>, action: (v: EditorView) => boolean): void {
+  if (!viewRef.current) return;
+  action(viewRef.current);
+  exitVisualModeAfterFormatting(viewRef.current);
+}
+
+function handleInsertLinkEvent(viewRef: RefObject<EditorView | null>, detail: InsertMarkdownLinkEventDetail): void {
+  const view = viewRef.current;
+  if (!view) return;
+  const text = detail.text?.trim() || detail.url.trim();
+  if (!text || !detail.url.trim()) return;
+  const range = view.state.selection.main;
+  const insert = `[${text}](${detail.url})`;
+  view.dispatch({
+    changes: { from: range.from, to: range.to, insert },
+    selection: EditorSelection.cursor(range.from + insert.length)
+  });
+  exitVisualModeAfterFormatting(view);
+}
+
+function handleInsertAssetEvent(viewRef: RefObject<EditorView | null>, detail: InsertBlockEntityEventDetail): void {
+  const view = viewRef.current;
+  if (!view) return;
+  const range = view.state.selection.main;
+  const displayName = escapeMarkdownLabel(detail.displayName || detail.assetId);
+  const relativePath = itemLocalAssetPath(detail);
+  const prefix = detail.image ? "!" : "";
+  const markdown = `${prefix}[${displayName}](${relativePath})`;
+  const currentBody = view.state.field(itemBodyStateField);
+  const entity = blockEntityFromInsertedAsset(detail, range.from, markdown.length);
+  view.dispatch({
+    changes: { from: range.from, to: range.to, insert: markdown },
+    effects: itemBodyStateEffect.of({
+      ...currentBody,
+      blockEntities: [...currentBody.blockEntities, entity]
+    }),
+    selection: EditorSelection.cursor(range.from + markdown.length)
+  });
+  setTimeout(() => view.focus(), 0);
+}
+
+function blockEntityFromInsertedAsset(
+  detail: InsertBlockEntityEventDetail,
+  from: number,
+  markdownLength: number
+): ItemBody["blockEntities"][number] {
+  return {
+    id: crypto.randomUUID(),
+    type: detail.image ? "image" : "file",
+    from,
+    to: from + markdownLength,
+    assetId: detail.assetId,
+    attrs: {
+      displayName: detail.displayName,
+      contentType: detail.contentType,
+      relativePath: detail.relativePath,
+      url: detail.url
+    }
+  };
+}
+
+function itemLocalAssetPath(detail: InsertBlockEntityEventDetail): string {
+  const fileName = detail.relativePath?.split("/").pop() || detail.displayName || "asset";
+  return `assets/${detail.assetId}/${encodeURIComponent(fileName)}`;
+}
+
+function escapeMarkdownLabel(value: string): string {
+  return value.replace(/\[/g, "\\[").replace(/\]/g, "\\]");
+}
+
+function registerEditorEventHandlers(viewRef: RefObject<EditorView | null>): () => void {
+  const handlers: Record<string, EventListener> = {
+    [FORMAT_BULLET_EVENT]: () => runFormatCommand(viewRef, (v) => setBlockType(v, "bullet")),
+    [FORMAT_NUMBERED_LIST_EVENT]: () => runFormatCommand(viewRef, (v) => setBlockType(v, "numbered")),
+    [FORMAT_LETTERED_LIST_EVENT]: () => runFormatCommand(viewRef, (v) => setBlockType(v, "numbered")),
+    [FORMAT_CHECKLIST_EVENT]: () => runFormatCommand(viewRef, (v) => setBlockType(v, "todo")),
+    [FORMAT_CHECKLIST_CHECKED_EVENT]: () => runFormatCommand(viewRef, (v) => setBlockType(v, "todo-checked")),
+    [FORMAT_CHECKLIST_UNCHECKED_EVENT]: () => runFormatCommand(viewRef, (v) => setBlockType(v, "todo")),
+    [FORMAT_DIVIDER_EVENT]: () => runFormatCommand(viewRef, insertDivider),
+    [FORMAT_QUOTE_EVENT]: () => runFormatCommand(viewRef, (v) => setBlockType(v, "quote")),
+    [FORMAT_NORMAL_TEXT_EVENT]: () => runFormatCommand(viewRef, (v) => setBlockType(v, "paragraph")),
+    [FORMAT_BOLD_EVENT]: () => runFormatCommand(viewRef, (v) => toggleWrap(v, "**")),
+    [FORMAT_ITALIC_EVENT]: () => runFormatCommand(viewRef, (v) => toggleWrap(v, "*")),
+    [FORMAT_CODE_EVENT]: () => runFormatCommand(viewRef, (v) => toggleWrap(v, "`")),
+    [FORMAT_CLEAR_INLINE_EVENT]: () => runFormatCommand(viewRef, clearFormatting),
+    [FORMAT_HEADING_EVENT]: ((e: CustomEvent<{ level: 1 | 2 | 3 }>) => {
+      runFormatCommand(viewRef, (v) => setBlockType(v, `h${e.detail?.level || 1}` as any));
+    }) as EventListener,
+    [OPEN_CURSOR_TARGET_EVENT]: () => {
+      if (viewRef.current) void openCursorTarget(viewRef.current);
+    },
+    [FORMAT_TOGGLE_FOLD_EVENT]: () => {
+      if (viewRef.current) toggleHeadingAtCursor(viewRef.current);
+    },
+    [INSERT_MARKDOWN_LINK_EVENT]: ((e: CustomEvent<InsertMarkdownLinkEventDetail>) => {
+      handleInsertLinkEvent(viewRef, e.detail);
+    }) as EventListener,
+    [INSERT_BLOCK_ENTITY_EVENT]: ((e: CustomEvent<InsertBlockEntityEventDetail>) => {
+      handleInsertAssetEvent(viewRef, e.detail);
+    }) as EventListener
+  };
+
+  for (const [evt, handler] of Object.entries(handlers)) window.addEventListener(evt, handler);
+  return () => {
+    for (const [evt, handler] of Object.entries(handlers)) window.removeEventListener(evt, handler);
+  };
+}
+
+function handleEditorUpdate(
+  view: EditorView,
+  docChanged: boolean,
+  readOnly: boolean,
+  persistenceRef: MutableRefObject<ItemBodyPersistenceQueue | null>,
+  onVimModeChangeRef: MutableRefObject<ItemBodyMarkdownEditorProps["onVimModeChange"]>
+): void {
+  syncVimMode(view, onVimModeChangeRef);
+  if (readOnly || !docChanged || !persistenceRef.current) return;
+  persistenceRef.current.queue(view.state.field(itemBodyStateField));
+}
+
+function syncVimMode(
+  view: EditorView,
+  onVimModeChangeRef: MutableRefObject<ItemBodyMarkdownEditorProps["onVimModeChange"]>
+): void {
+  const vimState = getCM(view)?.state?.vim;
+  const mode = vimState?.insertMode ? "INSERT" : (vimState?.visualMode ? "VISUAL" : "NORMAL");
+  view.contentDOM.dataset.vimMode = mode.toLowerCase();
+  onVimModeChangeRef.current?.(mode);
+}
+
+async function flushAndExitOnNormalMode(
+  view: EditorView,
+  persistence: ItemBodyPersistenceQueue | null,
+  onSave: ItemBodyMarkdownEditorProps["onSave"] | undefined,
+  onExitNormalMode: ItemBodyMarkdownEditorProps["onExitNormalMode"] | undefined
 ): Promise<void> {
-  setSaveState("saving");
-  if (onSave) await onSave(bodyForPersistence(body));
-  setSaveState("saved");
+  const body = bodyForPersistence(view.state.field(itemBodyStateField));
+  const persistenceResult = persistence?.flush(body) ?? onSave?.(body) ?? Promise.resolve();
+  void persistenceResult.catch((error: unknown) => {
+    console.error("Failed to persist item body while leaving the editor", error);
+  });
+  if (onExitNormalMode) await onExitNormalMode(body);
 }

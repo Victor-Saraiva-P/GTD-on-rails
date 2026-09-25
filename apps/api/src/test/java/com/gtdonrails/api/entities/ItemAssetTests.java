@@ -19,7 +19,7 @@ class ItemAssetTests {
         UUID itemId = UUID.randomUUID();
         ItemAsset asset = newItemAsset(itemId, "report.pdf", "application/pdf");
 
-        assertEquals("items/" + itemId + "/" + asset.getId() + "/report.pdf", asset.relativePath());
+        assertEquals("items/" + itemId + "/assets/" + asset.getId() + "/report.pdf", asset.relativePath());
     }
 
     @Test
@@ -27,7 +27,7 @@ class ItemAssetTests {
         UUID itemId = UUID.randomUUID();
         ItemAsset asset = newItemAsset(itemId, "report.pdf", "application/pdf");
 
-        assertEquals("/assets/items/" + itemId + "/" + asset.getId() + "/report.pdf", asset.publicUrl("/assets/"));
+        assertEquals("/assets/items/" + itemId + "/assets/" + asset.getId() + "/report.pdf", asset.publicUrl("/assets/"));
     }
 
     @Test

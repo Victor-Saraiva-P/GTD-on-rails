@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
+import { useSharedCollectionState } from "../../lib/state/sharedEntityStore.ts";
 import { ApiRequestError } from "../../lib/api/apiClient.ts";
 import { optimisticMutate } from "../../lib/api/optimistic.ts";
+import { mutateSharedEntityOptimistically } from "../../lib/state/optimisticSharedEntity.ts";
 import { processStuffToCalendar as processStuffToCalendarRequest } from "../calendar/api.ts";
 import type { CalendarConversionPayload } from "../calendar/types.ts";
 import { processStuffToProject as processStuffToProjectRequest } from "../projects/api.ts";
 import { useSyncStatus } from "../sync-status/SyncStatusProvider.tsx";
+import { useDomainRevalidation } from "../sync-status/domainChanges.ts";
 import {
   assignStuffProject as assignStuffProjectRequest,
   createStuff as createStuffRequest,
@@ -52,12 +55,22 @@ function toErrorMessage(error: unknown): string {
 }
 
 function useInboxLoadState() {
-  const [stuffs, setStuffs] = useState<Stuff[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const collection = useSharedCollectionState<Stuff>("inbox:active");
+  const [isLoading, setIsLoading] = useState(!collection.loaded);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
 
-  return { errorMessage, isLoading, reloadToken, setErrorMessage, setIsLoading, setReloadToken, setStuffs, stuffs };
+  return {
+    errorMessage,
+    hasSnapshot: collection.loaded,
+    isLoading,
+    reloadToken,
+    setErrorMessage,
+    setIsLoading,
+    setReloadToken,
+    setStuffs: collection.setItems,
+    stuffs: collection.items
+  };
 }
 
 function useInboxMutationState() {
@@ -72,12 +85,11 @@ type InboxLoadState = ReturnType<typeof useInboxLoadState>;
 type InboxMutationState = ReturnType<typeof useInboxMutationState>;
 
 function startInboxLoad(state: InboxLoadState) {
-  state.setIsLoading(true);
+  if (!state.hasSnapshot) state.setIsLoading(true);
   state.setErrorMessage(null);
 }
 
 function failInboxLoad(state: InboxLoadState, error: unknown) {
-  state.setStuffs([]);
   state.setErrorMessage(toErrorMessage(error));
 }
 
@@ -167,17 +179,16 @@ function replaceStuff(currentStuffs: Stuff[], updatedStuff: Stuff): Stuff[] {
   );
 }
 
-async function updateInboxStuff(updateRequest: () => Promise<Stuff>, state: InboxLoadState, mutations: InboxMutationState, triggerSyncStatusPolling: () => void) {
-  mutations.setIsUpdating(true);
-
-  try {
-    const updatedStuff = await updateRequest();
-    state.setStuffs((currentStuffs) => replaceStuff(currentStuffs, updatedStuff));
-    completeInboxMutation(state, triggerSyncStatusPolling);
-    return updatedStuff;
-  } finally {
-    mutations.setIsUpdating(false);
-  }
+async function updateInboxStuff(
+  item: Stuff,
+  optimistic: Stuff,
+  updateRequest: () => Promise<Stuff>,
+  state: InboxLoadState,
+  triggerSyncStatusPolling: () => void
+) {
+  const updatedStuff = await mutateSharedEntityOptimistically(item, optimistic, updateRequest);
+  completeInboxMutation(state, triggerSyncStatusPolling);
+  return updatedStuff;
 }
 
 async function processInboxStuff(item: Stuff, processRequest: () => Promise<void>, state: InboxLoadState, mutations: InboxMutationState, triggerSyncStatusPolling: () => void) {
@@ -202,15 +213,15 @@ function useInboxStuffsMutations(state: InboxLoadState, mutations: InboxMutation
 
   return {
     createStuff: (title: string) => createInboxStuff(title, state, mutations, triggerSyncStatusPolling),
-    assignStuffProject: (item: Stuff, projectId: string | null) => updateInboxStuff(() => assignStuffProjectRequest(item, projectId), state, mutations, triggerSyncStatusPolling),
+    assignStuffProject: (item: Stuff, projectId: string | null) => updateInboxStuff(item, { ...item, projectId }, () => assignStuffProjectRequest(item, projectId), state, triggerSyncStatusPolling),
     deleteStuff: (id: string) => deleteInboxStuff(id, state, mutations, triggerSyncStatusPolling),
     processStuffToCalendar: (item: Stuff, payload: CalendarConversionPayload) => processInboxStuff(item, () => processStuffToCalendarRequest(item, payload), state, mutations, triggerSyncStatusPolling),
     processStuffToProject: (item: Stuff, deadline: string | null) => processInboxStuff(item, () => processStuffToProjectRequest(item, deadline), state, mutations, triggerSyncStatusPolling),
     processStuffToSomedayMaybe: (item: Stuff) => processInboxStuff(item, () => processStuffToSomedayMaybeRequest(item), state, mutations, triggerSyncStatusPolling),
     processStuff: (item: Stuff, energy: number | null, estimatedTimeMinutes: number | null, contextIds: string[], deadline: string | null) => processInboxStuff(item, () => processStuffRequest(item, energy, estimatedTimeMinutes, contextIds, deadline), state, mutations, triggerSyncStatusPolling),
     restoreStuff: (id: string) => restoreInboxStuff(id, state, mutations, triggerSyncStatusPolling),
-    updateStuffBody: (item: Stuff, body: ItemBody) => updateInboxStuff(() => updateStuffBodyRequest(item, body), state, mutations, triggerSyncStatusPolling),
-    updateStuffTitle: (item: Stuff, title: string) => updateInboxStuff(() => updateStuffTitleRequest(item, title), state, mutations, triggerSyncStatusPolling)
+    updateStuffBody: (item: Stuff, body: ItemBody) => updateInboxStuff(item, { ...item, body }, () => updateStuffBodyRequest(item, body), state, triggerSyncStatusPolling),
+    updateStuffTitle: (item: Stuff, title: string) => updateInboxStuff(item, { ...item, title }, () => updateStuffTitleRequest(item, title), state, triggerSyncStatusPolling)
   };
 }
 
@@ -225,6 +236,7 @@ export function useInboxStuffsQuery(): InboxStuffsQueryState {
   const actions = useInboxStuffsMutations(state, mutations);
 
   useInboxStuffsLoader(state);
+  useDomainRevalidation(["items", "body_document", "project_items"], () => state.setReloadToken((value) => value + 1));
   return {
     ...actions,
     errorMessage: state.errorMessage,

@@ -61,7 +61,7 @@ class SomedayMaybeServiceTests {
 
         when(itemRepository.findAllByStatusAndDeletedAtIsNullOrderByCreatedAtAsc(ItemStatus.SOMEDAY_MAYBE))
             .thenReturn(List.of(item));
-        when(somedayMaybeMapper.toResponse(item)).thenReturn(dto);
+        when(somedayMaybeMapper.toListResponse(item)).thenReturn(dto);
 
         List<SomedayMaybeResponseDto> result = somedayMaybeService.listSomedayMaybe();
 
@@ -75,7 +75,7 @@ class SomedayMaybeServiceTests {
 
         when(itemRepository.findAllByStatusAndDeletedAtIsNotNullOrderByUpdatedAtDesc(ItemStatus.SOMEDAY_MAYBE))
             .thenReturn(List.of(item));
-        when(somedayMaybeMapper.toResponse(item)).thenReturn(dto);
+        when(somedayMaybeMapper.toListResponse(item)).thenReturn(dto);
 
         List<SomedayMaybeResponseDto> result = somedayMaybeService.listDeletedSomedayMaybe();
 

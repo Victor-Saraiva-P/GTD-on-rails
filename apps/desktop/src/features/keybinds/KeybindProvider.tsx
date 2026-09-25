@@ -9,10 +9,17 @@ import {
   useRef,
   useState
 } from "react";
+import { isVimEditorAwaitingArgument } from "./isVimAwaitingArgument.ts";
 import type { FocusZoneId, KeybindDefinition, ScreenId } from "./types";
 
 type RegisteredKeybind = KeybindDefinition & {
   registrationId: symbol;
+};
+
+type WhichKeyState = {
+  closeWhichKey: () => void;
+  isWhichKeyOpen: boolean;
+  openWhichKey: () => void;
 };
 
 type KeybindContextValue = {
@@ -22,6 +29,10 @@ type KeybindContextValue = {
   leaderPath: string[];
   isLeaderMenuOpen: boolean;
   getAvailableLeaderBindings: () => KeybindDefinition[];
+  getActiveZoneBindings: () => KeybindDefinition[];
+  isWhichKeyOpen: boolean;
+  openWhichKey: () => void;
+  closeWhichKey: () => void;
   registerBindings: (bindings: KeybindDefinition[]) => () => void;
   setActiveScreen: (screen: ScreenId) => void;
   setActiveZone: (zone: FocusZoneId) => void;
@@ -51,7 +62,8 @@ type DirectSequenceState = {
 
 type KeydownConfig = ScreenState &
   DirectSequenceState &
-  LeaderMenuState & {
+  LeaderMenuState &
+  WhichKeyState & {
     bindingsRef: MutableRefObject<RegisteredKeybind[]>;
   };
 
@@ -83,8 +95,8 @@ function isTypingTarget(target: EventTarget | null): boolean {
   );
 }
 
-function hasActiveModalKeybindScope(): boolean {
-  return document.querySelector('dialog, [aria-modal="true"]') !== null;
+export function hasActiveModalKeybindScope(): boolean {
+  return document.querySelector('dialog, [aria-modal="true"], .gtd-hint-overlay') !== null;
 }
 
 function bindingMatchesZone(
@@ -198,10 +210,16 @@ function handleLeaderKey(event: KeyboardEvent, config: KeydownConfig) {
 function handleLeaderMatch(
   leaderBindings: KeybindDefinition[],
   nextLeaderPath: string[],
-  config: LeaderMenuState
+  config: LeaderMenuState & WhichKeyState
 ) {
   if (hasLeaderContinuation(leaderBindings, nextLeaderPath)) {
     config.setLeaderPath(nextLeaderPath);
+    return;
+  }
+
+  if (nextLeaderPath.length === 1 && nextLeaderPath[0] === "k") {
+    config.openWhichKey();
+    config.closeLeaderMenu();
     return;
   }
 
@@ -226,6 +244,9 @@ function handleGlobalKeyDown(event: KeyboardEvent, config: KeydownConfig) {
   }
 
   if (event.key === " " && !event.ctrlKey) {
+    if (isVimKeybindTarget(event.target) && isVimEditorAwaitingArgument()) {
+      return;
+    }
     event.preventDefault();
     event.stopPropagation();
     config.openLeaderMenu();
@@ -346,24 +367,40 @@ function useKeydownListener(config: KeydownConfig) {
   }, [config]);
 }
 
+function useWhichKeyState(): WhichKeyState {
+  const [isWhichKeyOpen, setIsWhichKeyOpen] = useState(false);
+  const openWhichKey = useCallback(() => setIsWhichKeyOpen(true), []);
+  const closeWhichKey = useCallback(() => setIsWhichKeyOpen(false), []);
+  return { closeWhichKey, isWhichKeyOpen, openWhichKey };
+}
+
+function useActiveZoneBindings(config: KeydownConfig) {
+  return useCallback(() => {
+    return matchingBindings(config);
+  }, [config]);
+}
+
 function useKeybindConfig(
   screenState: ScreenState,
   leaderMenuState: LeaderMenuState,
+  whichKeyState: WhichKeyState,
   directSequenceState: DirectSequenceState,
   bindingsRef: MutableRefObject<RegisteredKeybind[]>
 ): KeydownConfig {
-  return useMemo(() => ({ ...screenState, ...leaderMenuState, ...directSequenceState, bindingsRef }), [
+  return useMemo(() => ({ ...screenState, ...leaderMenuState, ...whichKeyState, ...directSequenceState, bindingsRef }), [
     bindingsRef,
     directSequenceState,
     leaderMenuState,
-    screenState
+    screenState,
+    whichKeyState
   ]);
 }
 
 function useKeybindContextValue(
   config: KeydownConfig,
   registerBindings: KeybindContextValue["registerBindings"],
-  getAvailableLeaderBindings: KeybindContextValue["getAvailableLeaderBindings"]
+  getAvailableLeaderBindings: KeybindContextValue["getAvailableLeaderBindings"],
+  getActiveZoneBindings: KeybindContextValue["getActiveZoneBindings"]
 ): KeybindContextValue {
   return useMemo(
     () => ({
@@ -373,25 +410,31 @@ function useKeybindContextValue(
       leaderPath: config.leaderPath,
       isLeaderMenuOpen: config.isLeaderMenuOpen,
       getAvailableLeaderBindings,
+      getActiveZoneBindings,
+      isWhichKeyOpen: config.isWhichKeyOpen,
+      openWhichKey: config.openWhichKey,
+      closeWhichKey: config.closeWhichKey,
       registerBindings,
       setActiveScreen: config.setActiveScreen,
       setActiveZone: config.setActiveZone
     }),
-    [config, getAvailableLeaderBindings, registerBindings]
+    [config, getActiveZoneBindings, getAvailableLeaderBindings, registerBindings]
   );
 }
 
 function useKeybindController(): KeybindContextValue {
   const screenState = useScreenState();
   const leaderMenuState = useLeaderMenuState();
+  const whichKeyState = useWhichKeyState();
   const directSequenceState = useDirectSequenceState();
   const bindingsRef = useRef<RegisteredKeybind[]>([]);
-  const config = useKeybindConfig(screenState, leaderMenuState, directSequenceState, bindingsRef);
+  const config = useKeybindConfig(screenState, leaderMenuState, whichKeyState, directSequenceState, bindingsRef);
   const registerBindings = useRegisterBindings(bindingsRef);
   const getAvailableLeaderBindings = useAvailableLeaderBindings(config);
+  const getActiveZoneBindings = useActiveZoneBindings(config);
 
   useKeydownListener(config);
-  return useKeybindContextValue(config, registerBindings, getAvailableLeaderBindings);
+  return useKeybindContextValue(config, registerBindings, getAvailableLeaderBindings, getActiveZoneBindings);
 }
 
 /**
