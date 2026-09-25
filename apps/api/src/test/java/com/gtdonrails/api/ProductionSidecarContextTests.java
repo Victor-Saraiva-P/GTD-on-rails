@@ -1,12 +1,14 @@
 package com.gtdonrails.api;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.nio.file.Path;
 
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
 
@@ -22,14 +24,15 @@ class ProductionSidecarContextTests {
         String dataDir = tempDir.toString();
         assertDoesNotThrow(() -> {
             try (ConfigurableApplicationContext context = new SpringApplicationBuilder(ApiApplication.class)
+                    .web(WebApplicationType.NONE)
                     .profiles("prod", "sidecar")
-                    .properties(
-                        "server.port=0",
-                        "gtd.data.root-directory=" + dataDir,
-                        "gtd.sync.server.enabled=false"
-                    )
-                    .run()) {
-                // Production sidecar context successfully loaded
+                    .run(
+                        "--spring.datasource.url=jdbc:sqlite:file:testdb-prod-" + System.currentTimeMillis() + "?mode=memory&cache=shared",
+                        "--spring.datasource.hikari.maximum-pool-size=1",
+                        "--gtd.data.root-directory=" + dataDir,
+                        "--gtd.sync.server.enabled=false"
+                    )) {
+                assertNotNull(context.getBean(ApiApplication.class));
             }
         });
     }
