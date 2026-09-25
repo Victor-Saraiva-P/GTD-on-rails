@@ -131,8 +131,8 @@ Useful root commands:
 
 - `make gtd [dev|staging]`: runs the desktop and local API.
 - `make client [dev|staging]`: runs the personal sync process separately.
-- `make client-package`: builds the standalone versioned Linux client archive.
-- `make client-install`: installs the current client build as a `systemd --user` service with autonomous updates.
+- `make client-install [tag]`: installs published production client (latest or specific tag) as a `systemd --user` service with autonomous updates.
+- `make gtd-install [tag]`: installs published production desktop app (latest or specific tag) and sets up desktop launcher and configuration.
 - `make test [type] [scope] [test]`: runs all tests or a positional selection.
 - `make unit [scope] [test]`, `make integration [scope] [test]`, and `make e2e [scope] [test]`: shorter test forms.
 - `make check [scope]`: validates project checks.

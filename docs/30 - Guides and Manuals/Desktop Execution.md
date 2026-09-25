@@ -92,7 +92,21 @@ Rebootstrap always creates a local recovery snapshot before replacing synchroniz
 
 ## Production installation
 
-Production distribution remains the native Linux `.tar.gz` package. Extract it and run the included installer.
+Production distribution remains the native Linux `.tar.gz` package.
+
+To install the latest published production desktop release:
+
+```sh
+make gtd-install
+```
+
+To install a specific version or release tag:
+
+```sh
+make gtd-install v3.0.1
+```
+
+The installer verifies SHA-256 checksums, extracts the package, and installs the desktop binary, API sidecar jar, launcher script, desktop icon, and `.desktop` entry.
 
 The application stores its normal user dataset under:
 
@@ -108,10 +122,12 @@ Build its standalone Linux archive with:
 make client-package
 ```
 
-The resulting files are written under `apps/sync-server/build/client-release/`. To install the current source build as the local user service, run:
+The resulting files are written under `apps/sync-server/build/client-release/`. To install the published release as the local user service (latest or specific tag), run:
 
 ```sh
 make client-install
+# or for a specific release tag:
+make client-install v3.0.1
 ```
 
 The installer creates `~/.local/share/gtd-on-rails-client`, `~/.local/bin/gtd-client`, `~/.config/gtd-on-rails-client.env`, and `~/.config/systemd/user/gtd-on-rails-client.service`. It enables and starts the `systemd --user` service when systemd is available.
