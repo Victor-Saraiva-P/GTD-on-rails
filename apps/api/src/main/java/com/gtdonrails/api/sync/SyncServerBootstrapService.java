@@ -164,7 +164,8 @@ public class SyncServerBootstrapService {
 
     private void enqueueBodyDocuments() {
         for (String itemId : jdbc.queryForList("select id from items", String.class)) {
-            enqueueFileIfPresent("body_document", itemId, "items/" + itemId + "/body.md", "text/markdown");
+            String path = Path.of("items", itemId, "body.md").toString();
+            enqueueFileIfPresent("body_document", itemId, path, "text/markdown");
         }
     }
 
@@ -172,7 +173,13 @@ public class SyncServerBootstrapService {
         String sql = "select id, item_id, file_name, content_type from item_assets";
         for (Map<String, Object> row : jdbc.queryForList(sql)) {
             String id = String.valueOf(row.get("id"));
-            String path = "items/" + row.get(ITEM_ID) + "/assets/" + id + "/" + row.get("file_name");
+            String path = Path.of(
+                "items",
+                String.valueOf(row.get(ITEM_ID)),
+                "assets",
+                id,
+                String.valueOf(row.get("file_name"))
+            ).toString();
             enqueueFileIfPresent("item_asset_file", id, path, String.valueOf(row.get("content_type")));
         }
     }
@@ -181,7 +188,13 @@ public class SyncServerBootstrapService {
         String sql = "select id, context_id, file_name, content_type from context_icon_assets";
         for (Map<String, Object> row : jdbc.queryForList(sql)) {
             String id = String.valueOf(row.get("id"));
-            String path = "assets/contexts/" + row.get("context_id") + "/" + id + "/" + row.get("file_name");
+            String path = Path.of(
+                "assets",
+                "contexts",
+                String.valueOf(row.get("context_id")),
+                id,
+                String.valueOf(row.get("file_name"))
+            ).toString();
             enqueueFileIfPresent("context_icon_file", id, path, String.valueOf(row.get("content_type")));
         }
     }

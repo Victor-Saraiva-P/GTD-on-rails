@@ -75,7 +75,7 @@ class ItemAssetServiceTests {
         assertEquals("application/pdf", response.contentType());
         verify(assetStorageService).copyLocalItemAsset(any(String.class), eq(sourcePath));
         verify(itemAssetRepository).save(any());
-        verify(fileSyncService).requestSyncAfterCommit(any(AfterCommitExecutor.class), eq("local item asset copied"));
+        verify(fileSyncService).requestSyncAfterCommit(any(AfterCommitExecutor.class));
     }
 
     @Test

@@ -80,7 +80,7 @@ public class SyncController {
     ) {
         conflictService.resolve(id, request.choice(), request.mergedContent());
         databaseSyncService.notifyNewEvents();
-        fileSyncService.requestSync("conflict resolved");
+        fileSyncService.requestSync();
         return ResponseEntity.noContent().build();
     }
 

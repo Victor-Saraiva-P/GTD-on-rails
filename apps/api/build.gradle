@@ -52,7 +52,6 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform()
-	finalizedBy tasks.named('jacocoTestReport')
 }
 
 tasks.register('unitTest', Test) {
@@ -78,7 +77,10 @@ tasks.register('integrationTest', Test) {
 }
 
 jacocoTestReport {
-	dependsOn tasks.named('test')
+	dependsOn tasks.named('test'), tasks.named('integrationTest')
+	executionData.setFrom(fileTree(layout.buildDirectory.dir('jacoco')) {
+		include '*.exec'
+	})
 	reports {
 		xml.required = true
 	}

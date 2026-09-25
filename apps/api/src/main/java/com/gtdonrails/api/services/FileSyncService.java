@@ -88,22 +88,22 @@ public class FileSyncService {
     public void requestScheduledSync() {
         if (!enabled || requiresRebootstrap()) return;
         if (outbox.pendingCount() == 0) return;
-        requestSync("scheduled");
+        requestSync();
     }
 
-    public void requestSync(String reason) {
+    public void requestSync() {
         if (!enabled || requiresRebootstrap()) return;
         pending.set(true);
         state = running.get() ? FileSyncState.SYNCING : FileSyncState.PENDING;
         submit();
     }
 
-    public void requestSyncAfterCommit(AfterCommitExecutor executor, String reason) {
-        executor.run(() -> requestSync(reason));
+    public void requestSyncAfterCommit(AfterCommitExecutor executor) {
+        executor.run(this::requestSync);
     }
 
     public void requestManualSync() {
-        requestSync("manual");
+        requestSync();
     }
 
     public FileSyncStatusDto status() {
@@ -127,7 +127,7 @@ public class FileSyncService {
             } while (shouldContinueLoop(successful));
         } finally {
             running.set(false);
-            if (successful && pending.get() && !requiresRebootstrap()) requestSync("pending");
+            if (successful && pending.get() && !requiresRebootstrap()) requestSync();
         }
     }
 
@@ -191,10 +191,7 @@ public class FileSyncService {
 
     private SyncServerGateway.SyncPushResult push(SyncFileOutboxEntry entry, byte[] content) {
         long baseRevision = stateStore.revision(entry.objectType(), entry.objectId());
-        return fileGateway.push(
-            entry.operationId(), entry.objectType(), entry.objectId(), baseRevision,
-            entry.operation(), entry.relativePath(), entry.contentType(), content
-        );
+        return fileGateway.push(new SyncFileServerGateway.PushRequest(entry, baseRevision, content));
     }
 
     private void rememberSuccessfulPush(SyncFileOutboxEntry entry, long revision, byte[] content) {
@@ -257,7 +254,7 @@ public class FileSyncService {
         if (!enabled) return;
         lastError = null;
         state = FileSyncState.SYNCED;
-        requestSync("rebootstrap completed");
+        requestSync();
     }
 
     private void markSuccess() {

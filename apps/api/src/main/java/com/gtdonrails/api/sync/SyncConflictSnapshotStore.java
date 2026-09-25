@@ -3,6 +3,8 @@ package com.gtdonrails.api.sync;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.Objects;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -94,5 +96,35 @@ public class SyncConflictSnapshotStore {
     }
 
     public record ConflictFiles(Optional<byte[]> base, byte[] local, byte[] remote) {
+
+        @Override
+        public boolean equals(Object other) {
+            if (this == other) return true;
+            if (!(other instanceof ConflictFiles files)) return false;
+            return optionalBytesEqual(base, files.base)
+                && Arrays.equals(local, files.local)
+                && Arrays.equals(remote, files.remote);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(optionalBytesHash(base), Arrays.hashCode(local), Arrays.hashCode(remote));
+        }
+
+        @Override
+        public String toString() {
+            return "ConflictFiles[baseBytes=" + base.map(value -> value.length).orElse(0)
+                + ", localBytes=" + (local == null ? 0 : local.length)
+                + ", remoteBytes=" + (remote == null ? 0 : remote.length) + "]";
+        }
+
+        private static boolean optionalBytesEqual(Optional<byte[]> left, Optional<byte[]> right) {
+            if (left.isEmpty() || right.isEmpty()) return left.isEmpty() && right.isEmpty();
+            return Arrays.equals(left.orElseThrow(), right.orElseThrow());
+        }
+
+        private static int optionalBytesHash(Optional<byte[]> value) {
+            return value.map(Arrays::hashCode).orElse(0);
+        }
     }
 }

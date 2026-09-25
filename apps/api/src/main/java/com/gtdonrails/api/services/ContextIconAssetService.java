@@ -71,7 +71,7 @@ public class ContextIconAssetService {
         contextIconAssetRepository.save(iconAsset);
         context.getIconAssets().add(iconAsset);
         enqueueIconSync(iconAsset);
-        fileSyncService.requestSyncAfterCommit(afterCommitExecutor, "context icon updated");
+        fileSyncService.requestSyncAfterCommit(afterCommitExecutor);
         return contextMapper.toResponse(context);
     }
 
@@ -84,7 +84,7 @@ public class ContextIconAssetService {
     public ContextResponseDto deleteContextIcon(UUID id) {
         Context context = findContext(id);
         deleteExistingIcon(context);
-        fileSyncService.requestSyncAfterCommit(afterCommitExecutor, "context icon deleted");
+        fileSyncService.requestSyncAfterCommit(afterCommitExecutor);
         return contextMapper.toResponse(context);
     }
 
@@ -95,7 +95,7 @@ public class ContextIconAssetService {
      */
     public void deleteContextIconAsset(Context context) {
         deleteExistingIcon(context);
-        fileSyncService.requestSyncAfterCommit(afterCommitExecutor, "context deleted");
+        fileSyncService.requestSyncAfterCommit(afterCommitExecutor);
     }
 
     private Context findContext(UUID id) {

@@ -66,10 +66,16 @@ class FileSyncServiceTests {
         when(outbox.pending()).thenReturn(List.of(entry));
         when(outbox.pendingCount()).thenReturn(0L);
         when(stateStore.revision(entry.objectType(), entry.objectId())).thenReturn(4L);
-        when(files.push(
-            eq(entry.operationId()), eq(entry.objectType()), eq(entry.objectId()), eq(4L),
-            eq("UPSERT"), eq(entry.relativePath()), eq(entry.contentType()), argThat(bytes -> java.util.Arrays.equals(bytes, "# Notes".getBytes(StandardCharsets.UTF_8)))
-        )).thenReturn(new SyncServerGateway.SyncPushResult(5L, 12L));
+        when(files.push(argThat(request ->
+            request.operationId().equals(entry.operationId())
+                && request.objectType().equals(entry.objectType())
+                && request.objectId().equals(entry.objectId())
+                && request.baseRevision() == 4L
+                && request.operation().equals("UPSERT")
+                && request.relativePath().equals(entry.relativePath())
+                && request.contentType().equals(entry.contentType())
+                && java.util.Arrays.equals(request.content(), "# Notes".getBytes(StandardCharsets.UTF_8))
+        ))).thenReturn(new SyncServerGateway.SyncPushResult(5L, 12L));
         service = newService(true, outbox, files, server, stateStore);
 
         service.syncNow();
@@ -108,7 +114,7 @@ class FileSyncServiceTests {
         when(outbox.pending()).thenReturn(List.of(entry));
         when(outbox.pendingCount()).thenReturn(0L);
         SyncServerConflictException conflict = new SyncServerConflictException("stale", 9L);
-        when(files.push(any(), any(), any(), any(Long.class), any(), any(), any(), any())).thenThrow(conflict);
+        when(files.push(any(SyncFileServerGateway.PushRequest.class))).thenThrow(conflict);
         service = newService(true, outbox, files, server, stateStore);
         when(conflictResolver.resolvePushConflict(entry, conflict))
             .thenReturn(new FileConflictResolutionService.Resolution(false, true));
@@ -131,7 +137,7 @@ class FileSyncServiceTests {
         Files.write(tempDir.resolve(entry.relativePath()), new byte[] {1, 2});
         when(outbox.pending()).thenReturn(List.of(entry));
         when(outbox.pendingCount()).thenReturn(1L);
-        when(files.push(any(), any(), any(), any(Long.class), any(), any(), any(), any()))
+        when(files.push(any(SyncFileServerGateway.PushRequest.class)))
             .thenThrow(new IllegalStateException("offline"));
         service = newService(true, outbox, files, server, stateStore);
 

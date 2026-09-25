@@ -15,6 +15,7 @@ import com.gtdonrails.api.exceptions.item.ItemNotFoundException;
 import com.gtdonrails.api.exceptions.shared.BusinessException;
 import com.gtdonrails.api.repositories.ItemAssetRepository;
 import com.gtdonrails.api.repositories.ItemRepository;
+import com.gtdonrails.api.types.BlockEntity;
 import com.gtdonrails.api.types.ItemBody;
 import com.gtdonrails.api.sync.SyncFileOutboxStore;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -75,7 +76,7 @@ public class ItemAssetService {
         assetStorageService.storeItemAsset(itemAsset.relativePath(), file);
         itemAssetRepository.save(itemAsset);
         enqueueAssetSync(itemAsset);
-        fileSyncService.requestSyncAfterCommit(afterCommitExecutor, "item asset uploaded");
+        fileSyncService.requestSyncAfterCommit(afterCommitExecutor);
         return itemAssetResponse(itemAsset);
     }
 
@@ -92,7 +93,7 @@ public class ItemAssetService {
         assetStorageService.copyLocalItemAsset(itemAsset.relativePath(), sourcePath);
         itemAssetRepository.save(itemAsset);
         enqueueAssetSync(itemAsset);
-        fileSyncService.requestSyncAfterCommit(afterCommitExecutor, "local item asset copied");
+        fileSyncService.requestSyncAfterCommit(afterCommitExecutor);
         return itemAssetResponse(itemAsset);
     }
 
@@ -128,7 +129,7 @@ public class ItemAssetService {
         collectMarkdownAssetIds(text, MARKDOWN_ASSET_PATH, ids);
         collectMarkdownAssetIds(text, LEGACY_ASSET_TOKEN, ids);
         if (body != null) {
-            body.blockEntities().stream().map(entity -> entity.assetId()).map(this::parseAssetId).forEach(ids::add);
+            body.blockEntities().stream().map(BlockEntity::assetId).map(this::parseAssetId).forEach(ids::add);
         }
         return ids;
     }

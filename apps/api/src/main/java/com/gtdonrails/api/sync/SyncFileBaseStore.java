@@ -3,6 +3,8 @@ package com.gtdonrails.api.sync;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.Objects;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -76,5 +78,23 @@ public class SyncFileBaseStore {
     }
 
     public record BaseSnapshot(long revision, byte[] content) {
+
+        @Override
+        public boolean equals(Object other) {
+            if (this == other) return true;
+            if (!(other instanceof BaseSnapshot snapshot)) return false;
+            return revision == snapshot.revision && Arrays.equals(content, snapshot.content);
+        }
+
+        @Override
+        public int hashCode() {
+            return 31 * Objects.hash(revision) + Arrays.hashCode(content);
+        }
+
+        @Override
+        public String toString() {
+            return "BaseSnapshot[revision=" + revision + ", contentBytes="
+                + (content == null ? 0 : content.length) + "]";
+        }
     }
 }

@@ -2,12 +2,10 @@ package com.gtdonrails.api.sync;
 
 import java.io.IOException;
 import java.net.URI;
-import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.util.UUID;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
@@ -33,18 +31,11 @@ public class HttpSyncFileServerGateway implements SyncFileServerGateway {
     }
 
     @Override
-    public SyncServerGateway.SyncPushResult push(
-        UUID operationId,
-        String objectType,
-        String objectId,
-        long baseRevision,
-        String operation,
-        String relativePath,
-        String contentType,
-        byte[] content
-    ) {
-        HttpRequest request = requestBuilder(operationId, objectType, objectId, baseRevision, operation, relativePath, contentType)
-            .POST(HttpRequest.BodyPublishers.ofByteArray(content == null ? new byte[0] : content))
+    public SyncServerGateway.SyncPushResult push(PushRequest requestData) {
+        HttpRequest request = requestBuilder(requestData)
+            .POST(HttpRequest.BodyPublishers.ofByteArray(
+                requestData.content() == null ? new byte[0] : requestData.content()
+            ))
             .build();
         HttpResponse<byte[]> response = send(request);
         if (response.statusCode() == 409) throw conflict(response);
@@ -70,23 +61,18 @@ public class HttpSyncFileServerGateway implements SyncFileServerGateway {
         );
     }
 
-    private HttpRequest.Builder requestBuilder(
-        UUID operationId,
-        String objectType,
-        String objectId,
-        long baseRevision,
-        String operation,
-        String relativePath,
-        String contentType
-    ) {
+    private HttpRequest.Builder requestBuilder(PushRequest requestData) {
         return authorized(HttpRequest.newBuilder(endpoint))
-            .header("X-Operation-Id", operationId.toString())
-            .header("X-Object-Type", objectType)
-            .header("X-Object-Id", objectId)
-            .header("X-Base-Revision", Long.toString(baseRevision))
-            .header("X-Sync-Operation", operation)
-            .header("X-Relative-Path", relativePath)
-            .header("Content-Type", contentType == null ? "application/octet-stream" : contentType);
+            .header("X-Operation-Id", requestData.operationId().toString())
+            .header("X-Object-Type", requestData.objectType())
+            .header("X-Object-Id", requestData.objectId())
+            .header("X-Base-Revision", Long.toString(requestData.baseRevision()))
+            .header("X-Sync-Operation", requestData.operation())
+            .header("X-Relative-Path", requestData.relativePath())
+            .header(
+                "Content-Type",
+                requestData.contentType() == null ? "application/octet-stream" : requestData.contentType()
+            );
     }
 
 

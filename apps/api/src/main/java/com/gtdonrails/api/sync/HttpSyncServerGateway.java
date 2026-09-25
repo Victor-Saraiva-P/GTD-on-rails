@@ -5,6 +5,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.file.Path;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gtdonrails.api.entities.SyncOutboxEvent;
@@ -78,7 +79,7 @@ public class HttpSyncServerGateway implements SyncServerGateway {
 
     @Override
     public SyncRemoteObject object(String objectType, String objectId) {
-        String path = "/v1/objects/" + encodePath(objectType) + "/" + encodePath(objectId);
+        String path = Path.of("v1", "objects", encodePath(objectType), encodePath(objectId)).toString();
         HttpResponse<String> response = sendGet(path);
         requireSuccess(response, "read canonical object");
         return read(response.body(), SyncRemoteObject.class);
@@ -146,7 +147,7 @@ public class HttpSyncServerGateway implements SyncServerGateway {
     }
 
     private URI resolve(String path) {
-        return URI.create(baseUri + path);
+        return baseUri.resolve(path);
     }
 
     private IllegalStateException protocolFailure(String action, Exception exception) {

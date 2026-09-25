@@ -57,8 +57,7 @@ public class ItemBodyMarkdownCodec {
             case "numbered" -> "1. ";
             case "lettered" -> "a. ";
             case "quote" -> "> ";
-            case "checklist" -> Boolean.TRUE.equals(block.attrs() == null ? null : block.attrs().checked())
-                ? "- [x] " : "- [ ] ";
+            case "checklist" -> checklistPrefix(block);
             default -> "";
         };
     }
@@ -70,11 +69,36 @@ public class ItemBodyMarkdownCodec {
             case "heading2" -> trimmed.startsWith("## ");
             case "heading3" -> trimmed.startsWith("### ");
             case "bullet" -> trimmed.startsWith("- ") || trimmed.startsWith("* ");
-            case "numbered" -> trimmed.matches("^\\d+[.)]\\s+.*");
+            case "numbered" -> hasNumberedPrefix(trimmed);
             case "quote" -> trimmed.startsWith("> ");
-            case "checklist" -> trimmed.matches("^[-*+] \\[[ xX]\\]\\s+.*");
+            case "checklist" -> hasChecklistPrefix(trimmed);
             default -> false;
         };
+    }
+
+    private String checklistPrefix(LineBlock block) {
+        boolean checked = block.attrs() != null && Boolean.TRUE.equals(block.attrs().checked());
+        return checked ? "- [x] " : "- [ ] ";
+    }
+
+    private boolean hasNumberedPrefix(String value) {
+        int index = 0;
+        while (index < value.length() && Character.isDigit(value.charAt(index))) index++;
+        if (index == 0 || index + 1 >= value.length()) return false;
+        char delimiter = value.charAt(index);
+        return (delimiter == '.' || delimiter == ')') && Character.isWhitespace(value.charAt(index + 1));
+    }
+
+    private boolean hasChecklistPrefix(String value) {
+        if (value.length() < 6) return false;
+        char marker = value.charAt(0);
+        char state = value.charAt(3);
+        return (marker == '-' || marker == '*' || marker == '+')
+            && value.charAt(1) == ' '
+            && value.charAt(2) == '['
+            && (state == ' ' || state == 'x' || state == 'X')
+            && value.charAt(4) == ']'
+            && Character.isWhitespace(value.charAt(5));
     }
 
     private String applyInlineMarks(String line, int lineStart, List<InlineMark> marks) {

@@ -20,8 +20,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gtdonrails.api.entities.Context;
 import com.gtdonrails.api.entities.Item;
 import com.gtdonrails.api.entities.NextAction;
-import com.gtdonrails.api.entities.SyncOutboxEvent;
-import com.gtdonrails.api.entities.SyncOutboxOperation;
 import com.gtdonrails.api.repositories.ContextRepository;
 import com.gtdonrails.api.repositories.ItemRepository;
 import com.gtdonrails.api.repositories.NextActionRepository;
@@ -180,12 +178,6 @@ class NextActionEditPersistenceTests {
         Set<UUID> ids = new java.util.HashSet<>();
         for (JsonNode context : json.readTree(response).get(0).get("contexts")) ids.add(UUID.fromString(context.get("id").asText()));
         return ids;
-    }
-
-    private List<SyncOutboxEvent> pendingActionEvents() {
-        return jdbcTemplate.query("SELECT operation, payload FROM sync_outbox WHERE entity_type = 'next_actions' AND entity_id = ? ORDER BY id",
-            (row, index) -> new SyncOutboxEvent("next_actions", actionId.toString(),
-                SyncOutboxOperation.valueOf(row.getString(1)), row.getString(2)), actionId.toString());
     }
 
     private JsonNode latestPayload(String table) throws Exception {

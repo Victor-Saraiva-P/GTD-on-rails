@@ -73,16 +73,12 @@ public class SyncServerPullService {
         long localRevision = stateStore.revision(change.objectType(), change.objectId());
         if (change.revision() <= localRevision) return;
         if (stateStore.hasPendingMutation(change.objectType(), change.objectId())) {
-            if (applier.supportsFile(change.objectType())) {
-                FileConflictResolutionService.Resolution resolution = fileConflicts.resolvePullConflict(change);
-                if (resolution.mergedAutomatically()) return;
-            } else {
-                stateStore.recordConflict(change);
-            }
-            return;
+            if (applier.supportsFile(change.objectType())) fileConflicts.resolvePullConflict(change);
+            else stateStore.recordConflict(change);
+        } else {
+            applier.apply(change);
+            stateStore.updateRevision(change.objectType(), change.objectId(), change.revision());
         }
-        applier.apply(change);
-        stateStore.updateRevision(change.objectType(), change.objectId(), change.revision());
     }
 
     private String validatedEpoch(String localEpoch, String remoteEpoch) {

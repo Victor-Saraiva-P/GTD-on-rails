@@ -70,11 +70,11 @@ public class SyncFileOutboxStore {
     }
 
     public void markProcessing(long id) {
-        updateStatus(id, "PROCESSING", null, false);
+        updateStatus(id, "PROCESSING", null);
     }
 
     public void markCompleted(long id) {
-        updateStatus(id, "COMPLETED", null, false);
+        updateStatus(id, "COMPLETED", null);
     }
 
     public void markFailed(long id, String error, boolean retry) {
@@ -126,7 +126,7 @@ public class SyncFileOutboxStore {
         );
     }
 
-    private void updateStatus(long id, String status, String error, boolean incrementRetry) {
+    private void updateStatus(long id, String status, String error) {
         jdbc.update(
             "update sync_file_outbox set status = ?, last_error = ? where id = ?",
             status,
