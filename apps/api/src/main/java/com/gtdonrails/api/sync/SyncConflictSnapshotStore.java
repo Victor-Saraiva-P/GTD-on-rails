@@ -100,10 +100,12 @@ public class SyncConflictSnapshotStore {
         @Override
         public boolean equals(Object other) {
             if (this == other) return true;
-            if (!(other instanceof ConflictFiles files)) return false;
-            return optionalBytesEqual(base, files.base)
-                && Arrays.equals(local, files.local)
-                && Arrays.equals(remote, files.remote);
+            if (!(other instanceof ConflictFiles(Optional<byte[]> otherBase, byte[] otherLocal, byte[] otherRemote))) {
+                return false;
+            }
+            return optionalBytesEqual(base, otherBase)
+                && Arrays.equals(local, otherLocal)
+                && Arrays.equals(remote, otherRemote);
         }
 
         @Override

@@ -1,5 +1,7 @@
 package com.gtdonrails.api.sync;
 
+import java.util.Arrays;
+import java.util.Objects;
 import java.util.UUID;
 
 public interface SyncFileServerGateway {
@@ -53,46 +55,42 @@ public interface SyncFileServerGateway {
         }
     }
 
-    final class RemoteFileContent {
-
-        private final byte[] content;
-        private final String relativePath;
-        private final String sha256;
-        private final String mediaType;
-        private final long revision;
-
-        public RemoteFileContent(
-            byte[] content,
-            String relativePath,
-            String sha256,
-            String mediaType,
-            long revision
-        ) {
-            this.content = content;
-            this.relativePath = relativePath;
-            this.sha256 = sha256;
-            this.mediaType = mediaType;
-            this.revision = revision;
+    record RemoteFileContent(
+        byte[] content,
+        String relativePath,
+        String sha256,
+        String mediaType,
+        long revision
+    ) {
+        @Override
+        public boolean equals(Object other) {
+            if (this == other) return true;
+            if (!(other instanceof RemoteFileContent(
+                byte[] otherContent,
+                String otherRelativePath,
+                String otherSha256,
+                String otherMediaType,
+                long otherRevision
+            ))) {
+                return false;
+            }
+            return revision == otherRevision
+                && Arrays.equals(content, otherContent)
+                && Objects.equals(relativePath, otherRelativePath)
+                && Objects.equals(sha256, otherSha256)
+                && Objects.equals(mediaType, otherMediaType);
         }
 
-        public byte[] content() {
-            return content;
+        @Override
+        public int hashCode() {
+            return 31 * Objects.hash(relativePath, sha256, mediaType, revision) + Arrays.hashCode(content);
         }
 
-        public String relativePath() {
-            return relativePath;
-        }
-
-        public String sha256() {
-            return sha256;
-        }
-
-        public String mediaType() {
-            return mediaType;
-        }
-
-        public long revision() {
-            return revision;
+        @Override
+        public String toString() {
+            return "RemoteFileContent[relativePath=" + relativePath + ", sha256=" + sha256
+                + ", mediaType=" + mediaType + ", revision=" + revision
+                + ", contentBytes=" + (content == null ? 0 : content.length) + "]";
         }
     }
 }

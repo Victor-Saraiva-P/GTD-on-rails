@@ -82,8 +82,8 @@ public class SyncFileBaseStore {
         @Override
         public boolean equals(Object other) {
             if (this == other) return true;
-            if (!(other instanceof BaseSnapshot snapshot)) return false;
-            return revision == snapshot.revision && Arrays.equals(content, snapshot.content);
+            if (!(other instanceof BaseSnapshot(long otherRevision, byte[] otherContent))) return false;
+            return revision == otherRevision && Arrays.equals(content, otherContent);
         }
 
         @Override

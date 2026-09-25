@@ -56,13 +56,11 @@ public class SyncServerPullService {
 
     private long pullPage(String epoch, long cursor) {
         SyncServerGateway.SyncPullPage page = gateway.changesAfter(cursor, PAGE_SIZE);
-        Long result = transactions.execute(status -> {
+        return transactions.execute(status -> {
             applyChanges(page.changes());
             stateStore.updateClientState(epoch, page.cursor());
             return page.cursor();
         });
-        if (result == null) throw new IllegalStateException("sync pull transaction returned no cursor");
-        return result;
     }
 
     private void applyChanges(List<SyncRemoteChange> changes) {

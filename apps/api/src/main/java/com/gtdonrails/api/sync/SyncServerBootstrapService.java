@@ -18,6 +18,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 public class SyncServerBootstrapService {
 
     private static final String ITEMS = "items";
+    private static final String CONTEXTS = "contexts";
     private static final String ITEM_ID = "item_id";
     private static final String PROJECTS = "projects";
     private static final String PROJECT_ITEMS = "project_items";
@@ -26,7 +27,7 @@ public class SyncServerBootstrapService {
 
     private static final List<String> STRUCTURED_TABLES = List.of(
         ITEMS,
-        "contexts",
+        CONTEXTS,
         "item_assets",
         "context_icon_assets",
         PROJECTS,
@@ -102,7 +103,7 @@ public class SyncServerBootstrapService {
     private String selectAllSql(String table) {
         return switch (table) {
             case ITEMS -> "select * from items";
-            case "contexts" -> "select * from contexts";
+            case CONTEXTS -> "select * from contexts";
             case "item_assets" -> "select * from item_assets";
             case "context_icon_assets" -> "select * from context_icon_assets";
             case PROJECTS -> "select * from projects";
@@ -164,7 +165,7 @@ public class SyncServerBootstrapService {
 
     private void enqueueBodyDocuments() {
         for (String itemId : jdbc.queryForList("select id from items", String.class)) {
-            String path = Path.of("items", itemId, "body.md").toString();
+            String path = Path.of(ITEMS, itemId, "body.md").toString();
             enqueueFileIfPresent("body_document", itemId, path, "text/markdown");
         }
     }
