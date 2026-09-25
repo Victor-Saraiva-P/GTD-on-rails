@@ -6,6 +6,7 @@ public record FileSyncStatusDto(
     FileSyncState state,
     boolean pending,
     boolean running,
+    long pendingCount,
     Instant lastStartedAt,
     Instant lastFinishedAt,
     Instant lastSuccessfulSyncAt,

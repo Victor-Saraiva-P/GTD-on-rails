@@ -16,6 +16,7 @@ import java.util.UUID;
 
 import com.gtdonrails.api.bodydocuments.ItemBodyDocumentService;
 import com.gtdonrails.api.bodydocuments.LegacyItemBodyMirror;
+import com.gtdonrails.api.dtos.item.ItemBodyResponseDto;
 import com.gtdonrails.api.dtos.item.ItemResponseDto;
 import com.gtdonrails.api.dtos.item.PatchItemBodyRequestDto;
 import com.gtdonrails.api.dtos.item.UpdateItemTitleRequestDto;
@@ -83,6 +84,21 @@ class ItemServiceTests {
             .thenAnswer(invocation -> invocation.getArgument(1));
         lenient().when(bodyDocuments.read(any(UUID.class), any(ItemBody.class)))
             .thenAnswer(invocation -> invocation.getArgument(1));
+    }
+
+    @Test
+    void getItemBodyLoadsCanonicalBodyOnDemand() {
+        UUID itemId = UUID.randomUUID();
+        Item item = new Item(new Title("Title"), "legacy");
+        ItemBody canonical = bodyValue("canonical");
+
+        when(itemRepository.findById(itemId)).thenReturn(Optional.of(item));
+        when(bodyDocuments.read(itemId, item.getBody())).thenReturn(canonical);
+
+        ItemBodyResponseDto response = itemService.getItemBody(itemId);
+
+        assertEquals(canonical, response.body());
+        verify(bodyDocuments).read(itemId, item.getBody());
     }
 
     @Test

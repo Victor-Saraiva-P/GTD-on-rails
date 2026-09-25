@@ -99,9 +99,7 @@ class DevDemoDataControllerTests {
         mockMvc.perform(get("/next-actions").param("orderBy", "energy"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$[0].title").value("Review Tauri architecture slides before Friday demo"))
-            .andExpect(jsonPath("$[0].body.text", containsString("TauriSlideshow.pdf")))
-            .andExpect(jsonPath("$[0].body.text", containsString("assets/")))
-            .andExpect(jsonPath("$[0].body.blockEntities", hasSize(0)));
+            .andExpect(jsonPath("$[0].body").isEmpty());
     }
 
     private void assertPdfAssetCopied() {

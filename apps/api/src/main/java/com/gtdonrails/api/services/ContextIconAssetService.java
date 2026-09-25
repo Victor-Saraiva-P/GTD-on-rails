@@ -69,6 +69,7 @@ public class ContextIconAssetService {
         ContextIconAsset iconAsset = newContextIconAsset(context, file);
         assetStorageService.storeImageAsset(iconAsset.relativePath(), file);
         contextIconAssetRepository.save(iconAsset);
+        context.getIconAssets().add(iconAsset);
         enqueueIconSync(iconAsset);
         fileSyncService.requestSyncAfterCommit(afterCommitExecutor, "context icon updated");
         return contextMapper.toResponse(context);

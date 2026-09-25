@@ -125,7 +125,7 @@ public class NextActionService {
         return nextActionRepository
             .findAllByStatusAndItem_DeletedAtIsNullOrderByItem_UpdatedAtAsc(NextActionStatus.ONGOING)
             .stream()
-            .map(nextActionMapper::toResponse)
+            .map(nextActionMapper::toListResponse)
             .toList();
     }
 
@@ -138,7 +138,7 @@ public class NextActionService {
 
         return nextActions
             .stream()
-            .map(nextActionMapper::toResponse)
+            .map(nextActionMapper::toListResponse)
             .toList();
     }
 
@@ -151,7 +151,7 @@ public class NextActionService {
 
         return nextActions
             .stream()
-            .map(nextActionMapper::toResponse)
+            .map(nextActionMapper::toListResponse)
             .toList();
     }
 
@@ -169,7 +169,7 @@ public class NextActionService {
         return unorderedRunnableNextActions(contextIds)
             .stream()
             .sorted(Comparator.comparingDouble(score::calculate).reversed())
-            .map(nextActionMapper::toResponse)
+            .map(nextActionMapper::toListResponse)
             .toList();
     }
 
@@ -179,7 +179,7 @@ public class NextActionService {
         return nextActionRepository
             .findAllByItem_DeletedAtIsNotNullOrderByItem_UpdatedAtDesc()
             .stream()
-            .map(nextActionMapper::toResponse)
+            .map(nextActionMapper::toListResponse)
             .toList();
     }
 
@@ -188,7 +188,7 @@ public class NextActionService {
     public Page<NextActionResponseDto> getDoneNextActions(Pageable pageable) {
         return nextActionRepository
             .findAllByStatusAndItem_DeletedAtIsNullOrderByItem_UpdatedAtDesc(NextActionStatus.DONE, pageable)
-            .map(nextActionMapper::toResponse);
+            .map(nextActionMapper::toListResponse);
     }
 
     private NextAction findNextAction(UUID id) {

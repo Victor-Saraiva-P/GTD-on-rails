@@ -11,11 +11,9 @@ import org.springframework.stereotype.Component;
 public class ContextMapper {
 
     private final AssetStorageService assetStorageService;
-    private final ContextIconAssetRepository contextIconAssetRepository;
 
     public ContextMapper(AssetStorageService assetStorageService, ContextIconAssetRepository contextIconAssetRepository) {
         this.assetStorageService = assetStorageService;
-        this.contextIconAssetRepository = contextIconAssetRepository;
     }
 
     /**
@@ -32,7 +30,9 @@ public class ContextMapper {
     }
 
     private String iconUrl(Context context) {
-        return contextIconAssetRepository.findByContextIdAndDeletedAtIsNull(context.getId())
+        return context.getIconAssets().stream()
+            .filter(asset -> !asset.isDeleted())
+            .findFirst()
             .map(ContextIconAsset::relativePath)
             .map(assetStorageService::publicUrl)
             .orElse(null);

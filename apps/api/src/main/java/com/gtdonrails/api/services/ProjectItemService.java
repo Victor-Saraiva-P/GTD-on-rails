@@ -118,7 +118,7 @@ public class ProjectItemService {
             "insert into sync_outbox (operation_id, entity_type, entity_id, operation, payload, status, retry_count) values (?, 'project_items', ?, ?, ?, 'PENDING', 0)",
             java.util.UUID.randomUUID().toString(), itemId.toString(), operation.name(), payload
         );
-        databaseSyncService.notifyNewEvents();
+        afterCommitExecutor.run(databaseSyncService::notifyNewEvents);
     }
 
     /**
@@ -132,7 +132,7 @@ public class ProjectItemService {
         findActiveProject(projectId);
         return projectItemRepository.findProjectActionItems(projectId).stream()
             .sorted(projectActionOrdering())
-            .map(this::toResponse)
+            .map(this::toListResponse)
             .toList();
     }
 
@@ -227,6 +227,14 @@ public class ProjectItemService {
     }
 
     private ProjectItemResponseDto toResponse(ProjectItem projectItem) {
+        return toResponse(projectItem, projectItem.getItem().getBody());
+    }
+
+    private ProjectItemResponseDto toListResponse(ProjectItem projectItem) {
+        return toResponse(projectItem, null);
+    }
+
+    private ProjectItemResponseDto toResponse(ProjectItem projectItem, com.gtdonrails.api.types.ItemBody body) {
         Item item = projectItem.getItem();
         return new ProjectItemResponseDto(
             projectItem.getProject().getItemId(),
@@ -234,7 +242,7 @@ public class ProjectItemService {
             item.getId(),
             item.getStatus().name(),
             item.getTitle().value(),
-            item.getBody(),
+            body,
             item.getCreatedAt(),
             calendarDate(projectItem),
             calendarTime(projectItem),

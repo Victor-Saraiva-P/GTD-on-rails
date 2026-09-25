@@ -40,4 +40,18 @@ public class CalendarMapper {
             projectAssociationMapper.titleFor(calendar.getItem())
         );
     }
+
+    public CalendarResponseDto toListResponse(Calendar calendar) {
+        return new CalendarResponseDto(
+            calendar.getItemId(),
+            calendar.getItem().getTitle().value(),
+            null,
+            calendar.getScheduledDate(),
+            calendar.getScheduledTime(),
+            calendar.getStatus().name(),
+            calendar.getSchedule(),
+            projectAssociationMapper.projectIdFor(calendar.getItem()),
+            projectAssociationMapper.titleFor(calendar.getItem())
+        );
+    }
 }

@@ -1,38 +1,25 @@
 package com.gtdonrails.api.controllers;
 
-import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.not;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.time.Instant;
+import java.util.List;
+import java.util.Map;
 
-import com.gtdonrails.api.config.GoogleProperties;
-import com.gtdonrails.api.entities.GoogleCalendar;
-import com.gtdonrails.api.entities.GoogleCredential;
-import com.gtdonrails.api.repositories.GoogleCalendarRepository;
-import com.gtdonrails.api.services.FileSyncService;
-import com.gtdonrails.api.services.GoogleCalendarService;
+import com.gtdonrails.api.services.GoogleCalendarClientGateway;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
@@ -45,83 +32,49 @@ class GoogleCalendarControllerTests {
     @Autowired
     private WebApplicationContext webApplicationContext;
 
-    @Autowired
-    private GoogleCalendarRepository calendarRepository;
-
-    @Autowired
-    private GoogleProperties googleProperties;
-
-    @Value("${gtd.data.root-directory}")
-    private String dataRoot;
-
     @MockitoBean
-    private FileSyncService fileSyncService;
-
-    @MockitoBean
-    private GoogleCalendarService googleCalendarService;
+    private GoogleCalendarClientGateway client;
 
     private MockMvc mockMvc;
 
     @BeforeEach
-    void setUp() throws Exception {
+    void setUp() {
         mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).build();
-        calendarRepository.deleteAll();
-        googleProperties.setClientId(null);
-        googleProperties.setClientSecret(null);
-        Files.deleteIfExists(googleCredentialsPath());
     }
 
     @Test
-    void getStatusReturnsNotConfiguredInitially() throws Exception {
-        when(googleCalendarService.getValidCredential()).thenReturn(null);
-
-        mockMvc.perform(get("/integrations/google-calendar/status"))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.credentialsConfigured").value(false))
-            .andExpect(jsonPath("$.configurationStatus").value("MISSING"))
-            .andExpect(jsonPath("$.connected").value(false))
-            .andExpect(jsonPath("$.calendars", hasSize(0)));
-    }
-
-    @Test
-    void getStatusReturnsConnectedAndCalendarsWhenSetup() throws Exception {
-        googleProperties.setClientId("client-id");
-        googleProperties.setClientSecret("client-secret");
-        
-        GoogleCredential cred = new GoogleCredential();
-        cred.setAccessToken("token");
-        cred.setExpiresAt(Instant.now().plusSeconds(3600));
-        when(googleCalendarService.getValidCredential()).thenReturn(cred);
-
-        GoogleCalendar cal = new GoogleCalendar();
-        cal.setName("Next Action");
-        cal.setColorHex("#4F9768");
-        cal.setGoogleCalendarId("cal-id");
-        calendarRepository.save(cal);
+    void statusIsProxiedFromSyncClient() throws Exception {
+        when(client.status()).thenReturn(Map.of(
+            "credentialsConfigured", true,
+            "configurationStatus", "READY",
+            "configurationMessage", "ready",
+            "connected", true,
+            "calendars", List.of(Map.of(
+                "name", "Next Action",
+                "colorHex", "#4F9768",
+                "googleCalendarId", "cal-id"
+            ))
+        ));
 
         mockMvc.perform(get("/integrations/google-calendar/status"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.credentialsConfigured").value(true))
-            .andExpect(jsonPath("$.configurationStatus").value("READY"))
             .andExpect(jsonPath("$.connected").value(true))
-            .andExpect(jsonPath("$.calendars", hasSize(1)))
-            .andExpect(jsonPath("$.calendars[0].name").value("Next Action"))
-            .andExpect(jsonPath("$.calendars[0].colorHex").value("#4F9768"));
+            .andExpect(jsonPath("$.calendars[0].googleCalendarId").value("cal-id"));
     }
 
     @Test
-    void getStatusLoadsPersistedCredentialsAfterRestart() throws Exception {
-        writePersistedGoogleCredentials();
-        when(googleCalendarService.getValidCredential()).thenReturn(null);
+    void unavailableClientReturnsServiceUnavailableStatus() throws Exception {
+        when(client.status()).thenThrow(new IllegalStateException("offline"));
 
         mockMvc.perform(get("/integrations/google-calendar/status"))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.credentialsConfigured").value(true))
+            .andExpect(status().isServiceUnavailable())
+            .andExpect(jsonPath("$.configurationStatus").value("UNAVAILABLE"))
             .andExpect(jsonPath("$.connected").value(false));
     }
 
     @Test
-    void saveCredentialsUpdatesProperties() throws Exception {
+    void credentialsAreStoredBySyncClient() throws Exception {
         mockMvc.perform(post("/integrations/google-calendar/credentials")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
@@ -132,12 +85,11 @@ class GoogleCalendarControllerTests {
                     """))
             .andExpect(status().isOk());
 
-        assert googleProperties.getClientId().equals("new-client");
-        verify(fileSyncService).requestSync("integration credentials updated");
+        verify(client).saveCredentials("new-client", "new-secret");
     }
 
     @Test
-    void saveCredentialsRejectsEmptyPayload() throws Exception {
+    void emptyCredentialsAreRejectedLocally() throws Exception {
         mockMvc.perform(post("/integrations/google-calendar/credentials")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
@@ -150,67 +102,27 @@ class GoogleCalendarControllerTests {
     }
 
     @Test
-    void oauthCallbackHidesExceptionDetails() throws Exception {
-        googleProperties.setClientId("client-id");
-        googleProperties.setClientSecret("client-secret");
-        googleProperties.setTokenEncryptionKey("MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=");
-        doThrow(new RuntimeException("secret-token-value"))
-            .when(googleCalendarService).exchangeCodeForTokens(anyString(), anyString());
+    void authUrlIsReturnedFromSyncClient() throws Exception {
+        when(client.authUrl()).thenReturn(Map.of("url", "http://127.0.0.1:9473/oauth/google/callback"));
 
-        mockMvc.perform(get("/oauth/google/callback").param("code", "oauth-code"))
-            .andExpect(status().isInternalServerError())
-            .andExpect(content().string(containsString("An unexpected error occurred")))
-            .andExpect(content().string(not(containsString("secret-token-value"))));
+        mockMvc.perform(post("/integrations/google-calendar/auth-url"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.url").value("http://127.0.0.1:9473/oauth/google/callback"));
     }
 
     @Test
-    void oauthCallbackBlocksTokenExchangeWhenConfigurationIsNotReady() throws Exception {
-        mockMvc.perform(get("/oauth/google/callback").param("code", "oauth-code"))
-            .andExpect(status().isServiceUnavailable())
-            .andExpect(content().string(containsString("fix Google Calendar configuration first")));
-
-        verify(googleCalendarService, never()).exchangeCodeForTokens(anyString(), anyString());
-    }
-
-    @Test
-    void oauthCallbackReconcilesCalendarsAfterTokenExchange() throws Exception {
-        googleProperties.setClientId("client-id");
-        googleProperties.setClientSecret("client-secret");
-        googleProperties.setTokenEncryptionKey("MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=");
-
-        mockMvc.perform(get("/oauth/google/callback").param("code", "oauth-code"))
-            .andExpect(status().isOk());
-
-        verify(googleCalendarService).exchangeCodeForTokens(anyString(), anyString());
-        verify(googleCalendarService).reconcileGtdCalendars();
-    }
-
-    @Test
-    void reconcileCalendarsUpdatesMirrorWhenConnected() throws Exception {
-        googleProperties.setClientId("client-id");
-        googleProperties.setClientSecret("client-secret");
-        googleProperties.setTokenEncryptionKey("MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=");
-
-        GoogleCredential cred = new GoogleCredential();
-        cred.setAccessToken("token");
-        cred.setExpiresAt(Instant.now().plusSeconds(3600));
-        when(googleCalendarService.getValidCredential()).thenReturn(cred);
-
+    void reconcileIsExecutedBySyncClient() throws Exception {
         mockMvc.perform(post("/integrations/google-calendar/reconcile"))
             .andExpect(status().isOk());
 
-        verify(googleCalendarService).reconcileGtdCalendars();
+        verify(client).reconcile();
     }
 
-    private void writePersistedGoogleCredentials() throws Exception {
-        Files.createDirectories(googleCredentialsPath().getParent());
-        Files.writeString(googleCredentialsPath(), """
-            gtd.google.client-id=persisted-client
-            gtd.google.client-secret=persisted-secret
-            """);
-    }
+    @Test
+    void reconcileReturnsUnavailableWhenClientCannotBeReached() throws Exception {
+        doThrow(new IllegalStateException("offline")).when(client).reconcile();
 
-    private Path googleCredentialsPath() {
-        return Path.of(dataRoot).resolve("google.properties");
+        mockMvc.perform(post("/integrations/google-calendar/reconcile"))
+            .andExpect(status().isServiceUnavailable());
     }
 }

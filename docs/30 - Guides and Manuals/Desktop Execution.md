@@ -2,30 +2,59 @@
 
 ## Development
 
-From the repository root:
+Install dependencies once from the repository root:
 
 ```sh
 pnpm install
-pnpm dev
 ```
 
-The desktop frontend, local Spring Boot API, and personal sync server run natively. PostgreSQL and Supabase are not required.
-
-During development, `pnpm dev` starts the sync server first, waits for its dashboard to become available, then starts the local API and desktop. The default dashboard is:
-
-```text
-http://127.0.0.1:9473/
-```
-
-Development sync-server data is kept separately under `dev-gtd-sync-server/`. `pnpm dev:reset` clears both the local desktop development dataset and the development sync-server dataset.
-
-Useful checks:
+Run the application and sync process in separate terminals so their logs remain independently debuggable:
 
 ```sh
-pnpm --filter @gtd-on-rails/desktop test
-pnpm --filter @gtd-on-rails/desktop run check
-pnpm agent:driver
+# terminal 1: desktop + local Spring Boot API
+make gtd
+
+# terminal 2: personal sync process
+make client
 ```
+
+Development is the default. Use a positional environment only when needed:
+
+```sh
+make gtd dev
+make client dev
+
+make gtd staging
+make client staging
+```
+
+Development data lives under `dev-gtd-on-rails/` and `dev-gtd-sync-server/`. Staging uses `staging-gtd-on-rails/` and `staging-gtd-sync-server/`. The dev sync dashboard defaults to `http://127.0.0.1:9473/`; staging uses `http://127.0.0.1:9474/` so the two environments cannot accidentally converge against the same local sync process.
+
+The Make test interface supports stage, project, and individual-test selection:
+
+```sh
+make test
+make test unit
+make test integration api
+make test e2e desktop
+make test unit desktop itemBodyPersistence
+make test unit api DatabaseSyncServiceTests
+make test unit client SnapshotBackupServiceTests
+```
+
+Arguments are positional: `make test [type] [scope] [test]`. Type accepts `all`, `unit`, `integration`, `e2e`, `check`, or `lint`. Scope accepts `all`, `desktop`, `api`, `client`/`sync-server`, or `scripts`. The optional test argument is a case-insensitive substring matched against test filenames/classes.
+
+Short forms follow the same convention:
+
+```sh
+make unit desktop itemBodyPersistence
+make integration api ProjectControllerTests
+make e2e desktop vim-normal-mode-keybinds
+make check desktop
+make lint api
+```
+
+The desktop frontend, local Spring Boot API, and personal sync server all run natively. PostgreSQL and Supabase are not required.
 
 ## Packaged runtime
 
@@ -71,4 +100,22 @@ The application stores its normal user dataset under:
 ~/Documents/gtd-on-rails
 ```
 
-The personal sync server is deployed separately from the desktop package.
+The personal sync client is deployed separately from the desktop package.
+
+Build its standalone Linux archive with:
+
+```sh
+make client-package
+```
+
+The resulting files are written under `apps/sync-server/build/client-release/`. To install the current source build as the local user service, run:
+
+```sh
+make client-install
+```
+
+The installer creates `~/.local/share/gtd-on-rails-client`, `~/.local/bin/gtd-client`, `~/.config/gtd-on-rails-client.env`, and `~/.config/systemd/user/gtd-on-rails-client.service`. It enables and starts the `systemd --user` service when systemd is available.
+
+The sync dataset remains separate at `~/.local/share/gtd-on-rails-sync-server` by default, so replacing or rolling back client binaries never replaces canonical data.
+
+Managed client installations self-check GitHub releases. The administration dashboard's **Client** tab shows current/latest version and update state and allows manual check/install. Auto-update can be disabled with `GTD_CLIENT_AUTO_UPDATE_ENABLED=false` in `~/.config/gtd-on-rails-client.env`.

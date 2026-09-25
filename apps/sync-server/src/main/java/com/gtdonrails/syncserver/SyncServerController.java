@@ -16,14 +16,33 @@ import org.springframework.web.bind.annotation.RestController;
 public class SyncServerController {
 
     private final SyncObjectStore store;
+    private final GoogleCalendarProjectionQueue googleCalendarQueue;
 
-    public SyncServerController(SyncObjectStore store) {
+    public SyncServerController(
+        SyncObjectStore store,
+        GoogleCalendarProjectionQueue googleCalendarQueue
+    ) {
         this.store = store;
+        this.googleCalendarQueue = googleCalendarQueue;
     }
 
     @PostMapping("/mutations")
     public SyncMutationResult mutate(@RequestBody SyncMutation mutation) {
-        return store.apply(mutation);
+        SyncMutationResult result = store.apply(mutation);
+        requestGoogleProjection(mutation);
+        return result;
+    }
+
+    private void requestGoogleProjection(SyncMutation mutation) {
+        if (!isGoogleProjectionType(mutation.objectType())) return;
+        googleCalendarQueue.wake();
+    }
+
+    private boolean isGoogleProjectionType(String objectType) {
+        return "items".equals(objectType)
+            || "next_actions".equals(objectType)
+            || "calendars".equals(objectType)
+            || "projects".equals(objectType);
     }
 
     @GetMapping("/changes")

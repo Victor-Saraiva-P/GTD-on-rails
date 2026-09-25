@@ -17,6 +17,8 @@ The sync server is the convergence authority across devices. It stores:
 
 - `canonical.db`: object revisions, ordered change feed, operation idempotency and dataset epoch.
 - a physical file tree containing canonical Markdown and binary assets.
+- `google_calendar_outbox`: durable external-projection work derived atomically from canonical GTD mutations.
+- Google Calendar mirror identifiers for the five GTD-managed calendars.
 
 Clients never copy a live SQLite database between machines.
 
@@ -39,6 +41,28 @@ Every mutation carries:
 The server rejects a mutation when `baseRevision` is stale. Replaying the same `operationId` is idempotent.
 
 Pull uses an ordered cursor over the server change feed.
+
+## Offline behavior
+
+Local mutations never depend on sync-server reachability. Structured changes and file changes are committed locally first and remain in `sync_outbox` or `sync_file_outbox` until synchronization succeeds.
+
+A transport or other non-conflict sync failure stops the current worker cycle instead of retrying in a hot loop. The outbox entry remains pending, and the scheduled worker retries it later. Retry counters are diagnostic only; ordinary server unavailability does not exhaust or discard a local mutation.
+
+`CONFLICT` and `REBOOTSTRAP_REQUIRED` remain explicit attention states. They are not silently retried as ordinary offline failures.
+
+## Google Calendar projection
+
+Google Calendar is owned by the sync server/client process, never by an individual desktop sidecar.
+
+The local application commits GTD state to SQLite and its normal sync outbox. When a relevant `items`, `next_actions`, `calendars`, or `projects` mutation is accepted by the canonical sync server, the same SQLite transaction also upserts that item id into `google_calendar_outbox`.
+
+Only after canonical commit does the Google projection worker run. It reads canonical object snapshots, derives the required Google event, and updates the GTD-managed calendars. This makes the sync server the single Google Calendar writer even when several desktops are connected.
+
+Google OAuth client credentials and OAuth tokens are stored under the sync-server data root, not in desktop datasets. The desktop-facing integration endpoints remain on the local API as a compatibility facade, but they proxy configuration/status/reconcile requests to the sync server.
+
+Projection failures do not roll back canonical GTD state. The outbox entry stays pending and is retried by the scheduled client worker. Process restarts therefore do not lose Google Calendar work.
+
+The default OAuth callback uses the sync server public base URL. Set `GTD_SYNC_SERVER_PUBLIC_BASE_URL` when the client is reached through Tailscale or another non-loopback address.
 
 ## Markdown conflicts
 

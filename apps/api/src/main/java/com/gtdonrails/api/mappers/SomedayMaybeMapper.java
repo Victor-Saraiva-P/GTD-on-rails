@@ -38,4 +38,16 @@ public class SomedayMaybeMapper {
             projectAssociationMapper.titleFor(item)
         );
     }
+
+    public SomedayMaybeResponseDto toListResponse(Item item) {
+        return new SomedayMaybeResponseDto(
+            item.getId(),
+            item.getTitle().value(),
+            null,
+            item.getStatus().name(),
+            item.getCreatedAt(),
+            projectAssociationMapper.projectIdFor(item),
+            projectAssociationMapper.titleFor(item)
+        );
+    }
 }

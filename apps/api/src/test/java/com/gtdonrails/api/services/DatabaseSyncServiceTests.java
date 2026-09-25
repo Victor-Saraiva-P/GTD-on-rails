@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.after;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -84,19 +85,46 @@ class DatabaseSyncServiceTests {
     }
 
     @Test
-    void handlesEventPushFailureAndResetsToPending() {
+    void keepsEventPendingAfterRepeatedTransportFailures() {
         SyncOutboxRepository outboxRepository = mock(SyncOutboxRepository.class);
         SyncServerPushService pushSyncService = mock(SyncServerPushService.class);
+        SyncOutboxEvent event = repeatedFailureEvent();
 
-        SyncOutboxEvent event = new SyncOutboxEvent("items", "item-123", SyncOutboxOperation.INSERT, "{\"id\":\"item-123\"}");
         doThrow(new RuntimeException("Connection timeout")).when(pushSyncService).pushEvent(any());
-
         DatabaseSyncService service = new DatabaseSyncService(outboxRepository, pushSyncService, true);
-        service.pushSingleEvent(event);
 
+        boolean pushed = service.pushSingleEvent(event);
+
+        assertFalse(pushed);
         assertEquals(SyncOutboxStatus.PENDING, event.getStatus());
-        assertEquals(1, event.getRetryCount());
+        assertEquals(11, event.getRetryCount());
         assertEquals("Connection timeout", event.getLastError());
+    }
+
+    private SyncOutboxEvent repeatedFailureEvent() {
+        SyncOutboxEvent event = new SyncOutboxEvent("items", "item-123", SyncOutboxOperation.INSERT, "{\"id\":\"item-123\"}");
+        for (int attempt = 0; attempt < 10; attempt++) {
+            event.markFailed("offline");
+            event.resetToPending();
+        }
+        return event;
+    }
+
+    @Test
+    void offlineScheduledSyncWaitsForNextSchedulerCycleBeforeRetrying() {
+        SyncOutboxRepository outboxRepository = mock(SyncOutboxRepository.class);
+        SyncServerPushService pushSyncService = mock(SyncServerPushService.class);
+        SyncServerPullService pullSyncService = mock(SyncServerPullService.class);
+        when(outboxRepository.countByStatus(SyncOutboxStatus.PENDING)).thenReturn(1);
+        doThrow(new RuntimeException("offline")).when(pullSyncService).validateDatasetEpoch();
+        DatabaseSyncService service = new DatabaseSyncService(outboxRepository, pushSyncService, pullSyncService, true);
+
+        try {
+            service.requestScheduledSync();
+            verify(pullSyncService, after(150).times(1)).validateDatasetEpoch();
+        } finally {
+            service.shutdown();
+        }
     }
 
     @Test

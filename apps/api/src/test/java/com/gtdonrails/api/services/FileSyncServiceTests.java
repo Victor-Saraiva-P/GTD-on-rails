@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.after;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -81,6 +82,21 @@ class FileSyncServiceTests {
     }
 
     @Test
+    void offlineScheduledSyncWaitsForNextSchedulerCycleBeforeRetrying() {
+        SyncFileOutboxStore outbox = mock(SyncFileOutboxStore.class);
+        SyncFileServerGateway files = mock(SyncFileServerGateway.class);
+        SyncServerGateway server = mock(SyncServerGateway.class);
+        LocalSyncStateStore stateStore = mock(LocalSyncStateStore.class);
+        when(outbox.pendingCount()).thenReturn(1L);
+        service = newService(true, outbox, files, server, stateStore);
+        when(server.state()).thenThrow(new IllegalStateException("offline"));
+
+        service.requestScheduledSync();
+
+        verify(server, after(150).times(1)).state();
+    }
+
+    @Test
     void conflictBecomesExplicitFailedEntryWithoutRetry() throws Exception {
         SyncFileOutboxStore outbox = mock(SyncFileOutboxStore.class);
         SyncFileServerGateway files = mock(SyncFileServerGateway.class);
@@ -105,12 +121,12 @@ class FileSyncServiceTests {
     }
 
     @Test
-    void transientFailureReturnsEntryToPendingUntilRetryLimit() throws Exception {
+    void transientFailureKeepsEntryPendingAfterRepeatedAttempts() throws Exception {
         SyncFileOutboxStore outbox = mock(SyncFileOutboxStore.class);
         SyncFileServerGateway files = mock(SyncFileServerGateway.class);
         SyncServerGateway server = mock(SyncServerGateway.class);
         LocalSyncStateStore stateStore = mock(LocalSyncStateStore.class);
-        SyncFileOutboxEntry entry = entry("item_asset_file", "asset-1", "items/item-1/assets/asset-1/a.pdf", "application/pdf");
+        SyncFileOutboxEntry entry = repeatedFailureEntry();
         Files.createDirectories(tempDir.resolve("items/item-1/assets/asset-1"));
         Files.write(tempDir.resolve(entry.relativePath()), new byte[] {1, 2});
         when(outbox.pending()).thenReturn(List.of(entry));
@@ -123,6 +139,19 @@ class FileSyncServiceTests {
 
         verify(outbox).markFailed(entry.id(), "offline", true);
         assertEquals(FileSyncState.FAILED, service.status().state());
+    }
+
+    private SyncFileOutboxEntry repeatedFailureEntry() {
+        return new SyncFileOutboxEntry(
+            1L,
+            UUID.randomUUID(),
+            "item_asset_file",
+            "asset-1",
+            "UPSERT",
+            "items/item-1/assets/asset-1/a.pdf",
+            "application/pdf",
+            10
+        );
     }
 
     private FileSyncService newService(

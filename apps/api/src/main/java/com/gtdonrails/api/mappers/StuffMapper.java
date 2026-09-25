@@ -38,4 +38,19 @@ public class StuffMapper {
             projectAssociationMapper.titleFor(item)
         );
     }
+
+    /**
+     * Maps an inbox list row without loading the Markdown body document.
+     */
+    public StuffResponseDto toListResponse(Item item) {
+        return new StuffResponseDto(
+            item.getId(),
+            item.getTitle().value(),
+            null,
+            item.getStatus().name(),
+            item.getCreatedAt(),
+            projectAssociationMapper.projectIdFor(item),
+            projectAssociationMapper.titleFor(item)
+        );
+    }
 }

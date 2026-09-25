@@ -29,6 +29,7 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.BatchSize;
 
 @Entity
 @Table(name = "next_actions")
@@ -75,6 +76,7 @@ public class NextAction extends AuditableEntity {
     private NextActionStatus status = NextActionStatus.NEXT_ACTION;
 
     @ManyToMany
+    @BatchSize(size = 64)
     @JoinTable(
         name = "next_action_contexts",
         joinColumns = @JoinColumn(name = "next_action_id"),

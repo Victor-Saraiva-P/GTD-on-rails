@@ -65,7 +65,7 @@ public class InboxService {
     public List<StuffResponseDto> listStuff() {
         return itemRepository.findAllByStatusAndDeletedAtIsNullOrderByCreatedAtAsc(ItemStatus.STUFF)
             .stream()
-            .map(stuffMapper::toResponse)
+            .map(stuffMapper::toListResponse)
             .toList();
     }
 
@@ -79,7 +79,7 @@ public class InboxService {
     public List<StuffResponseDto> listDeletedStuff() {
         return itemRepository.findAllByStatusAndDeletedAtIsNotNullOrderByUpdatedAtDesc(ItemStatus.STUFF)
             .stream()
-            .map(stuffMapper::toResponse)
+            .map(stuffMapper::toListResponse)
             .toList();
     }
 

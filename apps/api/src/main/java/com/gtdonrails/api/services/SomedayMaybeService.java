@@ -47,7 +47,7 @@ public class SomedayMaybeService {
     public List<SomedayMaybeResponseDto> listSomedayMaybe() {
         return itemRepository.findAllByStatusAndDeletedAtIsNullOrderByCreatedAtAsc(ItemStatus.SOMEDAY_MAYBE)
             .stream()
-            .map(somedayMaybeMapper::toResponse)
+            .map(somedayMaybeMapper::toListResponse)
             .toList();
     }
 
@@ -61,7 +61,7 @@ public class SomedayMaybeService {
     public List<SomedayMaybeResponseDto> listDeletedSomedayMaybe() {
         return itemRepository.findAllByStatusAndDeletedAtIsNotNullOrderByUpdatedAtDesc(ItemStatus.SOMEDAY_MAYBE)
             .stream()
-            .map(somedayMaybeMapper::toResponse)
+            .map(somedayMaybeMapper::toListResponse)
             .toList();
     }
 

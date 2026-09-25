@@ -34,10 +34,18 @@ public class NextActionMapper {
      * <p>Example: {@code nextActionMapper.toResponse(nextAction)}.</p>
      */
     public NextActionResponseDto toResponse(NextAction nextAction) {
+        return response(nextAction, itemBodySource.read(nextAction.getItemId(), nextAction.getItem().getBody()));
+    }
+
+    public NextActionResponseDto toListResponse(NextAction nextAction) {
+        return response(nextAction, null);
+    }
+
+    private NextActionResponseDto response(NextAction nextAction, com.gtdonrails.api.types.ItemBody body) {
         return new NextActionResponseDto(
             nextAction.getItemId(),
             nextAction.getItem().getTitle().value(),
-            itemBodySource.read(nextAction.getItemId(), nextAction.getItem().getBody()),
+            body,
             nextAction.getEnergy(),
             nextAction.getEstimatedTime(),
             nextAction.getDeadline(),

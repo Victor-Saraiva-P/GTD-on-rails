@@ -28,6 +28,27 @@ class SyncObjectStoreTests {
     }
 
     @Test
+    void canonicalMutationPersistsGoogleProjectionAtomically() {
+        SyncObjectStore store = new SyncObjectStore(databasePath());
+        GoogleCalendarMirrorStore mirrorStore = new GoogleCalendarMirrorStore(store);
+
+        store.apply(mutation("next_actions", "item-1", 0, "UPSERT", "{}"));
+
+        assertEquals(1L, mirrorStore.pendingCount());
+        assertEquals("item-1", mirrorStore.pending(10).getFirst().objectId());
+    }
+
+    @Test
+    void unrelatedMutationDoesNotCreateGoogleProjection() {
+        SyncObjectStore store = new SyncObjectStore(databasePath());
+        GoogleCalendarMirrorStore mirrorStore = new GoogleCalendarMirrorStore(store);
+
+        store.apply(mutation("contexts", "context-1", 0, "UPSERT", "{}"));
+
+        assertEquals(0L, mirrorStore.pendingCount());
+    }
+
+    @Test
     void repeatsOperationIdIdempotently() {
         SyncObjectStore store = new SyncObjectStore(databasePath());
         UUID operationId = UUID.randomUUID();

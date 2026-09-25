@@ -5,7 +5,7 @@ plugins {
 }
 
 group = 'com.gtdonrails'
-version = '0.1.0'
+version = '2.5.0'
 
 java {
     sourceCompatibility = JavaVersion.VERSION_21
@@ -20,8 +20,18 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-webmvc'
     implementation 'org.springframework.boot:spring-boot-starter-jdbc'
     implementation 'org.xerial:sqlite-jdbc'
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'com.google.api-client:google-api-client:2.8.0'
+    implementation 'com.google.apis:google-api-services-calendar:v3-rev20260517-2.0.0'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('bootJar') {
+    archiveFileName = 'gtd-sync-server.jar'
+    manifest {
+        attributes 'Implementation-Version': project.version
+    }
 }
 
 tasks.named('test') {

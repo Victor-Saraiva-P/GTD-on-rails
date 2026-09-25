@@ -13,6 +13,7 @@ import java.util.UUID;
 import com.gtdonrails.api.entities.Item;
 import com.gtdonrails.api.entities.SyncOutboxEvent;
 import com.gtdonrails.api.entities.SyncOutboxOperation;
+import com.gtdonrails.api.services.AfterCommitExecutor;
 import com.gtdonrails.api.services.DatabaseSyncService;
 import com.gtdonrails.api.types.Title;
 import org.hibernate.event.spi.PostDeleteEvent;
@@ -24,6 +25,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @ExtendWith(MockitoExtension.class)
 class OutboxHibernateListenerTests {
@@ -43,7 +46,7 @@ class OutboxHibernateListenerTests {
 
     @BeforeEach
     void setUp() {
-        listener = new OutboxHibernateListener(jdbcTemplate, databaseSyncService);
+        listener = new OutboxHibernateListener(jdbcTemplate, databaseSyncService, new AfterCommitExecutor());
     }
 
     @Test
@@ -90,6 +93,32 @@ class OutboxHibernateListenerTests {
             contains(itemId.toString())
         );
         verify(databaseSyncService).notifyNewEvents();
+    }
+
+    @Test
+    void defersSyncNotificationUntilTransactionCommit() throws Exception {
+        Item item = new Item(new Title("Delete later"), null);
+        UUID itemId = UUID.randomUUID();
+        setEntityId(item, itemId);
+
+        when(postDeleteEvent.getEntity()).thenReturn(item);
+        when(postDeleteEvent.getPersister()).thenReturn(persister);
+        when(persister.getRootTableName()).thenReturn("items");
+
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            listener.onPostDelete(postDeleteEvent);
+
+            verify(databaseSyncService, never()).notifyNewEvents();
+
+            for (TransactionSynchronization synchronization : TransactionSynchronizationManager.getSynchronizations()) {
+                synchronization.afterCommit();
+            }
+
+            verify(databaseSyncService).notifyNewEvents();
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
     }
 
     @Test

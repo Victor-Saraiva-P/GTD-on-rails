@@ -4,6 +4,7 @@ import java.util.UUID;
 
 import com.gtdonrails.api.bodydocuments.ItemBodyDocumentService;
 import com.gtdonrails.api.bodydocuments.LegacyItemBodyMirror;
+import com.gtdonrails.api.dtos.item.ItemBodyResponseDto;
 import com.gtdonrails.api.dtos.item.ItemResponseDto;
 import com.gtdonrails.api.dtos.item.PatchItemBodyRequestDto;
 import com.gtdonrails.api.dtos.item.UpdateItemTitleRequestDto;
@@ -54,6 +55,18 @@ public class ItemService {
         this.googleCalendarEventQueueService = googleCalendarEventQueueService;
         this.afterCommitExecutor = afterCommitExecutor;
         this.cacheInvalidationService = cacheInvalidationService;
+    }
+
+    /**
+     * Loads the canonical Markdown body for an item on demand.
+     *
+     * <p>Example: {@code itemService.getItemBody(itemId)}.</p>
+     */
+    @Transactional(readOnly = true)
+    public ItemBodyResponseDto getItemBody(UUID id) {
+        Item item = itemRepository.findById(id)
+            .orElseThrow(() -> new ItemNotFoundException("item ID '" + id + "' not found; expected existing item UUID"));
+        return new ItemBodyResponseDto(bodyDocuments.read(id, item.getBody()));
     }
 
     /**

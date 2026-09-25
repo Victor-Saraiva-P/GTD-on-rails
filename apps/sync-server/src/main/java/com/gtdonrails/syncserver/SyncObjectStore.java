@@ -221,6 +221,7 @@ public class SyncObjectStore {
         upsertObject(connection, mutation, revision);
         long cursor = insertChange(connection, mutation, revision);
         recordOperation(connection, mutation.operationId().toString(), revision, cursor);
+        enqueueGoogleProjection(connection, mutation);
         return new SyncMutationResult(revision, cursor);
     }
 
@@ -336,6 +337,32 @@ public class SyncObjectStore {
             statement.setString(4, Instant.now().toString());
             statement.executeUpdate();
         }
+    }
+
+    private void enqueueGoogleProjection(
+        Connection connection,
+        SyncMutation mutation
+    ) throws SQLException {
+        if (!isGoogleProjectionType(mutation.objectType())) return;
+        String sql = """
+            INSERT INTO google_calendar_outbox
+                (object_id, status, retry_count, last_error, updated_at)
+            VALUES (?, 'PENDING', 0, NULL, ?)
+            ON CONFLICT(object_id) DO UPDATE SET
+                status = 'PENDING', last_error = NULL, updated_at = excluded.updated_at
+            """;
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, mutation.objectId());
+            statement.setString(2, Instant.now().toString());
+            statement.executeUpdate();
+        }
+    }
+
+    private boolean isGoogleProjectionType(String objectType) {
+        return "items".equals(objectType)
+            || "next_actions".equals(objectType)
+            || "calendars".equals(objectType)
+            || "projects".equals(objectType);
     }
 
     private Optional<SyncObjectSnapshot> queryObject(
@@ -471,6 +498,8 @@ public class SyncObjectStore {
             "CREATE INDEX IF NOT EXISTS idx_sync_changes_cursor ON sync_changes(cursor)",
             syncOperationsSql(),
             syncMetaSql(),
+            googleCalendarOutboxSql(),
+            googleCalendarMirrorsSql(),
             "INSERT OR IGNORE INTO sync_meta (id, dataset_epoch, created_at) VALUES (1, lower(hex(randomblob(16))), CURRENT_TIMESTAMP)"
         );
     }
@@ -509,6 +538,23 @@ public class SyncObjectStore {
         return """
             CREATE TABLE IF NOT EXISTS sync_meta (
                 id INTEGER PRIMARY KEY CHECK (id = 1), dataset_epoch TEXT NOT NULL, created_at TEXT NOT NULL
+            )
+            """;
+    }
+
+    private String googleCalendarOutboxSql() {
+        return """
+            CREATE TABLE IF NOT EXISTS google_calendar_outbox (
+                object_id TEXT PRIMARY KEY, status TEXT NOT NULL,
+                retry_count INTEGER NOT NULL DEFAULT 0, last_error TEXT, updated_at TEXT NOT NULL
+            )
+            """;
+    }
+
+    private String googleCalendarMirrorsSql() {
+        return """
+            CREATE TABLE IF NOT EXISTS google_calendar_mirrors (
+                name TEXT PRIMARY KEY, google_calendar_id TEXT NOT NULL, color_hex TEXT NOT NULL
             )
             """;
     }

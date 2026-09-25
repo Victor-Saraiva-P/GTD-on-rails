@@ -6,7 +6,8 @@ const state = {
   objects: [],
   changes: [],
   files: [],
-  backups: []
+  backups: [],
+  clientUpdate: null
 };
 
 const elements = {
@@ -20,6 +21,7 @@ const elements = {
   changes: document.querySelector("#changes-table"),
   files: document.querySelector("#files-table"),
   backups: document.querySelector("#backups-table"),
+  clientUpdate: document.querySelector("#client-update-status"),
   detail: document.querySelector("#object-detail"),
   detailContent: document.querySelector("#object-detail-content"),
   toast: document.querySelector("#toast")
@@ -28,6 +30,8 @@ const elements = {
 document.querySelector("#refresh-button").addEventListener("click", function () { void refreshAll(); });
 document.querySelector("#save-token-button").addEventListener("click", saveToken);
 document.querySelector("#create-backup-button").addEventListener("click", function () { void createBackup(); });
+document.querySelector("#check-update-button").addEventListener("click", function () { void checkClientUpdate(); });
+document.querySelector("#install-update-button").addEventListener("click", function () { void installClientUpdate(); });
 document.querySelector("#close-detail-button").addEventListener("click", closeDetail);
 elements.objectType.addEventListener("change", function () { void loadObjects(); });
 elements.showDeleted.addEventListener("change", function () { void loadObjects(); });
@@ -46,7 +50,7 @@ async function refreshAll() {
     setConnection("Online", "ok");
     renderOverview();
     updateObjectTypes();
-    await Promise.all([loadObjects(), loadChanges(), loadFiles(), loadBackups()]);
+    await Promise.all([loadObjects(), loadChanges(), loadFiles(), loadBackups(), loadClientUpdate()]);
   } catch (error) {
     handleRequestError(error);
   }
@@ -86,6 +90,35 @@ async function loadBackups() {
   try {
     state.backups = await api("/v1/admin/backups");
     renderBackups();
+  } catch (error) {
+    handleRequestError(error);
+  }
+}
+
+async function loadClientUpdate() {
+  try {
+    state.clientUpdate = await api("/v1/admin/update");
+    renderClientUpdate();
+  } catch (error) {
+    handleRequestError(error);
+  }
+}
+
+async function checkClientUpdate() {
+  await runUpdateAction("/v1/admin/update/check", "Update check completed.");
+}
+
+async function installClientUpdate() {
+  if (!state.clientUpdate || !state.clientUpdate.updateAvailable) return;
+  if (!window.confirm("Install the client update now? The service will restart.")) return;
+  await runUpdateAction("/v1/admin/update/install", "Installing update; the client will restart.");
+}
+
+async function runUpdateAction(path, message) {
+  try {
+    state.clientUpdate = await api(path, { method: "POST" });
+    renderClientUpdate();
+    toast(message);
   } catch (error) {
     handleRequestError(error);
   }
@@ -207,6 +240,23 @@ function renderFiles() {
     ];
   });
   elements.files.innerHTML = table(["Path", "Size", "Modified"], rows, "No physical files are stored.");
+}
+
+function renderClientUpdate() {
+  const update = state.clientUpdate;
+  if (!update) return;
+  const rows = [
+    ["Current version", escapeHtml(update.currentVersion || "—")],
+    ["Latest version", escapeHtml(update.latestVersion || "Not checked")],
+    ["Managed install", update.managedInstallation ? "yes" : "no"],
+    ["Auto update", update.autoUpdateEnabled ? "enabled" : "disabled"],
+    ["State", escapeHtml(update.state || "—")],
+    ["Last check", escapeHtml(formatDate(update.lastCheckedAt))],
+    ["Last error", escapeHtml(update.lastError || "—")]
+  ];
+  elements.clientUpdate.innerHTML = table(["Property", "Value"], rows, "Update status unavailable.");
+  const installButton = document.querySelector("#install-update-button");
+  installButton.disabled = !update.managedInstallation || !update.updateAvailable || update.running;
 }
 
 function renderBackups() {

@@ -36,6 +36,7 @@
       <button class="tab" data-tab="changes" type="button">Changes</button>
       <button class="tab" data-tab="files" type="button">Files</button>
       <button class="tab" data-tab="backups" type="button">Backups</button>
+      <button class="tab" data-tab="client" type="button">Client</button>
     </nav>
 
     <section id="objects-tab" class="panel tab-panel">
@@ -81,6 +82,20 @@
         <button id="create-backup-button" type="button">Create snapshot</button>
       </div>
       <div id="backups-table"></div>
+    </section>
+
+    <section id="client-tab" class="panel tab-panel hidden">
+      <div class="panel__header">
+        <div>
+          <h2>Client runtime</h2>
+          <p>Installed version and autonomous update state.</p>
+        </div>
+        <div class="action-row">
+          <button id="check-update-button" type="button">Check update</button>
+          <button id="install-update-button" type="button">Install update</button>
+        </div>
+      </div>
+      <div id="client-update-status"></div>
     </section>
 
     <section id="object-detail" class="drawer hidden" aria-live="polite">

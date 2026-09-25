@@ -4,6 +4,7 @@ import java.util.Set;
 
 import com.gtdonrails.api.entities.SyncOutboxOperation;
 import com.gtdonrails.api.entities.NextAction;
+import com.gtdonrails.api.services.AfterCommitExecutor;
 import com.gtdonrails.api.services.DatabaseSyncService;
 import org.hibernate.event.spi.PostCollectionUpdateEvent;
 import org.hibernate.event.spi.PostCollectionUpdateEventListener;
@@ -40,19 +41,22 @@ public class OutboxHibernateListener implements PostInsertEventListener, PostUpd
 
     private final JdbcTemplate jdbcTemplate;
     private final DatabaseSyncService databaseSyncService;
+    private final AfterCommitExecutor afterCommitExecutor;
     private final OutboxPayloadSerializer payloadSerializer;
 
     /**
      * Creates an outbox listener with the provided dependencies.
      *
-     * @example new OutboxHibernateListener(jdbcTemplate, databaseSyncService)
+     * @example new OutboxHibernateListener(jdbcTemplate, databaseSyncService, afterCommitExecutor)
      */
     public OutboxHibernateListener(
         JdbcTemplate jdbcTemplate,
-        @Lazy DatabaseSyncService databaseSyncService
+        @Lazy DatabaseSyncService databaseSyncService,
+        AfterCommitExecutor afterCommitExecutor
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.databaseSyncService = databaseSyncService;
+        this.afterCommitExecutor = afterCommitExecutor;
         this.payloadSerializer = new OutboxPayloadSerializer();
     }
 
@@ -107,7 +111,11 @@ public class OutboxHibernateListener implements PostInsertEventListener, PostUpd
             "insert into sync_outbox (operation_id, entity_type, entity_id, operation, payload, status, retry_count) values (?, ?, ?, ?, ?, 'PENDING', 0)",
             java.util.UUID.randomUUID().toString(), tableName, entityId, operation.name(), payload
         );
-        databaseSyncService.notifyNewEvents();
+        // WHY: Hibernate invokes this listener while its ActionQueue is flushing. Starting
+        // sync here can execute repository queries re-entrantly against the same persistence
+        // context and corrupt ActionQueue iteration. The outbox row is part of this transaction,
+        // so the sync worker must only be notified after the transaction commits.
+        afterCommitExecutor.run(databaseSyncService::notifyNewEvents);
         logOutboxCapture(tableName, entityId, operation);
     }
 

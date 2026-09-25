@@ -29,8 +29,6 @@ import org.springframework.stereotype.Service;
 @Service
 public class FileSyncService {
 
-    private static final int MAX_RETRY_ATTEMPTS = 5;
-
     private final SyncFileOutboxStore outbox;
     private final SyncFileServerGateway fileGateway;
     private final SyncServerGateway stateGateway;
@@ -110,7 +108,7 @@ public class FileSyncService {
 
     public FileSyncStatusDto status() {
         return new FileSyncStatusDto(
-            state, pending.get(), running.get(),
+            state, pending.get(), running.get(), outbox.pendingCount(),
             lastStartedAt, lastFinishedAt, lastSuccessfulSyncAt, lastError
         );
     }
@@ -121,41 +119,54 @@ public class FileSyncService {
     }
 
     private void runSyncLoop() {
+        boolean successful = true;
         try {
             do {
                 pending.set(false);
-                runOnce();
-            } while (!requiresRebootstrap() && (pending.get() || outbox.pendingCount() > 0));
+                successful = runOnce();
+            } while (shouldContinueLoop(successful));
         } finally {
             running.set(false);
-            if (!requiresRebootstrap() && pending.get()) requestSync("pending");
+            if (successful && pending.get() && !requiresRebootstrap()) requestSync("pending");
         }
     }
 
-    private void runOnce() {
+    private boolean shouldContinueLoop(boolean successful) {
+        return successful
+            && !requiresRebootstrap()
+            && (pending.get() || outbox.pendingCount() > 0);
+    }
+
+    private boolean runOnce() {
         lastStartedAt = Instant.now();
         state = FileSyncState.SYNCING;
         try {
             validateDatasetEpoch();
-            if (processPending()) markSuccess();
+            boolean successful = processPending();
+            if (successful) markSuccess();
             else if (state != FileSyncState.CONFLICT) state = FileSyncState.FAILED;
+            return successful;
         } catch (RuntimeException exception) {
-            lastError = exception.getMessage();
-            state = exception instanceof SyncDatasetEpochMismatchException
-                ? FileSyncState.REBOOTSTRAP_REQUIRED
-                : FileSyncState.FAILED;
+            recordBatchFailure(exception);
+            return false;
         } finally {
             lastFinishedAt = Instant.now();
         }
     }
 
+    private void recordBatchFailure(RuntimeException exception) {
+        lastError = exception.getMessage();
+        state = exception instanceof SyncDatasetEpochMismatchException
+            ? FileSyncState.REBOOTSTRAP_REQUIRED
+            : FileSyncState.FAILED;
+    }
+
     private boolean processPending() {
-        boolean successful = true;
         List<SyncFileOutboxEntry> entries = outbox.pending();
         for (SyncFileOutboxEntry entry : entries) {
-            successful &= processEntry(entry);
+            if (!processEntry(entry)) return false;
         }
-        return successful;
+        return true;
     }
 
     private boolean processEntry(SyncFileOutboxEntry entry) {
@@ -209,8 +220,7 @@ public class FileSyncService {
     }
 
     private void handleFailure(SyncFileOutboxEntry entry, RuntimeException exception) {
-        boolean retry = entry.retryCount() + 1 < MAX_RETRY_ATTEMPTS;
-        outbox.markFailed(entry.id(), exception.getMessage(), retry);
+        outbox.markFailed(entry.id(), exception.getMessage(), true);
         lastError = exception.getMessage();
     }
 
