@@ -27,7 +27,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Manages outbox-based synchronization between local SQLite and the GTD sync server.
@@ -251,7 +250,6 @@ public class DatabaseSyncService {
         return events.isEmpty() || pushEvents(events);
     }
 
-    @Transactional(readOnly = true)
     protected List<SyncOutboxEvent> fetchPendingBatch() {
         return outboxRepository.findByStatusOrderByCreatedAtAsc(SyncOutboxStatus.PENDING)
             .stream()
@@ -266,7 +264,6 @@ public class DatabaseSyncService {
         return true;
     }
 
-    @Transactional
     protected boolean pushSingleEvent(SyncOutboxEvent event) {
         event.markProcessing();
         outboxRepository.save(event);

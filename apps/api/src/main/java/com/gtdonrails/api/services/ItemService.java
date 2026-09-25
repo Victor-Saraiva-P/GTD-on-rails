@@ -22,6 +22,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ItemService {
 
+    private static final String ITEM_ID_PREFIX = "item ID '";
+
     private final ItemRepository itemRepository;
     private final ItemMapper itemMapper;
     private final ItemTextNormalizer itemTextNormalizer;
@@ -65,7 +67,7 @@ public class ItemService {
     @Transactional(readOnly = true)
     public ItemBodyResponseDto getItemBody(UUID id) {
         Item item = itemRepository.findById(id)
-            .orElseThrow(() -> new ItemNotFoundException("item ID '" + id + "' not found; expected existing item UUID"));
+            .orElseThrow(() -> new ItemNotFoundException(ITEM_ID_PREFIX + id + "' not found; expected existing item UUID"));
         return new ItemBodyResponseDto(bodyDocuments.read(id, item.getBody()));
     }
 
@@ -125,7 +127,7 @@ public class ItemService {
     @Transactional
     public void restoreItem(UUID id) {
         Item item = itemRepository.findById(id)
-            .orElseThrow(() -> new ItemNotFoundException("item ID '" + id + "' not found; expected existing item UUID"));
+            .orElseThrow(() -> new ItemNotFoundException(ITEM_ID_PREFIX + id + "' not found; expected existing item UUID"));
         item.restore();
         ItemBody body = bodyDocuments.read(id, item.getBody());
         itemAssetService.reconcileBodyAssetReferences(id, body);
@@ -136,7 +138,7 @@ public class ItemService {
 
     private Item findItem(UUID id) {
         return itemRepository.findByIdAndDeletedAtIsNull(id)
-            .orElseThrow(() -> new ItemNotFoundException("item ID '" + id + "' not found; expected existing active item UUID"));
+            .orElseThrow(() -> new ItemNotFoundException(ITEM_ID_PREFIX + id + "' not found; expected existing active item UUID"));
     }
 
     private void requestCalendarEventUpsertAfterCommit(UUID itemId, Item item) {

@@ -11,6 +11,9 @@ import org.springframework.stereotype.Component;
 @Component
 public class SyncFileBaseStore {
 
+    private static final String CONTENT_FILE = "content.bin";
+    private static final String REVISION_FILE = "revision";
+
     private final Path root;
 
     public SyncFileBaseStore(@Value("${gtd.sync.state-directory:${user.home}/.local/state/gtd-on-rails}") String stateRoot) {
@@ -21,8 +24,8 @@ public class SyncFileBaseStore {
         Path directory = objectDirectory(objectType, objectId);
         try {
             Files.createDirectories(directory);
-            Files.write(directory.resolve("content.bin"), content);
-            Files.writeString(directory.resolve("revision"), Long.toString(revision));
+            Files.write(directory.resolve(CONTENT_FILE), content);
+            Files.writeString(directory.resolve(REVISION_FILE), Long.toString(revision));
         } catch (IOException exception) {
             throw failure("save", directory, exception);
         }
@@ -31,10 +34,10 @@ public class SyncFileBaseStore {
     public Optional<BaseSnapshot> read(String objectType, String objectId, long expectedRevision) {
         Path directory = objectDirectory(objectType, objectId);
         try {
-            if (!Files.isRegularFile(directory.resolve("content.bin"))) return Optional.empty();
-            long revision = Long.parseLong(Files.readString(directory.resolve("revision")).trim());
+            if (!Files.isRegularFile(directory.resolve(CONTENT_FILE))) return Optional.empty();
+            long revision = Long.parseLong(Files.readString(directory.resolve(REVISION_FILE)).trim());
             if (revision != expectedRevision) return Optional.empty();
-            return Optional.of(new BaseSnapshot(revision, Files.readAllBytes(directory.resolve("content.bin"))));
+            return Optional.of(new BaseSnapshot(revision, Files.readAllBytes(directory.resolve(CONTENT_FILE))));
         } catch (IOException | NumberFormatException exception) {
             throw failure("read", directory, exception);
         }

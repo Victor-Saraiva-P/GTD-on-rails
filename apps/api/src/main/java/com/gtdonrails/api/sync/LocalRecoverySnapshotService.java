@@ -12,6 +12,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
@@ -48,8 +49,13 @@ public class LocalRecoverySnapshotService {
     }
 
     private void vacuumInto(Path database) {
-        String target = database.toString().replace("'", "''");
-        jdbc.execute("VACUUM INTO '" + target + "'");
+        jdbc.execute((ConnectionCallback<Void>) connection -> {
+            try (var statement = connection.prepareStatement("VACUUM INTO ?")) {
+                statement.setString(1, database.toString());
+                statement.execute();
+            }
+            return null;
+        });
     }
 
     private void writeArchive(Path archive, Path database) throws IOException {

@@ -8,6 +8,9 @@ import org.springframework.stereotype.Service;
 @Service
 public class FileConflictResolutionService {
 
+    private static final String BODY_DOCUMENT = "body_document";
+    private static final String DELETE = "DELETE";
+
     private final SyncFileServerGateway filesGateway;
     private final SyncServerGateway objectsGateway;
     private final SyncFileOutboxStore outbox;
@@ -54,7 +57,7 @@ public class FileConflictResolutionService {
 
 
     public SyncConflictDetail detail(LocalSyncStateStore.SyncConflictRecord conflict) {
-        boolean markdown = "body_document".equals(conflict.objectType());
+        boolean markdown = BODY_DOCUMENT.equals(conflict.objectType());
         if (!markdown) return detailWithoutContent(conflict);
         SyncConflictSnapshotStore.ConflictFiles files = snapshots.read(
             conflict.objectType(), conflict.objectId(), conflict.remoteRevision()
@@ -129,8 +132,8 @@ public class FileConflictResolutionService {
     }
 
     private boolean canAutoMerge(SyncFileOutboxEntry entry, Optional<byte[]> base) {
-        return "body_document".equals(entry.objectType())
-            && !"DELETE".equals(entry.operation())
+        return BODY_DOCUMENT.equals(entry.objectType())
+            && !DELETE.equals(entry.operation())
             && base.isPresent();
     }
 
@@ -186,7 +189,7 @@ public class FileConflictResolutionService {
         byte[] localContent
     ) {
         prepareLocalRebase(conflict, entry, remote);
-        if ("DELETE".equals(entry.operation())) {
+        if (DELETE.equals(entry.operation())) {
             outbox.enqueueDelete(entry.objectType(), entry.objectId(), entry.relativePath(), entry.contentType());
             return;
         }
@@ -200,7 +203,7 @@ public class FileConflictResolutionService {
         SyncServerGateway.SyncRemoteObject remote,
         String mergedContent
     ) {
-        if (!"body_document".equals(entry.objectType()) || mergedContent == null) {
+        if (!BODY_DOCUMENT.equals(entry.objectType()) || mergedContent == null) {
             throw new IllegalArgumentException(
                 "merged conflict resolution is invalid; expected Markdown body conflict with merged content"
             );
@@ -258,7 +261,7 @@ public class FileConflictResolutionService {
     }
 
     private byte[] localContent(SyncFileOutboxEntry entry) {
-        return "DELETE".equals(entry.operation()) ? new byte[0] : localFiles.read(entry.relativePath());
+        return DELETE.equals(entry.operation()) ? new byte[0] : localFiles.read(entry.relativePath());
     }
 
     private Optional<byte[]> baseContent(SyncFileOutboxEntry entry) {
@@ -313,7 +316,7 @@ public class FileConflictResolutionService {
     ) {
         return new SyncRemoteChange(
             cursor, entry.objectType(), entry.objectId(), remote.revision(),
-            remote.deleted() ? "DELETE" : "UPSERT", remote.payload(),
+            remote.deleted() ? DELETE : "UPSERT", remote.payload(),
             remote.sha256(), remote.byteLength(), remote.mediaType()
         );
     }

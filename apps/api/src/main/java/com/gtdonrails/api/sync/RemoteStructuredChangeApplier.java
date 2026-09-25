@@ -14,15 +14,22 @@ import org.springframework.stereotype.Component;
 @Component
 public class RemoteStructuredChangeApplier {
 
+    private static final String ITEM_ID = "item_id";
+    private static final String STATUS = "status";
+    private static final String CREATED_AT = "created_at";
+    private static final String UPDATED_AT = "updated_at";
+    private static final String DELETED_AT = "deleted_at";
+    private static final String NEXT_ACTIONS = "next_actions";
+
     private static final Map<String, Set<String>> ALLOWED_COLUMNS = Map.of(
-        "items", Set.of("id", "title", "status", "created_at", "updated_at", "deleted_at"),
-        "contexts", Set.of("id", "name", "created_at", "updated_at", "deleted_at"),
-        "item_assets", Set.of("id", "item_id", "file_name", "original_file_name", "content_type", "size", "created_at", "updated_at", "deleted_at"),
-        "context_icon_assets", Set.of("id", "context_id", "file_name", "original_file_name", "content_type", "size", "created_at", "updated_at", "deleted_at"),
-        "projects", Set.of("item_id", "deadline", "status", "done_date", "done_time", "created_at", "updated_at", "deleted_at"),
-        "project_items", Set.of("item_id", "project_id"),
-        "next_actions", Set.of("item_id", "energy", "estimated_time_minutes", "date_start", "date_end", "time_start", "time_end", "all_day", "deadline", "status", "created_at", "updated_at", "deleted_at"),
-        "calendars", Set.of("item_id", "scheduled_date", "scheduled_time", "date_start", "date_end", "time_start", "time_end", "all_day", "status", "created_at", "updated_at", "deleted_at")
+        "items", Set.of("id", "title", STATUS, CREATED_AT, UPDATED_AT, DELETED_AT),
+        "contexts", Set.of("id", "name", CREATED_AT, UPDATED_AT, DELETED_AT),
+        "item_assets", Set.of("id", ITEM_ID, "file_name", "original_file_name", "content_type", "size", CREATED_AT, UPDATED_AT, DELETED_AT),
+        "context_icon_assets", Set.of("id", "context_id", "file_name", "original_file_name", "content_type", "size", CREATED_AT, UPDATED_AT, DELETED_AT),
+        "projects", Set.of(ITEM_ID, "deadline", STATUS, "done_date", "done_time", CREATED_AT, UPDATED_AT, DELETED_AT),
+        "project_items", Set.of(ITEM_ID, "project_id"),
+        NEXT_ACTIONS, Set.of(ITEM_ID, "energy", "estimated_time_minutes", "date_start", "date_end", "time_start", "time_end", "all_day", "deadline", STATUS, CREATED_AT, UPDATED_AT, DELETED_AT),
+        "calendars", Set.of(ITEM_ID, "scheduled_date", "scheduled_time", "date_start", "date_end", "time_start", "time_end", "all_day", STATUS, CREATED_AT, UPDATED_AT, DELETED_AT)
     );
 
     private final JdbcTemplate jdbc;
@@ -46,7 +53,7 @@ public class RemoteStructuredChangeApplier {
         }
         JsonNode payload = parsePayload(change);
         upsert(change.objectType(), payload);
-        if ("next_actions".equals(change.objectType())) syncNextActionContexts(change.objectId(), payload);
+        if (NEXT_ACTIONS.equals(change.objectType())) syncNextActionContexts(change.objectId(), payload);
     }
 
     private void upsert(String table, JsonNode payload) {
@@ -57,6 +64,7 @@ public class RemoteStructuredChangeApplier {
         jdbc.update(sql, values(payload, columns));
     }
 
+    @SuppressWarnings("java:S2077")
     private String upsertSql(String table, List<String> columns, String primaryKey) {
         String names = String.join(", ", columns);
         String placeholders = String.join(", ", columns.stream().map(ignored -> "?").toList());
@@ -91,8 +99,9 @@ public class RemoteStructuredChangeApplier {
         return node.asText();
     }
 
+    @SuppressWarnings("java:S2077")
     private void delete(String table, String objectId) {
-        if ("next_actions".equals(table)) deleteNextActionContexts(objectId);
+        if (NEXT_ACTIONS.equals(table)) deleteNextActionContexts(objectId);
         String primaryKey = OutboxTableMetadata.primaryKeyColumn(table);
         jdbc.update("delete from " + table + " where " + primaryKey + " = ?", objectId);
     }

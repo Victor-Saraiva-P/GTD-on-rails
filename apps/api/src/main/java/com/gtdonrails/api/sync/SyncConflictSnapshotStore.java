@@ -11,6 +11,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class SyncConflictSnapshotStore {
 
+    private static final String BASE_FILE = "base.bin";
+    private static final String LOCAL_FILE = "local.bin";
+    private static final String REMOTE_FILE = "remote.bin";
+
     private final Path root;
 
     public SyncConflictSnapshotStore(
@@ -30,9 +34,9 @@ public class SyncConflictSnapshotStore {
         Path directory = conflictDirectory(objectType, objectId, remoteRevision);
         try {
             Files.createDirectories(directory);
-            if (base.isPresent()) Files.write(directory.resolve("base.bin"), base.get());
-            Files.write(directory.resolve("local.bin"), local);
-            Files.write(directory.resolve("remote.bin"), remote);
+            if (base.isPresent()) Files.write(directory.resolve(BASE_FILE), base.get());
+            Files.write(directory.resolve(LOCAL_FILE), local);
+            Files.write(directory.resolve(REMOTE_FILE), remote);
         } catch (IOException exception) {
             throw failure("save", directory, exception);
         }
@@ -41,13 +45,13 @@ public class SyncConflictSnapshotStore {
     public ConflictFiles read(String objectType, String objectId, long remoteRevision) {
         Path directory = conflictDirectory(objectType, objectId, remoteRevision);
         try {
-            Optional<byte[]> base = Files.isRegularFile(directory.resolve("base.bin"))
-                ? Optional.of(Files.readAllBytes(directory.resolve("base.bin")))
+            Optional<byte[]> base = Files.isRegularFile(directory.resolve(BASE_FILE))
+                ? Optional.of(Files.readAllBytes(directory.resolve(BASE_FILE)))
                 : Optional.empty();
             return new ConflictFiles(
                 base,
-                Files.readAllBytes(directory.resolve("local.bin")),
-                Files.readAllBytes(directory.resolve("remote.bin"))
+                Files.readAllBytes(directory.resolve(LOCAL_FILE)),
+                Files.readAllBytes(directory.resolve(REMOTE_FILE))
             );
         } catch (IOException exception) {
             throw failure("read", directory, exception);

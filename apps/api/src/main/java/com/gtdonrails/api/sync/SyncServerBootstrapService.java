@@ -2,7 +2,6 @@ package com.gtdonrails.api.sync;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,6 +17,9 @@ import org.springframework.transaction.support.TransactionTemplate;
 @Service
 public class SyncServerBootstrapService {
 
+    private static final String ITEM_ID = "item_id";
+    private static final String NEXT_ACTIONS = "next_actions";
+
     private static final List<String> STRUCTURED_TABLES = List.of(
         "items",
         "contexts",
@@ -25,7 +27,7 @@ public class SyncServerBootstrapService {
         "context_icon_assets",
         "projects",
         "project_items",
-        "next_actions",
+        NEXT_ACTIONS,
         "calendars"
     );
 
@@ -87,21 +89,35 @@ public class SyncServerBootstrapService {
     }
 
     private void enqueueTable(String table) {
-        for (Map<String, Object> row : jdbc.queryForList("select * from " + table)) {
+        for (Map<String, Object> row : jdbc.queryForList(selectAllSql(table))) {
             Map<String, Object> payload = normalizedRow(table, row);
             enqueueStructured(table, objectId(table, payload), payload);
         }
     }
 
+    private String selectAllSql(String table) {
+        return switch (table) {
+            case "items" -> "select * from items";
+            case "contexts" -> "select * from contexts";
+            case "item_assets" -> "select * from item_assets";
+            case "context_icon_assets" -> "select * from context_icon_assets";
+            case "projects" -> "select * from projects";
+            case "project_items" -> "select * from project_items";
+            case NEXT_ACTIONS -> "select * from next_actions";
+            case "calendars" -> "select * from calendars";
+            default -> throw new IllegalArgumentException("unsupported bootstrap table '" + table + "'");
+        };
+    }
+
     private Map<String, Object> normalizedRow(String table, Map<String, Object> row) {
         Map<String, Object> payload = new LinkedHashMap<>(row);
         if ("items".equals(table)) payload.remove("body");
-        if ("next_actions".equals(table)) addContextIds(payload);
+        if (NEXT_ACTIONS.equals(table)) addContextIds(payload);
         return payload;
     }
 
     private void addContextIds(Map<String, Object> payload) {
-        String itemId = String.valueOf(payload.get("item_id"));
+        String itemId = String.valueOf(payload.get(ITEM_ID));
         List<String> contextIds = jdbc.queryForList(
             "select context_id from next_action_contexts where next_action_id = ? order by context_id",
             String.class,
@@ -126,7 +142,7 @@ public class SyncServerBootstrapService {
 
     private String objectId(String table, Map<String, Object> row) {
         String key = "id";
-        if (SetOfItemIdTables.contains(table)) key = "item_id";
+        if (SetOfItemIdTables.contains(table)) key = ITEM_ID;
         Object value = row.get(key);
         if (value == null) {
             throw new IllegalStateException(
@@ -201,7 +217,7 @@ public class SyncServerBootstrapService {
 
     private static final class SetOfItemIdTables {
         private static final java.util.Set<String> VALUES = java.util.Set.of(
-            "projects", "project_items", "next_actions", "calendars"
+            "projects", "project_items", NEXT_ACTIONS, "calendars"
         );
 
         static boolean contains(String table) {
