@@ -19,7 +19,7 @@ class ProductionSidecarContextTests {
      */
     @Test
     void productionSidecarContextLoadsWithoutMissingBeans(@TempDir Path tempDir) {
-        String dataDir = tempDir.resolve("data").toString();
+        String dataDir = tempDir.toString();
         assertDoesNotThrow(() -> {
             try (ConfigurableApplicationContext context = new SpringApplicationBuilder(ApiApplication.class)
                     .profiles("prod", "sidecar")
