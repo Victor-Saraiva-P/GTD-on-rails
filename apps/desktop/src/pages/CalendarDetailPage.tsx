@@ -60,10 +60,9 @@ function useCalendarDetailZone(controller: CalendarWorkspaceController): void {
 
 async function exitDetailBodyEditing(
   controller: CalendarWorkspaceController,
-  setActiveScreen: (screen: ScreenId) => void,
-  body: ItemBody
+  setActiveScreen: (screen: ScreenId) => void
 ): Promise<void> {
-  await controller.commitBody(body);
+  controller.cancelBodyEdit();
   setActiveScreen("calendars");
 }
 
@@ -84,7 +83,7 @@ function CalendarDetailReady({ controller, setActiveScreen }: CalendarDetailPage
       editing={controller.editingBodyId === item.id}
       onAutosaveEditing={(body) => controller.autosaveBody(body)}
       onCommitEditing={(body) => controller.commitBody(body)}
-      onExitEditingFromNormalMode={(body) => exitDetailBodyEditing(controller, setActiveScreen, body)}
+      onExitEditingFromNormalMode={() => exitDetailBodyEditing(controller, setActiveScreen)}
       onCancelEditing={controller.cancelBodyEdit}
       onVimModeChange={controller.setVimMode}
     />

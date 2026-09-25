@@ -63,6 +63,7 @@ function toProjectItem(item: ProjectItemResponse): ProjectItem {
   return {
     ...item,
     body: normalizeBody(item.body),
+    bodyLoaded: item.body != null,
     energy: item.energy == null ? null : Number(item.energy),
     estimatedTime: item.estimatedTime ? parseEstimatedTime(item.estimatedTime) : null,
     contexts: item.contexts ?? []

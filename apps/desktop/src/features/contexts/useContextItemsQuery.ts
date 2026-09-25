@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { ApiRequestError } from "../../lib/api/apiClient";
+import { useSharedCollectionState } from "../../lib/state/sharedEntityStore.ts";
 import { fetchContextItems } from "./api";
 import type { ContextRelatedItem } from "./types";
+import { useDomainRevalidation } from "../sync-status/domainChanges.ts";
 
 type ContextItemsQueryState = {
   items: ContextRelatedItem[];
@@ -22,13 +24,25 @@ function toErrorMessage(error: unknown): string {
   return "Failed to load related items";
 }
 
-function useContextItemsState() {
-  const [items, setItems] = useState<ContextRelatedItem[]>([]);
+function useContextItemsState(contextId: string | null, limit: number) {
+  const collection = useSharedCollectionState<ContextRelatedItem>(
+    `context-items:${contextId ?? "none"}:${limit}`
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
 
-  return { errorMessage, isLoading, items, reloadToken, setErrorMessage, setIsLoading, setItems, setReloadToken };
+  return {
+    errorMessage,
+    hasSnapshot: collection.loaded,
+    isLoading,
+    items: collection.items,
+    reloadToken,
+    setErrorMessage,
+    setIsLoading,
+    setItems: collection.setItems,
+    setReloadToken
+  };
 }
 
 type ContextItemsState = ReturnType<typeof useContextItemsState>;
@@ -40,12 +54,11 @@ function resetContextItems(state: ContextItemsState) {
 }
 
 function startContextItemsLoad(state: ContextItemsState) {
-  state.setIsLoading(true);
+  if (!state.hasSnapshot) state.setIsLoading(true);
   state.setErrorMessage(null);
 }
 
 function failContextItemsLoad(state: ContextItemsState, error: unknown) {
-  state.setItems([]);
   state.setErrorMessage(toErrorMessage(error));
 }
 
@@ -109,9 +122,10 @@ function useContextItemsLoader(state: ContextItemsState, contextId: string | nul
  * @example const related = useContextItemsQuery(contextId, 10)
  */
 export function useContextItemsQuery(contextId: string | null, limit: number): ContextItemsQueryState {
-  const state = useContextItemsState();
+  const state = useContextItemsState(contextId, limit);
 
   useContextItemsLoader(state, contextId, limit);
+  useDomainRevalidation(["items", "next_actions", "calendars", "project_items"], () => state.setReloadToken((value) => value + 1));
 
   return {
     errorMessage: state.errorMessage,

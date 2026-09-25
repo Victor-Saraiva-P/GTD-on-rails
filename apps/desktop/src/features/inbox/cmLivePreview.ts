@@ -1,9 +1,10 @@
 import { syntaxTree } from "@codemirror/language";
-import { Facet, RangeSetBuilder, StateEffect, type EditorState } from "@codemirror/state";
+import { EditorState, Facet, RangeSetBuilder, StateEffect } from "@codemirror/state";
 import { Decoration, type DecorationSet, EditorView, ViewPlugin, type ViewUpdate } from "@codemirror/view";
 import { getCM } from "@replit/codemirror-vim";
 
 export const refreshLivePreviewEffect = StateEffect.define<void>();
+const renderDeferredLivePreviewEffect = StateEffect.define<void>();
 export const itemDocumentIdFacet = Facet.define<string, string>({ combine: (values) => values[0] ?? "" });
 import {
   BulletMarkWidget,
@@ -29,6 +30,7 @@ const quoteLine = Decoration.line({ class: "cm-quote-line" });
 const SIMPLE_HIDE_NODES = new Set(["EmphasisMark", "CodeMark", "LinkMark", "StrikethroughMark"]);
 const PREFIX_HIDE_NODES = new Set(["HeaderMark", "QuoteMark"]);
 
+const MARKDOWN_IMAGE_RE = /!\[([^\]]*)\]\((?:<([^>]+)>|([^)]+?))\s*\)/;
 const STANDALONE_IMAGE_RE = /^\s*!\[([^\]]*)\]\((?:<([^>]+)>|([^)]+?))\s*\)\s*$/;
 const STANDALONE_LINK_RE = /^\s*\[([^\]]+)\]\((?:<([^>]+)>|([^)]+?))\s*\)\s*$/;
 const ASSET_TOKEN_RE = /(\[\[asset:([0-9a-fA-F-]{36})]]|\[asset:([0-9a-fA-F-]{36})]|⟦asset:([0-9a-fA-F-]{36})⟧)/;
@@ -84,6 +86,21 @@ function collectTaskMarkerDeco(
   pending.push({ from, to, deco: Decoration.replace({ widget: new TaskCheckboxWidget(from, checked) }) });
 }
 
+function collectEditingTaskWidget(
+  state: EditorState,
+  from: number,
+  to: number,
+  pending: PendingDeco[]
+): void {
+  const text = state.sliceDoc(from, to);
+  const checked = /[xX]/.test(text[1] ?? "");
+  pending.push({
+    from: to,
+    to,
+    deco: Decoration.widget({ side: 1, widget: new TaskCheckboxWidget(from, checked) })
+  });
+}
+
 function collectListMarkDeco(
   state: EditorState,
   from: number,
@@ -104,34 +121,41 @@ function collectListMarkDeco(
 function collectSyntaxNodeDecos(
   state: EditorState,
   node: { name: string; from: number; to: number; node: { parent?: { name?: string } | null } },
-  activeLines: Set<number>,
+  rawInlineLines: Set<number>,
+  currentLines: Set<number>,
   pending: PendingDeco[]
 ): void {
   const line = state.doc.lineAt(node.from).number;
+  const lineActive = rawInlineLines.has(line);
   if (node.name === "TaskMarker") {
-    return collectTaskMarkerDeco(state, node.from, node.to, pending);
+    if (lineActive) collectEditingTaskWidget(state, node.from, node.to, pending);
+    else collectTaskMarkerDeco(state, node.from, node.to, pending);
+    return;
   }
   if (node.name === "ListMark") {
-    return collectListMarkDeco(state, node.from, node.to, pending);
+    collectListMarkDeco(state, node.from, node.to, pending);
+    return;
   }
-  if (node.name === "HorizontalRule" && !activeLines.has(line)) {
+  if (node.name === "HorizontalRule" && !rawInlineLines.has(line)) {
     const lineObj = state.doc.lineAt(node.from);
     pending.push({ from: lineObj.from, to: lineObj.to, deco: Decoration.replace({ widget: new DividerWidget() }) });
     return;
   }
-  applySyntaxMarks(state, node, activeLines, pending, line);
+  applySyntaxMarks(state, node, rawInlineLines, currentLines, pending, line);
 }
 
 function applySyntaxMarks(
   state: EditorState,
   node: { name: string; from: number; to: number },
-  activeLines: Set<number>,
+  rawInlineLines: Set<number>,
+  currentLines: Set<number>,
   pending: PendingDeco[],
   line: number
 ): void {
   const isPrefix = PREFIX_HIDE_NODES.has(node.name);
-  const isSimple = SIMPLE_HIDE_NODES.has(node.name);
-  if ((isPrefix || isSimple) && !activeLines.has(line)) {
+  const shouldHidePrefix = isPrefix && !currentLines.has(line);
+  const shouldHideSimple = SIMPLE_HIDE_NODES.has(node.name) && !rawInlineLines.has(line);
+  if (shouldHidePrefix || shouldHideSimple) {
     let end = node.to;
     if (isPrefix && (state.doc.sliceString(end, end + 1) === " " || state.doc.sliceString(end, end + 1) === "\t")) {
       end += 1;
@@ -205,7 +229,7 @@ function processMarkdownImageLine(
   lineActive: boolean,
   pending: PendingDeco[]
 ): boolean {
-  const match = line.text.match(STANDALONE_IMAGE_RE);
+  const match = line.text.match(MARKDOWN_IMAGE_RE);
   if (!match) return false;
   const alt = match[1] ?? "";
   const href = (match[2] ?? match[3] ?? "").trim();
@@ -214,7 +238,7 @@ function processMarkdownImageLine(
     from: line.to, to: line.to,
     deco: Decoration.widget({ side: 1, widget: new LiveImageWidget(alt, href, line.from, entity) })
   });
-  hideStandaloneSource(line, lineActive, pending);
+  if (STANDALONE_IMAGE_RE.test(line.text)) hideStandaloneSource(line, lineActive, pending);
   return true;
 }
 
@@ -307,12 +331,15 @@ function collectLineAssetDecos(
  */
 export function buildLivePreviewDecorations(view: EditorView): DecorationSet {
   const { state } = view;
-  const inInsertMode = isEditorInInsertMode(view);
-  const activeLines = computeActiveLines(state, inInsertMode);
+  const readOnlyPreview = state.facet(EditorState.readOnly);
+  const currentLines = readOnlyPreview ? new Set<number>() : computeActiveLines(state, true);
+  const rawInlineLines = readOnlyPreview
+    ? new Set<number>()
+    : editingRawSyntaxLines(state, view.visibleRanges, isEditorInInsertMode(view));
   const entities = state.field(itemBodyStateField, false)?.blockEntities ?? [];
   const pending: PendingDeco[] = [];
 
-  const replacedLines = collectLineAssetDecos(state, view.visibleRanges, activeLines, entities, pending);
+  const replacedLines = collectLineAssetDecos(state, view.visibleRanges, currentLines, entities, pending);
 
   for (const { from, to } of view.visibleRanges) {
     syntaxTree(state).iterate({
@@ -321,12 +348,37 @@ export function buildLivePreviewDecorations(view: EditorView): DecorationSet {
       enter: (node) => {
         const line = state.doc.lineAt(node.from).number;
         if (replacedLines.has(line)) return;
-        collectSyntaxNodeDecos(state, node, activeLines, pending);
+        collectSyntaxNodeDecos(state, node, rawInlineLines, currentLines, pending);
       }
     });
   }
 
   return buildSortedDecorationSet(pending);
+}
+
+function editingRawSyntaxLines(
+  state: EditorState,
+  ranges: readonly { from: number; to: number }[],
+  inInsertMode: boolean
+): Set<number> {
+  const lines = computeActiveLines(state, inInsertMode);
+  for (const range of ranges) {
+    addChecklistLines(state, range.from, range.to, lines);
+  }
+  return lines;
+}
+
+function addChecklistLines(
+  state: EditorState,
+  from: number,
+  to: number,
+  lines: Set<number>
+): void {
+  const first = state.doc.lineAt(from).number;
+  const last = state.doc.lineAt(Math.min(to, state.doc.length)).number;
+  for (let number = first; number <= last; number += 1) {
+    if (/^\s*[-*+]\s+\[[ xX>\/-]\]/.test(state.doc.line(number).text)) lines.add(number);
+  }
 }
 
 function buildSortedDecorationSet(pending: PendingDeco[]): DecorationSet {
@@ -357,27 +409,55 @@ function buildSortedDecorationSet(pending: PendingDeco[]): DecorationSet {
 export const livePreviewPlugin = ViewPlugin.fromClass(
   class {
     decorations: DecorationSet;
+    private frameId: number | null = null;
 
     constructor(view: EditorView) {
       this.decorations = buildLivePreviewDecorations(view);
     }
 
     update(update: ViewUpdate): void {
-      const hasRefresh = update.transactions.some((tr) =>
-        tr.effects.some((e) => e.is(refreshLivePreviewEffect))
-      );
-      if (
-        update.docChanged ||
-        update.selectionSet ||
-        update.viewportChanged ||
-        syntaxTree(update.startState) !== syntaxTree(update.state) ||
-        hasRefresh
-      ) {
+      if (hasDeferredRender(update)) {
         this.decorations = buildLivePreviewDecorations(update.view);
+        return;
       }
+      if (update.docChanged) {
+        this.decorations = this.decorations.map(update.changes);
+      }
+      if (shouldDeferLivePreview(update)) this.schedule(update.view);
+    }
+
+    destroy(): void {
+      if (this.frameId !== null) cancelAnimationFrame(this.frameId);
+    }
+
+    private schedule(view: EditorView): void {
+      if (this.frameId !== null) cancelAnimationFrame(this.frameId);
+      this.frameId = requestAnimationFrame(() => {
+        this.frameId = null;
+        view.dispatch({ effects: renderDeferredLivePreviewEffect.of() });
+      });
     }
   },
   {
     decorations: (v) => v.decorations
   }
 );
+
+function hasDeferredRender(update: ViewUpdate): boolean {
+  return update.transactions.some((tr) =>
+    tr.effects.some((effect) => effect.is(renderDeferredLivePreviewEffect))
+  );
+}
+
+function shouldDeferLivePreview(update: ViewUpdate): boolean {
+  const hasRefresh = update.transactions.some((tr) =>
+    tr.effects.some((effect) => effect.is(refreshLivePreviewEffect))
+  );
+  return (
+    update.docChanged ||
+    update.selectionSet ||
+    update.viewportChanged ||
+    syntaxTree(update.startState) !== syntaxTree(update.state) ||
+    hasRefresh
+  );
+}

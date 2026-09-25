@@ -17,11 +17,19 @@ export function startupObservationDeadline(startedAt: number): number {
  * @example isSettledSyncStatus(status)
  */
 export function isSettledSyncStatus(status: SyncStatus): boolean {
-  const fileSettled = status.file.state === "SYNCED" || status.file.state === "DISABLED" || status.file.state === "FAILED";
-  const googleSettled = status.googleCalendar.state === "SYNCED" || status.googleCalendar.state === "DISABLED" || status.googleCalendar.state === "FAILED";
-  const databaseSettled = status.database.state === "SYNCED" || status.database.state === "DISABLED" || status.database.state === "FAILED";
+  const fileSettled = settledWithPendingCount(status.file.state, status.file.pendingCount);
+  const googleSettled = settledWithPendingCount(
+    status.googleCalendar.state,
+    status.googleCalendar.pendingCount
+  );
+  const databaseSettled = settledWithPendingCount(status.database.state, status.database.pendingCount);
 
   return fileSettled && googleSettled && databaseSettled;
+}
+
+function settledWithPendingCount(state: string, pendingCount: number): boolean {
+  if (state === "FAILED") return pendingCount === 0;
+  return state === "SYNCED" || state === "DISABLED";
 }
 
 /**

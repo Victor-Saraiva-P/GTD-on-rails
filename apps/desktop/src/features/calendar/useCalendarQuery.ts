@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
+import { mutateSharedEntityOptimistically } from "../../lib/state/optimisticSharedEntity.ts";
+import { useSharedCollectionState } from "../../lib/state/sharedEntityStore.ts";
 import { useSyncStatus } from "../sync-status/SyncStatusProvider";
+import { useDomainRevalidation } from "../sync-status/domainChanges.ts";
 import type { ItemBody } from "../inbox/types";
 import {
   deleteCalendar,
@@ -31,22 +34,42 @@ type CalendarDataState = ReturnType<typeof useCalendarDataState>;
 type CalendarMutationState = ReturnType<typeof useCalendarMutationState>;
 
 function useCalendarDataState() {
-  const [dueCalendars, setDueCalendars] = useState<Calendar[]>([]);
-  const [doneTodayCalendars, setDoneTodayCalendars] = useState<Calendar[]>([]);
-  const [completedCalendars, setCompletedCalendars] = useState<Calendar[]>([]);
-  const [deletedCalendars, setDeletedCalendars] = useState<Calendar[]>([]);
-  const [weeklyCalendars, setWeeklyCalendars] = useState<Calendar[]>([]);
   const [weekOffset, setWeekOffset] = useState(0);
-  
-  const [isLoading, setIsLoading] = useState(true);
+  const collections = useCalendarCollections(weekOffset);
+  const [isLoading, setIsLoading] = useState(!todayCollectionsLoaded(collections));
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
-  
   return {
-    dueCalendars, doneTodayCalendars, completedCalendars, deletedCalendars, weeklyCalendars,
+    ...calendarCollectionState(collections),
     errorMessage, isLoading, reloadToken, weekOffset,
-    setDueCalendars, setDoneTodayCalendars, setCompletedCalendars, setDeletedCalendars, setWeeklyCalendars,
     setErrorMessage, setIsLoading, setReloadToken, setWeekOffset
+  };
+}
+
+function useCalendarCollections(weekOffset: number) {
+  return {
+    due: useSharedCollectionState<Calendar>("calendar:today:due"),
+    doneToday: useSharedCollectionState<Calendar>("calendar:today:done"),
+    completed: useSharedCollectionState<Calendar>("calendar:completed"),
+    deleted: useSharedCollectionState<Calendar>("calendar:deleted"),
+    weekly: useSharedCollectionState<Calendar>(`calendar:weekly:${weekOffset}`)
+  };
+}
+
+function todayCollectionsLoaded(collections: ReturnType<typeof useCalendarCollections>): boolean {
+  return collections.due.loaded && collections.doneToday.loaded;
+}
+
+function calendarCollectionState(collections: ReturnType<typeof useCalendarCollections>) {
+  const { due, doneToday, completed, deleted, weekly } = collections;
+  return {
+    dueCalendars: due.items, doneTodayCalendars: doneToday.items,
+    completedCalendars: completed.items, deletedCalendars: deleted.items,
+    weeklyCalendars: weekly.items, dueLoaded: due.loaded, doneTodayLoaded: doneToday.loaded,
+    completedLoaded: completed.loaded, deletedLoaded: deleted.loaded, weeklyLoaded: weekly.loaded,
+    setDueCalendars: due.setItems, setDoneTodayCalendars: doneToday.setItems,
+    setCompletedCalendars: completed.setItems, setDeletedCalendars: deleted.setItems,
+    setWeeklyCalendars: weekly.setItems
   };
 }
 
@@ -58,36 +81,61 @@ function useCalendarMutationState() {
 
 
 
+function hasCalendarSnapshot(state: CalendarDataState, subview: CalendarSubview): boolean {
+  if (subview === "today") return state.dueLoaded && state.doneTodayLoaded;
+  if (subview === "completed") return state.completedLoaded;
+  if (subview === "deleted") return state.deletedLoaded;
+  return state.weeklyLoaded;
+}
+
 async function loadCalendarData(
   subview: CalendarSubview,
   state: CalendarDataState,
   cancelled: () => boolean
 ): Promise<void> {
-  state.setIsLoading(true);
+  if (!hasCalendarSnapshot(state, subview)) state.setIsLoading(true);
   state.setErrorMessage(null);
   try {
-    if (subview === "today") {
-      const [due, done] = await Promise.all([fetchTodayCalendars(), fetchDoneTodayCalendars()]);
-      if (!cancelled()) {
-        state.setDueCalendars(due);
-        state.setDoneTodayCalendars(done);
-      }
-    } else if (subview === "completed") {
-      const done = await fetchDoneCalendars();
-      if (!cancelled()) state.setCompletedCalendars(done);
-    } else if (subview === "deleted") {
-      const deleted = await fetchDeletedCalendars();
-      if (!cancelled()) state.setDeletedCalendars(deleted);
-    } else if (subview === "weekly") {
-      const monday = getMondayForOffset(state.weekOffset);
-      const week = await fetchWeekCalendars(formatCalendarDate(monday));
-      if (!cancelled()) state.setWeeklyCalendars(week);
-    }
+    await loadCalendarSubview(subview, state, cancelled);
   } catch (error) {
     if (!cancelled()) state.setErrorMessage(calendarLoadErrorMessage(error));
   } finally {
     if (!cancelled()) state.setIsLoading(false);
   }
+}
+
+async function loadCalendarSubview(
+  subview: CalendarSubview,
+  state: CalendarDataState,
+  cancelled: () => boolean
+): Promise<void> {
+  if (subview === "today") return loadTodayCalendars(state, cancelled);
+  if (subview === "completed") return loadCompletedCalendars(state, cancelled);
+  if (subview === "deleted") return loadDeletedCalendars(state, cancelled);
+  return loadWeeklyCalendars(state, cancelled);
+}
+
+async function loadTodayCalendars(state: CalendarDataState, cancelled: () => boolean): Promise<void> {
+  const [due, done] = await Promise.all([fetchTodayCalendars(), fetchDoneTodayCalendars()]);
+  if (cancelled()) return;
+  state.setDueCalendars(due);
+  state.setDoneTodayCalendars(done);
+}
+
+async function loadCompletedCalendars(state: CalendarDataState, cancelled: () => boolean): Promise<void> {
+  const done = await fetchDoneCalendars();
+  if (!cancelled()) state.setCompletedCalendars(done);
+}
+
+async function loadDeletedCalendars(state: CalendarDataState, cancelled: () => boolean): Promise<void> {
+  const deleted = await fetchDeletedCalendars();
+  if (!cancelled()) state.setDeletedCalendars(deleted);
+}
+
+async function loadWeeklyCalendars(state: CalendarDataState, cancelled: () => boolean): Promise<void> {
+  const monday = getMondayForOffset(state.weekOffset);
+  const week = await fetchWeekCalendars(formatCalendarDate(monday));
+  if (!cancelled()) state.setWeeklyCalendars(week);
 }
 
 function useCalendarLoader(subview: CalendarSubview, state: CalendarDataState): void {
@@ -176,57 +224,48 @@ async function updateCalendarItemSchedule(
   item: Calendar,
   patch: CalendarPatch,
   state: CalendarDataState,
-  mutations: CalendarMutationState,
   poll: () => void
 ): Promise<Calendar> {
-  mutations.setIsUpdating(true);
-  try {
-    const updated = await patchCalendar(item.id, patch);
-    replaceCalendar(state, updated);
-    state.setErrorMessage(null);
-    poll();
-    return updated;
-  } finally {
-    mutations.setIsUpdating(false);
-  }
+  const updated = await mutateSharedEntityOptimistically(
+    item,
+    { ...item, ...patch },
+    () => patchCalendar(item.id, patch)
+  );
+  state.setErrorMessage(null);
+  poll();
+  return updated;
 }
 
 async function updateCalendarItemBody(
   item: Calendar,
   body: ItemBody,
   state: CalendarDataState,
-  mutations: CalendarMutationState,
   poll: () => void
 ): Promise<Calendar> {
-  mutations.setIsUpdating(true);
-  try {
-    const updated = await updateCalendarBody(item, body);
-    replaceCalendar(state, updated);
-    state.setErrorMessage(null);
-    poll();
-    return updated;
-  } finally {
-    mutations.setIsUpdating(false);
-  }
+  const updated = await mutateSharedEntityOptimistically(
+    item,
+    { ...item, body },
+    () => updateCalendarBody(item, body)
+  );
+  state.setErrorMessage(null);
+  poll();
+  return updated;
 }
 
 async function updateCalendarItemTitle(
   item: Calendar,
   title: string,
   state: CalendarDataState,
-  mutations: CalendarMutationState,
   poll: () => void
 ): Promise<Calendar> {
-  mutations.setIsUpdating(true);
-  try {
-    const updated = await updateCalendarTitle(item, title);
-    replaceCalendar(state, updated);
-    state.setErrorMessage(null);
-    poll();
-    return updated;
-  } finally {
-    mutations.setIsUpdating(false);
-  }
+  const updated = await mutateSharedEntityOptimistically(
+    item,
+    { ...item, title },
+    () => updateCalendarTitle(item, title)
+  );
+  state.setErrorMessage(null);
+  poll();
+  return updated;
 }
 
 function useCalendarMutations(
@@ -240,10 +279,10 @@ function useCalendarMutations(
     markAsOnGoing: (id: string) => mutateCalendarStatus(id, state, mutations, triggerSyncStatusPolling, markCalendarOnGoing),
     restoreStatus: (id: string) => mutateCalendarStatus(id, state, mutations, triggerSyncStatusPolling, resetCalendarStatus),
     recoverDeleted: (id: string) => mutateCalendarStatus(id, state, mutations, triggerSyncStatusPolling, recoverDeletedCalendar),
-    updateBody: (item: Calendar, body: ItemBody) => updateCalendarItemBody(item, body, state, mutations, triggerSyncStatusPolling),
-    updateSchedule: (item: Calendar, patch: CalendarPatch) => updateCalendarItemSchedule(item, patch, state, mutations, triggerSyncStatusPolling),
-    updateTitle: (item: Calendar, title: string) => updateCalendarItemTitle(item, title, state, mutations, triggerSyncStatusPolling),
-    assignProject: (item: Calendar, projectId: string | null) => assignCalendarItemProject(item, projectId, state, mutations, triggerSyncStatusPolling)
+    updateBody: (item: Calendar, body: ItemBody) => updateCalendarItemBody(item, body, state, triggerSyncStatusPolling),
+    updateSchedule: (item: Calendar, patch: CalendarPatch) => updateCalendarItemSchedule(item, patch, state, triggerSyncStatusPolling),
+    updateTitle: (item: Calendar, title: string) => updateCalendarItemTitle(item, title, state, triggerSyncStatusPolling),
+    assignProject: (item: Calendar, projectId: string | null) => assignCalendarItemProject(item, projectId, state, triggerSyncStatusPolling)
   };
 }
 
@@ -251,20 +290,20 @@ async function assignCalendarItemProject(
   item: Calendar,
   projectId: string | null,
   state: CalendarDataState,
-  mutations: CalendarMutationState,
   poll: () => void
 ): Promise<Calendar> {
-  mutations.setIsUpdating(true);
-  try {
-    const result = await assignItemProject(item.id, projectId);
-    const updated: Calendar = { ...item, projectId: result.projectId ?? projectId, projectTitle: result.projectTitle ?? null };
-    replaceCalendar(state, updated);
-    state.setErrorMessage(null);
-    poll();
-    return updated;
-  } finally {
-    mutations.setIsUpdating(false);
-  }
+  const optimistic: Calendar = { ...item, projectId };
+  const updated = await mutateSharedEntityOptimistically(
+    item,
+    optimistic,
+    async () => {
+      const result = await assignItemProject(item.id, projectId);
+      return { ...item, projectId: result.projectId ?? projectId, projectTitle: result.projectTitle ?? null };
+    }
+  );
+  state.setErrorMessage(null);
+  poll();
+  return updated;
 }
 
 export function useCalendarQuery(subview: CalendarSubview) {
@@ -273,19 +312,22 @@ export function useCalendarQuery(subview: CalendarSubview) {
   const reload = () => state.setReloadToken((value) => value + 1);
   const actions = useCalendarMutations(state, mutations);
   useCalendarLoader(subview, state);
+  useDomainRevalidation(["items", "calendars", "body_document", "project_items"], reload);
+  return calendarQueryResult(state, mutations, actions, reload);
+}
+
+function calendarQueryResult(
+  state: CalendarDataState,
+  mutations: CalendarMutationState,
+  actions: ReturnType<typeof useCalendarMutations>,
+  reload: () => void
+) {
   return {
     ...actions,
-    dueCalendars: state.dueCalendars,
-    doneTodayCalendars: state.doneTodayCalendars,
-    completedCalendars: state.completedCalendars,
-    deletedCalendars: state.deletedCalendars,
-    weeklyCalendars: state.weeklyCalendars,
-    errorMessage: state.errorMessage,
-    isDeleting: mutations.isDeleting,
-    isLoading: state.isLoading,
-    isUpdating: mutations.isUpdating,
-    reload,
-    weekOffset: state.weekOffset,
-    setWeekOffset: state.setWeekOffset
+    dueCalendars: state.dueCalendars, doneTodayCalendars: state.doneTodayCalendars,
+    completedCalendars: state.completedCalendars, deletedCalendars: state.deletedCalendars,
+    weeklyCalendars: state.weeklyCalendars, errorMessage: state.errorMessage,
+    isDeleting: mutations.isDeleting, isLoading: state.isLoading, isUpdating: mutations.isUpdating,
+    reload, weekOffset: state.weekOffset, setWeekOffset: state.setWeekOffset
   };
 }

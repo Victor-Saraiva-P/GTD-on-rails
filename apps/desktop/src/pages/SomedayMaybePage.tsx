@@ -178,7 +178,7 @@ function SomedayMaybeDetailBody({ controller }: Readonly<{ controller: SomedayMa
       editing={controller.editingBodyId === controller.selectedItem.id}
       onAutosaveEditing={controller.autosaveEditingBody}
       onCommitEditing={controller.commitEditingBody}
-      onExitEditingFromNormalMode={controller.commitEditingBody}
+      onExitEditingFromNormalMode={async () => controller.cancelEditingBody()}
       onCancelEditing={controller.cancelEditingBody}
       onVimModeChange={controller.setVimMode}
     />

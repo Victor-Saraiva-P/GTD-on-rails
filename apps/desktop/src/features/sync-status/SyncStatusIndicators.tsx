@@ -97,6 +97,7 @@ function describeFileStatus(status: FileSyncStatus | null, failed: boolean): str
 
   const details = [
     `File sync: ${fileVisual(status.state).label}`,
+    status.pendingCount > 0 ? `Pending: ${status.pendingCount} file${status.pendingCount === 1 ? "" : "s"}` : null,
     status.lastSuccessfulSyncAt ? `Last success: ${formatInstant(status.lastSuccessfulSyncAt)}` : null,
     status.lastError ? `Last error: ${status.lastError}` : null
   ].filter(Boolean);
@@ -111,6 +112,7 @@ function describeGoogleCalendarStatus(status: GoogleCalendarSyncStatus | null, f
 
   const details = [
     `Google Calendar: ${googleCalendarVisual(status.state).label}`,
+    status.pendingCount > 0 ? `Pending: ${status.pendingCount} projection${status.pendingCount === 1 ? "" : "s"}` : null,
     status.lastSuccessfulSyncAt ? `Last success: ${formatInstant(status.lastSuccessfulSyncAt)}` : null,
     status.lastError ? `Last error: ${status.lastError}` : null
   ].filter(Boolean);

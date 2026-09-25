@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { ApiRequestError } from "../../lib/api/apiClient";
+import { useSharedCollectionState } from "../../lib/state/sharedEntityStore.ts";
 import { useSyncStatus } from "../sync-status/SyncStatusProvider";
+import { useDomainRevalidation } from "../sync-status/domainChanges.ts";
 import type { NextAction } from "./types";
 
 type ArchivedNextActionsQuery = ReturnType<typeof useArchivedNextActionsQuery>;
@@ -20,13 +22,23 @@ function errorMessage(error: unknown, label: string): string {
   return `Failed to load ${label}`;
 }
 
-function useArchivedNextActionsLoadState() {
-  const [items, setItems] = useState<NextAction[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+function useArchivedNextActionsLoadState(collectionKey: string) {
+  const collection = useSharedCollectionState<NextAction>(collectionKey);
+  const [isLoading, setIsLoading] = useState(!collection.loaded);
   const [errorMessageText, setErrorMessageText] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
 
-  return { errorMessageText, isLoading, items, reloadToken, setErrorMessageText, setIsLoading, setItems, setReloadToken };
+  return {
+    errorMessageText,
+    hasSnapshot: collection.loaded,
+    isLoading,
+    items: collection.items,
+    reloadToken,
+    setErrorMessageText,
+    setIsLoading,
+    setItems: collection.setItems,
+    setReloadToken
+  };
 }
 
 function useArchivedNextActionsMutationState() {
@@ -39,7 +51,7 @@ async function loadArchivedItems(
   state: ArchivedNextActionsLoadState,
   cancelled: () => boolean
 ) {
-  state.setIsLoading(true);
+  if (!state.hasSnapshot) state.setIsLoading(true);
   state.setErrorMessageText(null);
 
   try {
@@ -110,12 +122,14 @@ function useArchivedNextActionsMutations(
  * @example const query = useArchivedNextActionsQuery(config)
  */
 export function useArchivedNextActionsQuery(config: ArchivedNextActionsQueryConfig) {
-  const state = useArchivedNextActionsLoadState();
+  const collectionKey = `next-actions:archived:${config.errorLabel.replace(/\s+/g, "-")}`;
+  const state = useArchivedNextActionsLoadState(collectionKey);
   const mutations = useArchivedNextActionsMutationState();
   const reload = () => state.setReloadToken((value) => value + 1);
   const actions = useArchivedNextActionsMutations(config, state, mutations);
 
   useArchivedNextActionsLoader(config, state);
+  useDomainRevalidation(["items", "next_actions", "body_document", "project_items"], reload);
   return { ...actions, errorMessage: state.errorMessageText, isLoading: state.isLoading, isUpdating: mutations.isUpdating, items: state.items, reload };
 }
 

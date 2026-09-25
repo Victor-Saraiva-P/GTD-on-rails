@@ -1,4 +1,4 @@
-import { lazy, Suspense, type CSSProperties, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import energyIcon from "../../assets/next-actions/energy icon.png";
 import estimatedTimeIcon from "../../assets/next-actions/estimated time icon.png";
 import scheduleIcon from "../../assets/next-actions/schdule-icon.png";
@@ -10,6 +10,7 @@ import { formatScheduleDateTime, type NextAction } from "../next-actions/types";
 import { buildApiUrl } from "../../config/env";
 import { ContextNameWithIcon } from "../contexts/ContextNameWithIcon";
 import { ProjectAssociationMarker } from "../projects/ProjectAssociationMarker";
+import { ensureItemBodyLoaded } from "./itemBodyLoader.ts";
 
 const LazyItemBodyMarkdownEditor = lazy(async () => {
   const module = await import("./ItemBodyMarkdownEditor");
@@ -166,27 +167,7 @@ function DetailHeader({ item, metaVariant, showCreatedMeta }: Readonly<Pick<Inbo
   return <InboxDetailHeader item={item} showCreatedMeta={showCreatedMeta} />;
 }
 
-type EditingInboxStuffDetailsProps = Readonly<Omit<InboxStuffDetailsProps, "editing" | "onCancelEditing">>;
-
 const ASSET_TOKEN_PATTERN = /(\[\[asset:([0-9a-fA-F-]{36})]]|\[asset:([0-9a-fA-F-]{36})]|⟦asset:([0-9a-fA-F-]{36})⟧)/g;
-
-function EditingInboxStuffDetails(props: EditingInboxStuffDetailsProps) {
-  return (
-    <div className="inbox-detail">
-      <DetailHeader item={props.item} metaVariant={props.metaVariant} showCreatedMeta={props.showCreatedMeta} />
-      <Suspense fallback={<p className="pane-state">Loading editor...</p>}>
-        <LazyItemBodyMarkdownEditor
-          itemId={props.item.id}
-          initialBody={props.item.body}
-          onAutosave={props.onAutosaveEditing}
-          onSave={props.onCommitEditing}
-          onExitNormalMode={props.onExitEditingFromNormalMode}
-          onVimModeChange={props.onVimModeChange}
-        />
-      </Suspense>
-    </div>
-  );
-}
 
 function findNextBoundary(marks: ItemBody["inlineMarks"], entities: ItemBody["blockEntities"], currentPos: number, from: number, to: number) {
   return Math.min(
@@ -292,21 +273,49 @@ function entityAssetRelativePath(entity: ItemBody["blockEntities"][number]): str
   return entity.attrs?.relativePath ?? entity.attrs?.localPath ?? "";
 }
 
-function ReadOnlyInboxStuffDetails({ item, metaVariant, showCreatedMeta }: Readonly<Pick<InboxStuffDetailsProps, "item" | "metaVariant" | "showCreatedMeta">>) {
-  const body = item.body;
+function BodyMarkdownSurface(props: InboxStuffDetailsProps) {
+  const [loadError, setLoadError] = useState(false);
+
+  useEffect(() => {
+    if (props.item.bodyLoaded !== false) {
+      setLoadError(false);
+      return;
+    }
+    let active = true;
+    void ensureItemBodyLoaded(props.item).catch(() => {
+      if (active) setLoadError(true);
+    });
+    return () => {
+      active = false;
+    };
+  }, [props.item.id, props.item.bodyLoaded]);
+
+  if (props.item.bodyLoaded === false) {
+    return <p className="pane-state">{loadError ? "Failed to load body." : "Loading body..."}</p>;
+  }
+
+  const hasBody = Boolean(props.item.body?.text);
+  if (!props.editing && !hasBody) {
+    return <p className="pane-state">No details yet for this stuff.</p>;
+  }
+
+  const className = props.editing
+    ? "inbox-detail__body-surface"
+    : "inbox-detail__body inbox-detail__body-preview inbox-detail__body-surface";
 
   return (
-    <div className="inbox-detail">
-      <DetailHeader item={item} metaVariant={metaVariant} showCreatedMeta={showCreatedMeta} />
-      {!body?.text ? (
-        <p className="pane-state">No details yet for this stuff.</p>
-      ) : (
-        <div className="inbox-detail__body inbox-detail__body-preview" aria-label="Selected item details">
-          <Suspense fallback={<p className="pane-state">Loading preview...</p>}>
-            <LazyItemBodyMarkdownEditor itemId={item.id} initialBody={body} readOnly />
-          </Suspense>
-        </div>
-      )}
+    <div className={className} aria-label="Selected item details">
+      <Suspense fallback={<p className="pane-state">Loading body...</p>}>
+        <LazyItemBodyMarkdownEditor
+          itemId={props.item.id}
+          initialBody={props.item.body}
+          readOnly={!props.editing}
+          onAutosave={props.onAutosaveEditing}
+          onSave={props.onCommitEditing}
+          onExitNormalMode={props.onExitEditingFromNormalMode}
+          onVimModeChange={props.onVimModeChange}
+        />
+      </Suspense>
     </div>
   );
 }
@@ -317,9 +326,10 @@ function ReadOnlyInboxStuffDetails({ item, metaVariant, showCreatedMeta }: Reado
  * @example <InboxStuffDetails item={stuff} editing={false} ... />
  */
 export function InboxStuffDetails(props: InboxStuffDetailsProps) {
-  if (props.editing) {
-    return <EditingInboxStuffDetails {...props} />;
-  }
-
-  return <ReadOnlyInboxStuffDetails item={props.item} metaVariant={props.metaVariant} showCreatedMeta={props.showCreatedMeta} />;
+  return (
+    <div className="inbox-detail">
+      <DetailHeader item={props.item} metaVariant={props.metaVariant} showCreatedMeta={props.showCreatedMeta} />
+      <BodyMarkdownSurface {...props} />
+    </div>
+  );
 }

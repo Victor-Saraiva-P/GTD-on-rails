@@ -50,7 +50,7 @@ function SyncStatusLine({ row }: Readonly<{ row: ConnectivitySyncRow }>) {
 }
 
 /**
- * Blocks the app while the browser reports no internet access.
+ * Preserves local interaction across connectivity changes.
  *
  * @example <ConnectivityBlocker><AppShell /></ConnectivityBlocker>
  */

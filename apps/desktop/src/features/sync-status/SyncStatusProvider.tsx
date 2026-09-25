@@ -1,7 +1,9 @@
 import {
   createContext,
+  type Dispatch,
   type MutableRefObject,
   type PropsWithChildren,
+  type SetStateAction,
   useCallback,
   useContext,
   useEffect,
@@ -12,8 +14,9 @@ import {
 import { fetchSyncStatus } from "./api";
 import { shouldStopSyncStatusPolling, startupObservationDeadline } from "./syncStatusPolling";
 import type { SyncStatus } from "./types";
+import { useDatabaseSyncStatusListener, useDomainChangeStream } from "./domainChanges.ts";
 
-const POLL_INTERVAL_MS = 1000;
+const POLL_INTERVAL_MS = 5000;
 
 type SyncStatusContextValue = {
   isLoading: boolean;
@@ -30,7 +33,7 @@ type SyncStatusState = {
   setIsLoading: (value: boolean) => void;
   setIsPolling: (value: boolean) => void;
   setLastFetchFailed: (value: boolean) => void;
-  setStatus: (status: SyncStatus | null) => void;
+  setStatus: Dispatch<SetStateAction<SyncStatus | null>>;
   status: SyncStatus | null;
 };
 
@@ -154,6 +157,18 @@ function useInitialSyncStatusRefresh(
   }, [refreshSyncStatus, startPolling, startupDeadlineRef, stopPolling]);
 }
 
+function useDatabaseSyncStatusPush(
+  state: SyncStatusState,
+  stopPolling: () => void
+): void {
+  useDatabaseSyncStatusListener((database) => {
+    state.setStatus((current) => current ? { ...current, database } : current);
+    state.setLastFetchFailed(false);
+    state.setIsLoading(false);
+    if (!database.pending && !database.running && database.pendingCount === 0) stopPolling();
+  });
+}
+
 function useSyncStatusValue(
   state: SyncStatusState,
   triggerSyncStatusPolling: () => void
@@ -179,6 +194,7 @@ function useSyncStatusController(): SyncStatusContextValue {
   const startPolling = useStartPolling(state, intervalRef, refreshSyncStatus);
   const triggerPolling = useTriggerSyncStatusPolling(intervalRef, refreshSyncStatus, startPolling);
 
+  useDatabaseSyncStatusPush(state, stopPolling);
   useInitialSyncStatusRefresh(refreshSyncStatus, startPolling, startupDeadlineRef, stopPolling);
   return useSyncStatusValue(state, triggerPolling);
 }
@@ -190,6 +206,7 @@ function useSyncStatusController(): SyncStatusContextValue {
  */
 export function SyncStatusProvider({ children }: PropsWithChildren) {
   const value = useSyncStatusController();
+  useDomainChangeStream();
 
   return <SyncStatusContext.Provider value={value}>{children}</SyncStatusContext.Provider>;
 }

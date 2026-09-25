@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import { ApiRequestError } from "../../lib/api/apiClient.ts";
+import { useSharedCollectionState } from "../../lib/state/sharedEntityStore.ts";
 import { optimisticMutate } from "../../lib/api/optimistic.ts";
+import { mutateSharedEntityOptimistically } from "../../lib/state/optimisticSharedEntity.ts";
 import { useSyncStatus } from "../sync-status/SyncStatusProvider.tsx";
+import { useDomainRevalidation } from "../sync-status/domainChanges.ts";
 import type { ItemBody } from "../inbox/types";
 import type { NextAction, NextActionOrder, NextActionPatch } from "./types";
 import {
@@ -32,12 +35,22 @@ export function toErrorMessage(error: unknown): string {
   return "Failed to load next actions";
 }
 
-function useNextActionsLoadState() {
-  const [items, setItems] = useState<NextAction[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+function useNextActionsLoadState(collectionKey: string) {
+  const collection = useSharedCollectionState<NextAction>(collectionKey);
+  const [isLoading, setIsLoading] = useState(!collection.loaded);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
-  return { errorMessage, isLoading, items, reloadToken, setErrorMessage, setIsLoading, setItems, setReloadToken };
+  return {
+    errorMessage,
+    hasSnapshot: collection.loaded,
+    isLoading,
+    items: collection.items,
+    reloadToken,
+    setErrorMessage,
+    setIsLoading,
+    setItems: collection.setItems,
+    setReloadToken
+  };
 }
 
 /**
@@ -59,7 +72,7 @@ async function loadNextActions(
   orderBy: NextActionOrder,
   cancelled: () => boolean
 ) {
-  state.setIsLoading(true);
+  if (!state.hasSnapshot) state.setIsLoading(true);
   state.setErrorMessage(null);
   try {
     const nextItems = await fetchNextActions({ contextIds, currentEnergy, currentTimeMinutes, orderBy });
@@ -127,12 +140,12 @@ export function useNextActionsMutations(state: NextActionsLoadState, mutations: 
     deleteItem: (id: string) => optimisticRemoveAction(id, state, triggerSyncStatusPolling, deleteNextAction, mutations.setIsDeleting),
     markAsDone: (id: string) => optimisticRemoveAction(id, state, triggerSyncStatusPolling, markNextActionDone, mutations.setIsUpdating),
     markAsOnGoing: (id: string) => optimisticRemoveAction(id, state, triggerSyncStatusPolling, markNextActionOnGoing, mutations.setIsUpdating),
-    patchItem: (id: string, patch: NextActionPatch) => patchItem(id, patch, state, mutations, triggerSyncStatusPolling),
+    patchItem: (id: string, patch: NextActionPatch) => patchItem(id, patch, state, triggerSyncStatusPolling),
     restoreStatus: (id: string) => optimisticRemoveAction(id, state, triggerSyncStatusPolling, resetNextActionStatus, mutations.setIsUpdating),
     restoreItem: (id: string) => restoreItem(id, mutations, reload, triggerSyncStatusPolling),
-    updateBody: (item: NextAction, body: ItemBody) => updateBody(item, body, state, mutations, triggerSyncStatusPolling),
-    updateTitle: (item: NextAction, title: string) => updateTitle(item, title, state, mutations, triggerSyncStatusPolling),
-    assignProject: (item: NextAction, projectId: string | null) => assignProjectAction(item, projectId, state, mutations, triggerSyncStatusPolling)
+    updateBody: (item: NextAction, body: ItemBody) => updateBody(item, body, state, triggerSyncStatusPolling),
+    updateTitle: (item: NextAction, title: string) => updateTitle(item, title, state, triggerSyncStatusPolling),
+    assignProject: (item: NextAction, projectId: string | null) => assignProjectAction(item, projectId, state, triggerSyncStatusPolling)
   };
 }
 
@@ -147,59 +160,61 @@ async function restoreItem(id: string, mutations: NextActionsMutationState, relo
   }
 }
 
-async function patchItem(id: string, patch: NextActionPatch, state: NextActionsLoadState, mutations: NextActionsMutationState, poll: () => void) {
-  mutations.setIsUpdating(true);
-  try {
-    const updated = await patchNextActionAttributes(id, patch);
-    state.setItems((items) => replaceItem(items, updated));
-    completeMutation(state, poll);
-    return updated;
-  } finally {
-    mutations.setIsUpdating(false);
-  }
+async function patchItem(id: string, patch: NextActionPatch, state: NextActionsLoadState, poll: () => void) {
+  const item = state.items.find((candidate) => candidate.id === id);
+  if (!item) return patchNextActionAttributes(id, patch);
+
+  const optimistic: NextAction = {
+    ...item,
+    ...(patch.energy !== undefined ? { energy: patch.energy } : {}),
+    ...(patch.estimatedTime !== undefined ? { estimatedTime: patch.estimatedTime } : {}),
+    ...(patch.clearDeadline ? { deadline: null } : patch.deadline !== undefined ? { deadline: patch.deadline } : {})
+  };
+  const updated = await mutateSharedEntityOptimistically(
+    item,
+    optimistic,
+    () => patchNextActionAttributes(id, patch)
+  );
+  completeMutation(state, poll);
+  return updated;
 }
 
-async function updateBody(item: NextAction, body: ItemBody, state: NextActionsLoadState, mutations: NextActionsMutationState, poll: () => void) {
-  mutations.setIsUpdating(true);
-  try {
-    const updated = await updateNextActionBody(item, body);
-    state.setItems((items) => replaceItem(items, updated));
-    completeMutation(state, poll);
-    return updated;
-  } finally {
-    mutations.setIsUpdating(false);
-  }
+async function updateBody(item: NextAction, body: ItemBody, state: NextActionsLoadState, poll: () => void) {
+  const updated = await mutateSharedEntityOptimistically(
+    item,
+    { ...item, body },
+    () => updateNextActionBody(item, body)
+  );
+  completeMutation(state, poll);
+  return updated;
 }
 
-async function updateTitle(item: NextAction, title: string, state: NextActionsLoadState, mutations: NextActionsMutationState, poll: () => void) {
-  mutations.setIsUpdating(true);
-  try {
-    const updated = await updateNextActionTitle(item, title);
-    state.setItems((items) => replaceItem(items, updated));
-    completeMutation(state, poll);
-    return updated;
-  } finally {
-    mutations.setIsUpdating(false);
-  }
+async function updateTitle(item: NextAction, title: string, state: NextActionsLoadState, poll: () => void) {
+  const updated = await mutateSharedEntityOptimistically(
+    item,
+    { ...item, title },
+    () => updateNextActionTitle(item, title)
+  );
+  completeMutation(state, poll);
+  return updated;
 }
 
 async function assignProjectAction(
   item: NextAction,
   projectId: string | null,
   state: NextActionsLoadState,
-  mutations: NextActionsMutationState,
   poll: () => void
 ): Promise<NextAction> {
-  mutations.setIsUpdating(true);
-  try {
-    const result = await assignItemProject(item.id, projectId);
-    const updated: NextAction = { ...item, projectId: result.projectId ?? projectId, projectTitle: result.projectTitle ?? null };
-    state.setItems((items) => replaceItem(items, updated));
-    completeMutation(state, poll);
-    return updated;
-  } finally {
-    mutations.setIsUpdating(false);
-  }
+  const updated = await mutateSharedEntityOptimistically(
+    item,
+    { ...item, projectId },
+    async () => {
+      const result = await assignItemProject(item.id, projectId);
+      return { ...item, projectId: result.projectId ?? projectId, projectTitle: result.projectTitle ?? null };
+    }
+  );
+  completeMutation(state, poll);
+  return updated;
 }
 
 /**
@@ -213,12 +228,24 @@ export function useNextActionsQuery(
   currentEnergy: number | null,
   orderBy: NextActionOrder
 ) {
-  const state = useNextActionsLoadState();
+  const collectionKey = nextActionsCollectionKey(contextIds, currentTimeMinutes, currentEnergy, orderBy);
+  const state = useNextActionsLoadState(collectionKey);
   const mutations = useNextActionsMutationState();
   const reload = () => state.setReloadToken((value) => value + 1);
   const actions = useNextActionsMutations(state, mutations, reload);
   useNextActionsLoader(state, contextIds, currentTimeMinutes, currentEnergy, orderBy);
+  useDomainRevalidation(["items", "next_actions", "body_document", "project_items"], reload);
   return { ...actions, errorMessage: state.errorMessage, isDeleting: mutations.isDeleting, isLoading: state.isLoading, isUpdating: mutations.isUpdating, items: state.items, reload };
+}
+
+function nextActionsCollectionKey(
+  contextIds: string[],
+  currentTimeMinutes: number | null,
+  currentEnergy: number | null,
+  orderBy: NextActionOrder
+): string {
+  const contexts = [...contextIds].sort().join(",");
+  return `next-actions:${orderBy}:${currentEnergy ?? "any"}:${currentTimeMinutes ?? "any"}:${contexts}`;
 }
 
 export type NextActionsQueryState = NextActionsQuery;

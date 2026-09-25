@@ -5,12 +5,13 @@ import { EditorSelection, EditorState } from "@codemirror/state";
 import { computeActiveLines, buildLivePreviewDecorations } from "../src/features/inbox/cmLivePreview.ts";
 import { itemBodyStateField } from "../src/features/inbox/itemBodyUtils.ts";
 
-function createMockView(doc: string, anchor: number, head?: number) {
+function createMockView(doc: string, anchor: number, head?: number, readOnly = false) {
   const state = EditorState.create({
     doc,
     selection: EditorSelection.range(anchor, head ?? anchor),
     extensions: [
       markdown({ base: markdownLanguage }),
+      EditorState.readOnly.of(readOnly),
       itemBodyStateField.init(() => ({
         text: doc,
         inlineMarks: [],
@@ -70,10 +71,22 @@ test("buildLivePreviewDecorations hides markdown tokens on inactive lines", () =
   assert.ok(decos.size > 0);
 });
 
-test("buildLivePreviewDecorations renders task checkbox on inactive lines", () => {
+test("read-only live preview keeps markdown syntax hidden on its selected line", () => {
+  const doc = "# Heading";
+  const view = createMockView(doc, 3, undefined, true) as any;
+  const decos = buildLivePreviewDecorations(view);
+  let hidesHeadingPrefix = false;
+
+  decos.between(0, doc.length, (from, to) => {
+    if (from === 0 && to > from) hidesHeadingPrefix = true;
+  });
+
+  assert.equal(hidesHeadingPrefix, true);
+});
+
+test("buildLivePreviewDecorations renders task checkbox in read-only preview", () => {
   const doc = "- [ ] Task one\n- [x] Task two";
-  // Cursor on line 1
-  const view = createMockView(doc, 2) as any;
+  const view = createMockView(doc, 2, undefined, true) as any;
   const decos = buildLivePreviewDecorations(view);
 
   let hasTaskWidget = false;

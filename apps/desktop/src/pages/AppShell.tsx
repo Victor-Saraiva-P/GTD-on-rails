@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { clearAssetObjectUrlCache } from "../features/inbox/assetFiles";
-import { evictBackendCache } from "../lib/api/cache.ts";
 import { useCalendarWorkspaceController } from "../features/calendar/useCalendarWorkspaceController";
 import { useDeletedInboxWorkspaceController } from "../features/inbox/useDeletedInboxWorkspaceController";
 import { useInboxWorkspaceController } from "../features/inbox/useInboxWorkspaceController";
@@ -115,37 +114,24 @@ function useAppControllers(projectDetailProject: Project | null) {
   };
 }
 
-function reloadActiveController(activeScreen: ScreenId, controllers: AppControllers): void {
-  if (activeScreen === "contexts") clearAssetObjectUrlCache();
-  if (activeScreen === "inbox") controllers.inbox.reload();
-  if (activeScreen === "deleted-inbox") controllers.deletedInbox.reload();
-  if (activeScreen === "calendars" || activeScreen === "calendar-detail-page") controllers.calendars.reload();
-  if (activeScreen === "next-actions") controllers.nextActions.reload();
-  if (activeScreen === "projects") controllers.projects.reload();
-  if (activeScreen === "project-detail") controllers.projectDetail.reload();
-  if (
-    activeScreen === "ongoing-next-actions" ||
-    activeScreen === "ongoing-next-action-detail-page" ||
-    activeScreen === "ongoing-calendar-detail-page"
-  ) controllers.ongoing.reload();
-  if (activeScreen === "done-next-actions") controllers.doneNextActions.reload();
-  if (activeScreen === "deleted-next-actions") controllers.deletedNextActions.reload();
-  if (activeScreen === "google-calendar-integration") controllers.googleCalendarIntegration.reload();
-  if (activeScreen === "someday-maybe") controllers.somedayMaybe.reload();
+function revalidateActiveScreen(activeScreen: ScreenId, controllers: AppControllers): void {
+  if (activeScreen === "inbox") return controllers.inbox.reload();
+  if (activeScreen === "deleted-inbox") return controllers.deletedInbox.reload();
+  if (activeScreen === "calendars" || activeScreen === "calendar-detail-page") return controllers.calendars.reload();
+  if (activeScreen === "next-actions") return controllers.nextActions.reload();
+  if (activeScreen === "projects") return controllers.projects.reload();
+  if (activeScreen === "project-detail") return controllers.projectDetail.reload();
+  if (activeScreen.startsWith("ongoing-")) return controllers.ongoing.reload();
+  if (activeScreen === "done-next-actions") return controllers.doneNextActions.reload();
+  if (activeScreen === "deleted-next-actions") return controllers.deletedNextActions.reload();
+  if (activeScreen === "someday-maybe") return controllers.somedayMaybe.reload();
 }
 
-function useReloadActiveScreen(activeScreen: ScreenId, controllers: AppControllers) {
+function useScreenLocalEffects(activeScreen: ScreenId, controllers: AppControllers) {
   useEffect(() => {
-    reloadActiveController(activeScreen, controllers);
+    if (activeScreen === "contexts") clearAssetObjectUrlCache();
+    revalidateActiveScreen(activeScreen, controllers);
   }, [activeScreen]);
-
-  useEffect(() => {
-    const handleFocus = () => {
-      void evictBackendCache().then(() => reloadActiveController(activeScreen, controllers));
-    };
-    window.addEventListener("focus", handleFocus);
-    return () => window.removeEventListener("focus", handleFocus);
-  }, [activeScreen, controllers]);
 }
 
 function useAgentStateBridge(activeScreen: ScreenId) {
@@ -296,7 +282,7 @@ export function AppShell() {
   const openProjectDetail = useOpenProjectDetail(controllers, navigation);
   const navigationBindings = useAppShellBindings(navigation, controllers, openHintMode, toggleZoomMode);
 
-  useReloadActiveScreen(activeScreen, controllers);
+  useScreenLocalEffects(activeScreen, controllers);
   useAgentStateBridge(activeScreen);
   useRegisterKeybinds(navigationBindings);
   return (

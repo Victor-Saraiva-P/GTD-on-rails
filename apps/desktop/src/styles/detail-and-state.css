@@ -304,6 +304,16 @@
   animation: none !important;
 }
 
+.inbox-detail__codemirror--preview .cm-cursorLayer,
+.inbox-detail__codemirror--preview .cm-selectionLayer {
+  display: none !important;
+}
+
+.inbox-detail__codemirror--preview .cm-activeLine,
+.inbox-detail__codemirror--preview .cm-activeLineGutter {
+  background: transparent;
+}
+
 .inbox-detail__codemirror .cm-cursor,
 .inbox-detail__codemirror .cm-dropCursor {
   border-left: 2px solid #ffffff !important;

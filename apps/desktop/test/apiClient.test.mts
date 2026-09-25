@@ -73,16 +73,56 @@ describe("apiFetch", () => {
     globalScope.window = originalWindow;
   });
 
-  test("apiFetch announces a service-unavailable database response", async () => {
+  test("apiFetch announces a database-unavailable Problem Detail", async () => {
     const globalScope = globalThis as { window?: EventTarget };
     const originalWindow = globalScope.window;
     globalScope.window = new EventTarget();
     const unavailable = new Promise<void>((resolve) => {
       window.addEventListener(DATABASE_UNAVAILABLE_EVENT, () => resolve(), { once: true });
     });
+    const responseBody = JSON.stringify({
+      type: "https://gtdonrails.local/errors/database-unavailable",
+      title: "Database unavailable"
+    });
 
-    await assert.rejects(apiFetch("/inbox", {}, async () => new Response("Unavailable", { status: 503 })));
+    await assert.rejects(
+      apiFetch("/inbox", {}, async () => new Response(responseBody, { status: 503 }))
+    );
     await unavailable;
+    globalScope.window = originalWindow;
+  });
+
+  test("apiFetch announces readiness 503 as database unavailable", async () => {
+    const globalScope = globalThis as { window?: EventTarget };
+    const originalWindow = globalScope.window;
+    globalScope.window = new EventTarget();
+    let unavailable = false;
+    window.addEventListener(DATABASE_UNAVAILABLE_EVENT, () => { unavailable = true; });
+
+    await assert.rejects(
+      apiFetch("/readiness", {}, async () =>
+        new Response('{"state":"UNAVAILABLE"}', { status: 503 })
+      )
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.equal(unavailable, true);
+    globalScope.window = originalWindow;
+  });
+
+  test("apiFetch does not announce external-service 503 as database unavailable", async () => {
+    const globalScope = globalThis as { window?: EventTarget };
+    const originalWindow = globalScope.window;
+    globalScope.window = new EventTarget();
+    let unavailable = false;
+    window.addEventListener(DATABASE_UNAVAILABLE_EVENT, () => { unavailable = true; });
+
+    await assert.rejects(
+      apiFetch("/integrations/google-calendar/status", {}, async () =>
+        new Response('{"configurationStatus":"UNAVAILABLE"}', { status: 503 })
+      )
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.equal(unavailable, false);
     globalScope.window = originalWindow;
   });
 });

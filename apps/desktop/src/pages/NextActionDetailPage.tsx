@@ -67,10 +67,9 @@ function useDetailZone(controller: NextActionsWorkspaceController) {
 
 async function exitBodyEditingToNextActions(
   controller: NextActionsWorkspaceController,
-  setActiveScreen: (screen: ScreenId) => void,
-  body: ItemBody
+  setActiveScreen: (screen: ScreenId) => void
 ): Promise<void> {
-  await controller.commitBody(body);
+  controller.cancelBodyEdit();
   controller.setActiveZone("next-actions-list");
   setActiveScreen("next-actions");
 }
@@ -90,7 +89,7 @@ function DetailReady({ controller, setActiveScreen }: DetailReadyProps) {
       editing={controller.editingBodyId === item.id}
       onAutosaveEditing={(body) => controller.autosaveBody(body)}
       onCommitEditing={(body) => controller.commitBody(body)}
-      onExitEditingFromNormalMode={(body) => exitBodyEditingToNextActions(controller, setActiveScreen, body)}
+      onExitEditingFromNormalMode={() => exitBodyEditingToNextActions(controller, setActiveScreen)}
       onCancelEditing={controller.cancelBodyEdit}
       onVimModeChange={controller.setVimMode}
     />

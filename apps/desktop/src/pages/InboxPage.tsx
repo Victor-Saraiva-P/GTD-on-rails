@@ -245,8 +245,8 @@ function autosaveStuffBody(controller: InboxWorkspaceController, body: ItemBody)
   return controller.autosaveEditingSelectedStuffBody(body);
 }
 
-async function exitBodyEditingFromNormalMode(controller: InboxWorkspaceController, body: ItemBody): Promise<void> {
-  await controller.commitEditingSelectedStuffBody(body);
+async function exitBodyEditingFromNormalMode(controller: InboxWorkspaceController): Promise<void> {
+  controller.cancelEditingSelectedStuffBody();
   controller.setActiveZone("inbox-list");
 }
 
@@ -294,7 +294,7 @@ function InboxDetailReady({ controller }: InboxControllerProps) {
       editing={controller.editingBodyId === selectedItem.id}
       onAutosaveEditing={(body) => autosaveStuffBody(controller, body)}
       onCommitEditing={(body) => commitStuffBody(controller, body)}
-      onExitEditingFromNormalMode={(body) => exitBodyEditingFromNormalMode(controller, body)}
+      onExitEditingFromNormalMode={() => exitBodyEditingFromNormalMode(controller)}
       onCancelEditing={controller.cancelEditingSelectedStuffBody}
       onVimModeChange={controller.setVimMode}
     />

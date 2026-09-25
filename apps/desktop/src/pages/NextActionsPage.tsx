@@ -291,15 +291,15 @@ function NextActionDetailReady({ controller }: NextActionControllerProps) {
       editing={controller.editingBodyId === item.id}
       onAutosaveEditing={(body) => controller.autosaveBody(body)}
       onCommitEditing={(body) => controller.commitBody(body)}
-      onExitEditingFromNormalMode={(body) => exitBodyEditing(controller, body)}
+      onExitEditingFromNormalMode={() => exitBodyEditing(controller)}
       onCancelEditing={controller.cancelBodyEdit}
       onVimModeChange={controller.setVimMode}
     />
   );
 }
 
-async function exitBodyEditing(controller: NextActionsWorkspaceController, body: ItemBody): Promise<void> {
-  await controller.commitBody(body);
+async function exitBodyEditing(controller: NextActionsWorkspaceController): Promise<void> {
+  controller.cancelBodyEdit();
   controller.setActiveZone("next-actions-list");
 }
 

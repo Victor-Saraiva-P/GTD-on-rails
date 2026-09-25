@@ -62,6 +62,7 @@ export type Stuff = {
   id: string;
   title: string;
   body: ItemBody;
+  bodyLoaded?: boolean;
   status: string;
   createdAt?: string;
   energy?: number | null;

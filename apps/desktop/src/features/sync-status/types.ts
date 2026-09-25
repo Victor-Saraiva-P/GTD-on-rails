@@ -16,6 +16,7 @@ export type FileSyncStatus = {
   state: FileSyncState;
   pending: boolean;
   running: boolean;
+  pendingCount: number;
   lastStartedAt: string | null;
   lastFinishedAt: string | null;
   lastSuccessfulSyncAt: string | null;
@@ -26,6 +27,7 @@ export type GoogleCalendarSyncStatus = {
   state: GoogleCalendarSyncState;
   pending: boolean;
   running: boolean;
+  pendingCount: number;
   lastStartedAt: string | null;
   lastFinishedAt: string | null;
   lastSuccessfulSyncAt: string | null;

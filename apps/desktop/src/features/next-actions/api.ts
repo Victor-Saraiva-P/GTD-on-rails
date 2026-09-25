@@ -135,6 +135,7 @@ function toNextAction(item: NextActionResponse): NextAction {
     id: item.id,
     title: item.title,
     body: normalizeNextActionBody(item.body),
+    bodyLoaded: item.body != null,
     energy: item.energy == null ? null : Number(item.energy),
     estimatedTime: parseEstimatedTime(item.estimatedTime),
     deadline: item.deadline ?? null,

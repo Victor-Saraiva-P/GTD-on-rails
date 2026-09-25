@@ -45,8 +45,8 @@ The explicit bootstrap flow that validates a fresh administrative connection and
 _Avoid_: Database Setup, automatic credential recovery
 
 **Optimistic Mutation**:
-A desktop state transition applied immediately in the user interface for high-frequency keyboard operations before the backend write-through persistence confirms success.
-_Avoid_: Local save, offline queue, draft
+A desktop state transition applied immediately in the user interface for high-frequency keyboard operations before the local backend write confirms success. Remote synchronization is independent and may remain pending in the sync outbox while the sync server is unavailable.
+_Avoid_: draft, remote write-through
 
 **Project-associated item**:
 An item linked to exactly one project. Lists and detail views identify it with the purple `P` project glyph followed by the project's literal title, and allow direct keyboard navigation to its owner project via `gd`.

@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { ApiRequestError } from "../../lib/api/apiClient.ts";
+import { mutateSharedEntityOptimistically } from "../../lib/state/optimisticSharedEntity.ts";
+import { useSharedCollectionState } from "../../lib/state/sharedEntityStore.ts";
 import { useSyncStatus } from "../sync-status/SyncStatusProvider.tsx";
+import { useDomainRevalidation } from "../sync-status/domainChanges.ts";
 import { optimisticMutate } from "../../lib/api/optimistic.ts";
 import {
   createContext as createContextRequest,
@@ -42,12 +45,22 @@ function toErrorMessage(error: unknown): string {
 }
 
 function useContextsLoadState() {
-  const [contexts, setContexts] = useState<ContextItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const collection = useSharedCollectionState<ContextItem>("contexts:active");
+  const [isLoading, setIsLoading] = useState(!collection.loaded);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
 
-  return { contexts, errorMessage, isLoading, reloadToken, setContexts, setErrorMessage, setIsLoading, setReloadToken };
+  return {
+    contexts: collection.items,
+    errorMessage,
+    hasSnapshot: collection.loaded,
+    isLoading,
+    reloadToken,
+    setContexts: collection.setItems,
+    setErrorMessage,
+    setIsLoading,
+    setReloadToken
+  };
 }
 
 function useContextsMutationState() {
@@ -62,12 +75,11 @@ type ContextsLoadState = ReturnType<typeof useContextsLoadState>;
 type ContextsMutationState = ReturnType<typeof useContextsMutationState>;
 
 function startContextsLoad(state: ContextsLoadState) {
-  state.setIsLoading(true);
+  if (!state.hasSnapshot) state.setIsLoading(true);
   state.setErrorMessage(null);
 }
 
 function failContextsLoad(state: ContextsLoadState, error: unknown) {
-  state.setContexts([]);
   state.setErrorMessage(toErrorMessage(error));
 }
 
@@ -170,6 +182,23 @@ async function updateContextItem(updateRequest: () => Promise<ContextItem>, stat
   }
 }
 
+async function updateContextNameItem(
+  id: string,
+  name: string,
+  state: ContextsLoadState,
+  triggerSyncStatusPolling: () => void
+): Promise<ContextItem> {
+  const context = state.contexts.find((item) => item.id === id);
+  if (!context) return updateContextNameRequest(id, name);
+  const updated = await mutateSharedEntityOptimistically(
+    context,
+    { ...context, name },
+    () => updateContextNameRequest(id, name)
+  );
+  completeContextMutation(state, triggerSyncStatusPolling);
+  return updated;
+}
+
 function useContextsMutations(state: ContextsLoadState, mutations: ContextsMutationState) {
   const { triggerSyncStatusPolling } = useSyncStatus();
 
@@ -179,7 +208,7 @@ function useContextsMutations(state: ContextsLoadState, mutations: ContextsMutat
     restoreContext: (id: string) => restoreContextItem(id, state, mutations, triggerSyncStatusPolling),
     deleteContextIcon: (id: string) => updateContextItem(() => deleteContextIconRequest(id), state, mutations, triggerSyncStatusPolling),
     updateContextIcon: (id: string, file: File) => updateContextItem(() => updateContextIconRequest(id, file), state, mutations, triggerSyncStatusPolling),
-    updateContextName: (id: string, name: string) => updateContextItem(() => updateContextNameRequest(id, name), state, mutations, triggerSyncStatusPolling)
+    updateContextName: (id: string, name: string) => updateContextNameItem(id, name, state, triggerSyncStatusPolling)
   };
 }
 
@@ -194,6 +223,7 @@ export function useContextsQuery(): ContextsQueryState {
   const actions = useContextsMutations(state, mutations);
 
   useContextsLoader(state);
+  useDomainRevalidation(["contexts", "context_icon_file"], () => state.setReloadToken((value) => value + 1));
   return {
     ...actions,
     contexts: state.contexts,
