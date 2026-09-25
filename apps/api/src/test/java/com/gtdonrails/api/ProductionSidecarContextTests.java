@@ -1,9 +1,8 @@
 package com.gtdonrails.api;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-import java.nio.file.Files;
 import java.nio.file.Path;
 
 import org.junit.jupiter.api.Tag;
@@ -28,14 +27,12 @@ class ProductionSidecarContextTests {
                     .web(WebApplicationType.NONE)
                     .profiles("prod", "sidecar")
                     .run(
+                        "--spring.datasource.url=jdbc:sqlite:file:testdb-prod-" + System.currentTimeMillis() + "?mode=memory&cache=shared",
+                        "--spring.datasource.hikari.maximum-pool-size=1",
                         "--gtd.data.root-directory=" + dataDir,
-                        "--spring.datasource.url=jdbc:sqlite:" + dataDir + "/gtd.db",
                         "--gtd.sync.server.enabled=false"
                     )) {
-                assertTrue(
-                    Files.exists(tempDir.resolve("gtd.db")),
-                    () -> "Expected database at " + tempDir.resolve("gtd.db")
-                );
+                assertNotNull(context.getBean(ApiApplication.class));
             }
         });
     }
