@@ -17,18 +17,22 @@ import org.springframework.transaction.support.TransactionTemplate;
 @Service
 public class SyncServerBootstrapService {
 
+    private static final String ITEMS = "items";
     private static final String ITEM_ID = "item_id";
+    private static final String PROJECTS = "projects";
+    private static final String PROJECT_ITEMS = "project_items";
     private static final String NEXT_ACTIONS = "next_actions";
+    private static final String CALENDARS = "calendars";
 
     private static final List<String> STRUCTURED_TABLES = List.of(
-        "items",
+        ITEMS,
         "contexts",
         "item_assets",
         "context_icon_assets",
-        "projects",
-        "project_items",
+        PROJECTS,
+        PROJECT_ITEMS,
         NEXT_ACTIONS,
-        "calendars"
+        CALENDARS
     );
 
     private final JdbcTemplate jdbc;
@@ -97,21 +101,21 @@ public class SyncServerBootstrapService {
 
     private String selectAllSql(String table) {
         return switch (table) {
-            case "items" -> "select * from items";
+            case ITEMS -> "select * from items";
             case "contexts" -> "select * from contexts";
             case "item_assets" -> "select * from item_assets";
             case "context_icon_assets" -> "select * from context_icon_assets";
-            case "projects" -> "select * from projects";
-            case "project_items" -> "select * from project_items";
+            case PROJECTS -> "select * from projects";
+            case PROJECT_ITEMS -> "select * from project_items";
             case NEXT_ACTIONS -> "select * from next_actions";
-            case "calendars" -> "select * from calendars";
+            case CALENDARS -> "select * from calendars";
             default -> throw new IllegalArgumentException("unsupported bootstrap table '" + table + "'");
         };
     }
 
     private Map<String, Object> normalizedRow(String table, Map<String, Object> row) {
         Map<String, Object> payload = new LinkedHashMap<>(row);
-        if ("items".equals(table)) payload.remove("body");
+        if (ITEMS.equals(table)) payload.remove("body");
         if (NEXT_ACTIONS.equals(table)) addContextIds(payload);
         return payload;
     }
@@ -168,7 +172,7 @@ public class SyncServerBootstrapService {
         String sql = "select id, item_id, file_name, content_type from item_assets";
         for (Map<String, Object> row : jdbc.queryForList(sql)) {
             String id = String.valueOf(row.get("id"));
-            String path = "items/" + row.get("item_id") + "/assets/" + id + "/" + row.get("file_name");
+            String path = "items/" + row.get(ITEM_ID) + "/assets/" + id + "/" + row.get("file_name");
             enqueueFileIfPresent("item_asset_file", id, path, String.valueOf(row.get("content_type")));
         }
     }
@@ -217,7 +221,7 @@ public class SyncServerBootstrapService {
 
     private static final class SetOfItemIdTables {
         private static final java.util.Set<String> VALUES = java.util.Set.of(
-            "projects", "project_items", NEXT_ACTIONS, "calendars"
+            PROJECTS, PROJECT_ITEMS, NEXT_ACTIONS, CALENDARS
         );
 
         static boolean contains(String table) {

@@ -3,7 +3,6 @@ package com.gtdonrails.api.mappers;
 import com.gtdonrails.api.dtos.context.ContextResponseDto;
 import com.gtdonrails.api.entities.Context;
 import com.gtdonrails.api.entities.ContextIconAsset;
-import com.gtdonrails.api.repositories.ContextIconAssetRepository;
 import com.gtdonrails.api.services.AssetStorageService;
 import org.springframework.stereotype.Component;
 
@@ -12,7 +11,7 @@ public class ContextMapper {
 
     private final AssetStorageService assetStorageService;
 
-    public ContextMapper(AssetStorageService assetStorageService, ContextIconAssetRepository contextIconAssetRepository) {
+    public ContextMapper(AssetStorageService assetStorageService) {
         this.assetStorageService = assetStorageService;
     }
 

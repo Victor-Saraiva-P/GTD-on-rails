@@ -30,9 +30,8 @@ const quoteLine = Decoration.line({ class: "cm-quote-line" });
 const SIMPLE_HIDE_NODES = new Set(["EmphasisMark", "CodeMark", "LinkMark", "StrikethroughMark"]);
 const PREFIX_HIDE_NODES = new Set(["HeaderMark", "QuoteMark"]);
 
-const MARKDOWN_IMAGE_RE = /!\[([^\]]*)\]\((?:<([^>]+)>|([^)]+?))\s*\)/;
-const STANDALONE_IMAGE_RE = /^\s*!\[([^\]]*)\]\((?:<([^>]+)>|([^)]+?))\s*\)\s*$/;
-const STANDALONE_LINK_RE = /^\s*\[([^\]]+)\]\((?:<([^>]+)>|([^)]+?))\s*\)\s*$/;
+const MARKDOWN_IMAGE_RE = /!\[([^\]\r\n]*)\]\(([^)\r\n]*)\)/;
+const MARKDOWN_LINK_RE = /\[([^\]\r\n]+)\]\(([^)\r\n]*)\)/;
 const ASSET_TOKEN_RE = /(\[\[asset:([0-9a-fA-F-]{36})]]|\[asset:([0-9a-fA-F-]{36})]|⟦asset:([0-9a-fA-F-]{36})⟧)/;
 
 type PendingDeco = { from: number; to: number; deco: Decoration };
@@ -229,16 +228,16 @@ function processMarkdownImageLine(
   lineActive: boolean,
   pending: PendingDeco[]
 ): boolean {
-  const match = line.text.match(MARKDOWN_IMAGE_RE);
+  const match = MARKDOWN_IMAGE_RE.exec(line.text);
   if (!match) return false;
   const alt = match[1] ?? "";
-  const href = (match[2] ?? match[3] ?? "").trim();
+  const href = markdownHref(match[2] ?? "");
   const entity = markdownAssetEntity(state, href, alt, "image");
   pending.push({
     from: line.to, to: line.to,
     deco: Decoration.widget({ side: 1, widget: new LiveImageWidget(alt, href, line.from, entity) })
   });
-  if (STANDALONE_IMAGE_RE.test(line.text)) hideStandaloneSource(line, lineActive, pending);
+  if (line.text.trim() === match[0]) hideStandaloneSource(line, lineActive, pending);
   return true;
 }
 
@@ -248,10 +247,10 @@ function processMarkdownPdfLine(
   lineActive: boolean,
   pending: PendingDeco[]
 ): boolean {
-  const match = line.text.match(STANDALONE_LINK_RE);
-  if (!match) return false;
+  const match = MARKDOWN_LINK_RE.exec(line.text.trim());
+  if (!match || match[0] !== line.text.trim()) return false;
   const displayName = match[1] ?? "PDF";
-  const href = (match[2] ?? match[3] ?? "").trim();
+  const href = markdownHref(match[2] ?? "");
   if (!href.toLowerCase().endsWith(".pdf")) return false;
   const entity = markdownAssetEntity(state, href, displayName, "pdf");
   if (!entity) return false;
@@ -261,6 +260,14 @@ function processMarkdownPdfLine(
   });
   hideStandaloneSource(line, lineActive, pending);
   return true;
+}
+
+function markdownHref(rawHref: string): string {
+  const trimmed = rawHref.trim();
+  if (trimmed.startsWith("<") && trimmed.endsWith(">") && trimmed.length > 1) {
+    return trimmed.slice(1, -1).trim();
+  }
+  return trimmed;
 }
 
 function hideStandaloneSource(

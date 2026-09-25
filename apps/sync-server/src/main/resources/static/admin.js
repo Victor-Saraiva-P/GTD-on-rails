@@ -195,67 +195,69 @@ function updateObjectTypes() {
 
 function renderObjects() {
   const rows = state.objects.map(function (object, index) {
+    const button = document.createElement("button");
+    button.className = "link-button";
+    button.type = "button";
+    button.textContent = object.objectType;
+    button.addEventListener("click", function () { showObject(index); });
     return [
-      '<button class="link-button" data-object-index="' + index + '">' + escapeHtml(object.objectType) + "</button>",
-      escapeHtml(object.objectId),
+      button,
+      object.objectId,
       formatNumber(object.revision),
-      object.deleted ? '<span class="badge badge--delete">deleted</span>' : '<span class="badge">active</span>',
-      escapeHtml(object.mediaType || "—"),
-      escapeHtml(formatDate(object.updatedAt))
+      badge(object.deleted ? "deleted" : "active", object.deleted),
+      object.mediaType || "—",
+      formatDate(object.updatedAt)
     ];
   });
-  elements.objects.innerHTML = table(
+  elements.objects.replaceChildren(table(
     ["Type", "Object ID", "Revision", "State", "Media", "Updated"],
     rows,
     "No objects match the selected filter."
-  );
-  for (const button of elements.objects.querySelectorAll("[data-object-index]")) {
-    button.addEventListener("click", function () { showObject(Number(button.dataset.objectIndex)); });
-  }
+  ));
 }
 
 function renderChanges() {
   const rows = state.changes.map(function (change) {
     return [
       formatNumber(change.cursor),
-      escapeHtml(change.objectType),
-      escapeHtml(change.objectId),
+      change.objectType,
+      change.objectId,
       formatNumber(change.revision),
-      '<span class="badge ' + (change.operation === "DELETE" ? "badge--delete" : "") + '">' + escapeHtml(change.operation) + "</span>",
-      escapeHtml(formatDate(change.changedAt))
+      badge(change.operation, change.operation === "DELETE"),
+      formatDate(change.changedAt)
     ];
   });
-  elements.changes.innerHTML = table(
+  elements.changes.replaceChildren(table(
     ["Cursor", "Type", "Object ID", "Revision", "Operation", "Changed"],
     rows,
     "No changes have been recorded."
-  );
+  ));
 }
 
 function renderFiles() {
   const rows = state.files.map(function (file) {
     return [
-      '<span class="mono">' + escapeHtml(file.path) + "</span>",
-      escapeHtml(formatBytes(file.bytes)),
-      escapeHtml(formatDate(file.modifiedAt))
+      textElement("span", file.path, "mono"),
+      formatBytes(file.bytes),
+      formatDate(file.modifiedAt)
     ];
   });
-  elements.files.innerHTML = table(["Path", "Size", "Modified"], rows, "No physical files are stored.");
+  elements.files.replaceChildren(table(["Path", "Size", "Modified"], rows, "No physical files are stored."));
 }
 
 function renderClientUpdate() {
   const update = state.clientUpdate;
   if (!update) return;
   const rows = [
-    ["Current version", escapeHtml(update.currentVersion || "—")],
-    ["Latest version", escapeHtml(update.latestVersion || "Not checked")],
+    ["Current version", update.currentVersion || "—"],
+    ["Latest version", update.latestVersion || "Not checked"],
     ["Managed install", update.managedInstallation ? "yes" : "no"],
     ["Auto update", update.autoUpdateEnabled ? "enabled" : "disabled"],
-    ["State", escapeHtml(update.state || "—")],
-    ["Last check", escapeHtml(formatDate(update.lastCheckedAt))],
-    ["Last error", escapeHtml(update.lastError || "—")]
+    ["State", update.state || "—"],
+    ["Last check", formatDate(update.lastCheckedAt)],
+    ["Last error", update.lastError || "—"]
   ];
-  elements.clientUpdate.innerHTML = table(["Property", "Value"], rows, "Update status unavailable.");
+  elements.clientUpdate.replaceChildren(table(["Property", "Value"], rows, "Update status unavailable."));
   const installButton = document.querySelector("#install-update-button");
   installButton.disabled = !update.managedInstallation || !update.updateAvailable || update.running;
 }
@@ -263,22 +265,13 @@ function renderClientUpdate() {
 function renderBackups() {
   const rows = state.backups.map(function (backup) {
     return [
-      '<span class="mono">' + escapeHtml(backup.fileName) + "</span>",
-      escapeHtml(formatBytes(backup.bytes)),
-      escapeHtml(formatDate(backup.modifiedAt)),
-      '<div class="action-row">' +
-        '<button class="restore" data-restore="' + escapeAttr(backup.fileName) + '">Restore</button>' +
-        '<button class="danger" data-delete="' + escapeAttr(backup.fileName) + '">Delete</button>' +
-      "</div>"
+      textElement("span", backup.fileName, "mono"),
+      formatBytes(backup.bytes),
+      formatDate(backup.modifiedAt),
+      backupActions(backup.fileName)
     ];
   });
-  elements.backups.innerHTML = table(["Snapshot", "Size", "Created", "Actions"], rows, "No backup snapshots yet.");
-  for (const button of elements.backups.querySelectorAll("[data-restore]")) {
-    button.addEventListener("click", function () { void restoreBackup(button.dataset.restore); });
-  }
-  for (const button of elements.backups.querySelectorAll("[data-delete]")) {
-    button.addEventListener("click", function () { void deleteBackup(button.dataset.delete); });
-  }
+  elements.backups.replaceChildren(table(["Snapshot", "Size", "Created", "Actions"], rows, "No backup snapshots yet."));
 }
 
 function showObject(index) {
@@ -375,12 +368,60 @@ function statText(className, value) {
 }
 
 function table(headers, rows, emptyMessage) {
-  if (rows.length === 0) return '<div class="empty">' + escapeHtml(emptyMessage) + "</div>";
-  const heading = headers.map(function (header) { return "<th>" + escapeHtml(header) + "</th>"; }).join("");
-  const body = rows.map(function (row) {
-    return "<tr>" + row.map(function (cell) { return "<td>" + cell + "</td>"; }).join("") + "</tr>";
-  }).join("");
-  return '<div class="table-wrap"><table><thead><tr>' + heading + "</tr></thead><tbody>" + body + "</tbody></table></div>";
+  if (rows.length === 0) return textElement("div", emptyMessage, "empty");
+  const wrapper = document.createElement("div");
+  wrapper.className = "table-wrap";
+  const tableElement = document.createElement("table");
+  const heading = document.createElement("thead");
+  const headingRow = document.createElement("tr");
+  for (const header of headers) headingRow.append(tableCell("th", header));
+  heading.append(headingRow);
+
+  const body = document.createElement("tbody");
+  for (const row of rows) {
+    const rowElement = document.createElement("tr");
+    for (const cell of row) rowElement.append(tableCell("td", cell));
+    body.append(rowElement);
+  }
+
+  tableElement.append(heading, body);
+  wrapper.append(tableElement);
+  return wrapper;
+}
+
+function tableCell(tagName, value) {
+  const cell = document.createElement(tagName);
+  if (value instanceof Node) cell.append(value);
+  else cell.textContent = String(value);
+  return cell;
+}
+
+function textElement(tagName, value, className) {
+  const element = document.createElement(tagName);
+  if (className) element.className = className;
+  element.textContent = String(value);
+  return element;
+}
+
+function badge(label, danger) {
+  return textElement("span", label, danger ? "badge badge--delete" : "badge");
+}
+
+function backupActions(fileName) {
+  const row = document.createElement("div");
+  row.className = "action-row";
+  const restore = document.createElement("button");
+  restore.type = "button";
+  restore.className = "restore";
+  restore.textContent = "Restore";
+  restore.addEventListener("click", function () { void restoreBackup(fileName); });
+  const remove = document.createElement("button");
+  remove.type = "button";
+  remove.className = "danger";
+  remove.textContent = "Delete";
+  remove.addEventListener("click", function () { void deleteBackup(fileName); });
+  row.append(restore, remove);
+  return row;
 }
 
 function option(value, label) {
@@ -413,15 +454,3 @@ function formatDate(value) {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
 }
 
-function escapeHtml(value) {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
-
-function escapeAttr(value) {
-  return escapeHtml(value).replaceAll(String.fromCharCode(96), "&#096;");
-}

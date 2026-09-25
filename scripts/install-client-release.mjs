@@ -37,14 +37,23 @@ function requireAsset(release, name) {
   return asset.browser_download_url;
 }
 
+const systemCommands = Object.freeze({
+  bash: "/usr/bin/bash",
+  curl: "/usr/bin/curl",
+  sha256sum: "/usr/bin/sha256sum",
+  tar: "/usr/bin/tar"
+});
+
 function run(command, args, options = {}) {
-  const result = spawnSync(command, args, { stdio: "inherit", ...options });
+  const executable = systemCommands[command];
+  if (!executable) throw new Error(`unsupported installer command '${command}'`);
+  const result = spawnSync(executable, args, { stdio: "inherit", ...options });
   if (result.status === 0) return;
   throw new Error(`${command} failed with exit code ${result.status ?? "unknown"}`);
 }
 
 function fetchRelease(url) {
-  const result = spawnSync("curl", ["-fsSL", "-H", "User-Agent: GTD-on-Rails", url], {
+  const result = spawnSync(systemCommands.curl, ["-fsSL", "-H", "User-Agent: GTD-on-Rails", url], {
     encoding: "utf8"
   });
   if (result.status !== 0) {

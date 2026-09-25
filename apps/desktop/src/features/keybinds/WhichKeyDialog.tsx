@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useKeybindContext } from "./KeybindProvider";
 import { filterKeybinds, formatKeybindDisplay, groupKeybindsByCategory, type KeybindCategory } from "./whichKeyUtils";
 import type { KeybindDefinition } from "./types";
@@ -26,15 +26,23 @@ function WhichKeySearch({
   query,
   onQueryChange
 }: Readonly<{ query: string; onQueryChange: (val: string) => void }>) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
   return (
     <div className="which-key-dialog__search-wrap">
+      <label className="sr-only" htmlFor="which-key-search">Filter keybindings</label>
       <input
+        ref={inputRef}
+        id="which-key-search"
         type="text"
         className="which-key-dialog__search"
         placeholder="Filter keybindings (e.g. 'j', 'delete', 'Space')..."
         value={query}
         onChange={(e) => onQueryChange(e.target.value)}
-        autoFocus
       />
     </div>
   );
@@ -123,13 +131,19 @@ function WhichKeyModal({
   onClose: () => void;
 }>) {
   return (
-    <div
+    <dialog
+      open
       className="which-key-dialog__backdrop"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+      aria-label="Available Keybindings"
+      onCancel={(event) => {
+        event.preventDefault();
+        onClose();
+      }}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onClose();
       }}
     >
-      <div className="which-key-dialog" role="dialog" aria-modal="true" aria-label="Available Keybindings">
+      <div className="which-key-dialog">
         <WhichKeyHeader activeZone={activeZone} />
         <WhichKeySearch query={query} onQueryChange={onQueryChange} />
         <WhichKeyContent groups={groups} />
@@ -139,7 +153,7 @@ function WhichKeyModal({
           </button>
         </div>
       </div>
-    </div>
+    </dialog>
   );
 }
 

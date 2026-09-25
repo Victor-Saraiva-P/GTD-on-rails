@@ -23,6 +23,7 @@
       <h2>Authentication required</h2>
       <p>Enter the same bearer token configured in <code>GTD_SYNC_SERVER_AUTH_TOKEN</code>.</p>
       <div class="inline-form">
+        <label for="token-input">Bearer token</label>
         <input id="token-input" type="password" autocomplete="off" placeholder="Bearer token">
         <button id="save-token-button" type="button">Save token</button>
       </div>
@@ -46,7 +47,10 @@
           <p>Current revisioned metadata and tombstones.</p>
         </div>
         <div class="filters">
-          <select id="object-type-filter"><option value="">All types</option></select>
+          <label>
+            Type
+            <select id="object-type-filter"><option value="">All types</option></select>
+          </label>
           <label><input id="show-deleted" type="checkbox"> Include deleted</label>
         </div>
       </div>

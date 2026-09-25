@@ -2,9 +2,7 @@ import { ensureSyntaxTree, syntaxTree } from "@codemirror/language";
 import type { ChangeSpec, EditorState } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
 
-const HARD_BREAK_RE = /(?: {2,}|\\|<br\s*\/?>)$/i;
-const MATH_BOUNDARY_RE = /^\s*\$\$|\$\$\s*$/;
-const CONTINUATION_PREFIX_RE = /^[ \t]*(?:>[ \t]*)*/;
+const BREAK_TAGS = ["<br>", "<br/>", "<br />"] as const;
 
 type Join = { from: number; to: number };
 
@@ -33,11 +31,40 @@ function nextMathState(text: string, open: boolean): boolean {
 function joinForLine(state: EditorState, lineNumber: number, mathOpen: boolean): Join | null {
   const line = state.doc.line(lineNumber);
   const next = state.doc.line(lineNumber + 1);
-  if (mathOpen || MATH_BOUNDARY_RE.test(line.text) || MATH_BOUNDARY_RE.test(next.text)) return null;
-  if (HARD_BREAK_RE.test(line.text)) return null;
-  const trailing = line.text.length - line.text.replace(/[ \t]+$/, "").length;
-  const leading = next.text.match(CONTINUATION_PREFIX_RE)?.[0].length ?? 0;
+  if (mathOpen || isMathBoundary(line.text) || isMathBoundary(next.text)) return null;
+  if (hasHardBreak(line.text)) return null;
+  const trailing = trailingWhitespaceLength(line.text);
+  const leading = continuationPrefixLength(next.text);
   return { from: line.to - trailing, to: next.from + leading };
+}
+
+function isMathBoundary(text: string): boolean {
+  const trimmed = text.trim();
+  return trimmed.startsWith("$$") || trimmed.endsWith("$$");
+}
+
+function hasHardBreak(text: string): boolean {
+  if (text.endsWith("\\")) return true;
+  if (trailingWhitespaceLength(text) >= 2) return true;
+  const lower = text.toLowerCase();
+  return BREAK_TAGS.some((tag) => lower.endsWith(tag));
+}
+
+function trailingWhitespaceLength(text: string): number {
+  let index = text.length;
+  while (index > 0 && (text[index - 1] === " " || text[index - 1] === "\t")) index -= 1;
+  return text.length - index;
+}
+
+function continuationPrefixLength(text: string): number {
+  let index = 0;
+  while (index < text.length) {
+    while (text[index] === " " || text[index] === "\t") index += 1;
+    if (text[index] !== ">") break;
+    index += 1;
+  }
+  while (text[index] === " " || text[index] === "\t") index += 1;
+  return index;
 }
 
 /**

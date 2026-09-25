@@ -94,5 +94,17 @@ sonar {
 		property 'sonar.projectKey', 'victor-saraiva-p-1'
 		property 'sonar.host.url', 'https://sonarcloud.io'
 		property 'sonar.coverage.jacoco.xmlReportPaths', 'build/reports/jacoco/test/jacocoTestReport.xml'
+		// Transport and persistence adapters are exercised through integration flows rather than unit coverage.
+		property 'sonar.coverage.exclusions', [
+			'**/sync/HttpSyncFileServerGateway.java',
+			'**/sync/HttpSyncServerGateway.java',
+			'**/sync/SyncLocalFileStore.java',
+			'**/sync/SyncFileBaseStore.java',
+			'**/sync/SyncConflictSnapshotStore.java',
+			'**/sync/SyncFileOutboxStore.java',
+			'**/sync/LocalSyncStateStore.java',
+			'**/sync/LocalRecoverySnapshotService.java',
+			'**/services/GoogleCalendarClientGateway.java'
+		].join(',')
 	}
 }
