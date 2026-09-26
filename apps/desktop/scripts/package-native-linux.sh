@@ -21,6 +21,7 @@ cp "$release_dir/binaries/gtd-api.jar" "$package_dir/binaries/gtd-api.jar"
 cp "src-tauri/icons/icon.png" "$package_dir/icon.png"
 cp "scripts/gtd-on-rails-launcher" "$package_dir/gtd-on-rails-launcher"
 cp "scripts/install-native-linux.sh" "$package_dir/install.sh"
+printf '%s\n' "$version" > "$package_dir/VERSION"
 chmod +x "$package_dir/gtd-on-rails-launcher" "$package_dir/install.sh"
 
 tar -C "$native_dir" -czf "$archive_path" "$package_name"

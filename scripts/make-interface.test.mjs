@@ -37,6 +37,20 @@ test("check accepts positional scope", async () => {
   assert.deepEqual(calls, ["scripts/test.mjs --type=check --scope=desktop --test="]);
 });
 
+test("client-install invokes installer script with optional tag", async () => {
+  assert.deepEqual(await runMake(["client-install"]), ["scripts/install-client-release.mjs"]);
+  assert.deepEqual(await runMake(["client-install", "v3.0.1"]), [
+    "scripts/install-client-release.mjs --tag=v3.0.1"
+  ]);
+});
+
+test("gtd-install invokes installer script with optional tag", async () => {
+  assert.deepEqual(await runMake(["gtd-install"]), ["scripts/install-desktop-release.mjs"]);
+  assert.deepEqual(await runMake(["gtd-install", "v3.0.1"]), [
+    "scripts/install-desktop-release.mjs --tag=v3.0.1"
+  ]);
+});
+
 async function runMake(goals) {
   const directory = await mkdtemp(path.join(os.tmpdir(), "gtd-make-"));
   const logPath = path.join(directory, "calls.log");
