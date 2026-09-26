@@ -96,6 +96,9 @@ jobs:
       - name: Check app version sync
         run: pnpm version:check
 
+      - name: Build frontend assets for Tauri tests
+        run: pnpm --filter @gtd-on-rails/desktop build:web
+
       - name: Run Tauri unit tests
         run: cargo test --locked --manifest-path src-tauri/Cargo.toml
         working-directory: apps/desktop
