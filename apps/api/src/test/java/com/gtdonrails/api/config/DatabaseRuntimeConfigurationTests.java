@@ -56,9 +56,12 @@ class DatabaseRuntimeConfigurationTests {
             config.flyway(dataSource, "classpath:db/sqlite-migration", true, "0", "TEST");
             org.springframework.jdbc.core.JdbcTemplate jdbc = new org.springframework.jdbc.core.JdbcTemplate(dataSource);
             jdbc.update("insert into contexts (id, name, created_at, updated_at) values ('ctx-1', 'Work', '2026-06-23 00:31:00+00', '2026-06-23 00:31:00+00')");
+            jdbc.update("insert into contexts (id, name, created_at, updated_at) values ('ctx-iso', 'Work', '2026-07-21T12:10:41.745Z', '2026-07-21T12:10:41.745Z')");
             config.flyway(dataSource, "classpath:db/sqlite-migration", true, "0", "TEST");
             String createdAt = jdbc.queryForObject("select created_at from contexts where id = 'ctx-1'", String.class);
+            String isoCreatedAt = jdbc.queryForObject("select created_at from contexts where id = 'ctx-iso'", String.class);
             assertEquals("2026-06-23 00:31:00.000000+00", createdAt);
+            assertEquals("2026-07-21 12:10:41.745", isoCreatedAt);
         } finally {
             if (dataSource instanceof AutoCloseable closeable) {
                 try { closeable.close(); } catch (Exception ignored) {}

@@ -159,7 +159,8 @@ class RemoteChangeAppliersTests {
               "title":"title",
               "status":"STUFF",
               "created_at":"2026-06-23 00:31:00+00",
-              "updated_at":"2026-06-23 00:31:00"
+              "updated_at":"2026-06-23 00:31:00",
+              "deleted_at":"2026-07-21T12:10:41.745Z"
             }
             """,
             null,
@@ -173,7 +174,8 @@ class RemoteChangeAppliersTests {
             org.mockito.ArgumentMatchers.eq("title"),
             org.mockito.ArgumentMatchers.eq("STUFF"),
             org.mockito.ArgumentMatchers.eq("2026-06-23 00:31:00.000000+00"),
-            org.mockito.ArgumentMatchers.eq("2026-06-23 00:31:00.000000")
+            org.mockito.ArgumentMatchers.eq("2026-06-23 00:31:00.000000"),
+            org.mockito.ArgumentMatchers.eq("2026-07-21 12:10:41.745")
         );
     }
 
