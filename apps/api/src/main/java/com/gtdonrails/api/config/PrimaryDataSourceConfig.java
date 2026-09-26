@@ -72,6 +72,26 @@ public class PrimaryDataSourceConfig {
             .placeholders(java.util.Map.of("databaseIdentity", databaseIdentity))
             .load();
         flyway.migrate();
+        sanitizeTimestamps(dataSource);
         return flyway;
+    }
+
+    private void sanitizeTimestamps(DataSource dataSource) {
+        JdbcTemplate template = new JdbcTemplate(dataSource);
+        java.util.List<String> tables = java.util.List.of(
+            "items", "contexts", "projects", "next_actions", "calendars", "item_assets", "context_icon_assets"
+        );
+        for (String table : tables) {
+            for (String col : java.util.List.of("created_at", "updated_at", "deleted_at")) {
+                sanitizeColumn(template, table, col);
+            }
+        }
+    }
+
+    private void sanitizeColumn(JdbcTemplate template, String table, String col) {
+        template.update(
+            "UPDATE " + table + " SET " + col + " = substr(" + col + ", 1, 19) || '.000000' || substr(" + col + ", 20) "
+            + "WHERE " + col + " LIKE '____-__-__ __:__:__+%' AND " + col + " NOT LIKE '%.%'"
+        );
     }
 }

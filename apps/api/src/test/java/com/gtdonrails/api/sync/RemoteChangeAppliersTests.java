@@ -144,6 +144,40 @@ class RemoteChangeAppliersTests {
     }
 
     @Test
+    void structuredApplierNormalizesTimestampsLackingFractionalSeconds() {
+        RemoteStructuredChangeApplier applier = structuredApplier();
+
+        applier.apply(new SyncRemoteChange(
+            1L,
+            "items",
+            "item-1",
+            2L,
+            "UPSERT",
+            """
+            {
+              "id":"item-1",
+              "title":"title",
+              "status":"STUFF",
+              "created_at":"2026-06-23 00:31:00+00",
+              "updated_at":"2026-06-23 00:31:00"
+            }
+            """,
+            null,
+            null,
+            null
+        ));
+
+        verify(jdbc).update(
+            org.mockito.ArgumentMatchers.contains("insert into items"),
+            org.mockito.ArgumentMatchers.eq("item-1"),
+            org.mockito.ArgumentMatchers.eq("title"),
+            org.mockito.ArgumentMatchers.eq("STUFF"),
+            org.mockito.ArgumentMatchers.eq("2026-06-23 00:31:00.000000+00"),
+            org.mockito.ArgumentMatchers.eq("2026-06-23 00:31:00.000000")
+        );
+    }
+
+    @Test
     void structuredApplierRejectsUnsupportedTableAndMalformedJson() {
         RemoteStructuredChangeApplier applier = structuredApplier();
 

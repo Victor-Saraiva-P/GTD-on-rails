@@ -587,7 +587,7 @@ public class SyncObjectStore {
         Connection connection = DriverManager.getConnection("jdbc:sqlite:" + databasePath);
         try (Statement statement = connection.createStatement()) {
             statement.execute("PRAGMA foreign_keys = ON");
-            statement.execute("PRAGMA busy_timeout = 5000");
+            statement.execute("PRAGMA busy_timeout = 30000");
             statement.execute("PRAGMA journal_mode = WAL");
         }
         return connection;

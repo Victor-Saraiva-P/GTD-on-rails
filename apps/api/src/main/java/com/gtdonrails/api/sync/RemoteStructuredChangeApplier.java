@@ -88,15 +88,30 @@ public class RemoteStructuredChangeApplier {
     }
 
     private Object[] values(JsonNode payload, List<String> columns) {
-        return columns.stream().map(column -> jdbcValue(payload.get(column))).toArray();
+        return columns.stream().map(column -> jdbcValue(column, payload.get(column))).toArray();
     }
 
-    private Object jdbcValue(JsonNode node) {
+    private Object jdbcValue(String column, JsonNode node) {
         if (node == null || node.isNull()) return null;
         if (node.isBoolean()) return node.asBoolean() ? 1 : 0;
         if (node.isIntegralNumber()) return node.asLong();
         if (node.isFloatingPointNumber()) return node.asDouble();
-        return node.asText();
+        String text = node.asText();
+        return isTimestampColumn(column) ? normalizeTimestamp(text) : text;
+    }
+
+    private boolean isTimestampColumn(String column) {
+        return CREATED_AT.equals(column) || UPDATED_AT.equals(column) || DELETED_AT.equals(column);
+    }
+
+    private String normalizeTimestamp(String raw) {
+        if (raw == null || raw.length() < 19 || raw.indexOf('.') >= 0) return raw;
+        if (raw.length() == 19) return raw + ".000000";
+        char separator = raw.charAt(19);
+        if (separator == '+' || separator == '-' || separator == 'Z' || separator == 'z') {
+            return raw.substring(0, 19) + ".000000" + raw.substring(19);
+        }
+        return raw;
     }
 
     @SuppressWarnings("java:S2077")

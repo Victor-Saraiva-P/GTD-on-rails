@@ -48,6 +48,24 @@ class DatabaseRuntimeConfigurationTests {
         }
     }
 
+    @Test
+    void sanitizesTimestampsLackingFractionalSecondsOnFlywayMigration() {
+        PrimaryDataSourceConfig config = new PrimaryDataSourceConfig();
+        DataSource dataSource = config.dataSource("jdbc:sqlite::memory:", "org.sqlite.JDBC", 1, 1);
+        try {
+            config.flyway(dataSource, "classpath:db/sqlite-migration", true, "0", "TEST");
+            org.springframework.jdbc.core.JdbcTemplate jdbc = new org.springframework.jdbc.core.JdbcTemplate(dataSource);
+            jdbc.update("insert into contexts (id, name, created_at, updated_at) values ('ctx-1', 'Work', '2026-06-23 00:31:00+00', '2026-06-23 00:31:00+00')");
+            config.flyway(dataSource, "classpath:db/sqlite-migration", true, "0", "TEST");
+            String createdAt = jdbc.queryForObject("select created_at from contexts where id = 'ctx-1'", String.class);
+            assertEquals("2026-06-23 00:31:00.000000+00", createdAt);
+        } finally {
+            if (dataSource instanceof AutoCloseable closeable) {
+                try { closeable.close(); } catch (Exception ignored) {}
+            }
+        }
+    }
+
     private Properties load(String resourceName) throws IOException {
         try (InputStream resource = getClass().getClassLoader().getResourceAsStream(resourceName)) {
             if (resource == null) throw new IOException("configuration resource value '" + resourceName + "' is invalid; expected classpath resource");

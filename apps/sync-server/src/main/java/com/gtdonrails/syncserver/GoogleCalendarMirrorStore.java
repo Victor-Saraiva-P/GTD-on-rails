@@ -222,7 +222,7 @@ public class GoogleCalendarMirrorStore {
     private Connection open() throws SQLException {
         Connection connection = DriverManager.getConnection("jdbc:sqlite:" + objectStore.databasePath());
         try (Statement statement = connection.createStatement()) {
-            statement.execute("PRAGMA busy_timeout = 5000");
+            statement.execute("PRAGMA busy_timeout = 30000");
             statement.execute("PRAGMA journal_mode = WAL");
         }
         return connection;
