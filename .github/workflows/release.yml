@@ -104,3 +104,10 @@ jobs:
             apps/sync-server/build/client-release/*.tar.gz \
             apps/sync-server/build/client-release/*.tar.gz.sha256 \
             --clobber
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release edit "${GITHUB_REF_NAME}" --draft=false --latest
+
