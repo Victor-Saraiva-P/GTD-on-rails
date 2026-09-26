@@ -90,6 +90,11 @@ public class PrimaryDataSourceConfig {
 
     private void sanitizeColumn(JdbcTemplate template, String table, String col) {
         template.update(
+            "UPDATE " + table + " SET " + col + " = substr(" + col + ", 1, 10) || ' ' || substr(" + col + ", 12, 8) "
+            + "|| CASE WHEN instr(" + col + ", '.') > 0 THEN '.' || substr(substr(" + col + ", instr(" + col + ", '.') + 1), 1, 3) "
+            + "ELSE '.000' END WHERE " + col + " LIKE '____-__-__T__:__:__%Z'"
+        );
+        template.update(
             "UPDATE " + table + " SET " + col + " = substr(" + col + ", 1, 19) || '.000000' || substr(" + col + ", 20) "
             + "WHERE " + col + " LIKE '____-__-__ __:__:__+%' AND " + col + " NOT LIKE '%.%'"
         );

@@ -105,6 +105,7 @@ public class RemoteStructuredChangeApplier {
     }
 
     private String normalizeTimestamp(String raw) {
+        if (isIsoUtcTimestamp(raw)) return normalizeIsoUtcTimestamp(raw);
         if (raw == null || raw.length() < 19 || raw.indexOf('.') >= 0) return raw;
         if (raw.length() == 19) return raw + ".000000";
         char separator = raw.charAt(19);
@@ -112,6 +113,19 @@ public class RemoteStructuredChangeApplier {
             return raw.substring(0, 19) + ".000000" + raw.substring(19);
         }
         return raw;
+    }
+
+    private boolean isIsoUtcTimestamp(String raw) {
+        return raw != null && raw.length() >= 20 && raw.charAt(10) == 'T' && raw.endsWith("Z");
+    }
+
+    private String normalizeIsoUtcTimestamp(String raw) {
+        int fractionStart = raw.indexOf('.', 19);
+        String seconds = raw.substring(0, 10) + " " + raw.substring(11, 19);
+        if (fractionStart < 0) return seconds + ".000";
+        String fraction = raw.substring(fractionStart + 1, raw.length() - 1);
+        String milliseconds = (fraction + "000").substring(0, 3);
+        return seconds + "." + milliseconds;
     }
 
     @SuppressWarnings("java:S2077")
