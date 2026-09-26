@@ -8,6 +8,7 @@ import java.net.http.HttpResponse;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -20,6 +21,7 @@ public class ClientReleaseClient {
     private final HttpClient http;
     private final URI releaseUri;
 
+    @Autowired
     public ClientReleaseClient(
         ObjectMapper mapper,
         @Value("$" + "{gtd.client.release-url}") String releaseUrl

@@ -105,6 +105,7 @@ EOF
 if command -v systemctl >/dev/null 2>&1; then
   systemctl --user daemon-reload
   systemctl --user enable --now gtd-on-rails-client.service
+  systemctl --user restart gtd-on-rails-client.service
   printf 'Installed and started GTD on Rails production client service.\n'
   printf 'Endpoint: %s\n' "$public_base_url"
   printf 'Configuration: %s\n' "$env_file"
