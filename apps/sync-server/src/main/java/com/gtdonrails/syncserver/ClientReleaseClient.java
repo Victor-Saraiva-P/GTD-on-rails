@@ -17,14 +17,23 @@ public class ClientReleaseClient {
     private static final String ARCHIVE_SUFFIX = "_linux-x86_64.tar.gz";
 
     private final ObjectMapper mapper;
-    private final HttpClient http = HttpClient.newHttpClient();
+    private final HttpClient http;
     private final URI releaseUri;
 
     public ClientReleaseClient(
         ObjectMapper mapper,
         @Value("$" + "{gtd.client.release-url}") String releaseUrl
     ) {
+        this(
+            mapper,
+            HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL).build(),
+            releaseUrl
+        );
+    }
+
+    public ClientReleaseClient(ObjectMapper mapper, HttpClient http, String releaseUrl) {
         this.mapper = mapper;
+        this.http = http;
         this.releaseUri = URI.create(releaseUrl);
     }
 
