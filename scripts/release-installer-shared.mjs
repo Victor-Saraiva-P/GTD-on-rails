@@ -135,7 +135,7 @@ export function runCommand(command, args, options = {}) {
 export function fetchReleaseJson(url) {
   const result = spawnSync(
     systemCommands.curl,
-    ["-fsSL", "-H", "User-Agent: GTD-on-Rails", url],
+    ["-fsSL", "-g", "-H", "User-Agent: GTD-on-Rails", url],
     { encoding: "utf8" }
   );
   if (result.status !== 0) {
@@ -155,7 +155,7 @@ export function downloadAndExtractReleaseArchive(assets, tempDir) {
   runCommand("curl", ["-fL", assets.archiveUrl, "-o", archivePath]);
   runCommand("curl", ["-fL", assets.checksumUrl, "-o", checksumPath]);
   runCommand("sha256sum", ["-c", assets.checksumName], { cwd: tempDir });
-  runCommand("tar", ["-xzf", assets.archiveName, "-C", tempDir]);
+  runCommand("tar", ["-xzf", archivePath, "-C", tempDir]);
 }
 
 /**
