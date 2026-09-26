@@ -29,19 +29,23 @@ public class PrimaryDataSourceConfig {
         @Value("${spring.datasource.hikari.maximum-pool-size:4}") int maxPoolSize,
         @Value("${spring.datasource.hikari.minimum-idle:1}") int minIdle
     ) {
-        org.sqlite.SQLiteConfig sqliteConfig = new org.sqlite.SQLiteConfig();
-        sqliteConfig.setBusyTimeout(30000);
-        sqliteConfig.setJournalMode(org.sqlite.SQLiteConfig.JournalMode.WAL);
-        sqliteConfig.setSynchronous(org.sqlite.SQLiteConfig.SynchronousMode.NORMAL);
-
         com.zaxxer.hikari.HikariConfig config = new com.zaxxer.hikari.HikariConfig();
         config.setDriverClassName(driverClass);
         config.setJdbcUrl(url);
         config.setMaximumPoolSize(maxPoolSize);
         config.setMinimumIdle(minIdle);
         config.setPoolName("HikariPool-Primary");
-        config.setDataSourceProperties(sqliteConfig.toProperties());
+        config.setDataSourceProperties(sqliteProperties());
         return new com.zaxxer.hikari.HikariDataSource(config);
+    }
+
+    private java.util.Properties sqliteProperties() {
+        org.sqlite.SQLiteConfig sqliteConfig = new org.sqlite.SQLiteConfig();
+        sqliteConfig.setBusyTimeout(30000);
+        sqliteConfig.setJournalMode(org.sqlite.SQLiteConfig.JournalMode.WAL);
+        sqliteConfig.setSynchronous(org.sqlite.SQLiteConfig.SynchronousMode.NORMAL);
+        sqliteConfig.setTransactionMode(org.sqlite.SQLiteConfig.TransactionMode.IMMEDIATE);
+        return sqliteConfig.toProperties();
     }
 
     /** Provides the canonical JdbcTemplate backed by local SQLite. */

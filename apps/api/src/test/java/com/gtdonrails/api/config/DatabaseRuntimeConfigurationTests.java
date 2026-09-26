@@ -2,11 +2,14 @@ package com.gtdonrails.api.config;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
+import javax.sql.DataSource;
 
+import com.zaxxer.hikari.HikariDataSource;
 import org.junit.jupiter.api.Test;
 
 class DatabaseRuntimeConfigurationTests {
@@ -28,6 +31,21 @@ class DatabaseRuntimeConfigurationTests {
 
         assertEquals("${GTD_SCHEMA_MIN_SUPPORTED_VERSION:1}", properties.getProperty("gtd.schema.min-supported-version"));
         assertEquals("${GTD_SCHEMA_MAX_SUPPORTED_VERSION:3}", properties.getProperty("gtd.schema.max-supported-version"));
+    }
+
+    @Test
+    void configuresSqliteWithImmediateTransactionMode() {
+        PrimaryDataSourceConfig config = new PrimaryDataSourceConfig();
+        DataSource dataSource = config.dataSource("jdbc:sqlite::memory:", "org.sqlite.JDBC", 1, 1);
+        try {
+            assertTrue(dataSource instanceof HikariDataSource);
+            HikariDataSource hikari = (HikariDataSource) dataSource;
+            assertEquals("IMMEDIATE", hikari.getDataSourceProperties().getProperty("transaction_mode"));
+        } finally {
+            if (dataSource instanceof AutoCloseable closeable) {
+                try { closeable.close(); } catch (Exception ignored) {}
+            }
+        }
     }
 
     private Properties load(String resourceName) throws IOException {
