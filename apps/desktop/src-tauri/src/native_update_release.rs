@@ -6,6 +6,7 @@ use crate::native_update::NativeUpdateStatus;
 
 pub const LATEST_RELEASE_URL: &str =
     "https://api.github.com/repos/Victor-Saraiva-P/GTD-on-rails/releases/latest";
+pub const NATIVE_PACKAGE_PREFIX: &str = "GTD.on.Rails_";
 pub const ARCHIVE_SUFFIX: &str = "linux-x86_64.tar.gz";
 pub const CHECKSUM_SUFFIX: &str = "linux-x86_64.tar.gz.sha256";
 
@@ -99,7 +100,11 @@ pub fn find_versioned_asset<'a>(
     let version_token = format!("_{version}_");
     assets
         .iter()
-        .find(|asset| asset.name.contains(&version_token) && asset.name.ends_with(suffix))
+        .find(|asset| {
+            asset.name.starts_with(NATIVE_PACKAGE_PREFIX)
+                && asset.name.contains(&version_token)
+                && asset.name.ends_with(suffix)
+        })
         .ok_or_else(|| {
             format!(
                 "GitHub release assets value '{suffix}' is invalid; expected asset containing version '{version}'"
@@ -169,6 +174,7 @@ mod tests {
     #[test]
     fn native_archive_asset_is_selected() {
         let assets = vec![
+            asset("GTD.on.Rails.Client_1.1.2_linux-x86_64.tar.gz"),
             asset("unrelated.txt"),
             asset("GTD.on.Rails_1.1.2_linux-x86_64.tar.gz"),
         ];
@@ -176,7 +182,17 @@ mod tests {
             find_versioned_asset(&assets, "1.1.2", ARCHIVE_SUFFIX)
                 .unwrap()
                 .name,
-            assets[1].name
+            assets[2].name
+        );
+        let checksums = vec![
+            asset("GTD.on.Rails.Client_1.1.2_linux-x86_64.tar.gz.sha256"),
+            asset("GTD.on.Rails_1.1.2_linux-x86_64.tar.gz.sha256"),
+        ];
+        assert_eq!(
+            find_versioned_asset(&checksums, "1.1.2", CHECKSUM_SUFFIX)
+                .unwrap()
+                .name,
+            checksums[1].name
         );
     }
 
