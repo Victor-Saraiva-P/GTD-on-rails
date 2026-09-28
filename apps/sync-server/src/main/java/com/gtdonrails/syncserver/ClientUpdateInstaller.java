@@ -7,16 +7,26 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
+import java.util.List;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Component
 public class ClientUpdateInstaller {
 
     private final ClientReleaseClient releases;
+    private final String syncServerPort;
+    private final String healthUrl;
 
-    public ClientUpdateInstaller(ClientReleaseClient releases) {
+    public ClientUpdateInstaller(
+        ClientReleaseClient releases,
+        @Value("${server.port:9473}") String syncServerPort,
+        @Value("${gtd.client.health-url:}") String healthUrl
+    ) {
         this.releases = releases;
+        this.syncServerPort = syncServerPort;
+        this.healthUrl = healthUrl;
     }
 
     public Path prepare(
@@ -34,11 +44,44 @@ public class ClientUpdateInstaller {
     }
 
     public void launchSwap(Path installDir, Path updateScript) {
+        List<String> command = updaterCommand(updateScript, syncServerPort, healthUrl);
         try {
-            new ProcessBuilder("bash", updateScript.toString()).start();
+            Process process = new ProcessBuilder(command).inheritIO().start();
+            int exitCode = process.waitFor();
+            if (exitCode == 0) return;
+            throw new IllegalStateException(
+                "Client updater command '" + String.join(" ", command)
+                    + "' exited with status " + exitCode
+                    + "; expected systemd-run to start a detached user service"
+            );
         } catch (IOException exception) {
-            throw new IllegalStateException("Failed to launch client updater", exception);
+            throw updaterLaunchFailure(command, exception);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw updaterLaunchFailure(command, exception);
         }
+    }
+
+    static List<String> updaterCommand(Path updateScript, String syncServerPort, String healthUrl) {
+        return List.of(
+            "/usr/bin/systemd-run",
+            "--user",
+            "--collect",
+            "--quiet",
+            "--unit=gtd-on-rails-client-update",
+            "--setenv=GTD_SYNC_SERVER_PORT=" + syncServerPort,
+            "--setenv=GTD_CLIENT_HEALTH_URL=" + healthUrl,
+            "/usr/bin/bash",
+            updateScript.toString()
+        );
+    }
+
+    private IllegalStateException updaterLaunchFailure(List<String> command, Exception exception) {
+        return new IllegalStateException(
+            "Client updater command '" + String.join(" ", command)
+                + "' failed; expected systemd-run to start a detached user service",
+            exception
+        );
     }
 
     private Path extractAndStage(
