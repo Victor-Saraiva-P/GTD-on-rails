@@ -45,6 +45,7 @@ public class Project extends AuditableEntity {
     @Column(name = "done_date")
     private LocalDate doneDate;
 
+    @JdbcTypeCode(SqlTypes.LOCAL_TIME)
     @Column(name = "done_time")
     private LocalTime doneTime;
 

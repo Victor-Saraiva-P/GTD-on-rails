@@ -48,6 +48,7 @@ public class Calendar extends AuditableEntity {
      * <p>Example: {@code calendar.setScheduledTime(LocalTime.parse("09:30"))}.</p>
      */
     @Setter
+    @JdbcTypeCode(SqlTypes.LOCAL_TIME)
     @Column(name = "scheduled_time")
     private LocalTime scheduledTime;
 

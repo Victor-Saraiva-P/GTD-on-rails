@@ -23,9 +23,11 @@ public class ScheduleWindow {
     @Column(name = "date_end")
     private LocalDate dateEnd;
 
+    @JdbcTypeCode(SqlTypes.LOCAL_TIME)
     @Column(name = "time_start")
     private LocalTime timeStart;
 
+    @JdbcTypeCode(SqlTypes.LOCAL_TIME)
     @Column(name = "time_end")
     private LocalTime timeEnd;
 

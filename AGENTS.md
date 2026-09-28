@@ -83,6 +83,9 @@
   without the other.
 - Before committing, check `git status --short` and stage only files that
   belong to the intended change.
+- When a bugfix is intended for a release, bump `VERSION` and all synchronized
+  manifests in the same bugfix PR. After merge, push the matching `vX.Y.Z` tag
+  to start the desktop and sync client release workflow.
 
 ## UI Consistency
 
