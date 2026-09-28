@@ -73,22 +73,29 @@ function CredentialsForm(props: CredentialsFormProps) {
   const [clientId, setClientId] = useState(props.initialClientId);
   const [clientSecret, setClientSecret] = useState(props.initialClientSecret);
   const [formError, setFormError] = useState<string | null>(null);
-  const closeForm = () => props.setIsOpen(false);
+  const closeForm = () => {
+    setClientId("");
+    setClientSecret("");
+    setFormError(null);
+    props.setIsOpen(false);
+  };
   const submitForm = async () => saveCredentialForm(clientId, clientSecret, props.onSave, closeForm, setFormError);
 
   return (
     <div style={sectionStyle}>
-      <CredentialsSummary credentialsConfigured={props.credentialsConfigured} />
-      {props.isOpen && <CredentialInputs clientId={clientId} clientSecret={clientSecret} formError={formError} setClientId={setClientId} setClientSecret={setClientSecret} submitForm={submitForm} closeForm={closeForm} />}
+      <CredentialsSummary credentialsConfigured={props.credentialsConfigured} isFormOpen={props.isOpen} openForm={() => props.setIsOpen(true)} />
+      {props.isOpen && <CredentialInputs clientId={clientId} clientSecret={clientSecret} credentialsConfigured={props.credentialsConfigured} formError={formError} setClientId={setClientId} setClientSecret={setClientSecret} submitForm={submitForm} closeForm={closeForm} />}
     </div>
   );
 }
 
-function CredentialsSummary({ credentialsConfigured }: Readonly<{ credentialsConfigured: boolean }>) {
+function CredentialsSummary({ credentialsConfigured, isFormOpen, openForm }: Readonly<{ credentialsConfigured: boolean; isFormOpen: boolean; openForm: () => void }>) {
   return (
     <>
       <h2 style={headingStyle}>Client Credentials</h2>
-      <p>{credentialsConfigured ? <span style={doneStyle}>Configured</span> : <span style={mutedStyle}>Not configured (Press 's' to configure)</span>}</p>
+      <p>{credentialsConfigured ? <span style={doneStyle}>Configured</span> : <span style={mutedStyle}>Not configured</span>}</p>
+      {!isFormOpen && <button type="button" onClick={openForm} style={saveButtonStyle}>{credentialsConfigured ? "Update credentials" : "Configure credentials"}</button>}
+      {credentialsConfigured && <p style={tokenHelpStyle}>Saving new credentials clears the current Google authorization. Connect again after saving.</p>}
       <p style={tokenHelpStyle}>Google Calendar tokens are encrypted locally. The Token Encryption Key is generated automatically and must sync before connecting.</p>
     </>
   );
@@ -97,12 +104,12 @@ function CredentialsSummary({ credentialsConfigured }: Readonly<{ credentialsCon
 function CredentialInputs(props: CredentialInputsProps) {
   return (
     <div style={formStyle}>
-      <h3 style={formHeadingStyle}>Setup Credentials</h3>
+      <h3 style={formHeadingStyle}>{props.credentialsConfigured ? "Update Credentials" : "Setup Credentials"}</h3>
       {props.formError && <p style={formErrorStyle}>{props.formError}</p>}
       <div style={fieldsStyle}>
-        <CredentialInput autoFocus placeholder="Client ID" value={props.clientId} onChange={props.setClientId} submitForm={props.submitForm} closeForm={props.closeForm} />
-        <CredentialInput placeholder="Client Secret" value={props.clientSecret} onChange={props.setClientSecret} submitForm={props.submitForm} closeForm={props.closeForm} />
-        <button onClick={props.submitForm} style={saveButtonStyle}>Save</button>
+        <CredentialInput autoFocus placeholder="Client ID" type="text" value={props.clientId} onChange={props.setClientId} submitForm={props.submitForm} closeForm={props.closeForm} />
+        <CredentialInput placeholder="Client Secret" type="password" value={props.clientSecret} onChange={props.setClientSecret} submitForm={props.submitForm} closeForm={props.closeForm} />
+        <button type="button" onClick={props.submitForm} style={saveButtonStyle}>Save</button>
       </div>
     </div>
   );
@@ -112,6 +119,7 @@ type CredentialInputsProps = Readonly<{
   clientId: string;
   clientSecret: string;
   closeForm: () => void;
+  credentialsConfigured: boolean;
   formError: string | null;
   setClientId: (value: string) => void;
   setClientSecret: (value: string) => void;
@@ -119,7 +127,7 @@ type CredentialInputsProps = Readonly<{
 }>;
 
 function CredentialInput(props: CredentialInputProps) {
-  return <input autoFocus={props.autoFocus} style={inputStyle} placeholder={props.placeholder} value={props.value} onChange={e => props.onChange(e.target.value)} onKeyDown={e => handleCredentialKey(e, props.submitForm, props.closeForm)} />;
+  return <input autoFocus={props.autoFocus} type={props.type} style={inputStyle} placeholder={props.placeholder} value={props.value} onChange={e => props.onChange(e.target.value)} onKeyDown={e => handleCredentialKey(e, props.submitForm, props.closeForm)} />;
 }
 
 type CredentialInputProps = Readonly<{
@@ -128,6 +136,7 @@ type CredentialInputProps = Readonly<{
   onChange: (value: string) => void;
   placeholder: string;
   submitForm: () => Promise<void>;
+  type: "text" | "password";
   value: string;
 }>;
 
@@ -184,7 +193,7 @@ function googleCalendarBackKeybind(isFormOpen: boolean, setIsFormOpen: Dispatch<
 }
 
 function googleCalendarSetupKeybind(isFormOpen: boolean, setIsFormOpen: Dispatch<SetStateAction<boolean>>) {
-  return { id: "gcal.setup-credentials", key: "s", description: "Setup Credentials", screen: "google-calendar-integration" as const, runKeybind: () => { if (!isFormOpen) setIsFormOpen(true); } };
+  return { id: "gcal.setup-credentials", key: "s", description: "Edit Google Calendar credentials", screen: "google-calendar-integration" as const, runKeybind: () => { if (!isFormOpen) setIsFormOpen(true); } };
 }
 
 function googleCalendarConnectKeybind(controller: GoogleCalendarIntegrationController, isFormOpen: boolean, canConnect: boolean, reason: string) {
