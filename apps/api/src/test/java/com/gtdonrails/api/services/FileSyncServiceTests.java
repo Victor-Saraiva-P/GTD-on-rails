@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.after;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -38,6 +39,7 @@ class FileSyncServiceTests {
     private FileSyncService service;
     private SyncFileBaseStore baseStore;
     private FileConflictResolutionService conflictResolver;
+    private SyncFileServerGateway fileGateway;
 
     @AfterEach
     void tearDown() {
@@ -124,6 +126,34 @@ class FileSyncServiceTests {
         verify(outbox).markFailed(entry.id(), "stale", false);
         assertEquals(FileSyncState.CONFLICT, service.status().state());
         assertEquals("stale", service.status().lastError());
+    }
+
+    @Test
+    void scheduledSyncWaitsForConflictResolution() throws Exception {
+        configureRevisionConflict();
+
+        service.syncNow();
+        service.requestScheduledSync();
+
+        verify(fileGateway, times(1)).push(any(SyncFileServerGateway.PushRequest.class));
+        assertEquals(FileSyncState.CONFLICT, service.status().state());
+    }
+
+    private void configureRevisionConflict() throws Exception {
+        SyncFileOutboxStore outbox = mock(SyncFileOutboxStore.class);
+        fileGateway = mock(SyncFileServerGateway.class);
+        SyncServerGateway server = mock(SyncServerGateway.class);
+        LocalSyncStateStore stateStore = mock(LocalSyncStateStore.class);
+        SyncFileOutboxEntry entry = entry("body_document", "item-1", "items/item-1/body.md", "text/markdown");
+        Files.createDirectories(tempDir.resolve("items/item-1"));
+        Files.writeString(tempDir.resolve(entry.relativePath()), "local");
+        when(outbox.pending()).thenReturn(List.of(entry));
+        when(outbox.pendingCount()).thenReturn(1L);
+        SyncServerConflictException conflict = new SyncServerConflictException("stale", 9L);
+        when(fileGateway.push(any(SyncFileServerGateway.PushRequest.class))).thenThrow(conflict);
+        service = newService(true, outbox, fileGateway, server, stateStore);
+        when(conflictResolver.resolvePushConflict(entry, conflict))
+            .thenReturn(new FileConflictResolutionService.Resolution(false, true));
     }
 
     @Test

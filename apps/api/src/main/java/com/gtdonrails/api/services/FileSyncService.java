@@ -86,7 +86,7 @@ public class FileSyncService {
 
     @Scheduled(fixedDelayString = "${gtd.sync.file-interval-ms:5000}")
     public void requestScheduledSync() {
-        if (!enabled || requiresRebootstrap()) return;
+        if (!enabled || requiresRebootstrap() || state == FileSyncState.CONFLICT) return;
         if (outbox.pendingCount() == 0) return;
         requestSync();
     }
