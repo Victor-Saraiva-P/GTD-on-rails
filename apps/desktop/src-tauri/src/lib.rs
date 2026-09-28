@@ -1,6 +1,6 @@
 use std::process::{Command, Stdio};
 
-use tauri::Manager;
+use tauri::{Manager, RunEvent};
 
 mod clipboard;
 mod native_update;
@@ -119,6 +119,10 @@ fn default_open_command(target: &str) -> Command {
 /// ```
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    build_app().run(stop_sidecar_on_exit);
+}
+
+fn build_app() -> tauri::App {
     tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_http::init())
@@ -142,6 +146,18 @@ pub fn run() {
             sidecar::start_sidecar_command,
             sidecar_backend_status
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while running tauri application")
+}
+
+fn stop_sidecar_on_exit(app_handle: &tauri::AppHandle, event: RunEvent) {
+    // The API owns SQLite connections; terminate it before this app can be reopened.
+    if matches!(event, RunEvent::Exit) {
+        if let Err(error) = app_handle.state::<sidecar::SidecarBackendState>().stop() {
+            eprintln!(
+                "{}",
+                serde_json::json!({ "event": "sidecar_shutdown_failed", "error": error })
+            );
+        }
+    }
 }

@@ -70,15 +70,22 @@ impl SidecarBackendState {
     fn set_child(&self, child: CommandChild) {
         self.child.lock().unwrap().replace(child);
     }
+
+    pub fn stop(&self) -> Result<(), String> {
+        let child = self.child.lock().unwrap().take();
+        let Some(child) = child else {
+            return Ok(());
+        };
+        let process_id = child.pid();
+        child.kill().map_err(|error| {
+            format!("sidecar process {process_id} could not be stopped; expected SIGKILL delivery: {error}")
+        })
+    }
 }
 
 impl Drop for SidecarBackendState {
     fn drop(&mut self) {
-        if let Ok(child_slot) = self.child.get_mut() {
-            if let Some(child) = child_slot.take() {
-                let _ = child.kill();
-            }
-        }
+        let _ = self.stop();
     }
 }
 
