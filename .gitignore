@@ -23,6 +23,7 @@ apps/desktop/.agent/
 .env.*
 !.env.example
 !**/.env.example
+!apps/desktop/.env.production
 infra/postgres-data/
 apps/desktop/src-tauri/gen/
 gtd-assets/
