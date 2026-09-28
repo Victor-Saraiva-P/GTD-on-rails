@@ -55,9 +55,19 @@ tailscale_dns=""
 if command -v jq >/dev/null 2>&1; then
   tailscale_dns="$(tailscale status --json 2>/dev/null | jq -r '.Self.DNSName // empty' | sed 's/\.$//')"
 fi
-public_host="${tailscale_dns:-$tailscale_ip}"
 bind_address="${GTD_SYNC_SERVER_BIND_ADDRESS:-$tailscale_ip}"
-public_base_url="${GTD_SYNC_SERVER_PUBLIC_BASE_URL:-http://$public_host:$production_port}"
+public_base_url="${GTD_SYNC_SERVER_PUBLIC_BASE_URL:-}"
+if [[ -z "$public_base_url" ]]; then
+  [[ -n "$tailscale_dns" ]] || {
+    echo "Tailscale MagicDNS name is unavailable; expected HTTPS host for Google Calendar callback"
+    exit 1
+  }
+  public_base_url="https://$tailscale_dns"
+fi
+[[ "$public_base_url" == https://* ]] || {
+  echo "GTD_SYNC_SERVER_PUBLIC_BASE_URL '$public_base_url' is invalid; expected an HTTPS URL for Google Calendar callback"
+  exit 1
+}
 health_url="${GTD_CLIENT_HEALTH_URL:-http://$bind_address:$production_port/health}"
 
 mkdir -p "$install_dir" "$bin_dir" "$systemd_dir"
@@ -79,6 +89,9 @@ set_env_value GTD_SYNC_SERVER_AUTH_TOKEN "$auth_token"
 set_env_value GTD_SYNC_SERVER_BIND_ADDRESS "$bind_address"
 set_env_value GTD_SYNC_SERVER_PORT "$production_port"
 set_env_value GTD_SYNC_SERVER_PUBLIC_BASE_URL "$public_base_url"
+set_env_value GTD_SYNC_SERVER_GOOGLE_CALLBACK_LISTENER_ENABLED "true"
+set_env_value GTD_SYNC_SERVER_GOOGLE_CALLBACK_BIND_ADDRESS "127.0.0.1"
+set_env_value GTD_SYNC_SERVER_GOOGLE_CALLBACK_PORT "7676"
 set_env_value GTD_SYNC_SERVER_RCLONE_ENABLED "false"
 set_env_value GTD_CLIENT_AUTO_UPDATE_ENABLED "true"
 set_env_value GTD_CLIENT_HEALTH_URL "$health_url"
@@ -108,6 +121,8 @@ if command -v systemctl >/dev/null 2>&1; then
   systemctl --user restart gtd-on-rails-client.service
   printf 'Installed and started GTD on Rails production client service.\n'
   printf 'Endpoint: %s\n' "$public_base_url"
+  printf 'Google OAuth redirect URI: %s/oauth/google/callback\n' "$public_base_url"
+  printf 'Tailscale Serve must proxy HTTPS to http://127.0.0.1:7676.\n'
   printf 'Configuration: %s\n' "$env_file"
   printf 'Status: systemctl --user status gtd-on-rails-client.service\n'
 else

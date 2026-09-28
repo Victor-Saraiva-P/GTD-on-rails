@@ -90,12 +90,16 @@ Runtime network configuration:
 - `GTD_SYNC_SERVER_AUTH_TOKEN`: optional bearer token required for `/v1/**`.
 - `GTD_SYNC_SERVER_DATA_ROOT`: canonical server data directory.
 - `GTD_SYNC_SERVER_PUBLIC_BASE_URL`: browser-reachable base URL used for OAuth callbacks.
+- `GTD_SYNC_SERVER_GOOGLE_CALLBACK_LISTENER_ENABLED`: enables the production loopback-only OAuth callback connector; the managed client launcher sets it to `true`.
+- `GTD_SYNC_SERVER_GOOGLE_CALLBACK_BIND_ADDRESS` and `GTD_SYNC_SERVER_GOOGLE_CALLBACK_PORT`: loopback-only HTTP listener used by Tailscale Serve for the Google OAuth callback; the production client defaults to `127.0.0.1:7676` and accepts only `GET /oauth/google/callback` on that listener.
 - `GTD_GOOGLE_CALENDAR_SYNC_INTERVAL_MS`: retry interval for pending Google Calendar projections.
 - `GTD_CLIENT_INSTALL_DIR`: marks a managed client installation and points to its active runtime directory.
 - `GTD_CLIENT_AUTO_UPDATE_ENABLED`: enables scheduled self-update checks for managed installations, default `true`.
 - `GTD_CLIENT_AUTO_UPDATE_INTERVAL_MS`: update-check interval, default six hours.
 - `GTD_CLIENT_RELEASE_URL`: release metadata endpoint, default GitHub `releases/latest`.
 - `GTD_CLIENT_HEALTH_URL`: optional health URL used by the external updater when validating a restarted client.
+
+The production client defaults `GTD_SYNC_SERVER_PUBLIC_BASE_URL` to the machine's HTTPS Tailscale MagicDNS name. Point Tailscale Serve at the callback listener with `tailscale serve --bg --https=443 http://127.0.0.1:7676`. Register the printed `Google OAuth redirect URI` as an authorized redirect URI for the Google web application client. The callback listener rejects every other path and method; the sync API remains on its Tailscale bind address and port.
 
 ## Backup transport
 
