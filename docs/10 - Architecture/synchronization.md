@@ -62,7 +62,7 @@ Google OAuth client credentials and OAuth tokens are stored under the sync-serve
 
 Projection failures do not roll back canonical GTD state. The outbox entry stays pending and is retried by the scheduled client worker. Process restarts therefore do not lose Google Calendar work.
 
-The default OAuth callback uses the sync server public base URL. Set `GTD_SYNC_SERVER_PUBLIC_BASE_URL` when the client is reached through Tailscale or another non-loopback address.
+The production OAuth callback uses the sync server public base URL, which must be HTTPS and reachable from the browser completing Google authorization. The installed Tailscale client defaults this URL to its MagicDNS HTTPS name and exposes only `GET /oauth/google/callback` through a loopback listener at `127.0.0.1:7676`. Configure Tailscale Serve to proxy HTTPS to that listener. The sync API continues to bind to its Tailscale address and port.
 
 ## Markdown conflicts
 

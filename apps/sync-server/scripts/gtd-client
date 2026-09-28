@@ -10,4 +10,5 @@ test -x "$runtime" || {
 }
 
 export GTD_CLIENT_INSTALL_DIR="$install_dir"
+export GTD_SYNC_SERVER_GOOGLE_CALLBACK_LISTENER_ENABLED="${GTD_SYNC_SERVER_GOOGLE_CALLBACK_LISTENER_ENABLED:-true}"
 exec "$runtime" "$@"

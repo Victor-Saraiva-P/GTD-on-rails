@@ -18,10 +18,13 @@ type PdfFirstPagePreviewResponse = {
   mimeType: string;
 };
 
+type AssetByteReader = (relativePath: string) => Promise<Uint8Array>;
+
 type BrowserWindow = Window & typeof globalThis & {
   __TAURI_INTERNALS__?: unknown;
 };
 
+const ITEM_ASSET_PATH_PATTERN = /^items\/([0-9a-f-]{36})\/assets\/([0-9a-f-]{36})\/([a-zA-Z0-9._-]+)$/i;
 const assetObjectUrlCache = new Map<string, AssetObjectUrlCacheEntry>();
 const pdfFirstPagePreviewCache = new Map<string, AssetObjectUrlCacheEntry>();
 
@@ -32,6 +35,24 @@ const pdfFirstPagePreviewCache = new Map<string, AssetObjectUrlCacheEntry>();
  */
 export function readDocumentAssetBytes(relativePath: string): Promise<Uint8Array> {
   return readFile(buildDocumentAssetPath(relativePath), { baseDir: BaseDirectory.Document });
+}
+
+/**
+ * Loads a managed asset from the current path, then its pre-migration storage path.
+ *
+ * @example await readManagedItemAssetWithLegacyFallback(path, readDocumentAssetBytes)
+ */
+export async function readManagedItemAssetWithLegacyFallback(
+  relativePath: string,
+  readAsset: AssetByteReader
+): Promise<Uint8Array> {
+  try {
+    return await readAsset(relativePath);
+  } catch (error) {
+    const legacyPath = legacyItemAssetPath(relativePath);
+    if (!legacyPath) throw error;
+    return readAsset(legacyPath);
+  }
 }
 
 /**
@@ -88,7 +109,7 @@ export function clearAssetObjectUrlCache(): void {
 
 async function createAssetObjectUrl(relativePath: string | undefined, contentType: string | undefined, fallbackUrl?: string): Promise<AssetObjectUrl> {
   if (!relativePath || !isTauriRuntime()) return fallbackAssetObjectUrl(relativePath, fallbackUrl);
-  const bytes = await readDocumentAssetBytes(relativePath).catch((error: unknown) => {
+  const bytes = await readManagedItemAssetWithLegacyFallback(relativePath, readDocumentAssetBytes).catch((error: unknown) => {
     if (fallbackUrl || relativePath) return null;
     throw error;
   });
@@ -108,6 +129,12 @@ function fallbackAssetObjectUrl(relativePath: string | undefined, fallbackUrl?: 
 
 function assetPublicPath(relativePath: string | undefined): string {
   return relativePath ? `/assets/${relativePath.replace(/^\/+/, "")}` : "";
+}
+
+function legacyItemAssetPath(relativePath: string): string | null {
+  const match = ITEM_ASSET_PATH_PATTERN.exec(relativePath);
+  if (!match || match[3] === "." || match[3] === "..") return null;
+  return `assets/items/${match[1]}/${match[2]}/${match[3]}`;
 }
 
 function assetObjectUrlCacheKey(relativePath: string | undefined, contentType: string | undefined, fallbackUrl?: string): string {

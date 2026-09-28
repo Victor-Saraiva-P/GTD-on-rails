@@ -18,7 +18,9 @@
       "identifier": "fs:allow-read-file",
       "allow": [
         { "path": "$DOCUMENT/dev-gtd-on-rails/assets/**" },
-        { "path": "$DOCUMENT/gtd-on-rails/assets/**" }
+        { "path": "$DOCUMENT/gtd-on-rails/assets/**" },
+        { "path": "$DOCUMENT/dev-gtd-on-rails/items/**/assets/**" },
+        { "path": "$DOCUMENT/gtd-on-rails/items/**/assets/**" }
       ]
     }
   ]
