@@ -19,6 +19,8 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "projects")
@@ -35,9 +37,11 @@ public class Project extends AuditableEntity {
     private Item item;
 
     @Setter
+    @JdbcTypeCode(SqlTypes.LOCAL_DATE)
     @Column(name = "deadline")
     private LocalDate deadline;
 
+    @JdbcTypeCode(SqlTypes.LOCAL_DATE)
     @Column(name = "done_date")
     private LocalDate doneDate;
 

@@ -30,6 +30,8 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.BatchSize;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "next_actions")
@@ -65,6 +67,7 @@ public class NextAction extends AuditableEntity {
      * <p>Example: {@code nextAction.setDeadline(LocalDate.parse("2026-06-01"))}.</p>
      */
     @Setter
+    @JdbcTypeCode(SqlTypes.LOCAL_DATE)
     @Column(name = "deadline")
     private LocalDate deadline;
 
