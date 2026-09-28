@@ -8,14 +8,18 @@ import java.time.LocalTime;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import lombok.Getter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Embeddable
 @Getter
 public class ScheduleWindow {
 
+    @JdbcTypeCode(SqlTypes.LOCAL_DATE)
     @Column(name = "date_start")
     private LocalDate dateStart;
 
+    @JdbcTypeCode(SqlTypes.LOCAL_DATE)
     @Column(name = "date_end")
     private LocalDate dateEnd;
 

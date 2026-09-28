@@ -21,6 +21,8 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "calendars")
@@ -36,6 +38,7 @@ public class Calendar extends AuditableEntity {
     @JoinColumn(name = "item_id", nullable = false)
     private Item item;
 
+    @JdbcTypeCode(SqlTypes.LOCAL_DATE)
     @Column(name = "scheduled_date", nullable = false)
     private LocalDate scheduledDate;
 
