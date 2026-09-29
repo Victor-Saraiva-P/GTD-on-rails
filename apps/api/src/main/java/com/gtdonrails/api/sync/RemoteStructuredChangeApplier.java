@@ -19,10 +19,11 @@ public class RemoteStructuredChangeApplier {
     private static final String CREATED_AT = "created_at";
     private static final String UPDATED_AT = "updated_at";
     private static final String DELETED_AT = "deleted_at";
+    private static final String ITEMS = "items";
     private static final String NEXT_ACTIONS = "next_actions";
 
     private static final Map<String, Set<String>> ALLOWED_COLUMNS = Map.of(
-        "items", Set.of("id", "title", STATUS, CREATED_AT, UPDATED_AT, DELETED_AT),
+        ITEMS, Set.of("id", "title", STATUS, CREATED_AT, UPDATED_AT, DELETED_AT),
         "contexts", Set.of("id", "name", CREATED_AT, UPDATED_AT, DELETED_AT),
         "item_assets", Set.of("id", ITEM_ID, "file_name", "original_file_name", "content_type", "size", CREATED_AT, UPDATED_AT, DELETED_AT),
         "context_icon_assets", Set.of("id", "context_id", "file_name", "original_file_name", "content_type", "size", CREATED_AT, UPDATED_AT, DELETED_AT),
@@ -130,9 +131,19 @@ public class RemoteStructuredChangeApplier {
 
     @SuppressWarnings("java:S2077")
     private void delete(String table, String objectId) {
+        if (ITEMS.equals(table)) deleteItemRelations(objectId);
         if (NEXT_ACTIONS.equals(table)) deleteNextActionContexts(objectId);
         String primaryKey = OutboxTableMetadata.primaryKeyColumn(table);
         jdbc.update("delete from " + table + " where " + primaryKey + " = ?", objectId);
+    }
+
+    private void deleteItemRelations(String itemId) {
+        deleteNextActionContexts(itemId);
+        jdbc.update("delete from project_items where item_id = ? or project_id = ?", itemId, itemId);
+        jdbc.update("delete from item_assets where item_id = ?", itemId);
+        jdbc.update("delete from next_actions where item_id = ?", itemId);
+        jdbc.update("delete from calendars where item_id = ?", itemId);
+        jdbc.update("delete from projects where item_id = ?", itemId);
     }
 
     private void syncNextActionContexts(String actionId, JsonNode payload) {
