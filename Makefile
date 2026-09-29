@@ -5,7 +5,7 @@ ARG2 := $(word 2,$(ARGS))
 ARG3_PLUS := $(wordlist 3,999,$(ARGS))
 ARG2_PLUS := $(wordlist 2,999,$(ARGS))
 
-.PHONY: help gtd client sync-server client-package client-install gtd-install dev staging client-dev client-staging test unit integration e2e check lint
+.PHONY: help gtd client mobile sync-server client-package client-install mobile-install gtd-install dev staging client-dev client-staging test unit integration e2e check lint
 
 help:
 	@if [ "$(PRIMARY_GOAL)" = "help" ] || [ -z "$(PRIMARY_GOAL)" ]; then \
@@ -17,8 +17,11 @@ help:
 	    '  make gtd staging            desktop + local API using staging data' \
 	    '  make client                 sync client using dev data' \
 	    '  make client staging         sync client using staging data' \
+	    '  make mobile                 mobile PWA + sync server using dev data' \
+	    '  make mobile staging         mobile PWA + sync server using staging data' \
 	    '  make client-package         build standalone client tarball' \
 	    '  make client-install [tag]   install published production client (latest or tag)' \
+	    '  make mobile-install [tag]   install client + mobile PWA + private Tailscale Serve' \
 	    '  make gtd-install [tag]      install published production desktop app (latest or tag)' \
 	    '' \
 	    'Test selection:' \
@@ -51,6 +54,11 @@ client:
 	  node scripts/run-client.mjs --env=$(if $(ARG1),$(ARG1),dev); \
 	fi
 
+mobile:
+	@if [ "$(PRIMARY_GOAL)" = "mobile" ]; then \
+	  node scripts/run-mobile.mjs --env=$(if $(ARG1),$(ARG1),dev); \
+	fi
+
 sync-server:
 	@if [ "$(PRIMARY_GOAL)" = "sync-server" ]; then \
 	  node scripts/run-client.mjs --env=$(if $(ARG1),$(ARG1),dev); \
@@ -65,6 +73,11 @@ client-package:
 client-install:
 	@if [ "$(PRIMARY_GOAL)" = "client-install" ]; then \
 	  node scripts/install-client-release.mjs $(if $(ARG1),--tag=$(ARG1)); \
+	fi
+
+mobile-install:
+	@if [ "$(PRIMARY_GOAL)" = "mobile-install" ]; then \
+	  node scripts/install-mobile-release.mjs $(if $(ARG1),--tag=$(ARG1)); \
 	fi
 
 gtd-install:

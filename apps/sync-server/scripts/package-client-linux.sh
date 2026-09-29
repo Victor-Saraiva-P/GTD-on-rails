@@ -13,6 +13,10 @@ archive_path="$release_dir/$package_name.tar.gz"
 jar_path="$build_dir/libs/gtd-sync-server.jar"
 
 [[ -f "$jar_path" ]] || { echo "$jar_path is invalid; expected built sync client jar"; exit 1; }
+jar tf "$jar_path" | grep -q '^BOOT-INF/classes/static/mobile/index.html$' || {
+  echo "$jar_path is invalid; expected packaged mobile PWA"
+  exit 1
+}
 command -v jpackage >/dev/null 2>&1 || { echo "jpackage is invalid; expected JDK 21 build tooling"; exit 127; }
 
 rm -rf "$release_dir" "$jpackage_dir"
