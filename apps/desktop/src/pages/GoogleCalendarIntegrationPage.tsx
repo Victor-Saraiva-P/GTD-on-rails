@@ -149,7 +149,18 @@ function ConnectionStatus({ controller }: Props) {
       <h2 style={headingStyle}>Connection Status</h2>
       <p>{controller.status?.connected ? <span style={doneStyle}>Connected</span> : <span style={mutedStyle}>{canConnect ? "Disconnected (Press 'c' to connect)" : `Disconnected (${reason})`}</span>}</p>
       <p style={mutedStyle}>{canReconcile ? "Press 'r' to reconcile GTD calendars." : "Reconcile available after connection."}</p>
+      {controller.status?.redirectUri && <OAuthRedirectUri redirectUri={controller.status.redirectUri} />}
       <button disabled={!canConnect} onClick={controller.connect} style={{ ...connectButtonStyle, opacity: canConnect ? 1 : 0.5 }}>Connect to Google Calendar</button>
+    </div>
+  );
+}
+
+function OAuthRedirectUri({ redirectUri }: Readonly<{ redirectUri: string }>) {
+  return (
+    <div style={redirectUriStyle}>
+      <p><strong>Google OAuth redirect URI</strong></p>
+      <code style={redirectUriCodeStyle}>{redirectUri}</code>
+      <p style={mutedStyle}>Register this exact URI under Authorized redirect URIs for the same Google OAuth client ID configured above.</p>
     </div>
   );
 }
@@ -265,6 +276,8 @@ const fieldsStyle = { display: "flex", flexDirection: "column", gap: "0.5rem" } 
 const inputStyle = { padding: "0.5rem", background: "var(--color-workspace-bg)", color: "var(--color-primary-text)", border: "1px solid var(--color-border)" } as const;
 const saveButtonStyle = { padding: "0.5rem", background: "var(--color-accent)", color: "var(--color-accent-text)", marginTop: "0.5rem", border: "none", cursor: "pointer" } as const;
 const connectButtonStyle = { padding: "0.5rem", marginTop: "0.75rem" } as const;
+const redirectUriStyle = { marginTop: "1rem", maxWidth: "42rem" } as const;
+const redirectUriCodeStyle = { display: "block", overflowWrap: "anywhere", userSelect: "all", padding: "0.5rem", background: "var(--color-app-surface)" } as const;
 const calendarsListStyle = { listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "0.5rem" } as const;
 const calendarRowStyle = { display: "flex", alignItems: "center", gap: "0.5rem" } as const;
 const calendarColorStyle = { width: "12px", height: "12px", borderRadius: "50%" } as const;

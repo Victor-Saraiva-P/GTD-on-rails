@@ -48,6 +48,7 @@ public class GoogleCalendarIntegrationController {
                 ? "Google Calendar configuration is ready on the sync client."
                 : "Google OAuth client credentials are missing on the sync client.",
             credentials.connected(),
+            callbackUrl(),
             calendarInfo()
         );
     }
@@ -133,6 +134,7 @@ public class GoogleCalendarIntegrationController {
         String configurationStatus,
         String configurationMessage,
         boolean connected,
+        String redirectUri,
         List<CalendarInfo> calendars
     ) {
     }

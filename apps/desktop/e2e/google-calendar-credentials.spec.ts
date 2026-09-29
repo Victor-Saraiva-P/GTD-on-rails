@@ -26,6 +26,7 @@ class GoogleCalendarApiFake {
       configurationStatus: "READY",
       configurationMessage: "Google Calendar is ready.",
       connected: this.savedCredentials === null,
+      redirectUri: "https://pc-omarchy.tail010544.ts.net/oauth/google/callback",
       calendars: []
     };
   }
@@ -35,6 +36,7 @@ test("configured Google Calendar credentials can be replaced and are cleared aft
   const googleCalendar = new GoogleCalendarApiFake();
   await googleCalendar.install(page);
   await openGoogleCalendarIntegration(page);
+  await expect(page.getByText("https://pc-omarchy.tail010544.ts.net/oauth/google/callback")).toBeVisible();
   await expect(page.getByRole("button", { name: "Update credentials" })).toBeVisible();
   await page.getByRole("button", { name: "Update credentials" }).click();
   await expectCredentialFieldsBlank(page);

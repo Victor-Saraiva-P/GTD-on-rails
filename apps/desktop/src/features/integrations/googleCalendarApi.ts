@@ -11,6 +11,7 @@ export type GoogleCalendarStatus = {
   configurationStatus: "MISSING" | "READY" | "REPAIR_FAILED" | "INVALID" | "UNAVAILABLE";
   configurationMessage: string;
   connected: boolean;
+  redirectUri?: string;
   calendars: GoogleCalendarInfo[];
 };
 
