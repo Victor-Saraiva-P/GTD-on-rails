@@ -137,6 +137,21 @@ class RemoteChangeAppliersTests {
     }
 
     @Test
+    void structuredApplierDeletesItemAndItsDependentRows() {
+        structuredApplier().apply(new SyncRemoteChange(
+            1L, "items", "item-1", 2L, "DELETE", null, null, null, null
+        ));
+
+        verify(jdbc).update("delete from next_action_contexts where next_action_id = ?", "item-1");
+        verify(jdbc).update("delete from project_items where item_id = ? or project_id = ?", "item-1", "item-1");
+        verify(jdbc).update("delete from item_assets where item_id = ?", "item-1");
+        verify(jdbc).update("delete from next_actions where item_id = ?", "item-1");
+        verify(jdbc).update("delete from calendars where item_id = ?", "item-1");
+        verify(jdbc).update("delete from projects where item_id = ?", "item-1");
+        verify(jdbc).update("delete from items where id = ?", "item-1");
+    }
+
+    @Test
     void structuredApplierIgnoresPayloadWithoutAllowedColumns() {
         structuredApplier().apply(new SyncRemoteChange(
             1L, "items", "item-1", 2L, "UPSERT", "{\"unknown\":\"value\"}", null, null, null
