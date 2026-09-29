@@ -24,6 +24,14 @@ class GoogleCalendarCallbackAccessFilterTests {
     }
 
     @Test
+    void callbackConnectorAllowsMobileShellAndApi() throws Exception {
+        assertAllowed(7676, "GET", "/mobile/");
+        assertAllowed(7676, "GET", "/mobile/app.js");
+        assertAllowed(7676, "GET", "/mobile-api/bootstrap");
+        assertAllowed(7676, "POST", "/mobile-api/inbox");
+    }
+
+    @Test
     void callbackConnectorRejectsOtherPathsAndMethods() throws Exception {
         assertRejected(7676, "GET", "/v1/integrations/google-calendar/status");
         assertRejected(7676, "POST", "/oauth/google/callback");
@@ -33,6 +41,14 @@ class GoogleCalendarCallbackAccessFilterTests {
     void normalSyncConnectorDoesNotUseCallbackRestrictions() throws Exception {
         MockFilterChain chain = new MockFilterChain();
         MockHttpServletResponse response = filterRequest(9475, "GET", "/health", chain);
+
+        assertEquals(200, response.getStatus());
+        assertNotNull(chain.getRequest());
+    }
+
+    private void assertAllowed(int port, String method, String path) throws Exception {
+        MockFilterChain chain = new MockFilterChain();
+        MockHttpServletResponse response = filterRequest(port, method, path, chain);
 
         assertEquals(200, response.getStatus());
         assertNotNull(chain.getRequest());

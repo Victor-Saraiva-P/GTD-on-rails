@@ -88,6 +88,20 @@ class SyncObjectStoreTests {
     }
 
     @Test
+    void objectsByTypeReturnsOnlyActiveObjectsOfRequestedType() {
+        SyncObjectStore store = new SyncObjectStore(databasePath());
+        store.apply(mutation("items", "active", 0, "UPSERT", "{\"title\":\"Active\"}"));
+        SyncMutationResult deletedItem = store.apply(mutation("items", "deleted", 0, "UPSERT", "{}"));
+        store.apply(mutation("items", "deleted", deletedItem.revision(), "DELETE", null));
+        store.apply(mutation("contexts", "context-1", 0, "UPSERT", "{}"));
+
+        var items = store.objectsByType("items");
+
+        assertEquals(1, items.size());
+        assertEquals("active", items.getFirst().objectId());
+    }
+
+    @Test
     void deleteCreatesTombstoneRevision() {
         SyncObjectStore store = new SyncObjectStore(databasePath());
         SyncMutationResult first = store.apply(mutation("items", "item-1", 0, "UPSERT", "{}"));

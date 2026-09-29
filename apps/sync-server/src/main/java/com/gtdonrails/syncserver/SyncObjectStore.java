@@ -70,6 +70,22 @@ public class SyncObjectStore {
     }
 
     /**
+     * Reads all non-deleted canonical objects for one type.
+     *
+     * <p>Example: {@code store.objectsByType("next_actions")}.</p>
+     */
+    public List<SyncObjectSnapshot> objectsByType(String objectType) {
+        requireText("objectType", objectType);
+        String sql = """
+            SELECT object_type, object_id, revision, payload, sha256, byte_length, media_type, deleted
+            FROM sync_objects
+            WHERE object_type = ? AND deleted = 0
+            ORDER BY object_id
+            """;
+        return withConnection(connection -> queryObjectsByType(connection, sql, objectType));
+    }
+
+    /**
      * Returns ordered changes strictly after the supplied cursor.
      *
      * <p>Example: {@code store.changesAfter(42, 100)}.</p>
@@ -391,6 +407,25 @@ public class SyncObjectStore {
             result.getString("media_type"),
             result.getInt("deleted") != 0
         );
+    }
+
+    private List<SyncObjectSnapshot> queryObjectsByType(
+        Connection connection,
+        String sql,
+        String objectType
+    ) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, objectType);
+            return readObjects(statement);
+        }
+    }
+
+    private List<SyncObjectSnapshot> readObjects(PreparedStatement statement) throws SQLException {
+        List<SyncObjectSnapshot> objects = new ArrayList<>();
+        try (ResultSet result = statement.executeQuery()) {
+            while (result.next()) objects.add(readObject(result));
+        }
+        return objects;
     }
 
     private List<SyncChange> queryChanges(Connection connection, long cursor, int limit) throws SQLException {

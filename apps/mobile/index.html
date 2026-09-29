@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1c1c1c">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="GTD">
+  <title>GTD on Rails</title>
+  <link rel="manifest" href="/mobile/manifest.webmanifest">
+  <link rel="stylesheet" href="/mobile/app.css">
+</head>
+<body data-screen="next">
+  <main class="mobile-workspace">
+    <div class="mobile-viewport">
+      <section id="status-banner" class="status-banner hidden" aria-live="polite"></section>
+
+      <section id="next-screen" class="screen screen--next active">
+        <div class="list-pane">
+          <header class="list-pane__header">
+            <div class="list-pane__heading">
+              <div class="list-pane__cap">
+                <span class="list-pane__title">Next Actions</span>
+                <span id="next-count" class="list-pane__meta"></span>
+              </div>
+            </div>
+          </header>
+          <div class="list-pane__toolbar">
+            <div id="context-filters" class="context-strip" aria-label="Context filters"></div>
+            <button id="refresh-button" class="terminal-button terminal-button--icon" type="button" aria-label="Refresh">↻</button>
+          </div>
+          <div id="next-actions" class="tree-list" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <section id="capture-screen" class="screen screen--capture">
+        <div class="list-pane">
+          <header class="list-pane__header">
+            <div class="list-pane__heading">
+              <div class="list-pane__cap">
+                <span class="list-pane__title">Quick Capture</span>
+                <span class="list-pane__meta">Stuff</span>
+              </div>
+            </div>
+          </header>
+          <form id="capture-form" class="capture-pane">
+            <div class="capture-entry">
+              <span class="tree-entry__glyph" aria-hidden="true">S</span>
+              <textarea
+                id="capture-title"
+                maxlength="200"
+                rows="4"
+                placeholder="What has your attention?"
+                aria-label="Stuff title"
+                required
+              ></textarea>
+            </div>
+            <div class="capture-command">
+              <span id="capture-count">0 / 200</span>
+              <span class="capture-hint">Process later on desktop</span>
+              <button type="submit" class="terminal-button terminal-button--accent">Capture</button>
+            </div>
+          </form>
+        </div>
+
+        <div id="pending-captures" class="pending-pane"></div>
+      </section>
+
+      <section id="calendar-screen" class="screen screen--calendar">
+        <div class="list-pane">
+          <header class="list-pane__header">
+            <div class="list-pane__heading">
+              <div class="list-pane__cap">
+                <span class="list-pane__title">Calendar</span>
+                <span id="calendar-count" class="list-pane__meta"></span>
+              </div>
+            </div>
+          </header>
+          <div class="list-pane__toolbar">
+            <div class="range-tabs" role="group" aria-label="Calendar range">
+              <button class="range-tab active" data-range="today" type="button">Today</button>
+              <button class="range-tab" data-range="week" type="button">Week</button>
+            </div>
+          </div>
+          <div id="calendar-items" class="tree-list" aria-live="polite"></div>
+        </div>
+      </section>
+    </div>
+
+    <footer class="mobile-statusline" aria-label="GTD on Rails mobile navigation">
+      <div class="mobile-statusline__brand">GTD on Rails</div>
+      <nav class="mobile-statusline__nav">
+        <button class="nav-button active" data-screen="next" type="button">
+          <span class="nav-glyph">N</span><span>Next</span>
+        </button>
+        <button class="nav-button" data-screen="capture" type="button">
+          <span class="nav-glyph">S</span><span>Capture</span>
+        </button>
+        <button class="nav-button" data-screen="calendar" type="button">
+          <span class="nav-glyph">C</span><span>Calendar</span>
+        </button>
+      </nav>
+    </footer>
+  </main>
+
+  <script type="module" src="/mobile/app.js"></script>
+</body>
+</html>
