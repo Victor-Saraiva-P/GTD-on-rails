@@ -377,6 +377,7 @@ mod tests {
         fs::create_dir_all(next.join("binaries")).unwrap();
         fs::write(pkg.join("gtd-on-rails"), b"app").unwrap();
         fs::write(pkg.join("gtd-api"), b"api").unwrap();
+        fs::write(pkg.join("gtd-on-rails-launcher"), b"launcher").unwrap();
         fs::write(pkg.join("binaries/gtd-api.jar"), b"jar").unwrap();
         fs::write(pkg.join("icon.png"), b"icon").unwrap();
 
@@ -384,6 +385,7 @@ mod tests {
 
         assert!(next.join("gtd-on-rails").is_file());
         assert!(next.join("gtd-api").is_file());
+        assert!(next.join("gtd-on-rails-launcher").is_file());
         assert!(next.join("binaries/gtd-api.jar").is_file());
         let _ = fs::remove_dir_all(&temp);
     }
