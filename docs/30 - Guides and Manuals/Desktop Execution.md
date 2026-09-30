@@ -142,7 +142,7 @@ The sync client writes structured Google Calendar OAuth, API, and projection eve
 
 ```sh
 journalctl --user -u gtd-on-rails-client.service --since "30 minutes ago" -o cat \
-  | jq 'select(.event | startswith("google_calendar_"))'
+  | jq 'select((.event // "") | startswith("google_calendar_"))'
 ```
 
 OAuth authorization events include the configured public client ID and exact redirect URI so they can be compared with the Google OAuth web client. Logs never include the client secret, authorization code, OAuth state, or access and refresh tokens.

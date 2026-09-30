@@ -1,8 +1,10 @@
 package com.gtdonrails.syncserver;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.format.DateTimeParseException;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
@@ -106,13 +108,14 @@ public class GoogleCalendarProjectionService {
         String target = "DONE".equals(text(value, "status"))
             ? GoogleCalendarReconciliationService.DONE
             : GoogleCalendarReconciliationService.PROJECT;
-        upsertOnly(target, allDayEvent(itemId, title(item), LocalDate.parse(deadline), LocalDate.parse(deadline)));
+        LocalDate date = parseDate(deadline, "deadline");
+        upsertOnly(target, allDayEvent(itemId, title(item), date, date));
         return true;
     }
 
     private Event calendarEvent(String itemId, String title, JsonNode calendar, String status) {
         if ("DONE".equals(status)) return scheduleEvent(itemId, title, calendar);
-        LocalDate date = LocalDate.parse(text(calendar, "scheduled_date"));
+        LocalDate date = date(calendar, "scheduled_date");
         String time = text(calendar, "scheduled_time");
         if (blank(time)) return allDayEvent(itemId, title, date, date);
         LocalDateTime start = LocalDateTime.parse(date + "T" + time);
@@ -121,7 +124,7 @@ public class GoogleCalendarProjectionService {
 
     private Event nextActionEvent(String itemId, String title, JsonNode action, String status) {
         if ("NEXT_ACTION".equals(status)) {
-            LocalDate deadline = LocalDate.parse(text(action, "deadline"));
+            LocalDate deadline = date(action, "deadline");
             return allDayEvent(itemId, title, deadline, deadline);
         }
         if ("ONGOING".equals(status)) {
@@ -134,8 +137,8 @@ public class GoogleCalendarProjectionService {
     }
 
     private Event scheduleEvent(String itemId, String title, JsonNode value) {
-        LocalDate startDate = LocalDate.parse(text(value, "date_start"));
-        LocalDate endDate = LocalDate.parse(text(value, "date_end"));
+        LocalDate startDate = date(value, "date_start");
+        LocalDate endDate = date(value, "date_end");
         if (value.path("all_day").asBoolean(false)) {
             return allDayEvent(itemId, title, startDate, endDate);
         }
@@ -145,7 +148,7 @@ public class GoogleCalendarProjectionService {
     }
 
     private LocalDateTime scheduleStart(JsonNode value) {
-        return LocalDateTime.parse(text(value, "date_start") + "T" + text(value, "time_start"));
+        return LocalDateTime.parse(date(value, "date_start") + "T" + text(value, "time_start"));
     }
 
     private boolean hasSchedule(JsonNode value) {
@@ -155,7 +158,58 @@ public class GoogleCalendarProjectionService {
     private LocalDate updatedDate(JsonNode value) {
         String updatedAt = text(value, "updated_at");
         if (blank(updatedAt)) return LocalDate.now();
-        return java.time.Instant.parse(updatedAt).atZone(ZoneId.systemDefault()).toLocalDate();
+        return parseInstant(updatedAt, "updated_at").atZone(ZoneId.systemDefault()).toLocalDate();
+    }
+
+    private LocalDate date(JsonNode value, String field) {
+        return parseDate(text(value, field), field);
+    }
+
+    private LocalDate parseDate(String value, String field) {
+        if (blank(value)) throw invalidDate(field, value, null);
+        try {
+            return LocalDate.parse(value);
+        } catch (DateTimeParseException exception) {
+            return epochDate(value, field, exception);
+        }
+    }
+
+    private LocalDate epochDate(String value, String field, DateTimeParseException parseFailure) {
+        try {
+            // Older canonical records encoded date-only values as local-midnight epoch milliseconds.
+            return Instant.ofEpochMilli(Long.parseLong(value))
+                .atZone(ZoneId.systemDefault()).toLocalDate();
+        } catch (NumberFormatException exception) {
+            throw invalidDate(field, value, parseFailure);
+        }
+    }
+
+    private Instant parseInstant(String value, String field) {
+        try {
+            return Instant.parse(value);
+        } catch (DateTimeParseException exception) {
+            return epochInstant(value, field, exception);
+        }
+    }
+
+    private Instant epochInstant(String value, String field, DateTimeParseException parseFailure) {
+        try {
+            return Instant.ofEpochMilli(Long.parseLong(value));
+        } catch (NumberFormatException exception) {
+            throw new IllegalArgumentException(
+                "Calendar timestamp field '" + field + "' has value '" + value
+                    + "'; expected an ISO-8601 instant or epoch milliseconds",
+                parseFailure
+            );
+        }
+    }
+
+    private IllegalArgumentException invalidDate(String field, String value, Exception cause) {
+        return new IllegalArgumentException(
+            "Calendar date field '" + field + "' has value '" + value
+                + "'; expected an ISO-8601 date or epoch milliseconds",
+            cause
+        );
     }
 
     private void upsertOnly(String targetName, Event event) {
