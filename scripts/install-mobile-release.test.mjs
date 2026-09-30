@@ -89,6 +89,7 @@ test("configure mobile serve replaces Funnel with a private proxy", () => {
       },
       AllowFunnel: { [serveAddress]: true }
     }),
+    "",
     JSON.stringify({
       Web: {
         [serveAddress]: {
