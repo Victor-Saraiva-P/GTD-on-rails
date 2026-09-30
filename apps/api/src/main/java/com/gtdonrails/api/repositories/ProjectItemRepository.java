@@ -63,4 +63,8 @@ public interface ProjectItemRepository extends JpaRepository<ProjectItem, UUID> 
     @Modifying
     @Query(value = "delete from project_items where item_id = :itemId", nativeQuery = true)
     void deleteByItemId(@Param("itemId") UUID itemId);
+
+    @Modifying
+    @Query(value = "delete from project_items where project_id = :projectId", nativeQuery = true)
+    void deleteByProjectId(@Param("projectId") UUID projectId);
 }
