@@ -10,10 +10,14 @@ import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.services.calendar.Calendar;
 import com.google.api.services.calendar.model.CalendarListEntry;
 import com.google.api.services.calendar.model.Event;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 @Component
 public class GoogleCalendarApi {
+
+    private static final Logger logger = LoggerFactory.getLogger(GoogleCalendarApi.class);
 
     private final GoogleCalendarOAuthService oauth;
 
@@ -103,6 +107,14 @@ public class GoogleCalendarApi {
     }
 
     private IllegalStateException failure(String action, Exception exception) {
+        var event = logger.atError()
+            .addKeyValue("event", "google_calendar_api_request_failed")
+            .addKeyValue("operation", action)
+            .addKeyValue("failureType", exception.getClass().getSimpleName());
+        if (exception instanceof GoogleJsonResponseException responseException) {
+            event.addKeyValue("httpStatus", responseException.getStatusCode());
+        }
+        event.log("Google Calendar API operation failed");
         return new IllegalStateException("Failed to " + action + " in Google Calendar", exception);
     }
 }

@@ -135,3 +135,14 @@ The installer creates `~/.local/share/gtd-on-rails-client`, `~/.local/bin/gtd-cl
 The sync dataset remains separate at `~/.local/share/gtd-on-rails-sync-server` by default, so replacing or rolling back client binaries never replaces canonical data.
 
 Managed client installations self-check GitHub releases. The administration dashboard's **Client** tab shows current/latest version and update state and allows manual check/install. Auto-update can be disabled with `GTD_CLIENT_AUTO_UPDATE_ENABLED=false` in `~/.config/gtd-on-rails-client.env`.
+
+### Google Calendar diagnostics
+
+The sync client writes structured Google Calendar OAuth, API, and projection events to its systemd user journal. Inspect recent Calendar events on the sync client with:
+
+```sh
+journalctl --user -u gtd-on-rails-client.service --since "30 minutes ago" -o cat \
+  | jq 'select(.event | startswith("google_calendar_"))'
+```
+
+OAuth authorization events include the configured public client ID and exact redirect URI so they can be compared with the Google OAuth web client. Logs never include the client secret, authorization code, OAuth state, or access and refresh tokens.

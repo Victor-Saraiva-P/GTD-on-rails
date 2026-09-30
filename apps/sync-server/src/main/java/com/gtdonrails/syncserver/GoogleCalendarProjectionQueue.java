@@ -6,6 +6,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import jakarta.annotation.PreDestroy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -13,6 +15,7 @@ import org.springframework.stereotype.Service;
 public class GoogleCalendarProjectionQueue {
 
     private static final int BATCH_SIZE = 25;
+    private static final Logger logger = LoggerFactory.getLogger(GoogleCalendarProjectionQueue.class);
 
     private final GoogleCalendarProjectionService projection;
     private final GoogleCalendarMirrorStore store;
@@ -94,6 +97,8 @@ public class GoogleCalendarProjectionQueue {
     }
 
     private boolean processPending() {
+        logger.atInfo().addKeyValue("event", "google_calendar_projection_batch_started")
+            .addKeyValue("pendingCount", store.pendingCount()).log("Google Calendar projection batch started");
         for (var pending : store.pending(BATCH_SIZE)) {
             if (!processOne(pending.objectId())) return false;
         }
@@ -108,6 +113,10 @@ public class GoogleCalendarProjectionQueue {
         } catch (RuntimeException exception) {
             lastError = exception.getMessage();
             state = "FAILED";
+            logger.atError()
+                .addKeyValue("event", "google_calendar_projection_failed")
+                .addKeyValue("failureType", exception.getClass().getSimpleName())
+                .log("Google Calendar item projection failed");
             store.markFailed(objectId, exception.getMessage());
             return false;
         }
@@ -117,6 +126,8 @@ public class GoogleCalendarProjectionQueue {
         lastSuccessfulSyncAt = Instant.now();
         lastError = null;
         refreshIdleState();
+        logger.atInfo().addKeyValue("event", "google_calendar_projection_batch_completed")
+            .addKeyValue("pendingCount", store.pendingCount()).log("Google Calendar projection batch completed");
     }
 
     private void refreshIdleState() {
