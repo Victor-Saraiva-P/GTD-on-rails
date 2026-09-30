@@ -19,6 +19,7 @@ import com.gtdonrails.api.repositories.ItemAssetRepository;
 import com.gtdonrails.api.repositories.ItemRepository;
 import com.gtdonrails.api.repositories.MaintenanceRunRepository;
 import com.gtdonrails.api.repositories.NextActionRepository;
+import com.gtdonrails.api.repositories.ProjectItemRepository;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -37,6 +38,7 @@ public class DeletedDataCleanupService {
     private final ItemAssetRepository itemAssetRepository;
     private final ContextIconAssetRepository contextIconAssetRepository;
     private final ContextRepository contextRepository;
+    private final ProjectItemRepository projectItemRepository;
     private final AssetStorageService assetStorageService;
     private final Clock clock;
 
@@ -48,6 +50,7 @@ public class DeletedDataCleanupService {
         ItemAssetRepository itemAssetRepository,
         ContextIconAssetRepository contextIconAssetRepository,
         ContextRepository contextRepository,
+        ProjectItemRepository projectItemRepository,
         AssetStorageService assetStorageService,
         Clock clock
     ) {
@@ -58,6 +61,7 @@ public class DeletedDataCleanupService {
         this.itemAssetRepository = itemAssetRepository;
         this.contextIconAssetRepository = contextIconAssetRepository;
         this.contextRepository = contextRepository;
+        this.projectItemRepository = projectItemRepository;
         this.assetStorageService = assetStorageService;
         this.clock = clock;
     }
@@ -147,6 +151,7 @@ public class DeletedDataCleanupService {
     private void purgeItem(Item item) {
         itemAssetRepository.findAllByItemId(item.getId()).forEach(this::deleteItemAssetFile);
         nextActionRepository.deleteContextLinks(item.getId());
+        projectItemRepository.deleteByProjectId(item.getId());
         itemRepository.delete(item);
     }
 

@@ -61,7 +61,7 @@ public class Item extends AuditableEntity {
     @OneToOne(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true)
     private Project project;
 
-    @OneToOne(mappedBy = "item")
+    @OneToOne(mappedBy = "item", cascade = CascadeType.REMOVE, orphanRemoval = true)
     private ProjectItem projectItem;
 
     @OneToMany(mappedBy = "item", cascade = CascadeType.REMOVE, orphanRemoval = true)
