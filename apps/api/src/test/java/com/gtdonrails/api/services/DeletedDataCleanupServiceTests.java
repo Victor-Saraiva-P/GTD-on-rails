@@ -29,6 +29,7 @@ import com.gtdonrails.api.repositories.ItemAssetRepository;
 import com.gtdonrails.api.repositories.ItemRepository;
 import com.gtdonrails.api.repositories.MaintenanceRunRepository;
 import com.gtdonrails.api.repositories.NextActionRepository;
+import com.gtdonrails.api.repositories.ProjectItemRepository;
 import com.gtdonrails.api.types.Title;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
@@ -63,6 +64,9 @@ class DeletedDataCleanupServiceTests {
     private ContextRepository contextRepository;
 
     @Mock
+    private ProjectItemRepository projectItemRepository;
+
+    @Mock
     private AssetStorageService assetStorageService;
 
     private DeletedDataCleanupService cleanupService;
@@ -71,7 +75,8 @@ class DeletedDataCleanupServiceTests {
     void setUp() {
         cleanupService = new DeletedDataCleanupService(
             cleanupProperties(), maintenanceRunRepository, itemRepository, nextActionRepository,
-            itemAssetRepository, contextIconAssetRepository, contextRepository, assetStorageService, fixedClock());
+            itemAssetRepository, contextIconAssetRepository, contextRepository, projectItemRepository,
+            assetStorageService, fixedClock());
     }
 
     @Test
@@ -140,6 +145,7 @@ class DeletedDataCleanupServiceTests {
         cleanupService.runIfDue();
 
         verify(nextActionRepository).deleteContextLinks(item.getId());
+        verify(projectItemRepository).deleteByProjectId(item.getId());
         verify(itemRepository).delete(item);
         verify(assetStorageService).deleteAsset(asset.relativePath());
     }
@@ -155,6 +161,7 @@ class DeletedDataCleanupServiceTests {
         cleanupService.runIfDue();
 
         verify(nextActionRepository).deleteContextLinks(item.getId());
+        verify(projectItemRepository).deleteByProjectId(item.getId());
         verify(itemRepository).delete(item);
     }
 
