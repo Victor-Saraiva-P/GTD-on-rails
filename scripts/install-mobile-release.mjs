@@ -6,6 +6,7 @@ import {
 import { waitForHttpReady } from "./process-runner.mjs";
 
 const DEFAULT_CALLBACK_PORT = "7676";
+const DEFAULT_SERVE_PORT = "443";
 
 export async function installMobileRelease(tag, environment = process.env, dependencies = {}) {
   const installClient = dependencies.installClientRelease ?? installClientRelease;
@@ -24,12 +25,16 @@ export function mobileLocalUrl(environment = process.env) {
 export function configureMobileServe(environment = process.env, run = runTailscale) {
   const port = environment.GTD_SYNC_SERVER_GOOGLE_CALLBACK_PORT ?? DEFAULT_CALLBACK_PORT;
   const target = `http://127.0.0.1:${port}`;
-  const status = parseJson(run(["serve", "status", "--json"]), "serve status");
-  assertCompatibleServe(status, target);
-  assertNoFunnel(status);
-  run(["serve", "--bg", "--yes", target]);
-  assertPrivateServe(parseJson(run(["serve", "status", "--json"]), "serve status"), target);
   const dnsName = tailscaleDnsName(run(["status", "--json"]));
+  const serveAddress = `${dnsName}:${DEFAULT_SERVE_PORT}`;
+  const status = parseJson(run(["serve", "status", "--json"]), "serve status");
+  assertCompatibleServe(status, target, serveAddress);
+  run(["serve", "--bg", "--yes", target]);
+  assertPrivateServe(
+    parseJson(run(["serve", "status", "--json"]), "serve status"),
+    target,
+    serveAddress
+  );
   const url = `https://${dnsName}/mobile/`;
   console.log(`Mobile PWA: ${url}`);
   return url;
@@ -42,34 +47,26 @@ export function tailscaleDnsName(statusJson) {
   throw new Error("Tailscale MagicDNS name is unavailable; expected connected client machine");
 }
 
-export function assertCompatibleServe(status, target) {
-  const proxies = rootProxies(status);
-  const conflict = proxies.find((proxy) => proxy !== target);
-  if (!conflict) return;
+export function assertCompatibleServe(status, target, serveAddress) {
+  const proxy = status?.Web?.[serveAddress]?.Handlers?.["/"]?.Proxy;
+  if (!proxy || proxy === target) return;
   throw new Error(
-    `Tailscale Serve root proxy '${conflict}' conflicts with mobile target '${target}'; expected empty or matching root proxy`
+    `Tailscale Serve endpoint '${serveAddress}' proxies to '${proxy}'; expected mobile target '${target}'`
   );
 }
 
-export function assertPrivateServe(status, target) {
-  const proxies = rootProxies(status);
-  if (!proxies.includes(target)) {
-    throw new Error(`Tailscale Serve target '${target}' is missing after configuration`);
+export function assertPrivateServe(status, target, serveAddress) {
+  const proxy = status?.Web?.[serveAddress]?.Handlers?.["/"]?.Proxy;
+  if (proxy !== target) {
+    throw new Error(
+      `Tailscale Serve endpoint '${serveAddress}' proxies to '${proxy ?? "missing"}'; expected '${target}'`
+    );
   }
-  assertNoFunnel(status);
-}
-
-export function assertNoFunnel(status) {
-  const publicHosts = Object.values(status?.AllowFunnel ?? {}).filter(Boolean);
-  if (publicHosts.length === 0) return;
-  throw new Error("Tailscale Funnel is enabled; expected private tailnet-only Serve for mobile");
-}
-
-function rootProxies(status) {
-  const web = status?.Web ?? {};
-  return Object.values(web)
-    .map((entry) => entry?.Handlers?.["/"]?.Proxy)
-    .filter(Boolean);
+  if (status?.AllowFunnel?.[serveAddress]) {
+    throw new Error(
+      `Tailscale Funnel is enabled for '${serveAddress}'; expected private tailnet-only Serve`
+    );
+  }
 }
 
 function parseJson(raw, label) {

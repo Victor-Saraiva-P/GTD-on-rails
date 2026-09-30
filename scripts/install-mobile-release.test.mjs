@@ -26,73 +26,80 @@ test("tailscale DNS name requires a connected MagicDNS identity", () => {
   assert.throws(() => tailscaleDnsName("{}"), /MagicDNS name is unavailable/);
 });
 
-test("compatible serve accepts empty or matching root proxy", () => {
-  assert.doesNotThrow(() => assertCompatibleServe({}, "http://127.0.0.1:7676"));
+test("compatible serve accepts empty or matching mobile endpoint", () => {
+  const serveAddress = "client.tailnet.ts.net:443";
+  assert.doesNotThrow(() => assertCompatibleServe({}, "http://127.0.0.1:7676", serveAddress));
   assert.doesNotThrow(() => assertCompatibleServe({
     Web: {
-      "client.tailnet.ts.net:443": {
+      [serveAddress]: {
         Handlers: { "/": { Proxy: "http://127.0.0.1:7676" } }
       }
     }
-  }, "http://127.0.0.1:7676"));
+  }, "http://127.0.0.1:7676", serveAddress));
 });
 
-test("compatible serve rejects a conflicting root proxy", () => {
+test("compatible serve rejects a conflicting mobile endpoint proxy", () => {
+  const serveAddress = "client.tailnet.ts.net:443";
   assert.throws(() => assertCompatibleServe({
     Web: {
-      "client.tailnet.ts.net:443": {
+      [serveAddress]: {
         Handlers: { "/": { Proxy: "http://127.0.0.1:3000" } }
       }
     }
-  }, "http://127.0.0.1:7676"), /conflicts with mobile target/);
+  }, "http://127.0.0.1:7676", serveAddress), /expected mobile target/);
 });
 
-test("private serve rejects Funnel and requires the mobile proxy", () => {
+test("private serve requires the mobile proxy and rejects Funnel on that endpoint", () => {
+  const serveAddress = "client.tailnet.ts.net:443";
+  const unrelatedAddress = "client.tailnet.ts.net:8443";
   const matching = {
     Web: {
-      "client.tailnet.ts.net:443": {
+      [serveAddress]: {
         Handlers: { "/": { Proxy: "http://127.0.0.1:7676" } }
       }
     }
   };
-  assert.doesNotThrow(() => assertPrivateServe(matching, "http://127.0.0.1:7676"));
+  assert.doesNotThrow(() => assertPrivateServe(matching, "http://127.0.0.1:7676", serveAddress));
   assert.throws(
-    () => assertPrivateServe({ ...matching, AllowFunnel: { "client.tailnet.ts.net:443": true } }, "http://127.0.0.1:7676"),
+    () => assertPrivateServe(
+      { ...matching, AllowFunnel: { [serveAddress]: true } },
+      "http://127.0.0.1:7676",
+      serveAddress
+    ),
     /Funnel is enabled/
   );
+  assert.doesNotThrow(() => assertPrivateServe(
+    { ...matching, AllowFunnel: { [unrelatedAddress]: true } },
+    "http://127.0.0.1:7676",
+    serveAddress
+  ));
 });
 
-test("configure mobile serve rejects Funnel before changing Serve", () => {
+test("configure mobile serve replaces Funnel with a private proxy", () => {
+  const serveAddress = "client.tailnet.ts.net:443";
+  const unrelatedAddress = "client.tailnet.ts.net:8443";
   const calls = [];
-  const runner = (args) => {
-    calls.push(args);
-    return JSON.stringify({
+  const responses = [
+    JSON.stringify({ Self: { DNSName: "client.tailnet.ts.net." } }),
+    JSON.stringify({
       Web: {
-        "client.tailnet.ts.net:443": {
+        [serveAddress]: {
           Handlers: { "/": { Proxy: "http://127.0.0.1:7676" } }
         }
       },
-      AllowFunnel: { "client.tailnet.ts.net:443": true }
-    });
-  };
-
-  assert.throws(() => configureMobileServe({}, runner), /Funnel is enabled/);
-  assert.deepEqual(calls, [["serve", "status", "--json"]]);
-});
-
-test("configure mobile serve creates private HTTPS access", () => {
-  const calls = [];
-  const responses = [
-    JSON.stringify({ Web: {} }),
-    "",
+      AllowFunnel: { [serveAddress]: true }
+    }),
     JSON.stringify({
       Web: {
-        "client.tailnet.ts.net:443": {
+        [serveAddress]: {
           Handlers: { "/": { Proxy: "http://127.0.0.1:7676" } }
+        },
+        [unrelatedAddress]: {
+          Handlers: { "/": { Proxy: "http://127.0.0.1:9000" } }
         }
-      }
-    }),
-    JSON.stringify({ Self: { DNSName: "client.tailnet.ts.net." } })
+      },
+      AllowFunnel: { [serveAddress]: false, [unrelatedAddress]: true }
+    })
   ];
   const runner = (args) => {
     calls.push(args);
@@ -102,7 +109,37 @@ test("configure mobile serve creates private HTTPS access", () => {
   const url = configureMobileServe({}, runner);
 
   assert.equal(url, "https://client.tailnet.ts.net/mobile/");
-  assert.deepEqual(calls[1], ["serve", "--bg", "--yes", "http://127.0.0.1:7676"]);
+  assert.deepEqual(calls, [
+    ["status", "--json"],
+    ["serve", "status", "--json"],
+    ["serve", "--bg", "--yes", "http://127.0.0.1:7676"],
+    ["serve", "status", "--json"]
+  ]);
+});
+
+test("configure mobile serve creates private HTTPS access", () => {
+  const calls = [];
+  const responses = [
+    JSON.stringify({ Self: { DNSName: "client.tailnet.ts.net." } }),
+    JSON.stringify({ Web: {} }),
+    "",
+    JSON.stringify({
+      Web: {
+        "client.tailnet.ts.net:443": {
+          Handlers: { "/": { Proxy: "http://127.0.0.1:7676" } }
+        }
+      }
+    })
+  ];
+  const runner = (args) => {
+    calls.push(args);
+    return responses.shift();
+  };
+
+  const url = configureMobileServe({}, runner);
+
+  assert.equal(url, "https://client.tailnet.ts.net/mobile/");
+  assert.deepEqual(calls[2], ["serve", "--bg", "--yes", "http://127.0.0.1:7676"]);
 });
 
 test("install mobile release installs client before configuring serve", async () => {
