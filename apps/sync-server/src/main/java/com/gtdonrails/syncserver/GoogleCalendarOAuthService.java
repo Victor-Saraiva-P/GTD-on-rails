@@ -3,12 +3,15 @@ package com.gtdonrails.syncserver;
 import java.time.Instant;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.HttpClientErrorException;
@@ -17,6 +20,8 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 @Service
 public class GoogleCalendarOAuthService {
+
+    private static final Logger logger = LoggerFactory.getLogger(GoogleCalendarOAuthService.class);
 
     private static final String AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
     private static final String TOKEN_URL = "https://oauth2.googleapis.com/token";
@@ -34,6 +39,11 @@ public class GoogleCalendarOAuthService {
     public String buildAuthUrl(String redirectUri) {
         var client = requiredClientCredentials();
         String state = credentials.createOAuthState();
+        logger.atInfo()
+            .addKeyValue("event", "google_calendar_oauth_authorization_started")
+            .addKeyValue("clientId", client.clientId())
+            .addKeyValue("redirectUri", redirectUri)
+            .log("Generated Google Calendar OAuth authorization request");
         return UriComponentsBuilder.fromUriString(AUTH_URL)
             .queryParam("client_id", client.clientId())
             .queryParam("redirect_uri", redirectUri)
@@ -52,7 +62,17 @@ public class GoogleCalendarOAuthService {
             throw new IllegalArgumentException("OAuth state is invalid or expired");
         }
         var client = requiredClientCredentials();
-        Map<String, Object> body = tokenRequest(authCodeBody(client, code, redirectUri));
+        Map<String, Object> body;
+        try {
+            body = tokenRequest(authCodeBody(client, code, redirectUri));
+        } catch (HttpStatusCodeException exception) {
+            logger.atError()
+                .addKeyValue("event", "google_calendar_oauth_token_exchange_failed")
+                .addKeyValue("grantType", "authorization_code")
+                .addKeyValue("httpStatus", exception.getStatusCode().value())
+                .log("Google Calendar OAuth token exchange failed");
+            throw exception;
+        }
         credentials.saveToken(tokenFrom(body, null));
     }
 
@@ -75,6 +95,11 @@ public class GoogleCalendarOAuthService {
             credentials.saveToken(refreshed);
             return refreshed.accessToken();
         } catch (HttpClientErrorException exception) {
+            logger.atError()
+                .addKeyValue("event", "google_calendar_oauth_token_exchange_failed")
+                .addKeyValue("grantType", "refresh_token")
+                .addKeyValue("httpStatus", exception.getStatusCode().value())
+                .log("Google Calendar OAuth token refresh failed");
             credentials.clearToken();
             throw new IllegalStateException("Google Calendar authorization is invalid or revoked", exception);
         }

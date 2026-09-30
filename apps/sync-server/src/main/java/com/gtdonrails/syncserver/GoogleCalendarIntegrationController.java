@@ -4,6 +4,8 @@ import java.net.URI;
 import java.util.List;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,6 +16,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 public class GoogleCalendarIntegrationController {
+
+    private static final Logger logger = LoggerFactory.getLogger(GoogleCalendarIntegrationController.class);
 
     private final GoogleCalendarCredentialsStore credentials;
     private final GoogleCalendarMirrorStore mirrors;
@@ -56,6 +60,8 @@ public class GoogleCalendarIntegrationController {
     @PostMapping("/v1/integrations/google-calendar/credentials")
     public ResponseEntity<Void> saveCredentials(@RequestBody ClientCredentials request) {
         credentials.saveClientCredentials(request.clientId(), request.clientSecret());
+        logger.atInfo().addKeyValue("event", "google_calendar_oauth_credentials_saved")
+            .addKeyValue("clientId", request.clientId().trim()).log("Saved Google Calendar OAuth client credentials");
         return ResponseEntity.ok().build();
     }
 
@@ -83,8 +89,13 @@ public class GoogleCalendarIntegrationController {
         try {
             oauth.exchangeCode(code, state, callbackUrl());
             reconciliation.reconcile();
+            logger.atInfo().addKeyValue("event", "google_calendar_oauth_callback_completed")
+                .addKeyValue("redirectUri", callbackUrl()).log("Google Calendar OAuth callback completed");
             return ResponseEntity.ok(successPage());
         } catch (RuntimeException exception) {
+            logger.atError().addKeyValue("event", "google_calendar_oauth_callback_failed")
+                .addKeyValue("redirectUri", callbackUrl())
+                .addKeyValue("failureType", exception.getClass().getSimpleName()).log("Google Calendar OAuth callback failed");
             return ResponseEntity.internalServerError().body(failurePage());
         }
     }
