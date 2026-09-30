@@ -8,21 +8,30 @@ import {
   assertPortAvailable,
   runBuild,
   spawnManagedProcess,
+  stopProcessGroup,
   superviseProcesses
 } from "./process-runner.mjs";
 
-export async function startClient(environmentName = "dev") {
+export async function startClient(environmentName = "dev", hooks = {}) {
   const normalized = normalizeRuntimeEnvironment(environmentName);
   const environment = clientRuntimeEnvironment(normalized);
   const port = Number(environment.GTD_SYNC_SERVER_PORT);
   await assertPortAvailable(port, environment.GTD_SYNC_SERVER_BIND_ADDRESS);
-
   runBuild(clientBuildSpec(), environment);
   const child = spawnManagedProcess(clientProcessSpec(), environment);
-
-  console.log(`GTD sync client environment: ${normalized}`);
-  console.log(`Sync dashboard: http://127.0.0.1:${environment.GTD_SYNC_SERVER_PORT}/`);
+  printClientRuntime(normalized, environment);
+  try {
+    if (hooks.afterStart) await hooks.afterStart(environment);
+  } catch (error) {
+    stopProcessGroup(child);
+    throw error;
+  }
   superviseProcesses([child]);
+}
+
+function printClientRuntime(environmentName, environment) {
+  console.log(`GTD sync client environment: ${environmentName}`);
+  console.log(`Sync dashboard: http://127.0.0.1:${environment.GTD_SYNC_SERVER_PORT}/`);
 }
 
 function argumentValue(name, fallback) {

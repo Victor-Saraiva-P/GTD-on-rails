@@ -31,6 +31,13 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
+tasks.named('processResources') {
+    from('../mobile') {
+        into 'static/mobile'
+        exclude 'package.json'
+    }
+}
+
 tasks.named('bootJar') {
     archiveFileName = 'gtd-sync-server.jar'
     manifest {

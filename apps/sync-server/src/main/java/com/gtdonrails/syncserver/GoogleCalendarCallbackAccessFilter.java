@@ -37,15 +37,27 @@ public class GoogleCalendarCallbackAccessFilter extends OncePerRequestFilter {
         HttpServletResponse response,
         FilterChain chain
     ) throws ServletException, IOException {
-        if (!isGoogleCallback(request)) {
+        if (!isAllowedPublicRequest(request)) {
             response.sendError(HttpServletResponse.SC_NOT_FOUND);
             return;
         }
         chain.doFilter(request, response);
     }
 
+    private boolean isAllowedPublicRequest(HttpServletRequest request) {
+        if (isGoogleCallback(request)) return true;
+        return isMobileRequest(request);
+    }
+
     private boolean isGoogleCallback(HttpServletRequest request) {
         return "GET".equals(request.getMethod())
             && "/oauth/google/callback".equals(request.getRequestURI());
+    }
+
+    private boolean isMobileRequest(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        if (path.startsWith("/mobile-api/")) return true;
+        return "GET".equals(request.getMethod())
+            && ("/mobile".equals(path) || path.startsWith("/mobile/"));
     }
 }

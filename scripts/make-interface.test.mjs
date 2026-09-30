@@ -18,6 +18,11 @@ test("client defaults to dev and accepts explicit dev", async () => {
   assert.deepEqual(await runMake(["client", "dev"]), ["scripts/run-client.mjs --env=dev"]);
 });
 
+test("mobile defaults to dev and accepts staging", async () => {
+  assert.deepEqual(await runMake(["mobile"]), ["scripts/run-mobile.mjs --env=dev"]);
+  assert.deepEqual(await runMake(["mobile", "staging"]), ["scripts/run-mobile.mjs --env=staging"]);
+});
+
 test("test selection is positional without executing matching make targets", async () => {
   const calls = await runMake(["test", "unit", "client", "SnapshotBackupServiceTests"]);
   assert.deepEqual(calls, [
@@ -41,6 +46,13 @@ test("client-install invokes installer script with optional tag", async () => {
   assert.deepEqual(await runMake(["client-install"]), ["scripts/install-client-release.mjs"]);
   assert.deepEqual(await runMake(["client-install", "v3.0.1"]), [
     "scripts/install-client-release.mjs --tag=v3.0.1"
+  ]);
+});
+
+test("mobile-install invokes mobile installer with optional tag", async () => {
+  assert.deepEqual(await runMake(["mobile-install"]), ["scripts/install-mobile-release.mjs"]);
+  assert.deepEqual(await runMake(["mobile-install", "v3.2.0"]), [
+    "scripts/install-mobile-release.mjs --tag=v3.2.0"
   ]);
 });
 

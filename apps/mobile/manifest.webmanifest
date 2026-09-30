@@ -1,0 +1,10 @@
+{
+  "name": "GTD on Rails",
+  "short_name": "GTD",
+  "start_url": "/mobile/",
+  "scope": "/mobile/",
+  "display": "standalone",
+  "background_color": "#1c1c1c",
+  "theme_color": "#1c1c1c",
+  "description": "Quick capture, next actions, and calendar for GTD on Rails."
+}

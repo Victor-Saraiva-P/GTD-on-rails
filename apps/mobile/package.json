@@ -1,0 +1,13 @@
+{
+  "name": "@gtd-on-rails/mobile",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "build": "node --check app.js && node --check offline-store.js && node --check service-worker.js",
+    "test": "node --test",
+    "unitTest": "node --test",
+    "integrationTest": "node --test",
+    "lint": "node --check app.js && node --check offline-store.js && node --check service-worker.js",
+    "check": "node --check app.js && node --check offline-store.js && node --check service-worker.js"
+  }
+}
