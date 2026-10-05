@@ -5,7 +5,7 @@ ARG2 := $(word 2,$(ARGS))
 ARG3_PLUS := $(wordlist 3,999,$(ARGS))
 ARG2_PLUS := $(wordlist 2,999,$(ARGS))
 
-.PHONY: help gtd client mobile sync-server client-package client-install mobile-install gtd-install dev staging client-dev client-staging test unit integration e2e check lint
+.PHONY: help gtd cli cli-install client mobile sync-server client-package client-install mobile-install gtd-install dev staging client-dev client-staging test unit integration e2e check lint
 
 help:
 	@if [ "$(PRIMARY_GOAL)" = "help" ] || [ -z "$(PRIMARY_GOAL)" ]; then \
@@ -15,6 +15,8 @@ help:
 	    'Run processes in separate terminals:' \
 	    '  make gtd                    desktop + local API using dev data' \
 	    '  make gtd staging            desktop + local API using staging data' \
+	    '  make cli <args...>          run the GTD agent CLI against the local API' \
+	    '  make cli-install            install gtd CLI + headless agent access' \
 	    '  make client                 sync client using dev data' \
 	    '  make client staging         sync client using staging data' \
 	    '  make mobile                 mobile PWA + sync server using dev data' \
@@ -47,6 +49,18 @@ help:
 gtd:
 	@if [ "$(PRIMARY_GOAL)" = "gtd" ]; then \
 	  node scripts/run-gtd.mjs --env=$(if $(ARG1),$(ARG1),dev); \
+	fi
+
+cli:
+	@if [ "$(PRIMARY_GOAL)" = "cli" ]; then \
+	  cargo run --manifest-path apps/cli/Cargo.toml -- $(ARGS); \
+	fi
+
+cli-install:
+	@if [ "$(PRIMARY_GOAL)" = "cli-install" ]; then \
+	  cargo install --locked --path apps/cli --root "$$HOME/.local" --force; \
+	  "$$HOME/.local/bin/gtd" agent configure-antigravity; \
+	  "$$HOME/.local/bin/gtd" agent configure-codex; \
 	fi
 
 client:

@@ -12,12 +12,16 @@ test -x "$release_dir/desktop" || { echo "$release_dir/desktop is invalid; expec
 test -x "$release_dir/gtd-api" || { echo "$release_dir/gtd-api is invalid; expected built sidecar launcher"; exit 1; }
 test -f "$release_dir/binaries/gtd-api.jar" || { echo "$release_dir/binaries/gtd-api.jar is invalid; expected backend jar"; exit 1; }
 
+cargo build --locked --release --manifest-path ../cli/Cargo.toml
+test -x "../cli/target/release/gtd" || { echo "../cli/target/release/gtd is invalid; expected built agent CLI"; exit 1; }
+
 rm -rf "$native_dir"
 mkdir -p "$package_dir/binaries"
 
 cp "$release_dir/desktop" "$package_dir/gtd-on-rails"
 cp "$release_dir/gtd-api" "$package_dir/gtd-api"
 cp "$release_dir/binaries/gtd-api.jar" "$package_dir/binaries/gtd-api.jar"
+cp "../cli/target/release/gtd" "$package_dir/gtd"
 cp "src-tauri/icons/icon.png" "$package_dir/icon.png"
 cp "scripts/gtd-on-rails-launcher" "$package_dir/gtd-on-rails-launcher"
 cp "scripts/install-native-linux.sh" "$package_dir/install.sh"
