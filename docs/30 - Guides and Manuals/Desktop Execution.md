@@ -106,7 +106,7 @@ To install a specific version or release tag:
 make gtd-install v3.0.1
 ```
 
-The installer verifies SHA-256 checksums, extracts the package, and installs the desktop binary, API sidecar jar, controlled `gtd` agent CLI, launcher script, desktop icon, and `.desktop` entry. It also configures scoped headless access for supported agent harnesses: Antigravity receives only `command(gtd)` and `unsandboxed(gtd)`, while Codex receives a dedicated `gtd` prefix rule plus the global `gtd-processing` skill. Existing unrelated agent settings are left untouched.
+The installer verifies SHA-256 checksums, extracts the package, and installs the desktop binary, API sidecar jar, controlled `gtd` agent CLI, launcher script, desktop icon, and `.desktop` entry. It also configures scoped headless access for supported agent harnesses: Antigravity receives only `command(gtd)` and `unsandboxed(gtd)` plus the global `gtd-processing` skill, while Codex receives a dedicated `gtd` prefix rule plus the same global skill. Existing unrelated agent settings are left untouched.
 
 The application stores its normal user dataset under:
 

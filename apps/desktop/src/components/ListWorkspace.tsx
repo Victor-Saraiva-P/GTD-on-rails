@@ -1,5 +1,6 @@
 import type { CSSProperties, PropsWithChildren, ReactNode } from "react";
 import { appMetadata } from "../config/appMetadata";
+import { AgentProcessingFooterStatus } from "../features/agent-processing/AgentProcessingStatus";
 import type { ListTheme } from "../features/lists/listThemes";
 import { SyncStatusIndicators } from "../features/sync-status/SyncStatusIndicators";
 import { TitleSearchProvider } from "../features/title-search/TitleSearchContext";
@@ -66,6 +67,7 @@ function ListWorkspaceFooter({ currentClassName, currentLabel, isZoomMode, modeL
           <span>{modeLabel}</span>
         </div>
       ) : null}
+      <AgentProcessingFooterStatus />
       <SyncStatusIndicators />
     </footer>
   );

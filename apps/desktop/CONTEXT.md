@@ -36,6 +36,10 @@ _Avoid_: Completed Project, concluded project
 A project removed from active operational use but kept as a recoverable project record. Recovering a deleted project returns it to the project state it had before deletion.
 _Avoid_: Removed project, trashed project
 
+**Agent Processing Settings**:
+Machine-local desktop preferences that select which supported headless harness processes GTD stuff and which model/thinking options that harness receives. These preferences are stored outside synchronized GTD domain data under the user configuration directory. Opening the screen must not start external agent CLIs; Antigravity model discovery is cached and refreshed only by explicit user action, while Codex options come from its local model cache. Starting a token-spending processing run requires the explicit `Space a` Inbox keybind on a concrete stuff item; active runs remain observable across page navigation through shared run state and footer activity.
+_Avoid_: AI project settings, synced agent preferences
+
 **Database Setup**:
 The first-installation flow that provisions a runtime environment's structured persistence after successful File Sync confirms that no Database Connection Configuration exists.
 _Avoid_: Database login, connection screen, Supabase setup

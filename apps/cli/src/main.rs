@@ -30,7 +30,8 @@ fn run_agent(command: AgentCommand) -> Result<(), CliError> {
         AgentCommand::ConfigureAntigravity => {
             let result = agent::configure_antigravity_permissions()?;
             let state = if result.changed { "configured" } else { "already configured" };
-            println!("Antigravity permissions {state}: {}", result.path.display());
+            println!("Antigravity GTD access {state}: {}", result.path.display());
+            println!("Antigravity GTD skill: {}", result.skill_path.display());
             Ok(())
         }
         AgentCommand::ConfigureCodex => {

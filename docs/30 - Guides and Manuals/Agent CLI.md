@@ -10,7 +10,7 @@ The CLI talks to the Spring Boot API. Agents do not mutate the database or GTD p
 make cli-install
 ```
 
-The binary is installed at `~/.local/bin/gtd`. `make cli-install` also configures supported headless agent harnesses. For Antigravity it adds only `command(gtd)` and `unsandboxed(gtd)` to `~/.gemini/antigravity-cli/settings.json`, preserving all existing settings and permission rules. For Codex it installs a scoped `gtd` prefix rule under `$CODEX_HOME/rules/gtd-on-rails.rules` (default `~/.codex/rules/gtd-on-rails.rules`) and installs the shared `gtd-processing` skill under `$CODEX_HOME/skills/gtd-processing/SKILL.md`.
+The binary is installed at `~/.local/bin/gtd`. `make cli-install` also configures supported headless agent harnesses. For Antigravity it adds only `command(gtd)` and `unsandboxed(gtd)` to `~/.gemini/antigravity-cli/settings.json` and installs the shared `gtd-processing` skill under `~/.gemini/config/skills/gtd-processing/SKILL.md`. For Codex it installs a scoped `gtd` prefix rule under `$CODEX_HOME/rules/gtd-on-rails.rules` (default `~/.codex/rules/gtd-on-rails.rules`) and installs the same skill under `$CODEX_HOME/skills/gtd-processing/SKILL.md`. Existing unrelated settings and permission rules are preserved.
 
 Development falls back to `http://127.0.0.1:8080`; override it with `GTD_API_URL` or the top-level `--api-url` option. When the packaged desktop is running, the CLI discovers its live sidecar endpoint from the desktop readiness marker, so an agent does not need to know the random production port.
 
@@ -22,6 +22,16 @@ gtd agent configure-codex
 ```
 
 Codex headless runs should use `codex exec`. A restrictive automation profile can use `--sandbox workspace-write --ask-for-approval never`; the installed prefix rule allows only commands beginning with `gtd` to cross the sandbox boundary without an interactive approval. The globally installed skill makes `gtd-processing` discoverable even when Codex is launched outside this repository.
+
+## Desktop processing preferences
+
+Open `Space I a` in the desktop to configure the headless processor. The screen selects Antigravity or Codex as the processing agent and stores an optional model and thinking/reasoning effort for each harness. Leaving either field blank delegates that choice to the harness CLI default.
+
+The settings are machine-local and are persisted under `${XDG_CONFIG_HOME:-~/.config}/gtd-on-rails/agent-processing.json`. Opening the page never starts Antigravity or Codex processes. Antigravity model choices are loaded from a GTD on Rails cache and refreshed from `agy models` only after explicit user action; Codex model and supported reasoning choices are read directly from the local Codex model cache when available. The desktop launcher embeds the repository `gtd-processing` instructions into every processing prompt, so a run does not need permission to read project skill files at runtime. These preferences are separate from synchronized GTD domain data and are consumed by the desktop headless-processing launcher.
+
+Press `Space a` on a selected Inbox stuff item to start headless processing. The keybind is the explicit token-spending boundary: the desktop starts one run for that stuff with the configured harness/model/thinking settings and a prompt scoped to its ID. A second run for the same stuff is ignored while the first is active, while different stuff items may run in parallel. The child process receives `GTD_API_URL` for the same backend used by the desktop, preventing another live packaged sidecar from redirecting `gtd` to a different dataset.
+
+Run state is tracked above individual Inbox components, so processing remains observable while navigating to other stuff or screens. The shared footer shows active run count, stuff title, current GTD activity, and elapsed time. Returning to the originating stuff shows provider/model/thinking, PID, live activity, elapsed time, final outcome, and the raw log path. Run output is written under `${XDG_CONFIG_HOME:-~/.config}/gtd-on-rails/agent-runs/`, and the inbox reloads when a run finishes. The UI distinguishes a confirmed `gtd stuff process ...` mutation from a headless run that exited without processing or encountered a denied action.
 
 ## Inspect stuff
 

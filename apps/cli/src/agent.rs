@@ -13,10 +13,11 @@ const CODEX_RULES: &str = r#"prefix_rule(
     justification = "Allows the controlled GTD on Rails CLI in headless agent workflows.",
 )
 "#;
-const CODEX_SKILL: &str = include_str!("../../../.agents/skills/gtd-processing/SKILL.md");
+const GTD_PROCESSING_SKILL: &str = include_str!("../../../.agents/skills/gtd-processing/SKILL.md");
 
 pub struct AntigravityConfigResult {
     pub path: PathBuf,
+    pub skill_path: PathBuf,
     pub changed: bool,
 }
 
@@ -31,12 +32,12 @@ pub struct CodexConfigResult {
 /// Example: `configure_antigravity_permissions()` preserves existing settings and adds only GTD rules.
 pub fn configure_antigravity_permissions() -> Result<AntigravityConfigResult, CliError> {
     let path = antigravity_settings_path()?;
+    let skill_path = antigravity_skill_path()?;
     let mut settings = read_settings(&path)?;
-    let changed = add_permission_rules(&path, &mut settings)?;
-    if changed {
-        write_settings(&path, &settings)?;
-    }
-    Ok(AntigravityConfigResult { path, changed })
+    let permissions_changed = add_permission_rules(&path, &mut settings)?;
+    if permissions_changed { write_settings(&path, &settings)?; }
+    let skill_changed = write_managed_file(&skill_path, GTD_PROCESSING_SKILL.as_bytes())?;
+    Ok(AntigravityConfigResult { path, skill_path, changed: permissions_changed || skill_changed })
 }
 
 /// Configures Codex to run the controlled GTD CLI headlessly and discover its processing skill.
@@ -47,7 +48,7 @@ pub fn configure_codex() -> Result<CodexConfigResult, CliError> {
     let rules_path = home.join("rules/gtd-on-rails.rules");
     let skill_path = home.join("skills/gtd-processing/SKILL.md");
     let rules_changed = write_managed_file(&rules_path, CODEX_RULES.as_bytes())?;
-    let skill_changed = write_managed_file(&skill_path, CODEX_SKILL.as_bytes())?;
+    let skill_changed = write_managed_file(&skill_path, GTD_PROCESSING_SKILL.as_bytes())?;
     Ok(CodexConfigResult {
         rules_path,
         skill_path,
@@ -57,6 +58,10 @@ pub fn configure_codex() -> Result<CodexConfigResult, CliError> {
 
 fn antigravity_settings_path() -> Result<PathBuf, CliError> {
     Ok(home_directory()?.join(".gemini/antigravity-cli/settings.json"))
+}
+
+fn antigravity_skill_path() -> Result<PathBuf, CliError> {
+    Ok(home_directory()?.join(".gemini/config/skills/gtd-processing/SKILL.md"))
 }
 
 fn codex_home() -> Result<PathBuf, CliError> {

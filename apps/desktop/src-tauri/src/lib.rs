@@ -2,6 +2,8 @@ use std::process::{Command, Stdio};
 
 use tauri::{Manager, RunEvent};
 
+mod agent_processing;
+mod agent_processing_runtime;
 mod clipboard;
 mod native_update;
 mod native_update_release;
@@ -141,6 +143,10 @@ fn build_app() -> tauri::App {
             open_external_url,
             open_temp_asset,
             render_pdf_first_page_preview,
+            agent_processing::agent_processing_settings,
+            agent_processing::save_agent_processing_settings,
+            agent_processing::agent_processing_options,
+            agent_processing::start_agent_processing,
             native_update::native_update_check,
             native_update::native_update_install,
             sidecar::start_sidecar_command,
