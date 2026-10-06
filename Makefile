@@ -5,7 +5,7 @@ ARG2 := $(word 2,$(ARGS))
 ARG3_PLUS := $(wordlist 3,999,$(ARGS))
 ARG2_PLUS := $(wordlist 2,999,$(ARGS))
 
-.PHONY: help gtd cli cli-install client mobile sync-server client-package client-install mobile-install gtd-install dev staging client-dev client-staging test unit integration e2e check lint
+.PHONY: help gtd cli cli-package cli-install cli-install-dev client mobile sync-server client-package client-install mobile-install gtd-install dev staging client-dev client-staging test unit integration e2e check lint
 
 help:
 	@if [ "$(PRIMARY_GOAL)" = "help" ] || [ -z "$(PRIMARY_GOAL)" ]; then \
@@ -16,7 +16,9 @@ help:
 	    '  make gtd                    desktop + local API using dev data' \
 	    '  make gtd staging            desktop + local API using staging data' \
 	    '  make cli <args...>          run the GTD agent CLI against the local API' \
-	    '  make cli-install            install gtd CLI + headless agent access' \
+	    '  make cli-package            build standalone production CLI tarball' \
+	    '  make cli-install [tag]      install published production gtd CLI (latest or tag)' \
+	    '  make cli-install-dev        install gtd CLI from this checkout for development' \
 	    '  make client                 sync client using dev data' \
 	    '  make client staging         sync client using staging data' \
 	    '  make mobile                 mobile PWA + sync server using dev data' \
@@ -56,8 +58,18 @@ cli:
 	  cargo run --manifest-path apps/cli/Cargo.toml -- $(ARGS); \
 	fi
 
+cli-package:
+	@if [ "$(PRIMARY_GOAL)" = "cli-package" ]; then \
+	  bash apps/cli/scripts/package-linux.sh; \
+	fi
+
 cli-install:
 	@if [ "$(PRIMARY_GOAL)" = "cli-install" ]; then \
+	  node scripts/install-cli-release.mjs $(if $(ARG1),--tag=$(ARG1)); \
+	fi
+
+cli-install-dev:
+	@if [ "$(PRIMARY_GOAL)" = "cli-install-dev" ]; then \
 	  cargo install --locked --path apps/cli --root "$$HOME/.local" --force; \
 	  "$$HOME/.local/bin/gtd" agent configure-antigravity; \
 	  "$$HOME/.local/bin/gtd" agent configure-codex; \

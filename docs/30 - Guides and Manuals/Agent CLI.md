@@ -6,11 +6,17 @@ The CLI talks to the Spring Boot API. Agents do not mutate the database or GTD p
 
 ## Install
 
+Install the latest published production CLI binary:
+
 ```bash
 make cli-install
 ```
 
-The binary is installed at `~/.local/bin/gtd`. `make cli-install` also configures supported headless agent harnesses. For Antigravity it adds only `command(gtd)` and `unsandboxed(gtd)` to `~/.gemini/antigravity-cli/settings.json` and installs the shared `gtd-processing` skill under `~/.gemini/config/skills/gtd-processing/SKILL.md`. For Codex it installs a scoped `gtd` prefix rule under `$CODEX_HOME/rules/gtd-on-rails.rules` (default `~/.codex/rules/gtd-on-rails.rules`) and installs the same skill under `$CODEX_HOME/skills/gtd-processing/SKILL.md`. Existing unrelated settings and permission rules are preserved.
+Install a specific release with `make cli-install v3.4.0`. The installer downloads the standalone `GTD.on.Rails.CLI_<version>_linux-x86_64.tar.gz` release asset, verifies its SHA-256 checksum, stores the managed binary under `${XDG_DATA_HOME:-~/.local/share}/gtd-on-rails-cli/`, and links it as `~/.local/bin/gtd`.
+
+For development against the current checkout, use `make cli-install-dev`. `make cli-package` creates the standalone production archive under `apps/cli/target/release-package/`.
+
+Both production and development installers configure supported headless agent harnesses. For Antigravity they add only `command(gtd)` and `unsandboxed(gtd)` to `~/.gemini/antigravity-cli/settings.json` and install the shared `gtd-processing` skill under `~/.gemini/config/skills/gtd-processing/SKILL.md`. For Codex they install a scoped `gtd` prefix rule under `$CODEX_HOME/rules/gtd-on-rails.rules` (default `~/.codex/rules/gtd-on-rails.rules`) and install the same skill under `$CODEX_HOME/skills/gtd-processing/SKILL.md`. Existing unrelated settings and permission rules are preserved.
 
 Development falls back to `http://127.0.0.1:8080`; override it with `GTD_API_URL` or the top-level `--api-url` option. When the packaged desktop is running, the CLI discovers its live sidecar endpoint from the desktop readiness marker, so an agent does not need to know the random production port.
 

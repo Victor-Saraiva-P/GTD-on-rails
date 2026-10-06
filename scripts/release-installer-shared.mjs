@@ -79,6 +79,24 @@ export function requireReleaseAsset(release, name, assetType = "asset") {
 }
 
 /**
+ * Resolves the asset download URLs and metadata for the standalone GTD CLI.
+ *
+ * <p>Example: {@code cliReleaseAssets(release)}.</p>
+ */
+export function cliReleaseAssets(release) {
+  const version = normalizeReleaseVersion(release.tag_name ?? "");
+  const archiveName = `GTD.on.Rails.CLI_${version}_linux-x86_64.tar.gz`;
+  const checksumName = `${archiveName}.sha256`;
+  return {
+    version,
+    archiveName,
+    checksumName,
+    archiveUrl: requireReleaseAsset(release, archiveName, "CLI asset"),
+    checksumUrl: requireReleaseAsset(release, checksumName, "CLI asset")
+  };
+}
+
+/**
  * Resolves the asset download URLs and metadata for the standalone sync client.
  *
  * <p>Example: {@code clientReleaseAssets(release)}.</p>
@@ -185,6 +203,29 @@ export async function verifyPackageVersionIfPresent(packageDir, expectedVersion)
  */
 export function executePackageInstaller(packageDir, environment = process.env) {
   runCommand("bash", [path.join(packageDir, "install.sh")], { env: environment });
+}
+
+/**
+ * Installs the standalone GTD CLI release for the specified tag or latest published release.
+ *
+ * <p>Example: {@code await installCliRelease("v3.0.1", process.env)}.</p>
+ */
+export async function installCliRelease(tagOrUrl, environment = process.env) {
+  const releaseUrl = resolveReleaseEndpoint(
+    tagOrUrl ?? environment.GTD_RELEASE_TAG ?? environment.GTD_CLI_RELEASE_URL
+  );
+  const release = fetchReleaseJson(releaseUrl);
+  const assets = cliReleaseAssets(release);
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), "gtd-cli-install-"));
+
+  try {
+    downloadAndExtractReleaseArchive(assets, tempDir);
+    const packageDir = path.join(tempDir, `GTD.on.Rails.CLI_${assets.version}_linux-x86_64`);
+    await verifyPackageVersionIfPresent(packageDir, assets.version);
+    executePackageInstaller(packageDir, environment);
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
 }
 
 /**

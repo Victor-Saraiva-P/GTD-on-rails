@@ -64,6 +64,8 @@ function versionTargets(version) {
     replaceTarget("apps/desktop/src-tauri/tauri.conf.json", /("version":\s*)"[^"]+"/, `$1"${version}"`),
     replaceTarget("apps/desktop/src-tauri/Cargo.toml", /^version = ".*"$/m, `version = "${version}"`),
     replaceTarget("apps/desktop/src-tauri/Cargo.lock", /(name = "desktop"\nversion = )"[^"]+"/, `$1"${version}"`),
+    replaceTarget("apps/cli/Cargo.toml", /^version = ".*"$/m, `version = "${version}"`),
+    replaceTarget("apps/cli/Cargo.lock", /(name = "gtd-cli"\nversion = )"[^"]+"/, `$1"${version}"`),
     replaceTarget("apps/desktop/src/config/appMetadata.ts", /version: ".*"/, `version: "${version}"`),
   ];
 }

@@ -25,6 +25,8 @@ test("syncAppVersion updates every app version target", async () => {
   assert.match(await readFixture(repoRoot, "apps/api/build.gradle"), /version = '2.3.4'/);
   assert.match(await readFixture(repoRoot, "apps/sync-server/build.gradle"), /version = '2.3.4'/);
   assert.match(await readFixture(repoRoot, "apps/desktop/src-tauri/Cargo.lock"), /name = "desktop"\nversion = "2.3.4"/);
+  assert.match(await readFixture(repoRoot, "apps/cli/Cargo.toml"), /version = "2.3.4"/);
+  assert.match(await readFixture(repoRoot, "apps/cli/Cargo.lock"), /name = "gtd-cli"\nversion = "2.3.4"/);
   assert.match(await readFixture(repoRoot, "apps/desktop/src/config/appMetadata.ts"), /version: "2.3.4"/);
   assert.match(await readFixture(repoRoot, "apps/desktop/package.json"), /api-2.3.4.jar/);
 });
@@ -44,6 +46,8 @@ async function createVersionFixture(version) {
   await writeFixture(repoRoot, "apps/desktop/src-tauri/tauri.conf.json", '{\n  "version": "1.1.3"\n}\n');
   await writeFixture(repoRoot, "apps/desktop/src-tauri/Cargo.toml", '[package]\nversion = "1.1.3"\n');
   await writeFixture(repoRoot, "apps/desktop/src-tauri/Cargo.lock", 'name = "desktop"\nversion = "1.1.3"\n');
+  await writeFixture(repoRoot, "apps/cli/Cargo.toml", '[package]\nversion = "0.1.0"\n');
+  await writeFixture(repoRoot, "apps/cli/Cargo.lock", 'name = "gtd-cli"\nversion = "0.1.0"\n');
   await writeFixture(repoRoot, "apps/desktop/src/config/appMetadata.ts", 'version: "1.1.2"\n');
   return repoRoot;
 }
