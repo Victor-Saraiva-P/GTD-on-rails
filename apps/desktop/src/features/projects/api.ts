@@ -1,5 +1,6 @@
 import { apiFetch, apiJson } from "../../lib/api/apiClient.ts";
-import type { Stuff } from "../inbox/types";
+import { fetchItemBody, updateItemBody } from "../inbox/api.ts";
+import type { ItemBody, Stuff } from "../inbox/types";
 import type { Project, ProjectPatch } from "./types";
 
 type ProjectResponse = {
@@ -36,6 +37,24 @@ export async function fetchDoneProjects(): Promise<Project[]> {
  */
 export async function fetchDeletedProjects(): Promise<Project[]> {
   return (await apiJson<ProjectResponse[]>("/projects/deleted")).map(toProject);
+}
+
+/**
+ * Loads the project Brief through its backing item's canonical body document.
+ *
+ * @example await fetchProjectBriefBody("project-1")
+ */
+export function fetchProjectBriefBody(projectId: string): Promise<ItemBody> {
+  return fetchItemBody(projectId);
+}
+
+/**
+ * Persists the project Brief through its backing item's canonical body document.
+ *
+ * @example await updateProjectBriefBody("project-1", body)
+ */
+export function updateProjectBriefBody(projectId: string, body: ItemBody): Promise<ItemBody> {
+  return updateItemBody(projectId, body);
 }
 
 /**
@@ -123,4 +142,3 @@ export async function assignItemProject(itemId: string, projectId: string | null
     body: JSON.stringify({ projectId })
   });
 }
-
