@@ -182,7 +182,9 @@ fn provider_settings(settings: &AgentProcessingSettings) -> &AgentProviderSettin
 }
 
 fn processing_prompt(_provider: &str, stuff_id: &str, stuff_title: &str) -> String {
-    let task = format!("Process the inbox stuff with id {stuff_id} (\"{stuff_title}\"). Inspect only this stuff. If clarification is required, ask the minimum clarification question and stop. Otherwise process it into the appropriate GTD destination.");
+    let task = format!(
+        "Process the inbox stuff with id {stuff_id} (\"{stuff_title}\"). Inspect the selected stuff and its read-only project context only as the skill directs. If clarification is required, ask the minimum clarification question and stop. Otherwise process the selected stuff into the appropriate GTD destination."
+    );
     format!("Follow this GTD processing skill exactly:\n\n{GTD_PROCESSING_SKILL}\n\nTask:\n{task}")
 }
 
@@ -479,4 +481,34 @@ fn default_thinking() -> Vec<String> {
 
 fn file_error(path: &Path, expected: &str, error: std::io::Error) -> String {
     format!("file path value '{}' is invalid; expected {expected}: {error}", path.display())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::processing_prompt;
+
+    #[test]
+    fn instructs_the_agent_to_use_read_only_project_context() {
+        let prompt = processing_prompt(
+            "codex",
+            "018f13b2-a7f3-7c44-8f1a-9f31f65a7fd2",
+            "Draft release checklist",
+        );
+
+        assert!(prompt.contains("--- PROJECT CONTEXT (READ-ONLY) ---"));
+        assert!(prompt.contains("gtd stuff project-context <id> --output <directory>"));
+        assert!(prompt.contains("Never mutate the project context"));
+    }
+
+    #[test]
+    fn keeps_the_selected_stuff_as_the_only_mutation_target() {
+        let prompt = processing_prompt(
+            "antigravity",
+            "018f13b2-a7f3-7c44-8f1a-9f31f65a7fd2",
+            "Draft release checklist",
+        );
+
+        assert!(prompt.contains("Mutate only the selected stuff"));
+        assert!(prompt.contains("If no project context block is present, continue the normal workflow"));
+    }
 }
