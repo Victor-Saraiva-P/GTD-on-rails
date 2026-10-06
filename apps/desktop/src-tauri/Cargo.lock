@@ -556,7 +556,7 @@ dependencies = [
 
 [[package]]
 name = "desktop"
-version = "3.3.3"
+version = "3.4.0"
 dependencies = [
  "base64 0.22.1",
  "gdk-pixbuf",
