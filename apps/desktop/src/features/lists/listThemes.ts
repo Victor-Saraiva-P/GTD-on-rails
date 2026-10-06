@@ -133,6 +133,13 @@ export const googleCalendarIntegrationTheme: ListTheme = {
   accentColorRgb: "66, 133, 244"
 };
 
+export const agentProcessingTheme: ListTheme = {
+  id: "agent-processing-settings",
+  label: "Agent Processing",
+  accentColor: "#6F7FBD",
+  accentColorRgb: "111, 127, 189"
+};
+
 export const somedayMaybeListTheme: ListTheme = {
   id: "someday-maybe",
   label: "Someday/Maybe",

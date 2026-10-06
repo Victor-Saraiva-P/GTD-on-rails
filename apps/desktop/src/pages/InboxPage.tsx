@@ -1,6 +1,8 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { ListView } from "../components/ListView";
 import { ListWorkspace } from "../components/ListWorkspace";
+import { useAgentProcessing } from "../features/agent-processing/AgentProcessingProvider";
+import { AgentProcessingStuffStatus } from "../features/agent-processing/AgentProcessingStatus";
 import { RetryState } from "../components/RetryState";
 import { InboxList } from "../features/inbox/InboxList";
 import { InboxStuffDetails } from "../features/inbox/InboxStuffDetails";
@@ -134,6 +136,12 @@ function openProcessingFromKeybind(controller: InboxWorkspaceController, openPro
   }
 }
 
+function processWithAgentFromKeybind(controller: InboxWorkspaceController, startAgent: (stuffId: string, stuffTitle: string) => Promise<void>) {
+  const item = controller.selectedItem;
+  if (!canEditSelectedStuff(controller) || !item) return;
+  runInboxAsyncAction(true, () => startAgent(item.id, item.title), "Failed to start agent processing");
+}
+
 function openProjectAssociateFromKeybind(controller: InboxWorkspaceController, openProjectAssociate: () => void) {
   if (canEditSelectedStuff(controller)) {
     openProjectAssociate();
@@ -156,6 +164,7 @@ function buildInboxBindings(
   openLinkCombo: () => void,
   openAssetCombo: () => void,
   openProcessing: () => void,
+  startAgent: (stuffId: string, stuffTitle: string) => Promise<void>,
   openProjectAssociate: () => void,
   openOwnerProject?: (projectId: string, projectTitle?: string | null) => void,
   projects: Project[] = []
@@ -172,6 +181,8 @@ function buildInboxBindings(
     inboxBinding("inbox.undo-detail", "u", "Undo last deletion", "stuff-detail", () => void controller.undo()),
     inboxBinding("inbox.process-list", "p", "Process selected stuff", "inbox-list", () => openProcessingFromKeybind(controller, openProcessing)),
     inboxBinding("inbox.process-detail", "p", "Process selected stuff", "stuff-detail", () => openProcessingFromKeybind(controller, openProcessing)),
+    inboxBinding("inbox.agent-process-list", "a", "Process selected stuff with configured agent", "inbox-list", () => processWithAgentFromKeybind(controller, startAgent), true, ["a"]),
+    inboxBinding("inbox.agent-process-detail", "a", "Process selected stuff with configured agent", "stuff-detail", () => processWithAgentFromKeybind(controller, startAgent), true, ["a"]),
     inboxBinding("inbox.associate-project-list", "P", "Associate to project", "inbox-list", () => openProjectAssociateFromKeybind(controller, openProjectAssociate)),
     inboxBinding("inbox.associate-project-detail", "P", "Associate to project", "stuff-detail", () => openProjectAssociateFromKeybind(controller, openProjectAssociate)),
     inboxBinding("inbox.open-owner-project-list", "d", "Open owner project", "inbox-list", () => openOwnerProjectFromKeybind(controller, openOwnerProject, projects), false, ["g", "d"]),
@@ -203,14 +214,15 @@ function useInboxBindings(
   openLinkCombo: () => void,
   openAssetCombo: () => void,
   openProcessing: () => void,
+  startAgent: (stuffId: string, stuffTitle: string) => Promise<void>,
   openProjectAssociate: () => void,
   openOwnerProject?: (projectId: string, projectTitle?: string | null) => void,
   projects: Project[] = []
 ) {
   const { setActiveScreen } = useActiveScreen();
   const bindings = useMemo(
-    () => buildInboxBindings(controller, setActiveScreen, openLinkCombo, openAssetCombo, openProcessing, openProjectAssociate, openOwnerProject, projects),
-    [controller, setActiveScreen, openLinkCombo, openAssetCombo, openProcessing, openProjectAssociate, openOwnerProject, projects]
+    () => buildInboxBindings(controller, setActiveScreen, openLinkCombo, openAssetCombo, openProcessing, startAgent, openProjectAssociate, openOwnerProject, projects),
+    [controller, setActiveScreen, openLinkCombo, openAssetCombo, openProcessing, startAgent, openProjectAssociate, openOwnerProject, projects]
   );
 
   useRegisterKeybinds(bindings);
@@ -286,19 +298,22 @@ function InboxListBody({ controller }: InboxControllerProps) {
 }
 
 function InboxDetailReady({ controller }: InboxControllerProps) {
+  const { runForStuff } = useAgentProcessing();
   const selectedItem = controller.selectedItem;
-
-  return selectedItem ? (
+  if (!selectedItem) return null;
+  const agentAction = runForStuff(selectedItem.id) ? <AgentProcessingStuffStatus stuffId={selectedItem.id} /> : null;
+  return (
     <InboxStuffDetails
       item={selectedItem}
       editing={controller.editingBodyId === selectedItem.id}
+      headerActions={agentAction}
       onAutosaveEditing={(body) => autosaveStuffBody(controller, body)}
       onCommitEditing={(body) => commitStuffBody(controller, body)}
       onExitEditingFromNormalMode={() => exitBodyEditingFromNormalMode(controller)}
       onCancelEditing={controller.cancelEditingSelectedStuffBody}
       onVimModeChange={controller.setVimMode}
     />
-  ) : null;
+  );
 }
 
 function InboxDetailBody({ controller }: InboxControllerProps) {
@@ -350,6 +365,7 @@ function InboxViews({ controller }: InboxControllerProps) {
  * @example <InboxPage controller={controller} />
  */
 export function InboxPage({ controller, openProjects, openOwnerProject, projects = [] }: InboxPageProps) {
+  const agentProcessing = useAgentProcessing();
   const [isLinkComboOpen, setIsLinkComboOpen] = useState(false);
   const [isAssetComboOpen, setIsAssetComboOpen] = useState(false);
   const [isProcessingOpen, setIsProcessingOpen] = useState(false);
@@ -376,7 +392,10 @@ export function InboxPage({ controller, openProjects, openOwnerProject, projects
   useKeybindScreen("inbox");
   useInboxZone(controller);
   useInboxAssetPreload(controller);
-  useInboxBindings(controller, openLinkCombo, openAssetCombo, openProcessing, projectAssociate.open, openOwnerProject, projects);
+  useInboxBindings(controller, openLinkCombo, openAssetCombo, openProcessing, agentProcessing.start, projectAssociate.open, openOwnerProject, projects);
+  useEffect(() => {
+    if (agentProcessing.revision > 0) controller.reload();
+  }, [agentProcessing.revision, controller.reload]);
   const titleSearch = useListTitleSearch({
     disabled: Boolean(controller.editingId || controller.editingBodyId),
     items: controller.stuffs,

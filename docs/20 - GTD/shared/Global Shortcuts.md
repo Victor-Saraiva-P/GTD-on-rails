@@ -17,6 +17,8 @@ These shortcuts are registered globally by the desktop shell.
 | `Space o` | Open on going next actions. |
 | `Space p` | Open projects. |
 | `Space s` | Open someday/maybe. |
+| `Space I g` | Open Google Calendar Integration. |
+| `Space I a` | Open Agent Processing settings. |
 | `Space h` | Open Hint Mode to jump directly to any visible UI element. |
 | `Space z` | Toggle Zoom Mode (collapses side lists into a centered, distraction-free reading and writing canvas; exit with `Esc` or `Space z`). |
 
@@ -53,6 +55,17 @@ These shortcuts are available in the Calendars workspace when a modal dialog or 
 | `h` / `l` | Move Weekly focus to the previous or next day. |
 
 In the calendar schedule edit dialog opened with `e`, pressing `t` in the Scheduled date field fills the field with today's local date without saving until `Enter` is pressed.
+
+## Inbox Processing
+
+These shortcuts are available while an Inbox stuff item is selected and no title/body edit is active.
+
+| Shortcut | Action |
+| --- | --- |
+| `p` | Open the manual GTD processing dialog. |
+| `Space a` | Start headless processing for the selected stuff with the configured agent, model, and thinking settings. |
+
+Headless agent runs continue while navigating to other stuff or screens. Active runs remain visible in the shared footer, and returning to the original stuff shows its current activity and final outcome.
 
 ## Item Navigation
 

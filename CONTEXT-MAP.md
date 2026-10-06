@@ -9,6 +9,7 @@ The `docs` directory is the canonical knowledge base.
 | Area | Context file | Scope |
 | --- | --- | --- |
 | API | `apps/api/CONTEXT.md` | Spring Boot backend, persistence, synchronization, assets, and HTTP API behavior. |
+| Agent CLI | `apps/cli/CONTEXT.md` | Controlled command-line adapter used by agent harnesses to inspect, normalize, and process GTD stuff. |
 | Desktop | `apps/desktop/CONTEXT.md` | Tauri desktop app, React UI, local desktop integration, keybindings, and frontend asset handling. |
 
 If a context file does not exist yet, use the canonical `docs/` files that match the area being changed.

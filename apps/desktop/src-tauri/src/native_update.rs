@@ -21,6 +21,7 @@ previous_dir="$HOME/.local/share/gtd-on-rails.previous"
 while kill -0 "$current_pid" >/dev/null 2>&1; do sleep 0.2; done
 test -x "$next_dir/gtd-on-rails"
 test -x "$next_dir/gtd-api"
+test -x "$next_dir/gtd"
 test -x "$next_dir/gtd-on-rails-launcher"
 test -f "$next_dir/binaries/gtd-api.jar"
 rm -rf "$previous_dir"
@@ -30,14 +31,23 @@ cp "$next_dir/binaries/gtd-api.jar" "$install_dir/binaries/gtd-api.jar.tmp"
 mv "$install_dir/binaries/gtd-api.jar.tmp" "$install_dir/binaries/gtd-api.jar"
 cp "$next_dir/gtd-api" "$install_dir/gtd-api.tmp"
 mv "$install_dir/gtd-api.tmp" "$install_dir/gtd-api"
+cp "$next_dir/gtd" "$install_dir/gtd.tmp"
+mv "$install_dir/gtd.tmp" "$install_dir/gtd"
 cp "$next_dir/icon.png" "$install_dir/icon.png.tmp"
 mv "$install_dir/icon.png.tmp" "$install_dir/icon.png"
 cp "$next_dir/gtd-on-rails" "$install_dir/gtd-on-rails.tmp"
 mv "$install_dir/gtd-on-rails.tmp" "$install_dir/gtd-on-rails"
 cp "$next_dir/gtd-on-rails-launcher" "$install_dir/gtd-on-rails-launcher.tmp"
 mv "$install_dir/gtd-on-rails-launcher.tmp" "$install_dir/gtd-on-rails-launcher"
-chmod +x "$install_dir/gtd-on-rails" "$install_dir/gtd-api" "$install_dir/gtd-on-rails-launcher"
+chmod +x "$install_dir/gtd-on-rails" "$install_dir/gtd-api" "$install_dir/gtd" "$install_dir/gtd-on-rails-launcher"
 ln -sf "$install_dir/gtd-on-rails-launcher" "$HOME/.local/bin/gtd-on-rails"
+ln -sf "$install_dir/gtd" "$HOME/.local/bin/gtd"
+if ! "$install_dir/gtd" agent configure-antigravity; then
+  printf 'Warning: Antigravity permissions were not updated; existing settings were left untouched.\n' >&2
+fi
+if ! "$install_dir/gtd" agent configure-codex; then
+  printf 'Warning: Codex GTD access setup did not complete; unrelated Codex settings were left untouched.\n' >&2
+fi
 printf '%s\n' '[Desktop Entry]' 'Type=Application' 'Name=GTD on Rails' "Exec=$HOME/.local/bin/gtd-on-rails" "Icon=$install_dir/icon.png" 'Terminal=false' 'Categories=Utility;' > "$HOME/.local/share/applications/gtd-on-rails.desktop"
 command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$HOME/.local/share/applications" || true
 rm -rf "$next_dir"
@@ -240,6 +250,7 @@ fn stage_core_files(package_dir: &Path, next_dir: &Path) -> Result<(), String> {
         &next_dir.join("gtd-on-rails"),
     )?;
     copy_update_file(&package_dir.join("gtd-api"), &next_dir.join("gtd-api"))?;
+    copy_update_file(&package_dir.join("gtd"), &next_dir.join("gtd"))?;
     copy_update_file(
         &package_dir.join("binaries/gtd-api.jar"),
         &next_dir.join("binaries/gtd-api.jar"),
@@ -251,12 +262,14 @@ fn stage_core_files(package_dir: &Path, next_dir: &Path) -> Result<(), String> {
     )?;
     make_executable(&next_dir.join("gtd-on-rails"))?;
     make_executable(&next_dir.join("gtd-api"))?;
+    make_executable(&next_dir.join("gtd"))?;
     make_executable(&next_dir.join("gtd-on-rails-launcher"))
 }
 
 fn validate_package_dir(package_dir: &Path) -> Result<(), String> {
     require_file(&package_dir.join("gtd-on-rails"))?;
     require_file(&package_dir.join("gtd-api"))?;
+    require_file(&package_dir.join("gtd"))?;
     require_file(&package_dir.join("binaries/gtd-api.jar"))?;
     require_file(&package_dir.join("icon.png"))?;
     require_file(&package_dir.join("gtd-on-rails-launcher"))
@@ -377,6 +390,8 @@ mod tests {
         fs::create_dir_all(next.join("binaries")).unwrap();
         fs::write(pkg.join("gtd-on-rails"), b"app").unwrap();
         fs::write(pkg.join("gtd-api"), b"api").unwrap();
+        fs::write(pkg.join("gtd"), b"cli").unwrap();
+        fs::write(pkg.join("gtd-on-rails-launcher"), b"launcher").unwrap();
         fs::write(pkg.join("binaries/gtd-api.jar"), b"jar").unwrap();
         fs::write(pkg.join("icon.png"), b"icon").unwrap();
 
@@ -384,6 +399,7 @@ mod tests {
 
         assert!(next.join("gtd-on-rails").is_file());
         assert!(next.join("gtd-api").is_file());
+        assert!(next.join("gtd").is_file());
         assert!(next.join("binaries/gtd-api.jar").is_file());
         let _ = fs::remove_dir_all(&temp);
     }

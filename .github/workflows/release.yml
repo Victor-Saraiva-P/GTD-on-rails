@@ -69,11 +69,15 @@ jobs:
             gh release create "${GITHUB_REF_NAME}" \
               --draft \
               --title "GTD on Rails ${GITHUB_REF_NAME}" \
-              --notes "Release assets include the desktop application and standalone sync client."
+              --notes "Release assets include the desktop application, standalone GTD CLI, and standalone sync client."
 
       - name: Package native Linux tarball
         run: pnpm run desktop:package:native-linux
         working-directory: apps/desktop
+
+      - name: Package standalone GTD CLI
+        run: bash scripts/package-linux.sh
+        working-directory: apps/cli
 
       - name: Build sync client
         run: ./gradlew --no-daemon bootJar
@@ -90,6 +94,8 @@ jobs:
           printf 'Tag version: %s\n' "$tag_version"
           test -f "src-tauri/target/release/native/GTD.on.Rails_${tag_version}_linux-x86_64.tar.gz" || { echo "native tarball does not match tag version"; exit 1; }
           test -f "src-tauri/target/release/native/GTD.on.Rails_${tag_version}_linux-x86_64.tar.gz.sha256" || { echo "native sha256 does not match tag version"; exit 1; }
+          test -f "../cli/target/release-package/GTD.on.Rails.CLI_${tag_version}_linux-x86_64.tar.gz" || { echo "CLI tarball does not match tag version"; exit 1; }
+          test -f "../cli/target/release-package/GTD.on.Rails.CLI_${tag_version}_linux-x86_64.tar.gz.sha256" || { echo "CLI sha256 does not match tag version"; exit 1; }
           test -f "../sync-server/build/client-release/GTD.on.Rails.Client_${tag_version}_linux-x86_64.tar.gz" || { echo "client tarball does not match tag version"; exit 1; }
           test -f "../sync-server/build/client-release/GTD.on.Rails.Client_${tag_version}_linux-x86_64.tar.gz.sha256" || { echo "client sha256 does not match tag version"; exit 1; }
         working-directory: apps/desktop
@@ -101,6 +107,8 @@ jobs:
           gh release upload "${GITHUB_REF_NAME}" \
             apps/desktop/src-tauri/target/release/native/*.tar.gz \
             apps/desktop/src-tauri/target/release/native/*.tar.gz.sha256 \
+            apps/cli/target/release-package/*.tar.gz \
+            apps/cli/target/release-package/*.tar.gz.sha256 \
             apps/sync-server/build/client-release/*.tar.gz \
             apps/sync-server/build/client-release/*.tar.gz.sha256 \
             --clobber

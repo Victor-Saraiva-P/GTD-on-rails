@@ -1,5 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
+import { AgentProcessingProvider } from "./features/agent-processing/AgentProcessingProvider";
 import { KeybindProvider } from "./features/keybinds/KeybindProvider";
 import { SyncStatusProvider } from "./features/sync-status/SyncStatusProvider";
 import { ConnectivityBlocker } from "./features/connectivity/ConnectivityBlocker";
@@ -23,9 +24,11 @@ ReactDOM.createRoot(app).render(
         <BootLoader>
           <DatabaseReadinessProvider>
             <SyncStatusProvider>
-              <ConnectivityBlocker>
-                <DatabaseReadinessBlocker><AppShell /></DatabaseReadinessBlocker>
-              </ConnectivityBlocker>
+              <AgentProcessingProvider>
+                <ConnectivityBlocker>
+                  <DatabaseReadinessBlocker><AppShell /></DatabaseReadinessBlocker>
+                </ConnectivityBlocker>
+              </AgentProcessingProvider>
             </SyncStatusProvider>
           </DatabaseReadinessProvider>
         </BootLoader>

@@ -106,7 +106,17 @@ To install a specific version or release tag:
 make gtd-install v3.0.1
 ```
 
-The installer verifies SHA-256 checksums, extracts the package, and installs the desktop binary, API sidecar jar, launcher script, desktop icon, and `.desktop` entry.
+The installer verifies SHA-256 checksums, extracts the package, and installs the desktop binary, API sidecar jar, controlled `gtd` agent CLI, launcher script, desktop icon, and `.desktop` entry. It also configures scoped headless access for supported agent harnesses: Antigravity receives only `command(gtd)` and `unsandboxed(gtd)` plus the global `gtd-processing` skill, while Codex receives a dedicated `gtd` prefix rule plus the same global skill. Existing unrelated agent settings are left untouched.
+
+The same release also publishes the `gtd` CLI as an independent versioned Linux asset. Install it without reinstalling the desktop with:
+
+```sh
+make cli-install
+# or for a specific release tag:
+make cli-install v3.4.0
+```
+
+Use `make cli-package` to build that standalone archive from a checkout. `make cli-install-dev` remains the source-build path for local development.
 
 The application stores its normal user dataset under:
 

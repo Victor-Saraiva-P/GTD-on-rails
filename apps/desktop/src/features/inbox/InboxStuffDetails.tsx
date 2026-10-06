@@ -27,6 +27,7 @@ type InboxStuffDetailsProps = Readonly<{
   onVimModeChange?: (mode: "NORMAL" | "INSERT" | "VISUAL") => void;
   showCreatedMeta?: boolean;
   metaVariant?: "default" | "next-action" | "calendar";
+  headerActions?: ReactNode;
 }>;
 
 function initialMetaParts(item: Stuff, showCreatedMeta: boolean): ReactNode[] {
@@ -329,7 +330,10 @@ export function InboxStuffDetails(props: InboxStuffDetailsProps) {
   return (
     <div className="inbox-detail">
       <DetailHeader item={props.item} metaVariant={props.metaVariant} showCreatedMeta={props.showCreatedMeta} />
+      {props.headerActions ? <div style={headerActionsStyle}>{props.headerActions}</div> : null}
       <BodyMarkdownSurface {...props} />
     </div>
   );
 }
+
+const headerActionsStyle = { marginBottom: "1rem" } as const;

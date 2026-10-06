@@ -41,9 +41,10 @@ mkdir -p "$install_dir/binaries" "$bin_dir" "$desktop_dir" "$config_dir"
 cp "$source_dir/gtd-on-rails" "$install_dir/gtd-on-rails"
 cp "$source_dir/gtd-api" "$install_dir/gtd-api"
 cp "$source_dir/binaries/gtd-api.jar" "$install_dir/binaries/gtd-api.jar"
+cp "$source_dir/gtd" "$install_dir/gtd"
 cp "$source_dir/icon.png" "$install_dir/icon.png"
 cp "$source_dir/gtd-on-rails-launcher" "$install_dir/gtd-on-rails-launcher"
-chmod +x "$install_dir/gtd-on-rails" "$install_dir/gtd-api" "$install_dir/gtd-on-rails-launcher"
+chmod +x "$install_dir/gtd-on-rails" "$install_dir/gtd-api" "$install_dir/gtd" "$install_dir/gtd-on-rails-launcher"
 
 existing_token="$(read_env_value GTD_SYNC_SERVER_AUTH_TOKEN "$env_file" || true)"
 client_env_file="${XDG_CONFIG_HOME:-$HOME/.config}/gtd-on-rails-client.env"
@@ -65,6 +66,13 @@ set_env_value GTD_SYNC_SERVER_AUTH_TOKEN "$auth_token"
 chmod 600 "$env_file"
 
 ln -sf "$install_dir/gtd-on-rails-launcher" "$bin_dir/gtd-on-rails"
+ln -sf "$install_dir/gtd" "$bin_dir/gtd"
+if ! "$install_dir/gtd" agent configure-antigravity; then
+  printf 'Warning: Antigravity permissions were not updated; existing settings were left untouched.\n' >&2
+fi
+if ! "$install_dir/gtd" agent configure-codex; then
+  printf 'Warning: Codex GTD access setup did not complete; unrelated Codex settings were left untouched.\n' >&2
+fi
 
 printf '%s\n' \
   '[Desktop Entry]' \
@@ -77,5 +85,6 @@ printf '%s\n' \
 
 command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$desktop_dir" || true
 printf 'Installed GTD on Rails. Run it with: %s/gtd-on-rails\n' "$bin_dir"
+printf 'Installed GTD agent CLI: %s/gtd\n' "$bin_dir"
 printf 'Sync endpoint: %s\n' "$production_base_url"
 printf 'Configuration: %s\n' "$env_file"

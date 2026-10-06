@@ -37,6 +37,7 @@ import { ProjectDetailPage } from "./ProjectDetailPage";
 import { StuffDetailPage } from "./StuffDetailPage";
 import { useGoogleCalendarIntegrationController } from "../features/integrations/useGoogleCalendarIntegrationController";
 import { GoogleCalendarIntegrationPage } from "./GoogleCalendarIntegrationPage";
+import { AgentProcessingSettingsPage } from "./AgentProcessingSettingsPage";
 import { useOnGoingWorkspaceController } from "../features/ongoing/useOnGoingWorkspaceController";
 import { useProjectsWorkspaceController } from "../features/projects/useProjectsWorkspaceController";
 import { useProjectDetailController } from "../features/projects/useProjectDetailController";
@@ -77,7 +78,8 @@ function buildScreenJumpBindings(
     { id: "navigation.open-ongoing-next-actions", key: "o", description: "Open ongoing work", leader: true, sequence: ["o"], runKeybind: () => jumpToScreen("ongoing-next-actions", () => { controllers.ongoing.resetWorkspace(); controllers.ongoing.setActiveZone("next-actions-list"); }) },
     { id: "navigation.open-projects", key: "p", description: "Open projects", leader: true, sequence: ["p"], runKeybind: () => jumpToScreen("projects", controllers.projects.resetWorkspace) },
     { id: "navigation.open-someday-maybe", key: "s", description: "Open someday/maybe", leader: true, sequence: ["s"], runKeybind: () => jumpToScreen("someday-maybe", controllers.somedayMaybe.resetWorkspace) },
-    { id: "navigation.open-google-calendar-integration", key: "g", description: "Google Calendar Integration", leader: true, sequence: ["I", "g"], runKeybind: () => jumpToScreen("google-calendar-integration") }
+    { id: "navigation.open-google-calendar-integration", key: "g", description: "Google Calendar Integration", leader: true, sequence: ["I", "g"], runKeybind: () => jumpToScreen("google-calendar-integration") },
+    { id: "navigation.open-agent-processing-settings", key: "a", description: "Agent Processing", leader: true, sequence: ["I", "a"], runKeybind: () => jumpToScreen("agent-processing-settings") }
   ];
 }
 
@@ -224,6 +226,7 @@ function renderActiveScreen(
   if (activeScreen === "done-next-actions") return renderDoneNextActionsPage(controllers);
   if (activeScreen === "deleted-next-actions") return renderDeletedNextActionsPage(controllers);
   if (activeScreen === "google-calendar-integration") return <GoogleCalendarIntegrationPage controller={controllers.googleCalendarIntegration} />;
+  if (activeScreen === "agent-processing-settings") return <AgentProcessingSettingsPage />;
   if (activeScreen === "someday-maybe") return <SomedayMaybePage controller={controllers.somedayMaybe} openOwnerProject={openOwnerProject} projects={controllers.projects.projects} />;
 
   return <InboxPage controller={controllers.inbox} openProjects={() => openProjectsAfterProcessing(controllers, setActiveScreen)} openOwnerProject={openOwnerProject} projects={controllers.projects.projects} />;

@@ -93,6 +93,13 @@ pub fn sidecar_enabled() -> bool {
     !cfg!(debug_assertions)
 }
 
+/// Returns the API base URL published by the live packaged desktop sidecar.
+///
+/// Example: `sidecar_base_url(&app)` supplies the endpoint inherited by child agent processes.
+pub fn sidecar_base_url(app: &AppHandle) -> Option<String> {
+    app.state::<SidecarBackendState>().base_url.lock().unwrap().clone()
+}
+
 pub fn start_sidecar(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     if !sidecar_enabled() {
         return Ok(());

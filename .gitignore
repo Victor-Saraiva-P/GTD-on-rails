@@ -26,6 +26,7 @@ apps/desktop/.agent/
 !apps/desktop/.env.production
 infra/postgres-data/
 apps/desktop/src-tauri/gen/
+apps/cli/target/
 gtd-assets/
 apps/api/gtd-assets/
 dev-gtd-on-rails/
