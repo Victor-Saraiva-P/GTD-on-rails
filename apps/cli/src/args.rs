@@ -3,7 +3,11 @@ use std::path::PathBuf;
 use clap::{Args, Parser, Subcommand};
 
 #[derive(Debug, Parser)]
-#[command(name = "gtd", version, about = "Controlled CLI for GTD on Rails agents")]
+#[command(
+    name = "gtd",
+    version,
+    about = "Controlled CLI for GTD on Rails agents"
+)]
 pub struct Cli {
     #[arg(long, env = "GTD_API_URL")]
     pub api_url: Option<String>,
@@ -66,6 +70,12 @@ pub enum StuffCommand {
         id: String,
     },
     Export {
+        #[arg(value_parser = parse_uuid)]
+        id: String,
+        #[arg(long)]
+        output: PathBuf,
+    },
+    ProjectContext {
         #[arg(value_parser = parse_uuid)]
         id: String,
         #[arg(long)]
@@ -142,22 +152,33 @@ fn parse_energy(value: &str) -> Result<f64, String> {
     let parts: Vec<&str> = value.split('.').collect();
     let valid_shape = parts.len() <= 2
         && !parts[0].is_empty()
-        && parts.iter().all(|part| part.bytes().all(|byte| byte.is_ascii_digit()))
+        && parts
+            .iter()
+            .all(|part| part.bytes().all(|byte| byte.is_ascii_digit()))
         && parts.get(1).is_none_or(|fraction| fraction.len() == 1);
     if !valid_shape {
-        return Err(format!("'{value}' is invalid; expected energy from 0.0 to 10.0 with at most 1 decimal place"));
+        return Err(format!(
+            "'{value}' is invalid; expected energy from 0.0 to 10.0 with at most 1 decimal place"
+        ));
     }
     let parsed = value.parse::<f64>().unwrap_or(-1.0);
     if !(0.0..=10.0).contains(&parsed) {
-        return Err(format!("'{value}' is invalid; expected energy from 0.0 to 10.0 with at most 1 decimal place"));
+        return Err(format!(
+            "'{value}' is invalid; expected energy from 0.0 to 10.0 with at most 1 decimal place"
+        ));
     }
     Ok(parsed)
 }
 
 fn parse_date(value: &str) -> Result<String, String> {
     let parts: Vec<&str> = value.split('-').collect();
-    let valid_shape = parts.len() == 3 && parts[0].len() == 4 && parts[1].len() == 2 && parts[2].len() == 2;
-    if !valid_shape || !parts.iter().all(|part| part.bytes().all(|byte| byte.is_ascii_digit())) {
+    let valid_shape =
+        parts.len() == 3 && parts[0].len() == 4 && parts[1].len() == 2 && parts[2].len() == 2;
+    if !valid_shape
+        || !parts
+            .iter()
+            .all(|part| part.bytes().all(|byte| byte.is_ascii_digit()))
+    {
         return Err(format!("'{value}' is invalid; expected YYYY-MM-DD"));
     }
     let month = parts[1].parse::<u8>().unwrap_or(0);
@@ -181,4 +202,28 @@ fn parse_time(value: &str) -> Result<String, String> {
         return Err(format!("'{value}' is invalid; expected HH:MM"));
     }
     Ok(value.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use clap::Parser;
+
+    use super::{Cli, Command, StuffCommand};
+
+    #[test]
+    fn parses_project_context_export_command() {
+        let cli = Cli::try_parse_from([
+            "gtd",
+            "stuff",
+            "project-context",
+            "018f13b2-a7f3-7c44-8f1a-9f31f65a7fd2",
+            "--output",
+            "/tmp/project-context",
+        ])
+        .expect("valid project context command");
+
+        assert!(
+            matches!(cli.command, Command::Stuff(args) if matches!(args.command, StuffCommand::ProjectContext { .. }))
+        );
+    }
 }

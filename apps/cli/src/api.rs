@@ -1,14 +1,14 @@
-use reqwest::blocking::{Client, Response};
 use reqwest::Method;
-use serde::de::DeserializeOwned;
+use reqwest::blocking::{Client, Response};
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 use std::time::Duration;
 use url::Url;
 
 use crate::error::CliError;
 use crate::models::{
-    CalendarRequest, Context, InboxStuff, NextActionRequest, ProjectRequest, Stuff, UpdateBodyRequest,
-    UpdateTitleRequest,
+    CalendarRequest, Context, InboxStuff, ItemBody, ItemBodyResponse, NextActionRequest,
+    ProjectRequest, Stuff, UpdateBodyRequest, UpdateTitleRequest,
 };
 
 pub struct ApiClient {
@@ -21,13 +21,17 @@ impl ApiClient {
     ///
     /// Example: `ApiClient::new("http://127.0.0.1:8080".to_string())`.
     pub fn new(base_url: String) -> Result<Self, CliError> {
-        let mut parsed = Url::parse(&base_url).map_err(|_| CliError::InvalidApiUrl(base_url.clone()))?;
+        let mut parsed =
+            Url::parse(&base_url).map_err(|_| CliError::InvalidApiUrl(base_url.clone()))?;
         if !matches!(parsed.scheme(), "http" | "https") {
             return Err(CliError::InvalidApiUrl(base_url));
         }
         ensure_trailing_slash(&mut parsed);
         let client = Client::builder().timeout(Duration::from_secs(15)).build()?;
-        Ok(Self { base_url: parsed, client })
+        Ok(Self {
+            base_url: parsed,
+            client,
+        })
     }
 
     /// Lists active inbox stuff without loading each Markdown body.
@@ -51,10 +55,23 @@ impl ApiClient {
         self.get_json(&format!("inbox/{id}"))
     }
 
+    /// Loads canonical Markdown for an active item, including a project's backing item.
+    ///
+    /// Example: `client.get_item_body("018f13b2-a7f3-7c44-8f1a-9f31f65a7fd2")`.
+    pub fn get_item_body(&self, id: &str) -> Result<ItemBody, CliError> {
+        Ok(self
+            .get_json::<ItemBodyResponse>(&format!("items/{id}/body"))?
+            .body)
+    }
+
     /// Updates the title of an item already verified as active stuff.
     ///
     /// Example: `client.update_stuff_title(id, &request)`.
-    pub fn update_stuff_title(&self, id: &str, request: &UpdateTitleRequest<'_>) -> Result<(), CliError> {
+    pub fn update_stuff_title(
+        &self,
+        id: &str,
+        request: &UpdateTitleRequest<'_>,
+    ) -> Result<(), CliError> {
         self.send_json(Method::PATCH, &format!("items/{id}/title"), request)
     }
 
@@ -68,7 +85,11 @@ impl ApiClient {
     /// Converts active stuff into a next action through the domain endpoint.
     ///
     /// Example: `client.process_next_action(id, &request)`.
-    pub fn process_next_action(&self, id: &str, request: &NextActionRequest<'_>) -> Result<(), CliError> {
+    pub fn process_next_action(
+        &self,
+        id: &str,
+        request: &NextActionRequest<'_>,
+    ) -> Result<(), CliError> {
         self.send_json(Method::POST, &format!("inbox/{id}/next-action"), request)
     }
 
@@ -89,14 +110,18 @@ impl ApiClient {
     /// Converts active stuff into a calendar item through the domain endpoint.
     ///
     /// Example: `client.process_calendar(id, &request)`.
-    pub fn process_calendar(&self, id: &str, request: &CalendarRequest<'_>) -> Result<(), CliError> {
+    pub fn process_calendar(
+        &self,
+        id: &str,
+        request: &CalendarRequest<'_>,
+    ) -> Result<(), CliError> {
         self.send_json(Method::POST, &format!("inbox/{id}/calendar"), request)
     }
 
-    /// Downloads one attachment referenced by a stuff Markdown body.
+    /// Downloads one attachment referenced by an item's canonical Markdown body.
     ///
-    /// Example: `client.download_stuff_asset(id, "assets/<asset-id>/file.pdf")`.
-    pub fn download_stuff_asset(&self, id: &str, asset_path: &str) -> Result<Vec<u8>, CliError> {
+    /// Example: `client.download_item_asset(id, "assets/<asset-id>/file.pdf")`.
+    pub fn download_item_asset(&self, id: &str, asset_path: &str) -> Result<Vec<u8>, CliError> {
         self.download(&format!("assets/items/{id}/{asset_path}"))
     }
 
@@ -105,8 +130,17 @@ impl ApiClient {
         Ok(Self::successful_response(response)?.json()?)
     }
 
-    fn send_json<T: Serialize>(&self, method: Method, path: &str, body: &T) -> Result<(), CliError> {
-        let response = self.client.request(method, self.url(path)?).json(body).send()?;
+    fn send_json<T: Serialize>(
+        &self,
+        method: Method,
+        path: &str,
+        body: &T,
+    ) -> Result<(), CliError> {
+        let response = self
+            .client
+            .request(method, self.url(path)?)
+            .json(body)
+            .send()?;
         Self::ensure_success(response)
     }
 
@@ -122,11 +156,17 @@ impl ApiClient {
     }
 
     fn url(&self, path: &str) -> Result<Url, CliError> {
-        self.base_url.join(path).map_err(|_| CliError::InvalidApiUrl(self.base_url.to_string()))
+        self.base_url
+            .join(path)
+            .map_err(|_| CliError::InvalidApiUrl(self.base_url.to_string()))
     }
 
     fn successful_response(response: Response) -> Result<Response, CliError> {
-        if response.status().is_success() { Ok(response) } else { Err(Self::api_error(response)) }
+        if response.status().is_success() {
+            Ok(response)
+        } else {
+            Err(Self::api_error(response))
+        }
     }
 
     fn ensure_success(response: Response) -> Result<(), CliError> {
@@ -135,7 +175,9 @@ impl ApiClient {
 
     fn api_error(response: Response) -> CliError {
         let status = response.status().as_u16();
-        let message = response.text().unwrap_or_else(|_| "request failed".to_string());
+        let message = response
+            .text()
+            .unwrap_or_else(|_| "request failed".to_string());
         CliError::Api { status, message }
     }
 }
