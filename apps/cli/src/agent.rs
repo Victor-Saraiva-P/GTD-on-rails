@@ -6,7 +6,7 @@ use serde_json::{Map, Value};
 use crate::error::CliError;
 
 const COMMAND_PERMISSION: &str = "command(gtd)";
-const UNSANDBOXED_PERMISSION: &str = "unsandboxed(gtd)";
+const LEGACY_UNSANDBOXED_PERMISSION: &str = "unsandboxed(gtd)";
 const CODEX_RULES: &str = r#"prefix_rule(
     pattern = ["gtd"],
     decision = "allow",
@@ -107,19 +107,18 @@ fn add_permission_rules(path: &Path, settings: &mut Value) -> Result<bool, CliEr
     let allow = allow
         .as_array_mut()
         .ok_or_else(|| invalid_shape(path, "permissions.allow must be an array"))?;
-    Ok(add_missing_rules(allow))
+    Ok(reconcile_permission_rules(allow))
 }
 
-fn add_missing_rules(allow: &mut Vec<Value>) -> bool {
-    let mut changed = false;
-    for rule in [COMMAND_PERMISSION, UNSANDBOXED_PERMISSION] {
-        if allow.iter().any(|entry| entry.as_str() == Some(rule)) {
-            continue;
-        }
-        allow.push(Value::String(rule.to_string()));
-        changed = true;
+fn reconcile_permission_rules(allow: &mut Vec<Value>) -> bool {
+    let original_len = allow.len();
+    allow.retain(|entry| entry.as_str() != Some(LEGACY_UNSANDBOXED_PERMISSION));
+    let removed_legacy_rule = allow.len() != original_len;
+    if allow.iter().any(|entry| entry.as_str() == Some(COMMAND_PERMISSION)) {
+        return removed_legacy_rule;
     }
-    changed
+    allow.push(Value::String(COMMAND_PERMISSION.to_string()));
+    true
 }
 
 fn object_at<'a>(
@@ -191,4 +190,23 @@ fn preserve_existing_permissions(source: &Path, target: &Path) -> Result<(), Cli
         path: target.display().to_string(),
         source: source_error,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{reconcile_permission_rules, COMMAND_PERMISSION, LEGACY_UNSANDBOXED_PERMISSION};
+    use serde_json::Value;
+
+    #[test]
+    fn removes_legacy_unsandboxed_permission_and_keeps_command_permission() {
+        let mut allow = vec![
+            Value::String("mcp(ai-memory/memory_explore)".to_string()),
+            Value::String(COMMAND_PERMISSION.to_string()),
+            Value::String(LEGACY_UNSANDBOXED_PERMISSION.to_string()),
+        ];
+
+        assert!(reconcile_permission_rules(&mut allow));
+        assert!(allow.iter().any(|entry| entry.as_str() == Some(COMMAND_PERMISSION)));
+        assert!(!allow.iter().any(|entry| entry.as_str() == Some(LEGACY_UNSANDBOXED_PERMISSION)));
+    }
 }
