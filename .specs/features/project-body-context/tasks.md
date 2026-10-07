@@ -1,7 +1,7 @@
 # Project Body Context Tasks
 
 **Design**: `.specs/features/project-body-context/design.md`
-**Status**: In Progress
+**Status**: Completed
 
 ## Execution Plan
 

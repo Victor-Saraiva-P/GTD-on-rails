@@ -76,15 +76,15 @@ Projects already have a backing Item, but the desktop does not expose its canoni
 
 | Requirement ID | Story | Phase | Status |
 | --- | --- | --- | --- |
-| PBC-01 | Maintain a Project Brief | Design | Pending |
-| PBC-02 | Maintain a Project Brief | Design | Pending |
-| PBC-03 | Maintain a Project Brief | Design | Pending |
-| PBC-04 | Give associated Stuff project context | Design | Pending |
-| PBC-05 | Give associated Stuff project context | Design | Pending |
-| PBC-06 | Preserve attachment lifecycle and sync | Design | Pending |
+| PBC-01 | Maintain a Project Brief | Execution | Complete |
+| PBC-02 | Maintain a Project Brief | Execution | Complete |
+| PBC-03 | Maintain a Project Brief | Execution | Complete |
+| PBC-04 | Give associated Stuff project context | Execution | Complete |
+| PBC-05 | Give associated Stuff project context | Execution | Complete |
+| PBC-06 | Preserve attachment lifecycle and sync | Execution | Complete |
 
 ## Success Criteria
 
-- [ ] A project brief with a Markdown attachment survives reload, deletion/recovery, and sync scheduling through the existing Item contract.
-- [ ] Project Detail supports the chosen `g b`, `e`, `Esc`, and `Ctrl+h` keyboard flow without collisions.
-- [ ] The agent can read, but cannot be instructed to change, context for associated stuff.
+- [x] A project brief with a Markdown attachment survives reload, deletion/recovery, and sync scheduling through the existing Item contract.
+- [x] Project Detail supports the chosen `g b`, `e`, `Esc`, and `Ctrl+h` keyboard flow without collisions.
+- [x] The agent can read, but cannot be instructed to change, context for associated stuff.
