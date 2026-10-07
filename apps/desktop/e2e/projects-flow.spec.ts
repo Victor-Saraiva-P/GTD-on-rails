@@ -172,12 +172,12 @@ test("deletes active project, undoes, redoes, and recovers from deleted projects
 });
 
 test("edits and persists project brief with gb and e keybinds", async ({ page, request }) => {
-  const title = uniqueLabel("Project brief test");
+  const title = uniqueLabel("Brief test project");
   const stuff = await createStuffApi(request, title);
   await convertStuffToProjectApi(request, stuff.id);
 
   await openProjectDetailByTitle(page, title);
-  await expect(page.locator(".list-pane__title").first()).toHaveText("Project Brief");
+  await expect(page.locator(".list-pane__title").filter({ hasText: /^Project Brief$/ })).toBeVisible();
   await expect(page.getByText("Project brief is empty.")).toBeVisible();
 
   await focusAndEditProjectBrief(page);
@@ -198,7 +198,7 @@ async function openProjectDetailByTitle(page: Page, title: string): Promise<void
 async function focusAndEditProjectBrief(page: Page): Promise<void> {
   await page.keyboard.press("g");
   await page.keyboard.press("b");
-  await expect(page.locator(".list-pane").first()).toHaveClass(/list-pane--active/);
+  await expect(page.locator(".list-pane").filter({ has: page.getByText("Project Brief", { exact: true }) })).toHaveClass(/list-pane--active/);
   await page.keyboard.press("e");
   await expect(page.locator(".cm-content")).toBeVisible();
 }

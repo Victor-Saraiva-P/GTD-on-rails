@@ -19,15 +19,22 @@ function BriefSaveError({ errorMessage }: Readonly<{ errorMessage: string | null
   return <p className="pane-state" role="alert">Project brief: {errorMessage}</p>;
 }
 
+function projectBriefSurfaceClass(isEditing: boolean): string {
+  if (isEditing) return "inbox-detail__body-surface";
+  return "inbox-detail__body inbox-detail__body-preview inbox-detail__body-surface";
+}
+
 function ProjectBriefEditor(props: ProjectBriefProps) {
   const editorConfig = projectBriefEditorConfig(props);
   if (!editorConfig) return <BriefState>Loading project brief...</BriefState>;
   return (
-    <div className="project-brief__surface" aria-label="Project brief">
+    <div className="inbox-detail project-brief" aria-label="Project brief">
       <BriefSaveError errorMessage={props.errorMessage} />
-      <Suspense fallback={<BriefState>Loading project brief editor...</BriefState>}>
-        <LazyItemBodyMarkdownEditor {...editorConfig} />
-      </Suspense>
+      <div className={projectBriefSurfaceClass(props.isEditing)}>
+        <Suspense fallback={<BriefState>Loading project brief editor...</BriefState>}>
+          <LazyItemBodyMarkdownEditor {...editorConfig} />
+        </Suspense>
+      </div>
     </div>
   );
 }

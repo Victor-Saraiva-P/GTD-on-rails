@@ -132,7 +132,7 @@ test("displays someday/maybe and ongoing items inside project detail", async ({ 
   await projectCard.click();
   await page.keyboard.press("Enter");
 
-  await expect(page.locator(".list-pane__title").nth(1)).toHaveText(projectTitle);
+  await expect(page.locator(".list-pane__title").first()).toHaveText(projectTitle);
 
   const somedayItem = page.locator(".tree-list--inbox").getByRole("button", { name: "Buy beanbag", exact: false });
   await expect(somedayItem).toBeVisible();

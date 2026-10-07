@@ -42,9 +42,13 @@
   min-height: 0;
   height: 100%;
   display: grid;
-  grid-template-columns: minmax(0, 0.8fr) minmax(0, 0.8fr) minmax(0, 1.2fr);
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.2fr) minmax(0, 0.9fr);
   gap: 10px;
   overflow: hidden;
+}
+
+.project-brief .inbox-detail__body-preview .cm-gutters {
+  display: none !important;
 }
 
 .ongoing-unified-layout {

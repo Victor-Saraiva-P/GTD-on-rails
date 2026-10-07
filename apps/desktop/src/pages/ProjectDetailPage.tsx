@@ -184,20 +184,24 @@ function ProjectDetailView({ controller }: ProjectDetailPageProps) {
   const actionCount = controller.items.filter((item) => item.kind === "NEXT_ACTION" || item.kind === "CALENDAR").length;
   return (
     <>
-      <ListView title="Project Brief" viewIndex={1} active={controller.activeZone === "project-brief"} bodyClassName="list-pane__body--detail" className="inbox-pane inbox-pane--detail">
-        <ProjectBriefBody controller={controller} />
-      </ListView>
-      <ListView title={controller.project?.title ?? "Project"} meta={formatProjectActionCount(actionCount)} viewIndex={2} active={controller.activeZone === "project-actions-list"} bodyClassName="list-pane__body--flush" className="inbox-pane inbox-pane--list">
+      <ListView title={controller.project?.title ?? "Project"} meta={formatProjectActionCount(actionCount)} viewIndex={1} active={controller.activeZone === "project-actions-list"} bodyClassName="list-pane__body--flush" className="inbox-pane inbox-pane--list">
         <ProjectActionBody controller={controller} />
       </ListView>
-      <ListView title="Item Detail" viewIndex={3} active={controller.activeZone === "project-item-detail"} bodyClassName="list-pane__body--detail" className="inbox-pane inbox-pane--detail">
+      <ListView title="Item Detail" viewIndex={2} active={controller.activeZone === "project-item-detail"} bodyClassName="list-pane__body--detail" className="inbox-pane inbox-pane--detail">
         <ProjectItemDetailBody controller={controller} />
+      </ListView>
+      <ListView title="Project Brief" viewIndex={3} active={controller.activeZone === "project-brief"} bodyClassName="list-pane__body--detail" className="inbox-pane inbox-pane--detail">
+        <ProjectBriefBody controller={controller} />
       </ListView>
     </>
   );
 }
 
 function useProjectDetailZone(controller: ProjectDetailController) {
+  useEffect(() => {
+    controller.setActiveZone("project-actions-list");
+  }, [controller.project?.id]);
+
   useEffect(() => {
     if (controller.activeZone !== "project-actions-list" && controller.activeZone !== "project-item-detail" && controller.activeZone !== "project-brief") {
       controller.setActiveZone("project-actions-list");
