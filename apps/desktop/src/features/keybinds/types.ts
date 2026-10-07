@@ -37,6 +37,7 @@ export type FocusZoneId =
   | "calendar-sun-panel"
   | "next-actions-list"
   | "projects-list"
+  | "project-brief"
   | "project-actions-list"
   | "project-item-detail"
   | "next-action-detail"
