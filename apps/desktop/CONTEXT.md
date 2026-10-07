@@ -20,6 +20,10 @@ _Avoid_: project preview
 A fullscreen project-focused page used to inspect and operate the items associated with one active project.
 _Avoid_: Project Workspace, project preview
 
+**Project Brief**:
+The read-only preview or editable canonical Markdown body of the Item backing the active project, shown as a dedicated pane in Project Detail. It follows normal Item body formatting, asset, persistence, synchronization, and Vim editing behavior.
+_Avoid_: project notes, project description, project-specific body
+
 **Project Actions View**:
 The project detail subview that lists actionable or clarifiable project items. It includes project stuff, active calendar items, next actions with deadlines, and next actions without deadlines.
 _Avoid_: Actions, project task list, project backlog
@@ -59,4 +63,3 @@ _Avoid_: project label, project breadcrumb
 **Project association marker**:
 The visual `P project title` marker shown only for project-associated items. It is informational, is not a clickable navigation control, and is omitted when no valid project title is available.
 _Avoid_: project link, project action
-

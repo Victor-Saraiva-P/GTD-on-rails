@@ -32,16 +32,22 @@ Active projects with a deadline appear as all-day entries on the external Projec
 
 ## Project Detail Page
 
-The project detail page is a fullscreen page for one active project. Its first subview is the Project Actions View, titled with the project title and using the project purple page theme.
+The project detail page is a fullscreen page for one active project. It shows a Project Brief pane beside the Project Actions View and selected-item detail, using the project purple page theme. The Project Brief is the canonical Markdown body of the Item backing the project, not content stored on the compact Project card.
 
-The Project Actions View is a unified list of project items with a detail preview pane beside it. It shows captured project stuff first, ongoing items second, calendar items third, next actions with deadlines fourth, next actions without deadlines fifth, and someday/maybe items last.
+The Project Actions View is a unified list of project items with a detail preview pane. It shows captured project stuff first, ongoing items second, calendar items third, next actions with deadlines fourth, next actions without deadlines fifth, and someday/maybe items last.
 
 Project stuff created from this page remains normal stuff and also appears in Inbox until processed. Processing project stuff can turn it into a next action, calendar item, or someday/maybe item; the resulting item remains in the Project Actions View and also appears in its global page.
+
+The Project Brief uses the same Markdown editor, formatting commands, links, attachment dialogs, upload paths, previews, local persistence, and synchronization as any Item body. `Space m a` inserts an attachment while editing; it is uploaded and owned by the backend as a project Item asset. An empty brief shows an English empty state and can be edited immediately.
 
 | Shortcut | Scope | Action |
 | --- | --- | --- |
 | `a` | Project Actions View | Add project stuff. |
 | `p` | Project Actions View | Process selected project stuff into a next action, calendar, or someday/maybe item. |
+| `g b` | Project Actions View | Focus the Project Brief. |
+| `e` | Project Brief | Start editing the Project Brief. |
+| `Esc` | Project Brief editor | Use the normal Vim transition to Normal mode; it does not leave the editor. |
+| `Ctrl+h` | Project Brief editor in Vim Normal mode | Flush pending changes, leave editing, and return focus to the Project Actions View. |
 | `P` | Project Actions View or Detail | Associate selected project item to project. |
 | `gd` | Project Actions View or Detail | Open corresponding screen for selected item (Next Actions, Ongoing Actions, Calendars, Someday/Maybe, or Inbox) and focus it. |
 | `d` | Project Actions View or Detail | Delete selected project item. |
