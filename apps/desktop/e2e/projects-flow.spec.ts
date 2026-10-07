@@ -171,7 +171,7 @@ test("deletes active project, undoes, redoes, and recovers from deleted projects
   await expect(page.getByRole("button", { name: title, exact: false })).toBeVisible();
 });
 
-test("edits and persists project brief with gb and e keybinds", async ({ page, request }) => {
+test("edits and persists project brief with gb keybind", async ({ page, request }) => {
   const title = uniqueLabel("Brief test project");
   const stuff = await createStuffApi(request, title);
   await convertStuffToProjectApi(request, stuff.id);
@@ -199,7 +199,6 @@ async function focusAndEditProjectBrief(page: Page): Promise<void> {
   await page.keyboard.press("g");
   await page.keyboard.press("b");
   await expect(page.locator(".list-pane").filter({ has: page.getByText("Project Brief", { exact: true }) })).toHaveClass(/list-pane--active/);
-  await page.keyboard.press("e");
   await expect(page.locator(".cm-content")).toBeVisible();
 }
 

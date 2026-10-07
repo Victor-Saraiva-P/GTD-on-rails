@@ -44,7 +44,7 @@ The Project Brief uses the same Markdown editor, formatting commands, links, att
 | --- | --- | --- |
 | `a` | Project Actions View | Add project stuff. |
 | `p` | Project Actions View | Process selected project stuff into a next action, calendar, or someday/maybe item. |
-| `g b` | Project Actions View | Focus the Project Brief. |
+| `g b` | Project Actions View | Edit the Project Brief. |
 | `e` | Project Brief | Start editing the Project Brief. |
 | `Esc` | Project Brief editor | Use the normal Vim transition to Normal mode; it does not leave the editor. |
 | `Ctrl+h` | Project Brief editor in Vim Normal mode | Flush pending changes, leave editing, and return focus to the Project Actions View. |
