@@ -5,14 +5,16 @@ import { RetryState } from "../components/RetryState";
 import type { CalendarConversionPayload } from "../features/calendar/types";
 import { InboxStuffDetails } from "../features/inbox/InboxStuffDetails";
 import { buildFormattingBindings } from "../features/inbox/formattingKeybinds";
+import { prefetchItemBodyAssets } from "../features/inbox/inboxAssetPrefetch";
 import type { ItemBody } from "../features/inbox/types";
 import { LeaderMenu } from "../features/keybinds/LeaderMenu";
 import { useKeybindScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
-import type { KeybindDefinition } from "../features/keybinds/types";
+import type { FocusZoneId, KeybindDefinition } from "../features/keybinds/types";
 import { projectsListTheme } from "../features/lists/listThemes";
 import { ProcessingDialog } from "../features/processing/ProcessingDialog";
 import { ProjectActionsList } from "../features/projects/ProjectActionsList";
 import { ProjectAssociateDialog } from "../features/projects/ProjectAssociateDialog";
+import { ProjectBrief } from "../features/projects/ProjectBrief";
 import { useProjectAssociateDialog } from "../features/projects/useProjectAssociateDialog";
 import { formatProjectActionCount } from "../features/projects/types";
 import type { Project } from "../features/projects/types";
@@ -37,7 +39,7 @@ const LazyMarkdownLinkComboDialog = lazy(async () => {
   return { default: module.MarkdownLinkComboDialog };
 });
 
-function projectDetailBinding(id: string, key: string, description: string, zone: "project-actions-list" | "project-item-detail", runKeybind: () => void, leader = false, sequence?: string[]): KeybindDefinition {
+function projectDetailBinding(id: string, key: string, description: string, zone: FocusZoneId, runKeybind: () => void, leader = false, sequence?: string[]): KeybindDefinition {
   return { description, id, key, leader, runKeybind, screen: "project-detail", sequence, zone };
 }
 
@@ -46,11 +48,15 @@ function canRunAction(controller: ProjectDetailController): boolean {
 }
 
 function canEditProjectItem(controller: ProjectDetailController): boolean {
-  return canRunAction(controller) && Boolean(controller.selectedItem) && !controller.editingId && !controller.editingBodyId;
+  return canRunAction(controller) && Boolean(controller.selectedItem) && !controller.editingId && !controller.editingBodyId && !controller.isEditingProjectBrief;
 }
 
 function canUndoProjectAction(controller: ProjectDetailController): boolean {
-  return canRunAction(controller) && !controller.editingId && !controller.editingBodyId;
+  return canRunAction(controller) && !controller.editingId && !controller.editingBodyId && !controller.isEditingProjectBrief;
+}
+
+function canEditProjectBrief(controller: ProjectDetailController): boolean {
+  return canRunAction(controller) && Boolean(controller.projectBriefBody) && !controller.isProjectBriefLoading && !controller.editingId && !controller.editingBodyId && !controller.isEditingProjectBrief;
 }
 
 function openItemDestinationFromKeybind(
@@ -63,6 +69,12 @@ function openItemDestinationFromKeybind(
   openItemDestination(item);
 }
 
+function openProjectBriefEdit(controller: ProjectDetailController): void {
+  if (!canEditProjectBrief(controller)) return;
+  controller.setActiveZone("project-brief");
+  controller.startProjectBriefEdit();
+}
+
 function buildListNavigationBindings(controller: ProjectDetailController): KeybindDefinition[] {
   return [
     projectDetailBinding("project-detail.create-stuff", "a", "Add project stuff", "project-actions-list", () => canRunAction(controller) && controller.createNewStuff()),
@@ -70,13 +82,26 @@ function buildListNavigationBindings(controller: ProjectDetailController): Keybi
     projectDetailBinding("project-detail.move-down", "j", "Move down", "project-actions-list", controller.selectNext),
     projectDetailBinding("project-detail.move-up", "k", "Move up", "project-actions-list", controller.selectPrevious),
     projectDetailBinding("project-detail.move-first", "g", "Move to first item", "project-actions-list", controller.selectFirst, false, ["g", "g"]),
+    projectDetailBinding("project-detail.open-brief", "b", "Edit project brief", "project-actions-list", () => openProjectBriefEdit(controller), false, ["g", "b"]),
     projectDetailBinding("project-detail.move-last", "G", "Move to last item", "project-actions-list", controller.selectLast),
     projectDetailBinding("project-detail.open-detail", "l", "Open selected detail", "project-actions-list", () => canRunAction(controller) && controller.startBodyEdit()),
     projectDetailBinding("project-detail.which-key-list", "k", "Show available keybinds", "project-actions-list", () => undefined, true)
   ];
 }
 
-function buildItemActionBindings(
+function buildProjectBriefBindings(
+  controller: ProjectDetailController,
+  openLink: () => void,
+  openAsset: () => void
+): KeybindDefinition[] {
+  return [
+    projectDetailBinding("project-detail.edit-brief", "e", "Edit project brief", "project-brief", () => canEditProjectBrief(controller) && controller.startProjectBriefEdit()),
+    projectDetailBinding("project-detail.which-key-brief", "k", "Show available keybinds", "project-brief", () => undefined, true),
+    ...buildFormattingBindings("project-detail", openLink, openAsset, "project-brief")
+  ];
+}
+
+function buildItemMutationBindings(
   controller: ProjectDetailController,
   openProcessing: () => void,
   openAssociate: () => void,
@@ -86,10 +111,16 @@ function buildItemActionBindings(
     projectDetailBinding("project-detail.process", "p", "Process selected stuff", "project-actions-list", () => openProjectProcessing(controller, openProcessing)),
     projectDetailBinding("project-detail.associate-list", "P", "Associate to project", "project-actions-list", () => canEditProjectItem(controller) && openAssociate()),
     projectDetailBinding("project-detail.associate-detail", "P", "Associate to project", "project-item-detail", () => canEditProjectItem(controller) && openAssociate()),
+    projectDetailBinding("project-detail.open-brief-from-detail", "b", "Edit project brief", "project-item-detail", () => openProjectBriefEdit(controller), false, ["g", "b"]),
     projectDetailBinding("project-detail.open-destination-list", "d", "Open item destination", "project-actions-list", () => openItemDestinationFromKeybind(controller, openItemDestination), false, ["g", "d"]),
     projectDetailBinding("project-detail.open-destination-detail", "d", "Open item destination", "project-item-detail", () => openItemDestinationFromKeybind(controller, openItemDestination), false, ["g", "d"]),
     projectDetailBinding("project-detail.delete-list", "d", "Delete selected item", "project-actions-list", () => canEditProjectItem(controller) && void controller.deleteSelected()),
-    projectDetailBinding("project-detail.delete-detail", "d", "Delete selected item", "project-item-detail", () => canEditProjectItem(controller) && void controller.deleteSelected()),
+    projectDetailBinding("project-detail.delete-detail", "d", "Delete selected item", "project-item-detail", () => canEditProjectItem(controller) && void controller.deleteSelected())
+  ];
+}
+
+function buildItemHistoryBindings(controller: ProjectDetailController): KeybindDefinition[] {
+  return [
     projectDetailBinding("project-detail.undo-list", "u", "Undo last deletion", "project-actions-list", () => canUndoProjectAction(controller) && void controller.undo()),
     projectDetailBinding("project-detail.undo-detail", "u", "Undo last deletion", "project-item-detail", () => canUndoProjectAction(controller) && void controller.undo()),
     { ...projectDetailBinding("project-detail.redo-list", "r", "Redo last action", "project-actions-list", () => canUndoProjectAction(controller) && void controller.redo()), ctrl: true },
@@ -108,7 +139,9 @@ function buildBindings(
 ): KeybindDefinition[] {
   return [
     ...buildListNavigationBindings(controller),
-    ...buildItemActionBindings(controller, openProcessing, openAssociate, openItemDestination),
+    ...buildItemMutationBindings(controller, openProcessing, openAssociate, openItemDestination),
+    ...buildItemHistoryBindings(controller),
+    ...buildProjectBriefBindings(controller, openLink, openAsset),
     ...buildFormattingBindings("project-detail", openLink, openAsset, "project-item-detail")
   ];
 }
@@ -142,7 +175,7 @@ function ProjectActionBody({ controller }: ProjectDetailPageProps) {
   if (controller.isLoading) return <p className="pane-state">Loading project actions...</p>;
   if (controller.errorMessage) return <RetryState message={controller.errorMessage} onRetry={controller.reload} />;
   if (controller.items.length === 0) return <p className="pane-state">No project actions.</p>;
-  return <ProjectActionsList items={controller.items} selectedId={controller.selectedItem?.id ?? ""} editingId={controller.editingId} editingTitle={controller.editingTitle} editingTitleError={controller.editingTitleError} onSelect={controller.setSelectedId} onEditingTitleChange={controller.setEditingTitle} onStartEditing={controller.startTitleEdit} onCommitEditing={() => void controller.commitTitle()} onCommitEditingAndContinue={() => void controller.commitTitle()} onCancelEditing={controller.cancelTitleEdit} />;
+  return <ProjectActionsList items={controller.items} selectedId={controller.selectedItem?.id ?? ""} editingId={controller.editingId} editingTitle={controller.editingTitle} editingTitleError={controller.editingTitleError} onSelect={controller.setSelectedId} onEditingTitleChange={controller.setEditingTitle} onStartEditing={() => canEditProjectItem(controller) && controller.startTitleEdit()} onCommitEditing={() => void controller.commitTitle()} onCommitEditingAndContinue={() => void controller.commitTitle()} onCancelEditing={controller.cancelTitleEdit} />;
 }
 
 function ProjectItemDetailBody({ controller }: ProjectDetailPageProps) {
@@ -156,6 +189,10 @@ async function exitProjectItemDetail(controller: ProjectDetailController): Promi
   controller.setActiveZone("project-actions-list");
 }
 
+function ProjectBriefBody({ controller }: ProjectDetailPageProps) {
+  return <ProjectBrief projectId={controller.project?.id ?? null} body={controller.projectBriefBody} errorMessage={controller.projectBriefErrorMessage} isEditing={controller.isEditingProjectBrief} isLoading={controller.isProjectBriefLoading} onAutosave={controller.autosaveProjectBrief} onSave={controller.commitProjectBrief} onExitNormalMode={async () => controller.exitProjectBriefFromNormalMode()} onVimModeChange={controller.setProjectBriefVimMode} />;
+}
+
 function ProjectDetailView({ controller }: ProjectDetailPageProps) {
   const actionCount = controller.items.filter((item) => item.kind === "NEXT_ACTION" || item.kind === "CALENDAR").length;
   return (
@@ -166,13 +203,20 @@ function ProjectDetailView({ controller }: ProjectDetailPageProps) {
       <ListView title="Item Detail" viewIndex={2} active={controller.activeZone === "project-item-detail"} bodyClassName="list-pane__body--detail" className="inbox-pane inbox-pane--detail">
         <ProjectItemDetailBody controller={controller} />
       </ListView>
+      <ListView title="Project Brief" viewIndex={3} active={controller.activeZone === "project-brief"} bodyClassName="list-pane__body--detail" className="inbox-pane inbox-pane--detail">
+        <ProjectBriefBody controller={controller} />
+      </ListView>
     </>
   );
 }
 
 function useProjectDetailZone(controller: ProjectDetailController) {
   useEffect(() => {
-    if (controller.activeZone !== "project-actions-list" && controller.activeZone !== "project-item-detail") {
+    controller.setActiveZone("project-actions-list");
+  }, [controller.project?.id]);
+
+  useEffect(() => {
+    if (controller.activeZone !== "project-actions-list" && controller.activeZone !== "project-item-detail" && controller.activeZone !== "project-brief") {
       controller.setActiveZone("project-actions-list");
     }
   }, [controller.activeZone, controller.setActiveZone]);
@@ -191,10 +235,11 @@ type ProjectDetailModalsProps = Readonly<{
 
 function ProjectDetailComboModals(props: ProjectDetailModalsProps) {
   const item = props.controller.selectedItem;
+  const itemId = assetItemId(props.controller);
   return (
     <Suspense fallback={null}>
       {props.isLinkOpen ? <LazyMarkdownLinkComboDialog onClose={() => props.setIsLinkOpen(false)} /> : null}
-      {props.isAssetOpen && item ? <LazyMarkdownAssetComboDialog itemId={item.id} onClose={() => props.setIsAssetOpen(false)} /> : null}
+      {props.isAssetOpen && itemId ? <LazyMarkdownAssetComboDialog itemId={itemId} onClose={() => props.setIsAssetOpen(false)} /> : null}
       <ProjectAssociateDialog
         item={item}
         isOpen={props.projectAssociate.isOpen}
@@ -203,6 +248,11 @@ function ProjectDetailComboModals(props: ProjectDetailModalsProps) {
       />
     </Suspense>
   );
+}
+
+function assetItemId(controller: ProjectDetailController): string | null {
+  if (controller.activeZone === "project-brief" || controller.isEditingProjectBrief) return controller.project?.id ?? null;
+  return controller.selectedItem?.id ?? null;
 }
 
 function ProjectDetailModals(props: ProjectDetailModalsProps) {
@@ -232,9 +282,10 @@ export function ProjectDetailPage({ controller, openItemDestination }: ProjectDe
   const projectAssociate = useProjectAssociateDialog();
   useKeybindScreen("project-detail");
   useProjectDetailZone(controller);
+  useProjectBriefAssetPrefetch(controller.projectBriefBody);
   useProjectDetailBindings(controller, () => setIsProcessingOpen(true), () => setIsLinkOpen(true), () => setIsAssetOpen(true), projectAssociate.open, openItemDestination);
   const titleSearch = useListTitleSearch({
-    disabled: Boolean(controller.editingId || controller.editingBodyId),
+    disabled: Boolean(controller.editingId || controller.editingBodyId || controller.isEditingProjectBrief),
     items: controller.items,
     screen: "project-detail",
     selectedId: controller.selectedItem?.id ?? null,
@@ -243,8 +294,8 @@ export function ProjectDetailPage({ controller, openItemDestination }: ProjectDe
   });
 
   return (
-    <ListWorkspace theme={projectsListTheme} currentLabel={projectsListTheme.label} modeLabel={controller.vimMode ?? undefined} titleSearch={titleSearch}>
-      <section className="inbox-terminal-layout" aria-label="Project detail">
+    <ListWorkspace theme={projectsListTheme} currentLabel={projectsListTheme.label} modeLabel={controller.projectBriefVimMode ?? controller.vimMode ?? undefined} titleSearch={titleSearch}>
+      <section className="project-detail-layout" aria-label="Project detail">
         <ProjectDetailView controller={controller} />
       </section>
       <LeaderMenu />
@@ -260,4 +311,10 @@ export function ProjectDetailPage({ controller, openItemDestination }: ProjectDe
       />
     </ListWorkspace>
   );
+}
+
+function useProjectBriefAssetPrefetch(body: ItemBody | null): void {
+  useEffect(() => {
+    if (body) prefetchItemBodyAssets(body);
+  }, [body]);
 }

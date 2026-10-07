@@ -9,23 +9,24 @@ Use the `gtd` CLI as the only GTD on Rails interface. Process one captured item 
 
 ## Process
 
-1. **Inspect one item.** If an ID was supplied, run `gtd stuff show <id>` for exactly that item. Otherwise use `gtd inbox list`; it is oldest-first. Never substitute another item for a missing/stale ID.
-2. **Use all captured evidence.** Read the title and Markdown body. When the body references `assets/...`, run `gtd stuff export <id> --output <directory>` and inspect only the relevant exported files before deciding or asking the user.
-3. **Clarify what this is.** Decide whether the capture represents something actionable now. Do not organize an amorphous capture before its meaning is clear.
-4. **If it is not actionable now, classify it:**
+1. **Inspect one item.** If an ID was supplied, run `gtd stuff show <id>` for exactly that item. Otherwise use `gtd inbox list`; it is oldest-first. Never substitute another item for a missing/stale ID. The output may include a `--- PROJECT CONTEXT (READ-ONLY) ---` block.
+2. **Use all captured evidence.** Read the title and Markdown body. When the selected stuff body references `assets/...`, run `gtd stuff export <id> --output <directory>` and inspect only the relevant exported files before deciding or asking the user.
+3. **Use project context only when present.** If `gtd stuff show <id>` contains the read-only project context block, use its text as context for the decision. When that block references relevant `assets/...` files, run `gtd stuff project-context <id> --output <directory>` and inspect only those relevant exported project files. Do not run this command when the block is absent or it has no relevant assets. Never mutate the project context. Mutate only the selected stuff. If no project context block is present, continue the normal workflow unchanged.
+4. **Clarify what this is.** Decide whether the capture represents something actionable now. Do not organize an amorphous capture before its meaning is clear.
+5. **If it is not actionable now, classify it:**
    - **Someday/Maybe** when the user may want to act on it later but has no present commitment: `gtd stuff process someday-maybe <id>`.
    - **Trash** when it has no future action or reference value.
    - **Reference** when it is useful information but requires no action.
    GTD on Rails currently exposes no controlled CLI destination for Trash or Reference in this workflow. For those classifications, leave the item in Inbox and report the classification instead of forcing it into another destination.
-5. **If it is actionable, define the outcome and next action.**
+6. **If it is actionable, define the outcome and next action.**
    - A **Project** is a committed desired outcome requiring more than one action. Express its title as the positive done-state/finish line when that meaning is supported by the capture. Convert with `gtd stuff process project <id> [--deadline YYYY-MM-DD]`.
    - A **Next Action** is the very next physical, visible behavior that advances the situation. Prefer verbs that describe observable execution such as call, email, write, buy, clean, read, inspect, ask, or research. Convert with `gtd stuff process next-action <id> --energy <0-10> --minutes <n> [--context <uuid> ...] [--deadline YYYY-MM-DD]`.
    - **Calendar** is reserved for the hard landscape: something that must occur on a specific date/time, or date-specific information the user must see that day. Convert with `gtd stuff process calendar <id> --date YYYY-MM-DD [--time HH:MM]`. Never invent a date merely because an action should happen soon.
-6. **Resolve vague actions into physical actions.** Terms such as “plan”, “organize”, “resolve”, “decide”, or “handle” are not sufficient next actions by themselves. Determine the first visible behavior. If the blocker is missing information, the next action may be to obtain that information. If the blocker is internal thinking, the next action may be to brainstorm, outline, or draft ideas.
-7. **Ask only when the decision truly depends on the user.** Ask the minimum question when the captured evidence cannot determine the meaning, commitment, desired outcome, required hard date, or a concrete next action without inventing material facts. Do not ask for metadata such as energy, duration, or context when the action itself is already clear.
-8. **Normalize only after clarification.** Improve title/body when useful, preserving the captured meaning, evidence, uncertainty, links, quotes, and asset references. Apply body changes with `gtd stuff body <id> --file <path>` and title changes with `gtd stuff title <id> '<title>'`.
-9. **Add execution metadata only after the GTD decision.** For a Next Action, run `gtd contexts list` and choose a context only when an existing context represents a real execution constraint: required location, tool, or person. Do not infer context from topic alone. Estimate energy and whole minutes conservatively; these fields must not change the GTD destination.
-10. **Report only the mutation actually performed.** If clarification remains unresolved or the correct GTD class is unsupported by the controlled CLI, leave the Stuff in Inbox and explain the unresolved decision.
+7. **Resolve vague actions into physical actions.** Terms such as “plan”, “organize”, “resolve”, “decide”, or “handle” are not sufficient next actions by themselves. Determine the first visible behavior. If the blocker is missing information, the next action may be to obtain that information. If the blocker is internal thinking, the next action may be to brainstorm, outline, or draft ideas.
+8. **Ask only when the decision truly depends on the user.** Ask the minimum question when the captured evidence cannot determine the meaning, commitment, desired outcome, required hard date, or a concrete next action without inventing material facts. Do not ask for metadata such as energy, duration, or context when the action itself is already clear.
+9. **Normalize only after clarification.** Improve title/body when useful, preserving the captured meaning, evidence, uncertainty, links, quotes, and asset references. Apply body changes with `gtd stuff body <id> --file <path>` and title changes with `gtd stuff title <id> '<title>'`.
+10. **Add execution metadata only after the GTD decision.** For a Next Action, run `gtd contexts list` and choose a context only when an existing context represents a real execution constraint: required location, tool, or person. Do not infer context from topic alone. Estimate energy and whole minutes conservatively; these fields must not change the GTD destination.
+11. **Report only the mutation actually performed.** If clarification remains unresolved or the correct GTD class is unsupported by the controlled CLI, leave the Stuff in Inbox and explain the unresolved decision.
 
 ## Decision rules
 

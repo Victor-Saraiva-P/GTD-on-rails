@@ -135,6 +135,7 @@ test("marks project done, edits it in completed projects, and restores it", asyn
   await page.keyboard.press("t");
   await editDialog.getByRole("textbox", { name: "Title:" }).fill(updatedTitle);
   await page.keyboard.press("Enter");
+  await expect(editDialog).not.toBeVisible();
   await expect(page.getByRole("button", { name: updatedTitle, exact: false })).toBeVisible();
 
   const resetResponse = page.waitForResponse((response) => response.url().includes("/projects/") && response.url().endsWith("/reset-status") && response.ok());
@@ -169,6 +170,44 @@ test("deletes active project, undoes, redoes, and recovers from deleted projects
   await page.keyboard.press("]");
   await expect(page.getByRole("button", { name: title, exact: false })).toBeVisible();
 });
+
+test("edits and persists project brief with gb keybind", async ({ page, request }) => {
+  const title = uniqueLabel("Brief test project");
+  const stuff = await createStuffApi(request, title);
+  await convertStuffToProjectApi(request, stuff.id);
+
+  await openProjectDetailByTitle(page, title);
+  await expect(page.locator(".list-pane__title").filter({ hasText: /^Project Brief$/ })).toBeVisible();
+  await expect(page.getByText("Project brief is empty.")).toBeVisible();
+
+  await focusAndEditProjectBrief(page);
+  await typeBriefAndExit(page, "Goal text");
+
+  await expect(page.locator(".cm-line", { hasText: "Goal text" })).toBeVisible();
+});
+
+async function openProjectDetailByTitle(page: Page, title: string): Promise<void> {
+  await page.keyboard.press("Space");
+  await page.keyboard.press("p");
+  const projectCard = page.getByRole("button", { name: title, exact: false });
+  await expect(projectCard).toBeVisible();
+  await projectCard.click();
+  await page.keyboard.press("Enter");
+}
+
+async function focusAndEditProjectBrief(page: Page): Promise<void> {
+  await page.keyboard.press("g");
+  await page.keyboard.press("b");
+  await expect(page.locator(".list-pane").filter({ has: page.getByText("Project Brief", { exact: true }) })).toHaveClass(/list-pane--active/);
+  await expect(page.locator(".cm-content")).toBeVisible();
+}
+
+async function typeBriefAndExit(page: Page, text: string): Promise<void> {
+  await page.keyboard.press("i");
+  await page.keyboard.type(text);
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Control+h");
+}
 
 async function deleteSelectedProject(page: Page): Promise<void> {
   const deleteResponse = page.waitForResponse((response) => response.url().includes("/projects/") && response.request().method() === "DELETE" && response.ok());

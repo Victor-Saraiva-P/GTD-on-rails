@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test, { afterEach, describe, mock } from "node:test";
 
-import { assignItemProject, deleteProject, fetchDeletedProjects, fetchDoneProjects, fetchProjects, markProjectDone, patchProject, processStuffToProject, recoverProject, resetProjectStatus } from "../src/features/projects/api.ts";
+import { assignItemProject, deleteProject, fetchDeletedProjects, fetchDoneProjects, fetchProjectBriefBody, fetchProjects, markProjectDone, patchProject, processStuffToProject, recoverProject, resetProjectStatus, updateProjectBriefBody } from "../src/features/projects/api.ts";
 import { createProjectStuff, deleteProjectItem, fetchProjectActions, processProjectStuffToSomedayMaybe, restoreProjectItem, type ProjectItem } from "../src/features/projects/projectItems.ts";
 import { formatProjectActionCount, isProjectDead } from "../src/features/projects/types.ts";
 import type { Stuff } from "../src/features/inbox/types.ts";
@@ -55,6 +55,28 @@ describe("projects API", () => {
     const projects = await fetchDeletedProjects();
 
     assert.deepEqual(projects, [{ id: "project-1", title: "Launch", deadline: null, doneDate: null, doneTime: null, actionCount: 0 }]);
+  });
+
+  test("fetchProjectBriefBody loads the backing item body by project id", async () => {
+    const body = { text: "Project context", inlineMarks: [], lineBlocks: [], blockEntities: [] };
+    globalThis.fetch = mock.fn(async (input) => {
+      assert.ok(input.toString().endsWith("/items/project-1/body"));
+      return new Response(JSON.stringify({ body }), { status: 200 });
+    });
+
+    assert.deepEqual(await fetchProjectBriefBody("project-1"), body);
+  });
+
+  test("updateProjectBriefBody persists the backing item body by project id", async () => {
+    const body = { text: "Updated context", inlineMarks: [], lineBlocks: [], blockEntities: [] };
+    globalThis.fetch = mock.fn(async (input, init) => {
+      assert.ok(input.toString().endsWith("/items/project-1/body"));
+      assert.equal(init?.method, "PATCH");
+      assert.equal(init?.body, JSON.stringify({ body }));
+      return new Response(JSON.stringify({ body }), { status: 200 });
+    });
+
+    assert.deepEqual(await updateProjectBriefBody("project-1", body), body);
   });
 
   test("processStuffToProject posts optional deadline", async () => {

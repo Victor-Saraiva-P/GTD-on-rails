@@ -2,7 +2,8 @@
 
 import { defineConfig, devices } from "@playwright/test";
 
-const desktopWebUrl = "http://127.0.0.1:1420";
+const desktopWebPort = process.env.DESKTOP_TEST_PORT ?? "11420";
+const desktopWebUrl = `http://127.0.0.1:${desktopWebPort}`;
 const apiUrl = "http://127.0.0.1:18080";
 
 export default defineConfig({
@@ -35,7 +36,7 @@ export default defineConfig({
       }
     },
     {
-      command: "pnpm dev:web",
+      command: `pnpm exec vite --host 127.0.0.1 --port ${desktopWebPort} --strictPort`,
       cwd: __dirname,
       url: desktopWebUrl,
       reuseExistingServer: !process.env.CI,

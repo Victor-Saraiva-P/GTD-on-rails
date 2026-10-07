@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { optimisticMutate } from "../../lib/api/optimistic.ts";
 import { mutateSharedEntityOptimistically } from "../../lib/state/optimisticSharedEntity.ts";
 import { useSharedCollectionState } from "../../lib/state/sharedEntityStore.ts";
@@ -7,7 +7,20 @@ import type { CalendarConversionPayload } from "../calendar/types";
 import type { ItemBody } from "../inbox/types";
 import { isSameBody } from "../inbox/types";
 import { useActiveZone } from "../keybinds/hooks";
-import { assignItemProject } from "./api";
+import { assignItemProject, fetchProjectBriefBody, updateProjectBriefBody } from "./api";
+import {
+  beginProjectBriefLoad,
+  emptyProjectBriefState,
+  failProjectBriefLoad,
+  finishProjectBriefEditing,
+  resolveProjectBriefLoad,
+  setProjectBriefBody,
+  setProjectBriefError,
+  setProjectBriefVimMode,
+  startProjectBriefEditing,
+  type ProjectBriefState,
+  type ProjectBriefVimMode
+} from "./projectBriefState";
 import type { Project } from "./types";
 import { createProjectStuff, deleteProjectItem, fetchProjectActions, processProjectStuff, processProjectStuffToCalendar, processProjectStuffToSomedayMaybe, restoreProjectItem, updateProjectItemBody, updateProjectItemTitle, type ProjectItem } from "./projectItems";
 import { projectItemsWithDraft } from "./projectDetailItems";
@@ -15,6 +28,8 @@ import { useUndoRedoHistory } from "../history/useUndoRedoHistory";
 import { deleteProjectItemAction, executeProjectItemUndo, executeProjectItemRedo } from "./projectDetailItemActions";
 
 const DRAFT_PROJECT_ITEM_ID = "__draft_project_item__";
+
+type ProjectBriefStateSetter = (state: ProjectBriefState | ((current: ProjectBriefState) => ProjectBriefState)) => void;
 
 function draftProjectItem(projectId: string): ProjectItem {
   return { id: DRAFT_PROJECT_ITEM_ID, projectId, kind: "STUFF", title: "", status: "STUFF", body: { text: "", inlineMarks: [], lineBlocks: [], blockEntities: [] }, createdAt: new Date().toISOString() };
@@ -90,6 +105,7 @@ function clearBodyEdit(edit: ReturnType<typeof useProjectDetailEditState>) {
  */
 export function useProjectDetailController(project: Project | null) {
   const query = useProjectActionsQuery(project?.id ?? null);
+  const projectBrief = useProjectBrief(project?.id ?? null);
   const [draft, setDraft] = useState<ProjectItem | null>(null);
   const items = projectItemsWithDraft(draft, query.items);
   const selection = useProjectItemSelection(items);
@@ -98,7 +114,54 @@ export function useProjectDetailController(project: Project | null) {
   const history = useUndoRedoHistory<ProjectItem>();
   const [isDeleting, setIsDeleting] = useState(false);
   useProjectSelectionPruning(items, query.isLoading, selection, edit);
-  return buildProjectDetailController(project, query, selection, edit, zone, draft, setDraft, history, isDeleting, setIsDeleting);
+  return buildProjectDetailController(project, projectBrief, query, selection, edit, zone, draft, setDraft, history, isDeleting, setIsDeleting);
+}
+
+function useProjectBrief(projectId: string | null) {
+  const [state, setState] = useState<ProjectBriefState>(emptyProjectBriefState);
+  const reload = useProjectBriefReload(projectId, setState);
+  const persist = useProjectBriefPersistence(projectId, setState);
+  useEffect(() => { void reload(); }, [reload]);
+  return {
+    ...state,
+    autosave: persist,
+    cancelEditing: () => setState(finishProjectBriefEditing),
+    commit: async (body: ItemBody) => { await persist(body); setState(finishProjectBriefEditing); },
+    reload,
+    setVimMode: (mode: ProjectBriefVimMode) => setState((current) => setProjectBriefVimMode(current, mode)),
+    startEditing: () => setState(startProjectBriefEditing)
+  };
+}
+
+function useProjectBriefReload(projectId: string | null, setState: ProjectBriefStateSetter) {
+  return useCallback(async () => {
+    if (!projectId) { setState(emptyProjectBriefState()); return; }
+    setState(beginProjectBriefLoad(projectId));
+    try {
+      const body = await fetchProjectBriefBody(projectId);
+      setState((current) => resolveProjectBriefLoad(current, projectId, body));
+    } catch (error: unknown) {
+      setState((current) => failProjectBriefLoad(current, projectId, projectBriefErrorMessage(error, "Failed to load project brief.")));
+    }
+  }, [projectId]);
+}
+
+function useProjectBriefPersistence(projectId: string | null, setState: ProjectBriefStateSetter) {
+  return useCallback(async (body: ItemBody) => {
+    if (!projectId) return;
+    setState((current) => current.projectId === projectId ? setProjectBriefBody(current, body) : current);
+    try {
+      const persisted = await updateProjectBriefBody(projectId, body);
+      setState((current) => current.projectId === projectId ? setProjectBriefBody(current, persisted) : current);
+    } catch (error: unknown) {
+      setState((current) => current.projectId === projectId ? setProjectBriefError(current, projectBriefErrorMessage(error, "Failed to save project brief.")) : current);
+      throw error;
+    }
+  }, [projectId]);
+}
+
+function projectBriefErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
 }
 
 function useProjectSelectionPruning(items: ProjectItem[], isLoading: boolean, selection: ReturnType<typeof useProjectItemSelection>, edit: ReturnType<typeof useProjectDetailEditState>) {
@@ -175,6 +238,7 @@ async function performRedo(
 
 function buildEditorOperations(
   project: Project | null,
+  projectBrief: ReturnType<typeof useProjectBrief>,
   selection: ReturnType<typeof useProjectItemSelection>,
   edit: ReturnType<typeof useProjectDetailEditState>,
   zone: ReturnType<typeof useActiveZone>,
@@ -184,6 +248,13 @@ function buildEditorOperations(
 ) {
   return {
     createNewStuff: () => createDraft(project, selection, edit, zone, setDraft),
+    startProjectBriefEdit: projectBrief.startEditing,
+    commitProjectBrief: projectBrief.commit,
+    autosaveProjectBrief: projectBrief.autosave,
+    cancelProjectBriefEdit: projectBrief.cancelEditing,
+    exitProjectBriefFromNormalMode: () => exitProjectBriefFromNormalMode(projectBrief, zone),
+    reloadProjectBrief: projectBrief.reload,
+    setProjectBriefVimMode: projectBrief.setVimMode,
     startTitleEdit: () => startTitleEdit(selection.selectedItem, edit),
     commitTitle: () => commitTitle(project, selection.selectedItem, edit, draft, setDraft, query, selection.setSelectedId),
     cancelTitleEdit: () => clearTitleEdit(edit),
@@ -208,6 +279,7 @@ function buildProcessOperations(
 
 function buildControllerState(
   project: Project | null,
+  projectBrief: ReturnType<typeof useProjectBrief>,
   query: ReturnType<typeof useProjectActionsQuery>,
   selection: ReturnType<typeof useProjectItemSelection>,
   edit: ReturnType<typeof useProjectDetailEditState>,
@@ -218,7 +290,9 @@ function buildControllerState(
   return {
     activeZone: zone.activeZone, editingBodyId: edit.editingBodyId, editingId: edit.editingId, editingTitle: edit.editingTitle, editingTitleError: edit.editingTitleError,
     errorMessage: query.errorMessage, hasRedo: history.hasRedo, hasUndo: history.hasUndo, isDeleting, isLoading: query.isLoading, items: selection.items,
-    project, selectedItem: selection.selectedItem, vimMode: edit.vimMode
+    isEditingProjectBrief: projectBrief.isEditing, isProjectBriefLoading: projectBrief.isLoading,
+    project, projectBriefBody: projectBrief.body, projectBriefErrorMessage: projectBrief.errorMessage,
+    projectBriefVimMode: projectBrief.vimMode, selectedItem: selection.selectedItem, vimMode: edit.vimMode
   };
 }
 
@@ -238,6 +312,7 @@ function buildControllerMethods(
 
 function buildProjectDetailController(
   project: Project | null,
+  projectBrief: ReturnType<typeof useProjectBrief>,
   query: ReturnType<typeof useProjectActionsQuery>,
   selection: ReturnType<typeof useProjectItemSelection>,
   edit: ReturnType<typeof useProjectDetailEditState>,
@@ -249,9 +324,9 @@ function buildProjectDetailController(
   setIsDeleting: (value: boolean) => void
 ) {
   const actions = buildActionOperations(selection, edit, zone, setDraft, history, query, setIsDeleting);
-  const editor = buildEditorOperations(project, selection, edit, zone, draft, setDraft, query);
+  const editor = buildEditorOperations(project, projectBrief, selection, edit, zone, draft, setDraft, query);
   const process = buildProcessOperations(selection, query);
-  const state = buildControllerState(project, query, selection, edit, zone, history, isDeleting);
+  const state = buildControllerState(project, projectBrief, query, selection, edit, zone, history, isDeleting);
   const methods = buildControllerMethods(zone, query, edit, selection);
   return { ...state, ...methods, ...editor, ...process, ...actions };
 }
@@ -328,6 +403,14 @@ async function autosaveBody(item: ProjectItem | null, edit: ReturnType<typeof us
     { ...item, body },
     () => updateProjectItemBody(item, body)
   );
+}
+
+function exitProjectBriefFromNormalMode(
+  projectBrief: ReturnType<typeof useProjectBrief>,
+  zone: ReturnType<typeof useActiveZone>
+) {
+  projectBrief.cancelEditing();
+  zone.setActiveZone("project-actions-list");
 }
 
 async function processSelectedStuff(item: ProjectItem | null, energy: number | null, minutes: number | null, contextIds: string[], deadline: string | null, reload: () => void) {

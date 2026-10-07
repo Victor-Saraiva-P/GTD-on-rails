@@ -2,6 +2,8 @@
 
 Item body content is canonical Markdown stored as a physical file.
 
+A Project Brief is not a separate body type: it is the body of the Item that backs a Project. The project and its backing Item share the same UUID, file layout, Markdown editing behavior, and asset contract.
+
 For an item UUID `<id>`:
 
 ```text
@@ -26,6 +28,8 @@ Markdown references them with relative links:
 ```
 
 The editor resolves those relative paths at runtime for previews without rewriting the Markdown file.
+
+Project Brief attachments use this same layout and backend-owned upload flow. They are synchronized through the normal Item body and file outboxes. Deleting a project soft-deletes its active Item assets; recovering it restores only the assets still referenced by the restored body.
 
 ## Migration
 

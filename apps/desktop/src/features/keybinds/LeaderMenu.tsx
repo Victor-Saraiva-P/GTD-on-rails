@@ -21,6 +21,7 @@ const zoneLabels: Record<FocusZoneId, string> = {
   "calendar-sun-panel": "Sunday calendar panel",
   "next-actions-list": "Next actions list",
   "projects-list": "Projects list",
+  "project-brief": "Project brief",
   "project-actions-list": "Project actions list",
   "project-item-detail": "Project item detail",
   "next-action-detail": "Next action detail",

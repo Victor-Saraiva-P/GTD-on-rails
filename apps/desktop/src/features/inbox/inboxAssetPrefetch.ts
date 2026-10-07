@@ -1,4 +1,4 @@
-import type { BlockEntity, Stuff } from "./types";
+import type { BlockEntity, ItemBody, Stuff } from "./types";
 import { preloadAssetObjectUrl } from "./assetFiles";
 
 const ASSET_PREFETCH_RADIUS = 1;
@@ -19,7 +19,16 @@ function prefetchBlockEntityAsset(entity: BlockEntity): void {
 }
 
 function prefetchStuffAssets(item: Stuff): void {
-  item.body.blockEntities.forEach(prefetchBlockEntityAsset);
+  prefetchItemBodyAssets(item.body);
+}
+
+/**
+ * Preloads previewable assets referenced by one Markdown body.
+ *
+ * @example prefetchItemBodyAssets(item.body)
+ */
+export function prefetchItemBodyAssets(body: ItemBody): void {
+  body.blockEntities.forEach(prefetchBlockEntityAsset);
 }
 
 /**

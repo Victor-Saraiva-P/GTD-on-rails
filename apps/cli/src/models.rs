@@ -27,6 +27,11 @@ pub struct Stuff {
     pub project_title: Option<String>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct ItemBodyResponse {
+    pub body: ItemBody,
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ItemBody {
     pub text: String,
@@ -79,6 +84,11 @@ pub struct CalendarRequest<'a> {
 
 impl ItemBody {
     pub fn markdown(text: String) -> Self {
-        Self { text, inline_marks: vec![], line_blocks: vec![], block_entities: vec![] }
+        Self {
+            text,
+            inline_marks: vec![],
+            line_blocks: vec![],
+            block_entities: vec![],
+        }
     }
 }

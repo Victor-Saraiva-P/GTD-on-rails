@@ -6,6 +6,7 @@ import java.time.Clock;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import com.gtdonrails.api.bodydocuments.ItemBodyDocumentService;
 import com.gtdonrails.api.config.CacheNames;
 import com.gtdonrails.api.dtos.project.PatchProjectRequestDto;
 import com.gtdonrails.api.dtos.project.ProjectActionCountProjection;
@@ -18,11 +19,13 @@ import com.gtdonrails.api.normalizers.ItemTextNormalizer;
 import com.gtdonrails.api.repositories.ProjectItemRepository;
 import com.gtdonrails.api.repositories.ProjectRepository;
 import com.gtdonrails.api.types.Title;
+import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@RequiredArgsConstructor
 public class ProjectService {
     private final ProjectRepository projectRepository;
     private final ProjectItemRepository projectItemRepository;
@@ -31,27 +34,9 @@ public class ProjectService {
     private final GoogleCalendarEventQueueService googleCalendarEventQueueService;
     private final AfterCommitExecutor afterCommitExecutor;
     private final CacheInvalidationService cacheInvalidationService;
+    private final ItemBodyDocumentService bodyDocuments;
+    private final ItemAssetService itemAssetService;
     private final Clock clock;
-
-    public ProjectService(
-        ProjectRepository projectRepository,
-        ProjectItemRepository projectItemRepository,
-        ProjectMapper projectMapper,
-        ItemTextNormalizer itemTextNormalizer,
-        GoogleCalendarEventQueueService googleCalendarEventQueueService,
-        AfterCommitExecutor afterCommitExecutor,
-        CacheInvalidationService cacheInvalidationService,
-        Clock clock
-    ) {
-        this.projectRepository = projectRepository;
-        this.projectItemRepository = projectItemRepository;
-        this.projectMapper = projectMapper;
-        this.itemTextNormalizer = itemTextNormalizer;
-        this.googleCalendarEventQueueService = googleCalendarEventQueueService;
-        this.afterCommitExecutor = afterCommitExecutor;
-        this.cacheInvalidationService = cacheInvalidationService;
-        this.clock = clock;
-    }
 
     /**
      * Lists active projects oldest first.
@@ -145,13 +130,14 @@ public class ProjectService {
     }
 
     /**
-     * Soft deletes a project without changing its project status.
+     * Soft deletes a project and its active assets without changing project status.
      *
      * <p>Example: {@code projectService.deleteProject(projectId)}.</p>
      */
     @Transactional
     public void deleteProject(UUID id) {
         Project project = findProject(id);
+        itemAssetService.softDeleteActiveItemAssets(id);
         project.getItem().softDelete();
         projectRepository.save(project);
         requestGoogleCalendarEventDeleteAfterCommit(id);
@@ -159,7 +145,7 @@ public class ProjectService {
     }
 
     /**
-     * Recovers a deleted project without changing its project status.
+     * Recovers a project and its Markdown-referenced assets without changing project status.
      *
      * <p>Example: {@code projectService.recoverProject(projectId)}.</p>
      */
@@ -167,6 +153,7 @@ public class ProjectService {
     public ProjectResponseDto recoverProject(UUID id) {
         Project project = findAnyProject(id);
         project.getItem().restore();
+        itemAssetService.reconcileBodyAssetReferences(id, bodyDocuments.read(id, project.getItem().getBody()));
         long count = projectItemRepository.countProjectActionItems(id);
         ProjectResponseDto response = projectMapper.toResponse(projectRepository.save(project), count);
         requestGoogleCalendarEventUpsertAfterCommit(id);

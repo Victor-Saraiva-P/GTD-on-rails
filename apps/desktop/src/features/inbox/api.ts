@@ -171,7 +171,21 @@ export async function updateStuffTitle(item: Stuff, title: string): Promise<Stuf
  * @example await updateStuffBody(stuff, { text: "Next action", inlineMarks: [], lineBlocks: [], blockEntities: [] })
  */
 export async function updateStuffBody(item: Stuff, body: ItemBody): Promise<Stuff> {
-  const response = await apiJson<StuffResponse>(`/items/${item.id}/body`, {
+  return toStuff(await patchItemBody(item.id, body));
+}
+
+/**
+ * Persists a canonical body document for any item-backed GTD element.
+ *
+ * @example await updateItemBody("item-1", { text: "Context", inlineMarks: [], lineBlocks: [], blockEntities: [] })
+ */
+export async function updateItemBody(id: string, body: ItemBody): Promise<ItemBody> {
+  const response = await patchItemBody(id, body);
+  return parseItemBody(response.body);
+}
+
+async function patchItemBody(id: string, body: ItemBody): Promise<StuffResponse> {
+  return await apiJson<StuffResponse>(`/items/${id}/body`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json"
@@ -180,8 +194,6 @@ export async function updateStuffBody(item: Stuff, body: ItemBody): Promise<Stuf
       body
     })
   });
-
-  return toStuff(response);
 }
 
 /**

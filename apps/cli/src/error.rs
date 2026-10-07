@@ -29,6 +29,12 @@ pub enum CliError {
     InvalidSettings { path: String, message: String },
     #[error("invalid asset path '{0}'; expected assets/<asset-id>/<filename>")]
     InvalidAssetPath(String),
-    #[error("candidate body removed asset reference '{0}'; preserve existing attachments while normalizing stuff")]
+    #[error(
+        "candidate body removed asset reference '{0}'; preserve existing attachments while normalizing stuff"
+    )]
     RemovedAssetReference(String),
+    #[error(
+        "stuff '{0}' has no associated project; expected inbox stuff assigned to an active project"
+    )]
+    ProjectContextUnavailable(String),
 }
