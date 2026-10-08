@@ -75,6 +75,7 @@ rm -rf "$install_dir/runtime"
 cp -a "$source_dir/runtime" "$install_dir/runtime"
 cp "$source_dir/gtd-client" "$install_dir/gtd-client"
 cp "$source_dir/VERSION" "$install_dir/VERSION"
+cp "$source_dir/REVISION" "$install_dir/REVISION"
 chmod +x "$install_dir/gtd-client"
 ln -sf "$install_dir/gtd-client" "$bin_dir/gtd-client"
 

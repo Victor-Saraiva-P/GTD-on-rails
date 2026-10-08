@@ -68,14 +68,16 @@ jobs:
       - name: Check app version sync
         run: pnpm version:check
 
-      - name: Reuse validated main desktop package
-        id: main-desktop
+      - name: Reuse validated main packages
+        id: main-packages
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           temp_dir="$RUNNER_TEMP/gtd-main-release"
           native_dir="apps/desktop/src-tauri/target/release/native"
-          mkdir -p "$temp_dir" "$native_dir"
+          cli_dir="apps/cli/target/release-package"
+          client_dir="apps/sync-server/build/client-release"
+          mkdir -p "$temp_dir" "$native_dir" "$cli_dir" "$client_dir"
           if ! gh release download main-latest --pattern main-update.json --dir "$temp_dir" --clobber; then
             echo "reuse=false" >> "$GITHUB_OUTPUT"
             exit 0
@@ -92,15 +94,23 @@ jobs:
 
           archive="$(jq -r '.archiveName' "$temp_dir/main-update.json")"
           checksum="$(jq -r '.checksumName' "$temp_dir/main-update.json")"
-          gh release download main-latest \
-            --pattern "$archive" \
-            --pattern "$checksum" \
-            --dir "$native_dir" \
-            --clobber
+          cli_archive="$(jq -r '.cliArchiveName' "$temp_dir/main-update.json")"
+          cli_checksum="$(jq -r '.cliChecksumName' "$temp_dir/main-update.json")"
+          client_archive="$(jq -r '.clientArchiveName' "$temp_dir/main-update.json")"
+          client_checksum="$(jq -r '.clientChecksumName' "$temp_dir/main-update.json")"
+          if [ "$archive" = "null" ] || [ "$checksum" = "null" ] || \
+             [ "$cli_archive" = "null" ] || [ "$cli_checksum" = "null" ] || \
+             [ "$client_archive" = "null" ] || [ "$client_checksum" = "null" ]; then
+            echo "reuse=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          gh release download main-latest --pattern "$archive" --pattern "$checksum" --dir "$native_dir" --clobber
+          gh release download main-latest --pattern "$cli_archive" --pattern "$cli_checksum" --dir "$cli_dir" --clobber
+          gh release download main-latest --pattern "$client_archive" --pattern "$client_checksum" --dir "$client_dir" --clobber
           echo "reuse=true" >> "$GITHUB_OUTPUT"
 
       - name: Build Tauri app
-        if: steps.main-desktop.outputs.reuse != 'true'
+        if: steps.main-packages.outputs.reuse != 'true'
         run: pnpm run desktop:build:ci
         working-directory: apps/desktop
         env:
@@ -117,21 +127,26 @@ jobs:
               --notes "Release assets include the desktop application, standalone GTD CLI, and standalone sync client."
 
       - name: Package native Linux tarball
-        if: steps.main-desktop.outputs.reuse != 'true'
+        if: steps.main-packages.outputs.reuse != 'true'
         run: pnpm run desktop:package:native-linux
         working-directory: apps/desktop
 
       - name: Package standalone GTD CLI
+        if: steps.main-packages.outputs.reuse != 'true'
         run: bash scripts/package-linux.sh
         working-directory: apps/cli
 
       - name: Build sync client
+        if: steps.main-packages.outputs.reuse != 'true'
         run: ./gradlew --no-daemon bootJar
         working-directory: apps/sync-server
 
       - name: Package sync client
+        if: steps.main-packages.outputs.reuse != 'true'
         run: bash scripts/package-client-linux.sh
         working-directory: apps/sync-server
+        env:
+          GTD_BUILD_REVISION: ${{ github.sha }}
 
       - name: Verify release asset versions match tag
         run: |

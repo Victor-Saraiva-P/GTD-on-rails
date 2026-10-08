@@ -140,6 +140,9 @@ jobs:
       - name: Package native Linux tarball
         run: pnpm --filter @gtd-on-rails/desktop desktop:package:native-linux
 
+      - name: Package standalone GTD CLI
+        run: bash apps/cli/scripts/package-linux.sh
+
       - name: Upload main desktop package
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -151,6 +154,53 @@ jobs:
           if-no-files-found: error
           retention-days: 3
 
+      - name: Upload main CLI package
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: main-cli-package
+          path: |
+            apps/cli/target/release-package/*.tar.gz
+            apps/cli/target/release-package/*.tar.gz.sha256
+          if-no-files-found: error
+          retention-days: 3
+
+  client-native:
+    name: Client Native
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Setup Java
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      - name: Build sync client
+        run: ./gradlew --no-daemon bootJar
+        working-directory: apps/sync-server
+
+      - name: Package sync client
+        run: bash scripts/package-client-linux.sh
+        working-directory: apps/sync-server
+        env:
+          GTD_BUILD_REVISION: ${{ github.sha }}
+
+      - name: Upload main client package
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: main-client-package
+          path: |
+            apps/sync-server/build/client-release/*.tar.gz
+            apps/sync-server/build/client-release/*.tar.gz.sha256
+          if-no-files-found: error
+          retention-days: 3
+
   publish-main:
     name: Publish Main Update
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -158,6 +208,7 @@ jobs:
       - check
       - static-check
       - desktop-native
+      - client-native
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -172,6 +223,18 @@ jobs:
           name: main-desktop-package
           path: rolling-native
 
+      - name: Download CLI package
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: main-cli-package
+          path: rolling-cli
+
+      - name: Download client package
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: main-client-package
+          path: rolling-client
+
       - name: Create main update manifest
         env:
           BUILD_REVISION: ${{ github.sha }}
@@ -179,14 +242,26 @@ jobs:
           version="$(cat VERSION)"
           archive="GTD.on.Rails_${version}_linux-x86_64.tar.gz"
           checksum="${archive}.sha256"
+          cli_archive="GTD.on.Rails.CLI_${version}_linux-x86_64.tar.gz"
+          cli_checksum="${cli_archive}.sha256"
+          client_archive="GTD.on.Rails.Client_${version}_linux-x86_64.tar.gz"
+          client_checksum="${client_archive}.sha256"
           test -f "rolling-native/${archive}"
           test -f "rolling-native/${checksum}"
+          test -f "rolling-cli/${cli_archive}"
+          test -f "rolling-cli/${cli_checksum}"
+          test -f "rolling-client/${client_archive}"
+          test -f "rolling-client/${client_checksum}"
           jq -n \
             --arg version "$version" \
             --arg revision "$BUILD_REVISION" \
             --arg archiveName "$archive" \
             --arg checksumName "$checksum" \
-            '{version: $version, revision: $revision, archiveName: $archiveName, checksumName: $checksumName}' \
+            --arg cliArchiveName "$cli_archive" \
+            --arg cliChecksumName "$cli_checksum" \
+            --arg clientArchiveName "$client_archive" \
+            --arg clientChecksumName "$client_checksum" \
+            '{version: $version, revision: $revision, archiveName: $archiveName, checksumName: $checksumName, cliArchiveName: $cliArchiveName, cliChecksumName: $cliChecksumName, clientArchiveName: $clientArchiveName, clientChecksumName: $clientChecksumName}' \
             > rolling-native/main-update.json
 
       - name: Publish rolling main release
@@ -206,5 +281,9 @@ jobs:
           gh release upload main-latest \
             rolling-native/*.tar.gz \
             rolling-native/*.tar.gz.sha256 \
+            rolling-cli/*.tar.gz \
+            rolling-cli/*.tar.gz.sha256 \
+            rolling-client/*.tar.gz \
+            rolling-client/*.tar.gz.sha256 \
             rolling-native/main-update.json \
             --clobber

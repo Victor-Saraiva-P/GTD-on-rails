@@ -27,6 +27,8 @@ class ClientReleaseClientTests {
         server.createContext("/redirect", this::handleRedirect);
         server.createContext("/final-asset", this::handleFinalAsset);
         server.createContext("/release.json", this::handleReleaseJson);
+        server.createContext("/stable-release.json", this::handleStableReleaseJson);
+        server.createContext("/manifest.json", this::handleManifestJson);
         server.start();
         serverUrl = "http://127.0.0.1:" + server.getAddress().getPort();
     }
@@ -49,14 +51,28 @@ class ClientReleaseClientTests {
     }
 
     @Test
-    void releaseParsesAssetsAndVersion() {
+    void releaseParsesRollingManifestAssetsAndRevision() {
         ClientReleaseClient client = new ClientReleaseClient(
             new ObjectMapper(),
             serverUrl + "/release.json"
         );
         ClientReleaseClient.Release release = client.release();
-        assertEquals("3.0.3", release.version());
+        assertEquals("3.6.0", release.version());
+        assertEquals("0123456789abcdef0123456789abcdef01234567", release.revision());
+        assertEquals("GTD.on.Rails.Client_3.6.0_linux-x86_64.tar.gz", release.archiveName());
         assertEquals(URI.create(serverUrl + "/redirect"), release.archiveUrl());
+    }
+
+    @Test
+    void versionedReleaseRemainsSupportedAsRollbackSource() {
+        ClientReleaseClient client = new ClientReleaseClient(
+            new ObjectMapper(),
+            serverUrl + "/stable-release.json"
+        );
+        ClientReleaseClient.Release release = client.release();
+        assertEquals("3.0.3", release.version());
+        assertEquals(null, release.revision());
+        assertEquals("GTD.on.Rails.Client_3.0.3_linux-x86_64.tar.gz", release.archiveName());
     }
 
     private void handleRedirect(HttpExchange exchange) throws IOException {
@@ -76,19 +92,43 @@ class ClientReleaseClientTests {
     private void handleReleaseJson(HttpExchange exchange) throws IOException {
         String json = """
             {
+              "tag_name": "main-latest",
+              "assets": [
+                {"name":"main-update.json","browser_download_url":"%s/manifest.json"},
+                {"name":"GTD.on.Rails.Client_3.6.0_linux-x86_64.tar.gz","browser_download_url":"%s/redirect"},
+                {"name":"GTD.on.Rails.Client_3.6.0_linux-x86_64.tar.gz.sha256","browser_download_url":"%s/final-asset"}
+              ]
+            }
+            """.formatted(serverUrl, serverUrl, serverUrl);
+        respondJson(exchange, json);
+    }
+
+    private void handleStableReleaseJson(HttpExchange exchange) throws IOException {
+        String json = """
+            {
               "tag_name": "v3.0.3",
               "assets": [
-                {
-                  "name": "GTD.on.Rails.Client_3.0.3_linux-x86_64.tar.gz",
-                  "browser_download_url": "%s/redirect"
-                },
-                {
-                  "name": "GTD.on.Rails.Client_3.0.3_linux-x86_64.tar.gz.sha256",
-                  "browser_download_url": "%s/final-asset"
-                }
+                {"name":"GTD.on.Rails.Client_3.0.3_linux-x86_64.tar.gz","browser_download_url":"%s/redirect"},
+                {"name":"GTD.on.Rails.Client_3.0.3_linux-x86_64.tar.gz.sha256","browser_download_url":"%s/final-asset"}
               ]
             }
             """.formatted(serverUrl, serverUrl);
+        respondJson(exchange, json);
+    }
+
+    private void handleManifestJson(HttpExchange exchange) throws IOException {
+        String json = """
+            {
+              "version":"3.6.0",
+              "revision":"0123456789abcdef0123456789abcdef01234567",
+              "clientArchiveName":"GTD.on.Rails.Client_3.6.0_linux-x86_64.tar.gz",
+              "clientChecksumName":"GTD.on.Rails.Client_3.6.0_linux-x86_64.tar.gz.sha256"
+            }
+            """;
+        respondJson(exchange, json);
+    }
+
+    private void respondJson(HttpExchange exchange, String json) throws IOException {
         byte[] bytes = json.getBytes(StandardCharsets.UTF_8);
         exchange.getResponseHeaders().set("Content-Type", "application/json");
         exchange.sendResponseHeaders(200, bytes.length);

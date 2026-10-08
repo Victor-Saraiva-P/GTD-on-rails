@@ -3,6 +3,8 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "$0")/../../.." && pwd)"
 version="${1:-$(tr -d '[:space:]' < "$repo_root/VERSION")}"
+revision="${GTD_BUILD_REVISION:-$(git -C "$repo_root" rev-parse HEAD)}"
+[[ "$revision" =~ ^[0-9a-fA-F]{40}$ ]] || { echo "$revision is invalid; expected Git revision"; exit 1; }
 build_dir="$repo_root/apps/sync-server/build"
 release_dir="$build_dir/client-release"
 jpackage_dir="$build_dir/client-jpackage"
@@ -29,6 +31,7 @@ cp -a "$jpackage_dir/$runtime_name" "$package_dir/runtime"
 cp "$repo_root/apps/sync-server/scripts/gtd-client" "$package_dir/gtd-client"
 cp "$repo_root/apps/sync-server/scripts/install-client-linux.sh" "$package_dir/install.sh"
 printf '%s\n' "$version" > "$package_dir/VERSION"
+printf '%s\n' "${revision,,}" > "$package_dir/REVISION"
 chmod +x "$package_dir/gtd-client" "$package_dir/install.sh"
 
 tar -C "$release_dir" -czf "$archive_path" "$package_name"

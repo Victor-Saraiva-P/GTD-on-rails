@@ -17,9 +17,11 @@ public class ClientUpdateService {
     private final ClientProcessTerminator terminator;
     private final Path installDir;
     private final boolean autoUpdate;
+    private final String currentRevision;
     private final AtomicBoolean running = new AtomicBoolean(false);
 
     private volatile String latestVersion;
+    private volatile String latestRevision;
     private volatile boolean latestInstallable;
     private volatile Instant lastCheckedAt;
     private volatile String lastError;
@@ -30,7 +32,8 @@ public class ClientUpdateService {
         ClientUpdateInstaller installer,
         ClientProcessTerminator terminator,
         @Value("$" + "{gtd.client.install-dir:}") String installDir,
-        @Value("$" + "{gtd.client.auto-update.enabled:true}") boolean autoUpdate
+        @Value("$" + "{gtd.client.auto-update.enabled:true}") boolean autoUpdate,
+        @Value("$" + "{GTD_BUILD_REVISION:development}") String currentRevision
     ) {
         this.releases = releases;
         this.installer = installer;
@@ -39,6 +42,7 @@ public class ClientUpdateService {
             ? null
             : Path.of(installDir).toAbsolutePath().normalize();
         this.autoUpdate = autoUpdate;
+        this.currentRevision = normalizeRevision(currentRevision);
     }
 
     @Scheduled(
@@ -56,7 +60,9 @@ public class ClientUpdateService {
             managed(),
             autoUpdate,
             current,
+            currentRevision,
             latestVersion,
+            latestRevision,
             updateAvailable(current),
             state,
             running.get(),
@@ -98,6 +104,7 @@ public class ClientUpdateService {
         try {
             ClientReleaseClient.Release release = releases.release();
             latestVersion = release.version();
+            latestRevision = release.revision();
             latestInstallable = release.installable();
             lastCheckedAt = Instant.now();
             lastError = null;
@@ -133,14 +140,23 @@ public class ClientUpdateService {
 
     private boolean updateAvailable(String current) {
         if (latestVersion == null || !latestInstallable) return false;
-        return ClientVersion.newer(latestVersion, current);
+        if (ClientVersion.newer(latestVersion, current)) return true;
+        if (ClientVersion.newer(current, latestVersion)) return false;
+        return latestRevision != null && !latestRevision.equals(currentRevision);
+    }
+
+    private String normalizeRevision(String revision) {
+        if (revision == null || revision.isBlank()) return "development";
+        return revision.trim().toLowerCase();
     }
 
     public record UpdateStatus(
         boolean managedInstallation,
         boolean autoUpdateEnabled,
         String currentVersion,
+        String currentRevision,
         String latestVersion,
+        String latestRevision,
         boolean updateAvailable,
         String state,
         boolean running,

@@ -6,13 +6,13 @@ The CLI talks to the Spring Boot API. Agents do not mutate the database or GTD p
 
 ## Install
 
-Install the latest published production CLI binary:
+Install the latest validated `main` CLI binary:
 
 ```bash
 make cli-install
 ```
 
-Install a specific release with `make cli-install v3.4.0`. The installer downloads the standalone `GTD.on.Rails.CLI_<version>_linux-x86_64.tar.gz` release asset, verifies its SHA-256 checksum, stores the managed binary under `${XDG_DATA_HOME:-~/.local/share}/gtd-on-rails-cli/`, and links it as `~/.local/bin/gtd`.
+Install a specific checkpoint or rollback release with `make cli-install v3.4.0`. The installer downloads the standalone `GTD.on.Rails.CLI_<version>_linux-x86_64.tar.gz` asset, verifies its SHA-256 checksum, stores the managed binary under `${XDG_DATA_HOME:-~/.local/share}/gtd-on-rails-cli/`, and links it as `~/.local/bin/gtd`.
 
 For development against the current checkout, use `make cli-install-dev`. `make cli-package` creates the standalone production archive under `apps/cli/target/release-package/`.
 

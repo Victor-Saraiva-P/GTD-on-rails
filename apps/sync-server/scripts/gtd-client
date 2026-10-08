@@ -9,6 +9,11 @@ test -x "$runtime" || {
   exit 1
 }
 
+revision_file="$install_dir/REVISION"
+revision="development"
+if [[ -f "$revision_file" ]]; then revision="$(tr -d '[:space:]' < "$revision_file")"; fi
+
 export GTD_CLIENT_INSTALL_DIR="$install_dir"
+export GTD_BUILD_REVISION="${GTD_BUILD_REVISION:-$revision}"
 export GTD_SYNC_SERVER_GOOGLE_CALLBACK_LISTENER_ENABLED="${GTD_SYNC_SERVER_GOOGLE_CALLBACK_LISTENER_ENABLED:-true}"
 exec "$runtime" "$@"

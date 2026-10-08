@@ -250,7 +250,9 @@ function renderClientUpdate() {
   if (!update) return;
   const rows = [
     ["Current version", update.currentVersion || "—"],
+    ["Current revision", update.currentRevision ? update.currentRevision.slice(0, 12) : "—"],
     ["Latest version", update.latestVersion || "Not checked"],
+    ["Latest revision", update.latestRevision ? update.latestRevision.slice(0, 12) : "Not checked"],
     ["Managed install", update.managedInstallation ? "yes" : "no"],
     ["Auto update", update.autoUpdateEnabled ? "enabled" : "disabled"],
     ["State", update.state || "—"],

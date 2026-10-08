@@ -3,8 +3,9 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 
-export const defaultLatestReleaseUrl =
-  "https://api.github.com/repos/Victor-Saraiva-P/GTD-on-rails/releases/latest";
+export const defaultMainReleaseUrl =
+  "https://api.github.com/repos/Victor-Saraiva-P/GTD-on-rails/releases/tags/main-latest";
+export const mainUpdateManifestName = "main-update.json";
 
 const systemCommands = Object.freeze({
   bash: "/usr/bin/bash",
@@ -33,11 +34,12 @@ export function normalizeReleaseVersion(tagName) {
  *
  * <p>Example: {@code resolveReleaseEndpoint("v3.0.1")}.</p>
  */
-export function resolveReleaseEndpoint(tagOrUrl, fallbackUrl = defaultLatestReleaseUrl) {
+export function resolveReleaseEndpoint(tagOrUrl, fallbackUrl = defaultMainReleaseUrl) {
   if (!tagOrUrl) return fallbackUrl;
   if (tagOrUrl.startsWith("https://") || tagOrUrl.startsWith("http://")) {
     return tagOrUrl;
   }
+  if (tagOrUrl === "main-latest") return defaultMainReleaseUrl;
   const tag = tagOrUrl.startsWith("v") || tagOrUrl.startsWith("app-v")
     ? tagOrUrl
     : `v${tagOrUrl}`;
@@ -114,6 +116,52 @@ export function clientReleaseAssets(release) {
   };
 }
 
+export function cliMainReleaseAssets(release, manifest) {
+  return mainReleaseAssets(release, manifest, "cliArchiveName", "cliChecksumName", "CLI asset");
+}
+
+export function clientMainReleaseAssets(release, manifest) {
+  return mainReleaseAssets(
+    release,
+    manifest,
+    "clientArchiveName",
+    "clientChecksumName",
+    "client asset"
+  );
+}
+
+export function desktopMainReleaseAssets(release, manifest) {
+  return mainReleaseAssets(release, manifest, "archiveName", "checksumName", "desktop asset");
+}
+
+function mainReleaseAssets(release, manifest, archiveField, checksumField, assetType) {
+  const version = normalizeReleaseVersion(manifest.version ?? "");
+  const revision = normalizeBuildRevision(manifest.revision ?? "");
+  const archiveName = requireManifestAssetName(manifest, archiveField);
+  const checksumName = requireManifestAssetName(manifest, checksumField);
+  return {
+    version,
+    revision,
+    archiveName,
+    checksumName,
+    archiveUrl: requireReleaseAsset(release, archiveName, assetType),
+    checksumUrl: requireReleaseAsset(release, checksumName, assetType)
+  };
+}
+
+function normalizeBuildRevision(revision) {
+  if (/^[0-9a-f]{40}$/i.test(revision)) return revision.toLowerCase();
+  throw new Error(`build revision '${revision}' is invalid; expected 40-character Git SHA`);
+}
+
+function requireManifestAssetName(manifest, field) {
+  const name = manifest[field];
+  if (typeof name === "string" && name.length > 0 && !name.includes("/") && !name.includes("\\")) {
+    return name;
+  }
+  throw new Error(`main update manifest field '${field}' is invalid; expected asset filename`);
+}
+
 /**
  * Resolves the asset download URLs and metadata for the desktop application.
  *
@@ -148,7 +196,7 @@ export function runCommand(command, args, options = {}) {
 /**
  * Fetches JSON payload from a release URL with required User-Agent headers.
  *
- * <p>Example: {@code fetchReleaseJson("https://api.github.com/repos/.../releases/latest")}.</p>
+ * <p>Example: {@code fetchReleaseJson("https://api.github.com/repos/.../releases/tags/main-latest")}.</p>
  */
 export function fetchReleaseJson(url) {
   const result = spawnSync(
@@ -160,6 +208,30 @@ export function fetchReleaseJson(url) {
     throw new Error(result.stderr?.trim() || `failed to fetch release from ${url}`);
   }
   return JSON.parse(result.stdout);
+}
+
+function mainUpdateManifest(release) {
+  const url = requireReleaseAsset(release, mainUpdateManifestName, "main update manifest");
+  return fetchReleaseJson(url);
+}
+
+function hasMainUpdateManifest(release) {
+  return (release.assets ?? []).some((asset) => asset.name === mainUpdateManifestName);
+}
+
+function cliInstallAssets(release) {
+  if (!hasMainUpdateManifest(release)) return cliReleaseAssets(release);
+  return cliMainReleaseAssets(release, mainUpdateManifest(release));
+}
+
+function clientInstallAssets(release) {
+  if (!hasMainUpdateManifest(release)) return clientReleaseAssets(release);
+  return clientMainReleaseAssets(release, mainUpdateManifest(release));
+}
+
+function desktopInstallAssets(release) {
+  if (!hasMainUpdateManifest(release)) return desktopReleaseAssets(release);
+  return desktopMainReleaseAssets(release, mainUpdateManifest(release));
 }
 
 /**
@@ -206,16 +278,17 @@ export function executePackageInstaller(packageDir, environment = process.env) {
 }
 
 /**
- * Installs the standalone GTD CLI release for the specified tag or latest published release.
+ * Installs the standalone GTD CLI from rolling main by default or a specified release tag.
  *
  * <p>Example: {@code await installCliRelease("v3.0.1", process.env)}.</p>
  */
 export async function installCliRelease(tagOrUrl, environment = process.env) {
   const releaseUrl = resolveReleaseEndpoint(
-    tagOrUrl ?? environment.GTD_RELEASE_TAG ?? environment.GTD_CLI_RELEASE_URL
+    tagOrUrl ?? environment.GTD_RELEASE_TAG ?? environment.GTD_CLI_RELEASE_URL,
+    defaultMainReleaseUrl
   );
   const release = fetchReleaseJson(releaseUrl);
-  const assets = cliReleaseAssets(release);
+  const assets = cliInstallAssets(release);
   const tempDir = await mkdtemp(path.join(os.tmpdir(), "gtd-cli-install-"));
 
   try {
@@ -229,16 +302,17 @@ export async function installCliRelease(tagOrUrl, environment = process.env) {
 }
 
 /**
- * Installs the desktop release for the specified tag or latest published release.
+ * Installs the desktop from rolling main by default or a specified release tag.
  *
  * <p>Example: {@code await installDesktopRelease("v3.0.1", process.env)}.</p>
  */
 export async function installDesktopRelease(tagOrUrl, environment = process.env) {
   const releaseUrl = resolveReleaseEndpoint(
-    tagOrUrl ?? environment.GTD_RELEASE_TAG ?? environment.GTD_DESKTOP_RELEASE_URL
+    tagOrUrl ?? environment.GTD_RELEASE_TAG ?? environment.GTD_DESKTOP_RELEASE_URL,
+    defaultMainReleaseUrl
   );
   const release = fetchReleaseJson(releaseUrl);
-  const assets = desktopReleaseAssets(release);
+  const assets = desktopInstallAssets(release);
   const tempDir = await mkdtemp(path.join(os.tmpdir(), "gtd-desktop-install-"));
 
   try {
@@ -252,16 +326,17 @@ export async function installDesktopRelease(tagOrUrl, environment = process.env)
 }
 
 /**
- * Installs the sync client release for the specified tag or latest published release.
+ * Installs the sync client from rolling main by default or a specified release tag.
  *
  * <p>Example: {@code await installClientRelease("v3.0.1", process.env)}.</p>
  */
 export async function installClientRelease(tagOrUrl, environment = process.env) {
   const releaseUrl = resolveReleaseEndpoint(
-    tagOrUrl ?? environment.GTD_RELEASE_TAG ?? environment.GTD_CLIENT_RELEASE_URL
+    tagOrUrl ?? environment.GTD_RELEASE_TAG ?? environment.GTD_CLIENT_RELEASE_URL,
+    defaultMainReleaseUrl
   );
   const release = fetchReleaseJson(releaseUrl);
-  const assets = clientReleaseAssets(release);
+  const assets = clientInstallAssets(release);
   const tempDir = await mkdtemp(path.join(os.tmpdir(), "gtd-client-install-"));
 
   try {

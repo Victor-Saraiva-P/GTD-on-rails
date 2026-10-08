@@ -16,6 +16,7 @@ import org.springframework.stereotype.Component;
 public class ClientReleaseClient {
 
     private static final String ARCHIVE_SUFFIX = "_linux-x86_64.tar.gz";
+    private static final String MAIN_MANIFEST = "main-update.json";
 
     private final ObjectMapper mapper;
     private final HttpClient http;
@@ -26,11 +27,7 @@ public class ClientReleaseClient {
         ObjectMapper mapper,
         @Value("$" + "{gtd.client.release-url}") String releaseUrl
     ) {
-        this(
-            mapper,
-            HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL).build(),
-            releaseUrl
-        );
+        this(mapper, HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL).build(), releaseUrl);
     }
 
     public ClientReleaseClient(ObjectMapper mapper, HttpClient http, String releaseUrl) {
@@ -40,13 +37,10 @@ public class ClientReleaseClient {
     }
 
     public Release release() {
-        JsonNode root = readJson(fetchRelease());
-        String version = version(root.path("tag_name").asText());
-        return new Release(
-            version,
-            assetUrl(root, archiveName(version)),
-            assetUrl(root, checksumName(version))
-        );
+        JsonNode root = readJson(fetchText(releaseUri, "fetch client release"));
+        URI manifestUri = assetUrl(root, MAIN_MANIFEST);
+        if (manifestUri != null) return rollingRelease(root, manifestUri);
+        return versionedRelease(root);
     }
 
     public byte[] download(URI uri) {
@@ -63,17 +57,48 @@ public class ClientReleaseClient {
         }
     }
 
-    private String fetchRelease() {
-        HttpRequest request = request(releaseUri).build();
+    private Release rollingRelease(JsonNode release, URI manifestUri) {
+        JsonNode manifest = readJson(fetchText(manifestUri, "fetch main update manifest"));
+        String version = version(manifest.path("version").asText());
+        String revision = revision(manifest.path("revision").asText());
+        String archive = assetName(manifest, "clientArchiveName");
+        String checksum = assetName(manifest, "clientChecksumName");
+        return release(release, version, revision, archive, checksum);
+    }
+
+    private Release versionedRelease(JsonNode release) {
+        String version = version(release.path("tag_name").asText());
+        return release(release, version, null, archiveName(version), checksumName(version));
+    }
+
+    private Release release(
+        JsonNode root,
+        String version,
+        String revision,
+        String archive,
+        String checksum
+    ) {
+        return new Release(
+            version,
+            revision,
+            archive,
+            checksum,
+            assetUrl(root, archive),
+            assetUrl(root, checksum)
+        );
+    }
+
+    private String fetchText(URI uri, String action) {
+        HttpRequest request = request(uri).build();
         try {
             HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
-            requireSuccess(response.statusCode(), releaseUri);
+            requireSuccess(response.statusCode(), uri);
             return response.body();
         } catch (IOException exception) {
-            throw failure("fetch latest client release", exception);
+            throw failure(action, exception);
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
-            throw failure("fetch latest client release", exception);
+            throw failure(action, exception);
         }
     }
 
@@ -87,7 +112,7 @@ public class ClientReleaseClient {
         try {
             return mapper.readTree(body);
         } catch (IOException exception) {
-            throw failure("decode latest client release", exception);
+            throw failure("decode client release payload", exception);
         }
     }
 
@@ -100,12 +125,31 @@ public class ClientReleaseClient {
         return null;
     }
 
+    private String assetName(JsonNode manifest, String field) {
+        String value = manifest.path(field).asText();
+        if (!value.isBlank() && !value.contains("/") && !value.contains("\\")) return value;
+        throw new IllegalArgumentException(
+            "main update manifest field '" + field + "' is invalid; expected asset filename"
+        );
+    }
+
     private String version(String tagName) {
         String normalized = tagName.startsWith("app-v")
             ? tagName.substring(5)
             : tagName.startsWith("v") ? tagName.substring(1) : tagName;
         ClientVersion.newer(normalized, "0.0.0");
         return normalized;
+    }
+
+    private String revision(String value) {
+        if (value.length() == 40 && value.chars().allMatch(this::hexCharacter)) return value.toLowerCase();
+        throw new IllegalArgumentException(
+            "build revision value '" + value + "' is invalid; expected 40-character Git SHA"
+        );
+    }
+
+    private boolean hexCharacter(int value) {
+        return Character.digit((char) value, 16) >= 0;
     }
 
     static String archiveName(String version) {
@@ -118,16 +162,21 @@ public class ClientReleaseClient {
 
     private void requireSuccess(int status, URI uri) {
         if (status >= 200 && status < 300) return;
-        throw new IllegalStateException(
-            "release request '" + uri + "' failed with HTTP " + status
-        );
+        throw new IllegalStateException("release request '" + uri + "' failed with HTTP " + status);
     }
 
     private IllegalStateException failure(String action, Exception exception) {
         return new IllegalStateException("Failed to " + action, exception);
     }
 
-    public record Release(String version, URI archiveUrl, URI checksumUrl) {
+    public record Release(
+        String version,
+        String revision,
+        String archiveName,
+        String checksumName,
+        URI archiveUrl,
+        URI checksumUrl
+    ) {
 
         public boolean installable() {
             return archiveUrl != null && checksumUrl != null;
