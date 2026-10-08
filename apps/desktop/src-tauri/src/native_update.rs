@@ -7,8 +7,7 @@ use serde::{Deserialize, Serialize};
 use tauri::AppHandle;
 
 use crate::native_update_release::{
-    build_update_status, fetch_latest_release, is_newer_version, no_update_status,
-    release_tag_version,
+    build_update_status, fetch_main_manifest, fetch_main_release, no_update_status,
 };
 
 const UPDATE_SCRIPT_TEMPLATE: &str = r#"#!/usr/bin/env bash
@@ -59,7 +58,9 @@ nohup "$HOME/.local/bin/gtd-on-rails" >/dev/null 2>&1 &
 pub struct NativeUpdateStatus {
     pub available: bool,
     pub current_version: String,
+    pub current_revision: String,
     pub latest_version: String,
+    pub latest_revision: String,
     pub archive_name: Option<String>,
     pub archive_url: Option<String>,
     pub checksum_name: Option<String>,
@@ -79,13 +80,29 @@ pub struct NativeUpdateRequest {
 #[tauri::command]
 pub fn native_update_check() -> Result<NativeUpdateStatus, String> {
     recover_native_installation()?;
-    let release = fetch_latest_release()?;
+    let release = fetch_main_release()?;
+    let manifest = fetch_main_manifest(&release.assets)?;
     let current_version = env!("CARGO_PKG_VERSION").to_string();
-    let latest_version = release_tag_version(&release.tag_name)?;
-    if !is_newer_version(&latest_version, &current_version)? {
-        return Ok(no_update_status(current_version, latest_version));
+    let current_revision = current_build_revision();
+    if current_revision == manifest.revision {
+        return Ok(no_update_status(
+            current_version,
+            current_revision,
+            &manifest,
+        ));
     }
-    build_update_status(current_version, latest_version, &release.assets)
+    build_update_status(
+        current_version,
+        current_revision,
+        &manifest,
+        &release.assets,
+    )
+}
+
+fn current_build_revision() -> String {
+    option_env!("GTD_BUILD_REVISION")
+        .unwrap_or("development")
+        .to_string()
 }
 
 fn recover_native_installation() -> Result<(), String> {
@@ -382,7 +399,8 @@ mod tests {
 
     #[test]
     fn stage_native_update_copies_core_runtime() {
-        let temp = std::env::temp_dir().join(format!("gtd-update-stage-test-{}", std::process::id()));
+        let temp =
+            std::env::temp_dir().join(format!("gtd-update-stage-test-{}", std::process::id()));
         let pkg = temp.join("pkg");
         let next = temp.join("next");
         let _ = fs::remove_dir_all(&temp);
@@ -403,5 +421,4 @@ mod tests {
         assert!(next.join("binaries/gtd-api.jar").is_file());
         let _ = fs::remove_dir_all(&temp);
     }
-
 }

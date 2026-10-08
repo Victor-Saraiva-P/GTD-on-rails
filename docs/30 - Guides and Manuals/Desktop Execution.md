@@ -68,6 +68,8 @@ Startup sequence:
 4. readiness verifies local SQLite/schema compatibility;
 5. the main workspace opens.
 
+Production desktop updates use the rolling `main-latest` GitHub prerelease. A successful `main` CI run publishes the already-built native archive, checksum and `main-update.json`; the desktop compares the manifest Git revision with the revision embedded in its current binary, so multiple builds may share the same SemVer version without being treated as the same build. Versioned GitHub releases remain stable checkpoints and continue to back standalone CLI and sync-client installation.
+
 There is no database setup wizard and no PostgreSQL client-tool installation step.
 
 ## Synchronization
