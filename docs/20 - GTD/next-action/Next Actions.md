@@ -14,6 +14,10 @@ This page is the umbrella documentation for the next-action lists and related pa
 
 The next actions page is the list of available concrete actions. It supports current availability filtering, ordering, status changes, editing, and deletion.
 
+Current Availability contexts start in `automatic` mode. The desktop detects the current machine plus active physical NetworkManager connections and resolves them through machine-local mappings configured under `Space I c`. The resulting contexts filter the list using the same context semantics as manual Current Availability; the automation never mutates the contexts assigned to a next action.
+
+Pressing `c` applies a manual Current Availability override. Environment detection continues in the background but cannot replace the manually selected contexts until `A` resumes automatic mode. Pressing `C` clears contexts, energy, and time and deliberately remains in manual mode.
+
 Next actions with a deadline appear as all-day entries on the external Next Action agenda for the deadline date. Next actions without a deadline do not appear on an external agenda.
 
 During Inbox processing into a next action, pressing `t` in the Deadline field fills the field with today's local date without advancing to the next step.
@@ -29,7 +33,8 @@ When editing energy or estimated time, clearing all digits and confirming with `
 | `d` | List | Delete selected next action. |
 | `x` | List | Mark selected next action as done. |
 | `c` | List | Set current availability. |
-| `C` | List | Clear current availability. |
+| `C` | List | Clear current availability and remain in manual context mode. |
+| `A` | List | Resume automatic contexts from the current device and location signals. |
 | `E` | List or detail | Edit next action attributes. |
 | `P` | List or detail | Associate selected next action to project. |
 | `gd` | List or detail | Open owner project detail page. |

@@ -140,6 +140,13 @@ export const agentProcessingTheme: ListTheme = {
   accentColorRgb: "111, 127, 189"
 };
 
+export const availabilityAutomationTheme: ListTheme = {
+  id: "availability-automation-settings",
+  label: "Availability Automation",
+  accentColor: nextActionsListTheme.accentColor,
+  accentColorRgb: nextActionsListTheme.accentColorRgb
+};
+
 export const somedayMaybeListTheme: ListTheme = {
   id: "someday-maybe",
   label: "Someday/Maybe",

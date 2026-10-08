@@ -4,6 +4,7 @@ import { ListWorkspace } from "../components/ListWorkspace";
 import { RetryState } from "../components/RetryState";
 import { ContextNameWithIcon } from "../features/contexts/ContextNameWithIcon";
 import { useContextsQuery } from "../features/contexts/useContextsQuery";
+import { useAvailabilityAutomation } from "../features/availability-automation/useAvailabilityAutomation";
 import { buildFormattingBindings } from "../features/inbox/formattingKeybinds";
 import { InboxStuffDetails } from "../features/inbox/InboxStuffDetails";
 import { prefetchNearbyInboxAssets } from "../features/inbox/inboxAssetPrefetch";
@@ -118,6 +119,7 @@ function buildNextActionBindings(
   setActiveScreen: (screen: ScreenId) => void,
   selectOnGoingAction: (id: string | null) => void,
   openCurrentAvailability: () => void,
+  resumeAutomaticAvailability: () => void,
   openAttrs: () => void,
   openLink: () => void,
   openAsset: () => void,
@@ -137,6 +139,7 @@ function buildNextActionBindings(
     nextActionBinding("next-actions.done-detail", "x", "Mark as done", "next-action-detail", () => runAsync(canEditSelected(controller), controller.markAsDone, "Failed to mark as done")),
     nextActionBinding("next-actions.current-availability-list", "c", "Set current availability", "next-actions-list", openCurrentAvailability),
     nextActionBinding("next-actions.clear-current-availability-list", "C", "Clear current availability", "next-actions-list", controller.resetCurrentAvailability),
+    nextActionBinding("next-actions.resume-automatic-availability-list", "A", "Resume automatic contexts", "next-actions-list", resumeAutomaticAvailability),
     nextActionBinding("next-actions.attrs-list", "E", "Edit next action attributes", "next-actions-list", () => canEditSelected(controller) && openAttrs()),
     nextActionBinding("next-actions.attrs-detail", "E", "Edit next action attributes", "next-action-detail", () => canEditSelected(controller) && openAttrs()),
     nextActionBinding("next-actions.associate-project-list", "P", "Associate to project", "next-actions-list", () => openProjectAssociateFromKeybind(controller, openProjectAssociate)),
@@ -175,6 +178,7 @@ function useNextActionBindings(
   controller: NextActionsWorkspaceController,
   selectOnGoingAction: (id: string | null) => void,
   openCurrentAvailability: () => void,
+  resumeAutomaticAvailability: () => void,
   openAttrs: () => void,
   openLink: () => void,
   openAsset: () => void,
@@ -191,6 +195,7 @@ function useNextActionBindings(
         setActiveScreen,
         selectOnGoingAction,
         openCurrentAvailability,
+        resumeAutomaticAvailability,
         openAttrs,
         openLink,
         openAsset,
@@ -199,7 +204,7 @@ function useNextActionBindings(
         openOwnerProject,
         projects
       ),
-    [controller, setActiveScreen, selectOnGoingAction, openCurrentAvailability, openAttrs, openLink, openAsset, openProjectAssociate, isAttrsOpen, openOwnerProject, projects]
+    [controller, setActiveScreen, selectOnGoingAction, openCurrentAvailability, resumeAutomaticAvailability, openAttrs, openLink, openAsset, openProjectAssociate, isAttrsOpen, openOwnerProject, projects]
   );
   useRegisterKeybinds(bindings);
 }
@@ -338,6 +343,7 @@ function NextActionViews({ controller }: NextActionControllerProps) {
  */
 export function NextActionsPage({ controller, selectOnGoingAction, openOwnerProject, projects = [] }: NextActionsPageProps) {
   const contextsQuery = useContextsQuery();
+  const availabilityAutomation = useAvailabilityAutomation(contextsQuery.contexts, controller);
   const [isCurrentAvailabilityOpen, setIsCurrentAvailabilityOpen] = useState(false);
   const [isAttrsOpen, setIsAttrsOpen] = useState(false);
   const projectAssociate = useProjectAssociateDialog();
@@ -345,6 +351,10 @@ export function NextActionsPage({ controller, selectOnGoingAction, openOwnerProj
   const [isAssetOpen, setIsAssetOpen] = useState(false);
   const isPickerOpen = isAttrsOpen || isCurrentAvailabilityOpen || projectAssociate.isOpen;
   const openCurrentAvailability = useCallback(() => !isPickerOpen && setIsCurrentAvailabilityOpen(true), [isPickerOpen]);
+  const resumeAutomaticAvailability = useCallback(
+    () => void resumeAutomaticContexts(controller, availabilityAutomation.detectCurrentContexts),
+    [availabilityAutomation.detectCurrentContexts, controller]
+  );
   const openAttrs = useCallback(() => !isPickerOpen && setIsAttrsOpen(true), [isPickerOpen]);
   const openProjectAssociate = useCallback(() => !isPickerOpen && projectAssociate.open(), [isPickerOpen, projectAssociate]);
   const openLink = useCallback(() => setIsLinkOpen(true), []);
@@ -352,7 +362,7 @@ export function NextActionsPage({ controller, selectOnGoingAction, openOwnerProj
   useKeybindScreen("next-actions");
   useNextActionZone(controller);
   useNextActionAssetPreload(controller);
-  useNextActionBindings(controller, selectOnGoingAction, openCurrentAvailability, openAttrs, openLink, openAsset, openProjectAssociate, isAttrsOpen, openOwnerProject, projects);
+  useNextActionBindings(controller, selectOnGoingAction, openCurrentAvailability, resumeAutomaticAvailability, openAttrs, openLink, openAsset, openProjectAssociate, isAttrsOpen, openOwnerProject, projects);
   const titleSearch = useListTitleSearch({
     disabled: Boolean(controller.editingId || controller.editingBodyId),
     items: controller.stuffs,
@@ -388,7 +398,7 @@ function NextActionsFooterLabel({ controller }: NextActionControllerProps) {
       <span>Next Actions</span>
       <span>Order: {orderLabel(controller)}</span>
       <span>Availability: {availabilityLabel(controller)}</span>
-      <span className="next-actions-footer-label__context">Context: <ContextFilterLabel controller={controller} /></span>
+      <span className="next-actions-footer-label__context">Context: <ContextFilterLabel controller={controller} /> · {controller.contextMode}</span>
     </span>
   );
 }
@@ -396,6 +406,15 @@ function NextActionsFooterLabel({ controller }: NextActionControllerProps) {
 async function saveAttributes(controller: NextActionsWorkspaceController, patch: NextActionPatch, close: () => void) {
   await controller.patchSelected(patch);
   close();
+}
+
+async function resumeAutomaticContexts(
+  controller: NextActionsWorkspaceController,
+  detectCurrentContexts: () => Promise<ContextItem[] | null>
+): Promise<void> {
+  const contexts = await detectCurrentContexts();
+  if (contexts === null) return;
+  controller.resumeAutomaticAvailability(contexts);
 }
 
 function applyCurrentAvailability(controller: NextActionsWorkspaceController, contexts: ContextItem[], contextIds: string[], energy: number | null, timeMinutes: number | null, close: () => void) {

@@ -16,6 +16,7 @@ export type ScreenId =
   | "ongoing-calendar-detail-page"
   | "google-calendar-integration"
   | "agent-processing-settings"
+  | "availability-automation-settings"
   | "someday-maybe";
 
 export type FocusZoneId =

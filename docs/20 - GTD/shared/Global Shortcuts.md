@@ -19,6 +19,7 @@ These shortcuts are registered globally by the desktop shell.
 | `Space s` | Open someday/maybe. |
 | `Space I g` | Open Google Calendar Integration. |
 | `Space I a` | Open Agent Processing settings. |
+| `Space I c` | Open Availability Automation settings for device and location context mappings. |
 | `Space h` | Open Hint Mode to jump directly to any visible UI element. |
 | `Space z` | Toggle Zoom Mode (collapses side lists into a centered, distraction-free reading and writing canvas; exit with `Esc` or `Space z`). |
 
