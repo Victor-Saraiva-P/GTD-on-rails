@@ -19,7 +19,9 @@ type SidecarBackendStatus = {
 
 type NativeUpdateStatus = {
   available: boolean;
+  currentRevision: string;
   latestVersion: string;
+  latestRevision: string;
   archiveName: string | null;
   archiveUrl: string | null;
   checksumName: string | null;
@@ -73,7 +75,9 @@ async function installNativeUpdate(setUpdateStatus: (status: string) => void): P
   const update = await invoke<NativeUpdateStatus>("native_update_check");
   if (!update.available) return false;
 
-  setUpdateStatus(`Installing update ${update.latestVersion}; the app will restart...`);
+  setUpdateStatus(
+    `Installing update ${update.latestVersion} (${update.latestRevision.slice(0, 8)}); the app will restart...`
+  );
   await delay(1500);
   await invoke("native_update_install", { request: requiredNativeUpdate(update) });
   return true;
