@@ -6,6 +6,13 @@ import { isSameBody } from "../inbox/types";
 import type { ContextItem } from "../contexts/types";
 import type { NextAction, NextActionOrder, NextActionPatch } from "./types";
 import { DEFAULT_NEXT_ACTION_ORDER, nextOrder } from "./orderCycle";
+import {
+  applyAutomaticContexts as applyAutomaticContextsState,
+  applyManualAvailability,
+  clearCurrentAvailability,
+  INITIAL_CURRENT_AVAILABILITY,
+  resumeAutomaticAvailability as resumeAutomaticAvailabilityState
+} from "./currentAvailabilityState";
 import { useNextActionSelection, type NextActionSelectionCursor } from "./nextActionSelection";
 import { useNextActionsQuery } from "./useNextActionsQuery";
 export { useNextActionSelection } from "./nextActionSelection";
@@ -32,13 +39,21 @@ export function useNextActionEditState() {
 }
 
 export function useNextActionsFilterState() {
-  const [contexts, setContexts] = useState<ContextItem[]>([]);
-  const [currentEnergy, setCurrentEnergy] = useState<number | null>(null);
-  const [currentTimeMinutes, setCurrentTimeMinutes] = useState<number | null>(null);
+  const [availability, setAvailability] = useState(INITIAL_CURRENT_AVAILABILITY);
   const [orderBy, setOrderBy] = useState<NextActionOrder>(DEFAULT_NEXT_ACTION_ORDER);
   const [shouldSelectFirst, setShouldSelectFirst] = useState(false);
   const [selectFirstPreviousItems, setSelectFirstPreviousItems] = useState<NextAction[] | null>(null);
-  return { contexts, currentEnergy, currentTimeMinutes, orderBy, selectFirstPreviousItems, setContexts, setCurrentEnergy, setCurrentTimeMinutes, setOrderBy, setSelectFirstPreviousItems, setShouldSelectFirst, shouldSelectFirst };
+  return {
+    ...availability,
+    availability,
+    orderBy,
+    selectFirstPreviousItems,
+    setAvailability,
+    setOrderBy,
+    setSelectFirstPreviousItems,
+    setShouldSelectFirst,
+    shouldSelectFirst
+  };
 }
 
 export function useNextActionsModel() {
@@ -221,10 +236,10 @@ export function useNextActionsActions(model: Model) {
     selectLast: model.selection.selectLast,
     selectNext: model.selection.selectNext,
     selectPrevious: model.selection.selectPrevious,
+    applyAutomaticContexts: (contexts: ContextItem[]) => applyAutomaticAvailability(model, contexts),
     applyCurrentAvailability: (contexts: ContextItem[], energy: number | null, timeMinutes: number | null) => applyCurrentAvailability(model, contexts, energy, timeMinutes),
-    setCurrentEnergy: model.filter.setCurrentEnergy,
-    setCurrentTimeMinutes: model.filter.setCurrentTimeMinutes,
-    resetCurrentAvailability: () => applyCurrentAvailability(model, [], null, null),
+    resetCurrentAvailability: () => resetCurrentAvailability(model),
+    resumeAutomaticAvailability: (contexts: ContextItem[]) => resumeAutomaticAvailability(model, contexts),
     startBodyEdit: () => startBodyEdit(model),
     startTitleEdit: () => startTitleEdit(model),
     toggleOrder: () => model.filter.setOrderBy(nextOrder),
@@ -232,12 +247,30 @@ export function useNextActionsActions(model: Model) {
   };
 }
 
-export function applyCurrentAvailability(model: Model, contexts: ContextItem[], energy: number | null, timeMinutes: number | null) {
-  model.filter.setContexts(contexts);
-  model.filter.setCurrentEnergy(energy);
-  model.filter.setCurrentTimeMinutes(timeMinutes);
+function selectFirstAfterAvailabilityChange(model: Model) {
   model.filter.setSelectFirstPreviousItems(model.selection.items);
   model.filter.setShouldSelectFirst(true);
+}
+
+export function applyAutomaticAvailability(model: Model, contexts: ContextItem[]) {
+  const changesVisibleContexts = model.filter.contextMode === "automatic";
+  model.filter.setAvailability((state) => applyAutomaticContextsState(state, contexts));
+  if (changesVisibleContexts) selectFirstAfterAvailabilityChange(model);
+}
+
+export function applyCurrentAvailability(model: Model, contexts: ContextItem[], energy: number | null, timeMinutes: number | null) {
+  model.filter.setAvailability((state) => applyManualAvailability(state, contexts, energy, timeMinutes));
+  selectFirstAfterAvailabilityChange(model);
+}
+
+export function resumeAutomaticAvailability(model: Model, contexts: ContextItem[]) {
+  model.filter.setAvailability((state) => resumeAutomaticAvailabilityState(state, contexts));
+  selectFirstAfterAvailabilityChange(model);
+}
+
+export function resetCurrentAvailability(model: Model) {
+  model.filter.setAvailability(clearCurrentAvailability);
+  selectFirstAfterAvailabilityChange(model);
 }
 
 export function startBodyEdit(model: Model) {
@@ -256,6 +289,8 @@ export function buildController(model: Model, actions: Actions) {
   return {
     ...actions,
     activeZone: model.zone.activeZone,
+    automaticContexts: model.filter.automaticContexts,
+    contextMode: model.filter.contextMode,
     contexts: model.filter.contexts,
     currentEnergy: model.filter.currentEnergy,
     currentTimeMinutes: model.filter.currentTimeMinutes,
