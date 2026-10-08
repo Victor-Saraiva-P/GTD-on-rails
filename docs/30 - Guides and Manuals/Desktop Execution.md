@@ -68,7 +68,7 @@ Startup sequence:
 4. readiness verifies local SQLite/schema compatibility;
 5. the main workspace opens.
 
-Production desktop updates use the rolling `main-latest` GitHub prerelease. A successful `main` CI run publishes the already-built native archive, checksum and `main-update.json`; the desktop compares the manifest Git revision with the revision embedded in its current binary, so multiple builds may share the same SemVer version without being treated as the same build. Versioned GitHub releases remain stable checkpoints and continue to back standalone CLI and sync-client installation.
+Production desktop, standalone CLI, and sync-client packages use the rolling `main-latest` GitHub prerelease by default. A successful `main` CI run publishes all three archives, their SHA-256 checksums, and a shared `main-update.json`. The desktop and managed sync client compare the manifest Git revision with their current build revision, so multiple builds may share the same SemVer version without being treated as the same build. Versioned GitHub releases remain explicit stable checkpoints and rollback targets.
 
 There is no database setup wizard and no PostgreSQL client-tool installation step.
 
@@ -96,7 +96,7 @@ Rebootstrap always creates a local recovery snapshot before replacing synchroniz
 
 Production distribution remains the native Linux `.tar.gz` package.
 
-To install the latest published production desktop release:
+To install the latest validated `main` desktop build:
 
 ```sh
 make gtd-install
@@ -110,7 +110,7 @@ make gtd-install v3.0.1
 
 The installer verifies SHA-256 checksums, extracts the package, and installs the desktop binary, API sidecar jar, controlled `gtd` agent CLI, launcher script, desktop icon, and `.desktop` entry. It also configures scoped headless access for supported agent harnesses: Antigravity receives only `command(gtd)` and `unsandboxed(gtd)` plus the global `gtd-processing` skill, while Codex receives a dedicated `gtd` prefix rule plus the same global skill. Existing unrelated agent settings are left untouched.
 
-The same release also publishes the `gtd` CLI as an independent versioned Linux asset. Install it without reinstalling the desktop with:
+The rolling `main-latest` publication also includes the standalone `gtd` CLI. Install it without reinstalling the desktop with:
 
 ```sh
 make cli-install
@@ -134,7 +134,7 @@ Build its standalone Linux archive with:
 make client-package
 ```
 
-The resulting files are written under `apps/sync-server/build/client-release/`. To install the published release as the local user service (latest or specific tag), run:
+The resulting files are written under `apps/sync-server/build/client-release/`. To install the latest validated `main` build as the local user service, or pin a specific release tag, run:
 
 ```sh
 make client-install
@@ -146,7 +146,7 @@ The installer creates `~/.local/share/gtd-on-rails-client`, `~/.local/bin/gtd-cl
 
 The sync dataset remains separate at `~/.local/share/gtd-on-rails-sync-server` by default, so replacing or rolling back client binaries never replaces canonical data.
 
-Managed client installations self-check GitHub releases. The administration dashboard's **Client** tab shows current/latest version and update state and allows manual check/install. Auto-update can be disabled with `GTD_CLIENT_AUTO_UPDATE_ENABLED=false` in `~/.config/gtd-on-rails-client.env`.
+Managed client installations self-check the rolling `main-latest` publication. The administration dashboard's **Client** tab shows current/latest version, Git revision, and update state and allows manual check/install. Auto-update can be disabled with `GTD_CLIENT_AUTO_UPDATE_ENABLED=false` in `~/.config/gtd-on-rails-client.env`.
 
 ### Google Calendar diagnostics
 

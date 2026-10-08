@@ -33,14 +33,14 @@ public class ClientUpdateInstaller {
         Path installDir,
         ClientReleaseClient.Release release
     ) {
-        Path updateDir = updateDirectory(release.version());
-        Path archive = updateDir.resolve(ClientReleaseClient.archiveName(release.version()));
+        Path updateDir = updateDirectory(release.version(), release.revision());
+        Path archive = updateDir.resolve(release.archiveName());
         byte[] archiveBytes = releases.download(release.archiveUrl());
         byte[] checksumBytes = releases.download(release.checksumUrl());
         resetDirectory(updateDir);
         write(archive, archiveBytes);
         verifyChecksum(archiveBytes, checksumBytes, archive.getFileName().toString());
-        return extractAndStage(installDir, release.version(), updateDir, archive);
+        return extractAndStage(installDir, release, updateDir, archive);
     }
 
     public void launchSwap(Path installDir, Path updateScript) {
@@ -86,18 +86,18 @@ public class ClientUpdateInstaller {
 
     private Path extractAndStage(
         Path installDir,
-        String version,
+        ClientReleaseClient.Release release,
         Path updateDir,
         Path archive
     ) {
         Path extractDir = updateDir.resolve("extracted");
         Filesystem.ensureDirectory(extractDir);
         run("tar", "-xzf", archive.toString(), "-C", extractDir.toString());
-        Path packageDir = extractDir.resolve(packageName(version));
-        validatePackage(packageDir, version);
+        Path packageDir = extractDir.resolve(packageName(release.version()));
+        validatePackage(packageDir, release);
         Path nextDir = sibling(installDir, ".next");
         stagePackage(packageDir, nextDir);
-        return writeSwapScript(installDir, nextDir, updateDir, version);
+        return writeSwapScript(installDir, nextDir, updateDir, release);
     }
 
     private void stagePackage(Path packageDir, Path nextDir) {
@@ -110,16 +110,20 @@ public class ClientUpdateInstaller {
         Path installDir,
         Path nextDir,
         Path updateDir,
-        String version
+        ClientReleaseClient.Release release
     ) {
         Path script = updateDir.resolve("apply-update.sh");
-        String content = swapScript(installDir, nextDir, version);
+        String content = swapScript(installDir, nextDir, release);
         write(script, content.getBytes(StandardCharsets.UTF_8));
         script.toFile().setExecutable(true, true);
         return script;
     }
 
-    private String swapScript(Path installDir, Path nextDir, String version) {
+    private String swapScript(
+        Path installDir,
+        Path nextDir,
+        ClientReleaseClient.Release release
+    ) {
         Path previousDir = sibling(installDir, ".previous");
         return """
             #!/usr/bin/env bash
@@ -128,6 +132,7 @@ public class ClientUpdateInstaller {
             next_dir=%s
             previous_dir=%s
             expected_version=%s
+            expected_revision=%s
             current_pid=%d
             port="${GTD_SYNC_SERVER_PORT:-9475}"
             health_url="${GTD_CLIENT_HEALTH_URL:-http://127.0.0.1:${port}/health}"
@@ -143,7 +148,13 @@ public class ClientUpdateInstaller {
             if command -v systemctl >/dev/null 2>&1 && systemctl --user is-enabled gtd-on-rails-client.service >/dev/null 2>&1; then
               systemctl --user restart gtd-on-rails-client.service
               for _ in $(seq 1 60); do
-                if curl -fsS "$health_url" | grep -F "\"version\":\"$expected_version\"" >/dev/null; then exit 0; fi
+                health="$(curl -fsS "$health_url" || true)"
+                version_ok=false
+                revision_ok=false
+                grep -F "\"version\":\"$expected_version\"" <<<"$health" >/dev/null && version_ok=true
+                if [ -z "$expected_revision" ]; then revision_ok=true; fi
+                grep -F "\"revision\":\"$expected_revision\"" <<<"$health" >/dev/null && revision_ok=true
+                if [ "$version_ok" = true ] && [ "$revision_ok" = true ]; then exit 0; fi
                 sleep 0.5
               done
               systemctl --user stop gtd-on-rails-client.service || true
@@ -157,7 +168,8 @@ public class ClientUpdateInstaller {
                 shellQuote(installDir),
                 shellQuote(nextDir),
                 shellQuote(previousDir),
-                shellQuote(version),
+                shellQuote(release.version()),
+                shellQuote(release.revision() == null ? "" : release.revision()),
                 ProcessHandle.current().pid()
             );
     }
@@ -191,13 +203,21 @@ public class ClientUpdateInstaller {
         }
     }
 
-    private void validatePackage(Path packageDir, String version) {
+    private void validatePackage(Path packageDir, ClientReleaseClient.Release release) {
         requireFile(packageDir.resolve("gtd-client"));
         requireFile(packageDir.resolve("runtime/bin/gtd-client-runtime"));
-        String packagedVersion = Filesystem.readText(packageDir.resolve("VERSION")).trim();
-        if (!version.equals(packagedVersion)) {
-            throw new IllegalStateException("Client update package version does not match release version");
+        requireMetadata(packageDir.resolve("VERSION"), release.version(), "version");
+        if (release.revision() != null) {
+            requireMetadata(packageDir.resolve("REVISION"), release.revision(), "revision");
         }
+    }
+
+    private void requireMetadata(Path path, String expected, String label) {
+        String actual = Filesystem.readText(path).trim();
+        if (expected.equals(actual)) return;
+        throw new IllegalStateException(
+            "Client update package " + label + " does not match release " + label
+        );
     }
 
     private void requireFile(Path path) {
@@ -207,9 +227,10 @@ public class ClientUpdateInstaller {
         );
     }
 
-    private Path updateDirectory(String version) {
+    private Path updateDirectory(String version, String revision) {
         String home = System.getProperty("user.home");
-        return Path.of(home, ".cache", "gtd-on-rails-client", "updates", version);
+        String identity = revision == null ? version : version + "-" + revision.substring(0, 12);
+        return Path.of(home, ".cache", "gtd-on-rails-client", "updates", identity);
     }
 
     private void resetDirectory(Path path) {

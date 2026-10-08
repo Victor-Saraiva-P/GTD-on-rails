@@ -79,7 +79,7 @@ The server provides optimistic object revisions, idempotent operation IDs, order
 
 The sync client is distributed independently from the desktop application as `GTD.on.Rails.Client_<version>_linux-x86_64.tar.gz`. The package contains only the client launcher, a `jpackage` app-image with its private Java runtime and sync-server JAR, version metadata and installer. The target machine therefore does not need Java, Gradle, Node, pnpm or the repository checkout. The installer places runtime binaries under `~/.local/share/gtd-on-rails-client`, keeps canonical data under the separate sync-server data root, installs a `systemd --user` service and exposes `gtd-client` through `~/.local/bin`.
 
-Managed installations check the project's latest GitHub release on a schedule. Updates are downloaded to a cache directory, SHA-256 verified, staged beside the active installation and swapped only after the running process exits. The previous installation is retained during the swap. After restart the updater polls `/health`; if the new version does not become healthy, it restores the previous installation and restarts it. Repository development via `make client` does not set `GTD_CLIENT_INSTALL_DIR`, so development checkouts never self-update.
+Managed installations check the rolling `main-latest` GitHub prerelease on a schedule. Updates are identified by semantic version plus Git revision, downloaded to a cache directory, SHA-256 verified, staged beside the active installation and swapped only after the running process exits. The previous installation is retained during the swap. After restart the updater polls `/health` and validates both version and revision; if the expected build does not become healthy, it restores the previous installation and restarts it. Repository development via `make client` does not set `GTD_CLIENT_INSTALL_DIR`, so development checkouts never self-update.
 
 It also serves an administration dashboard at `/`. Administrative APIs live under `/v1/admin/**` and therefore use the same optional bearer-token protection as the synchronization API. The dashboard includes client version/update state and manual check/install actions.
 
@@ -96,7 +96,7 @@ Runtime network configuration:
 - `GTD_CLIENT_INSTALL_DIR`: marks a managed client installation and points to its active runtime directory.
 - `GTD_CLIENT_AUTO_UPDATE_ENABLED`: enables scheduled self-update checks for managed installations, default `true`.
 - `GTD_CLIENT_AUTO_UPDATE_INTERVAL_MS`: update-check interval, default six hours.
-- `GTD_CLIENT_RELEASE_URL`: release metadata endpoint, default GitHub `releases/latest`.
+- `GTD_CLIENT_RELEASE_URL`: release metadata endpoint, default GitHub `releases/tags/main-latest`; point it at a versioned release endpoint to pin or roll back.
 - `GTD_CLIENT_HEALTH_URL`: optional health URL used by the external updater when validating a restarted client.
 
 The production client defaults `GTD_SYNC_SERVER_PUBLIC_BASE_URL` to the machine's HTTPS Tailscale MagicDNS name. Point Tailscale Serve at the callback listener with `tailscale serve --bg --https=443 http://127.0.0.1:7676`. Register the printed `Google OAuth redirect URI` as an authorized redirect URI for the Google web application client. The callback listener rejects every other path and method; the sync API remains on its Tailscale bind address and port.

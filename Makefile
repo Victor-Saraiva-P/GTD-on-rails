@@ -17,16 +17,16 @@ help:
 	    '  make gtd staging            desktop + local API using staging data' \
 	    '  make cli <args...>          run the GTD agent CLI against the local API' \
 	    '  make cli-package            build standalone production CLI tarball' \
-	    '  make cli-install [tag]      install published production gtd CLI (latest or tag)' \
+	    '  make cli-install [tag]      install rolling main gtd CLI (or a version tag)' \
 	    '  make cli-install-dev        install gtd CLI from this checkout for development' \
 	    '  make client                 sync client using dev data' \
 	    '  make client staging         sync client using staging data' \
 	    '  make mobile                 mobile PWA + sync server using dev data' \
 	    '  make mobile staging         mobile PWA + sync server using staging data' \
 	    '  make client-package         build standalone client tarball' \
-	    '  make client-install [tag]   install published production client (latest or tag)' \
+	    '  make client-install [tag]   install rolling main client (or a version tag)' \
 	    '  make mobile-install [tag]   install client + mobile PWA + private Tailscale Serve' \
-	    '  make gtd-install [tag]      install published production desktop app (latest or tag)' \
+	    '  make gtd-install [tag]      install rolling main desktop app (or a version tag)' \
 	    '' \
 	    'Test selection:' \
 	    '  make test' \
