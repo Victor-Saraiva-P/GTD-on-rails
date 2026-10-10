@@ -51,6 +51,10 @@
   display: none !important;
 }
 
+.project-brief .inbox-detail__body-preview .cm-content {
+  margin-left: 0;
+}
+
 .ongoing-unified-layout {
   grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
 }
@@ -172,7 +176,11 @@
 }
 
 .list-pane__title {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: #d7d2ce;
   font-size: 0.86rem;
   font-weight: 800;

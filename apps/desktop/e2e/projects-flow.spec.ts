@@ -186,6 +186,44 @@ test("edits and persists project brief with gb keybind", async ({ page, request 
   await expect(page.locator(".cm-line", { hasText: "Goal text" })).toBeVisible();
 });
 
+test("keeps long project titles inside the project actions pane", async ({ page, request }) => {
+  const title = uniqueLabel(`Project ${"very-long-title ".repeat(2)}`);
+  const stuff = await createStuffApi(request, title);
+  await convertStuffToProjectApi(request, stuff.id);
+  await openProjectDetailByTitle(page, title);
+
+  const pane = page.locator(".list-pane").first();
+  const titleBounds = await pane.locator(".list-pane__title").boundingBox();
+  const paneBounds = await pane.boundingBox();
+  expect(titleBounds).not.toBeNull();
+  expect(paneBounds).not.toBeNull();
+  expect(titleBounds!.x + titleBounds!.width).toBeLessThanOrEqual(paneBounds!.x + paneBounds!.width);
+});
+
+test("keeps the first project brief character visible", async ({ page, request }) => {
+  const title = uniqueLabel("Brief first character");
+  const stuff = await createStuffApi(request, title);
+  await convertStuffToProjectApi(request, stuff.id);
+  await openProjectDetailByTitle(page, title);
+  await focusAndEditProjectBrief(page);
+  await typeBriefAndExit(page, "oi");
+
+  const line = page.locator(".project-brief .cm-line").first();
+  await expect(line).toHaveText("oi");
+  const geometry = await line.evaluate(firstGlyphGeometry);
+  expect(geometry.glyphLeft).toBeGreaterThanOrEqual(geometry.surfaceLeft);
+});
+
+function firstGlyphGeometry(line: Element): { glyphLeft: number; surfaceLeft: number } {
+  const text = line.firstChild;
+  const surface = line.closest(".inbox-detail__body-surface");
+  if (!(text instanceof Text) || !surface) throw new Error("Expected project brief line text inside body surface");
+  const range = document.createRange();
+  range.setStart(text, 0);
+  range.setEnd(text, 1);
+  return { glyphLeft: range.getBoundingClientRect().left, surfaceLeft: surface.getBoundingClientRect().left };
+}
+
 async function openProjectDetailByTitle(page: Page, title: string): Promise<void> {
   await page.keyboard.press("Space");
   await page.keyboard.press("p");
@@ -196,6 +234,7 @@ async function openProjectDetailByTitle(page: Page, title: string): Promise<void
 }
 
 async function focusAndEditProjectBrief(page: Page): Promise<void> {
+  await page.locator("main").click();
   await page.keyboard.press("g");
   await page.keyboard.press("b");
   await expect(page.locator(".list-pane").filter({ has: page.getByText("Project Brief", { exact: true }) })).toHaveClass(/list-pane--active/);
