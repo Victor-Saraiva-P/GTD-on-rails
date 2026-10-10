@@ -167,6 +167,35 @@ test("clears the deadline and keeps it empty after reload", async ({
   );
 });
 
+test("clears the deadline with d key shortcut and persists after reload", async ({
+  page,
+}) => {
+  const title = uniqueLabel("Clear deadline with d");
+  await createNextActionFromKeyboard(page, title);
+  await openSelectedNextActionEditDialog(page, title);
+  await saveDeadlineDigits(page, "29022028");
+  await page.keyboard.press("Shift+E");
+  await page.keyboard.press("d");
+  await expect(page.getByRole("textbox", { name: "Deadline:" })).toBeVisible();
+  await page.keyboard.press("d");
+  const responsePromise = page.waitForResponse(
+    (reply) =>
+      reply.url().includes("/next-actions/") &&
+      reply.request().method() === "PATCH",
+  );
+  await page.keyboard.press("Enter");
+  const saved = await responsePromise;
+  expect(saved.ok()).toBeTruthy();
+  expect(await saved.json()).toMatchObject({ deadline: null });
+  await page.reload();
+  await page.locator("main").click();
+  await openSelectedNextActionEditDialog(page, title);
+  await page.keyboard.press("d");
+  await expect(page.getByRole("textbox", { name: "Deadline:" })).toHaveText(
+    "__/__/____",
+  );
+});
+
 async function saveDeadlineDigits(
   page: Page,
   digits: string,
