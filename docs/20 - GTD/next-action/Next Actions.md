@@ -38,6 +38,7 @@ When editing energy or estimated time, clearing all digits and confirming with `
 | --- | --- | --- |
 | `d` | List | Delete selected next action. |
 | `x` | List | Mark selected next action as done. |
+| `R` | List or detail | Move selected next action back to Inbox stuff (`STUFF`). |
 | `c` | List | Set current availability. |
 | `C` | List | Clear current availability and remain in manual context mode. |
 | `A` | List | Resume automatic contexts from the current device and location signals. |
