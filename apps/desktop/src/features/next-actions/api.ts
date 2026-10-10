@@ -122,6 +122,17 @@ export async function recoverDeletedNextAction(id: string): Promise<void> {
   });
 }
 
+/**
+ * Reverts a next action item back to inbox stuff.
+ *
+ * @example await revertNextActionToStuff("item-id")
+ */
+export async function revertNextActionToStuff(id: string): Promise<void> {
+  await apiFetch(`/next-actions/${id}/stuff`, {
+    method: "POST"
+  });
+}
+
 export function updateNextActionBody(item: NextAction, body: ItemBody): Promise<NextAction> {
   return updateStuffBody(item, body) as Promise<NextAction>;
 }
