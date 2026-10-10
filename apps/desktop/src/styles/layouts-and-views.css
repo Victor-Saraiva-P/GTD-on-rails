@@ -196,6 +196,11 @@
   font-family: var(--font-mono);
 }
 
+.list-pane__meta {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
 .list-pane__view-index {
   flex: 0 0 auto;
   visibility: hidden;
