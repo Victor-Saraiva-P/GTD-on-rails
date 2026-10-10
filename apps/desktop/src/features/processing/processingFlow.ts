@@ -46,6 +46,15 @@ export function clockTimeDisplayValue(digits: string): string {
   return `${paddedDigits.slice(0, 2)}:${paddedDigits.slice(2)}`;
 }
 
+/**
+ * Checks whether the keyboard key clears an optional segmented date.
+ *
+ * @example isClearDateKey("d") // true
+ */
+export function isClearDateKey(key: string): boolean {
+  return key === "Delete" || key.toLowerCase() === "d";
+}
+
 export function initialSegmentedCalendarDateState(currentDate: Date = new Date()): SegmentedCalendarDateState {
   return {
     day: paddedDatePart(currentDate.getDate(), 2),

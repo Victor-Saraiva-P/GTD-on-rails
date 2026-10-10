@@ -9,6 +9,7 @@ import type {
 import {
   blankSegmentedCalendarDateState,
   initialSegmentedCalendarDateState,
+  isClearDateKey,
   moveSegmentedCalendarDateFocus,
   nextSegmentedCalendarDateDigit,
   segmentedCalendarDateIsoValue,
@@ -110,7 +111,7 @@ function handleDateKeyDown(
   if (event.key === "Escape") return actions.onBack();
   if (event.key === "Enter") return actions.confirmDate();
   if (event.key === "Backspace") return;
-  if (event.key === "Delete" && actions.clearDate) return actions.clearDate();
+  if (isClearDateKey(event.key) && actions.clearDate) return actions.clearDate();
   if (actions.enableTodayShortcut && event.key === "t")
     return actions.applyToday();
   if (event.key === "h" || event.key === "l")

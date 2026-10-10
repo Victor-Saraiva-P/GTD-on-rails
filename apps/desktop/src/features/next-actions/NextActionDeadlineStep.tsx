@@ -18,7 +18,7 @@ export function NextActionDeadlineStep(props: NextActionDeadlineStepProps) {
   return (
     <SegmentedDateStep
       date={props.value}
-      enableClearShortcut={props.enableClearShortcut}
+      enableClearShortcut={props.enableClearShortcut ?? true}
       enableTodayShortcut={props.enableTodayShortcut}
       invalidMessage="Enter a valid deadline date."
       label="Deadline:"
