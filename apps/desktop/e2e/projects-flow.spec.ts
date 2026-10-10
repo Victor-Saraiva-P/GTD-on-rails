@@ -194,10 +194,14 @@ test("keeps long project titles inside the project actions pane", async ({ page,
 
   const pane = page.locator(".list-pane").first();
   const titleBounds = await pane.locator(".list-pane__title").boundingBox();
+  const metaBounds = await pane.locator(".list-pane__meta").boundingBox();
   const paneBounds = await pane.boundingBox();
   expect(titleBounds).not.toBeNull();
+  expect(metaBounds).not.toBeNull();
   expect(paneBounds).not.toBeNull();
-  expect(titleBounds!.x + titleBounds!.width).toBeLessThanOrEqual(paneBounds!.x + paneBounds!.width);
+  expect(titleBounds!.x + titleBounds!.width).toBeLessThanOrEqual(metaBounds!.x);
+  expect(metaBounds!.height).toBeLessThanOrEqual(titleBounds!.height + 2);
+  expect(metaBounds!.x + metaBounds!.width).toBeLessThanOrEqual(paneBounds!.x + paneBounds!.width);
 });
 
 test("keeps the first project brief character visible", async ({ page, request }) => {
