@@ -90,6 +90,7 @@ function ProjectAssociateListItem(props: ProjectAssociateListItemProps) {
       className={resolveProjectItemClass(props.index === props.focusedIndex, isCurrent)}
       onClick={() => props.onSelect(props.project.id)}
       onMouseEnter={() => props.onHover(props.index)}
+      title={props.project.title}
     >
       <span className="processing-dialog__check" aria-hidden="true">{isCurrent ? "[P]" : "[ ]"}</span>
       <span>{props.project.title}</span>

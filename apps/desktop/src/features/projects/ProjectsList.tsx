@@ -45,7 +45,7 @@ function ProjectCard({ item, selected, onSelect, activeSubview }: ProjectCardPro
   const isDead = isProjectDead(item, activeSubview);
   return (
     <li className="project-card-list__item">
-      <button type="button" className={resolveCardClass(selected, isDead)} data-project-id={item.id} onClick={() => onSelect(item.id)}>
+      <button type="button" className={resolveCardClass(selected, isDead)} data-project-id={item.id} onClick={() => onSelect(item.id)} title={item.title}>
         <span className="project-card__heading">
           <span className="project-card__glyph" aria-hidden="true">P</span>
           <span className="project-card__title">

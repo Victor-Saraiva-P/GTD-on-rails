@@ -20,7 +20,7 @@ function ListViewTitle({ title, meta }: Readonly<Pick<ListViewProps, "title" | "
       <span className="list-pane__line list-pane__line--left" aria-hidden="true" />
       <div className="list-pane__cap">
         <div className="list-pane__title-row">
-          <span className="list-pane__title">{title}</span>
+          <span className="list-pane__title" title={title}>{title}</span>
           {meta ? <span className="list-pane__meta">({meta})</span> : null}
         </div>
       </div>

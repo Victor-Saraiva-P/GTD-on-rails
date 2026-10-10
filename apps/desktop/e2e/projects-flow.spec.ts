@@ -186,6 +186,34 @@ test("edits and persists project brief with gb keybind", async ({ page, request 
   await expect(page.locator(".cm-line", { hasText: "Goal text" })).toBeVisible();
 });
 
+test("handles very long project titles cleanly without overflowing the pane or adjacent views", async ({ page, request }) => {
+  const longTitle = "GA-7746 [ROBO] CRIAR ROBO DE CÓPIA DE LAUDOS DE LABORATÓRIO E DE IMAGENS BASEADO NO DIAGNOSTICOWS";
+  const project = await createStuffApi(request, longTitle);
+  await convertStuffToProjectApi(request, project.id);
+  await request.post(`${apiBaseUrl}/projects/${project.id}/items/stuff`, { data: { title: "Action item" } });
+
+  await openProjectDetailByTitle(page, longTitle);
+  await verifyLongProjectTitleLayout(page, longTitle);
+});
+
+async function verifyLongProjectTitleLayout(page: Page, longTitle: string): Promise<void> {
+  const titleLocator = page.locator(".list-pane__title").first();
+  await expect(titleLocator).toHaveText(longTitle);
+  await expect(titleLocator).toHaveAttribute("title", longTitle);
+  await expect(titleLocator).toHaveCSS("text-overflow", "ellipsis");
+  await expect(titleLocator).toHaveCSS("overflow", "hidden");
+
+  const capBox = await page.locator(".list-pane__cap").first().boundingBox();
+  const paneBox = await page.locator(".list-pane").first().boundingBox();
+  const secondTitleBox = await page.locator(".list-pane__title", { hasText: "Item Detail" }).boundingBox();
+
+  expect(capBox).not.toBeNull();
+  expect(paneBox).not.toBeNull();
+  expect(secondTitleBox).not.toBeNull();
+  expect(capBox!.x + capBox!.width).toBeLessThanOrEqual(paneBox!.x + paneBox!.width);
+  expect(capBox!.x + capBox!.width).toBeLessThan(secondTitleBox!.x);
+}
+
 async function openProjectDetailByTitle(page: Page, title: string): Promise<void> {
   await page.keyboard.press("Space");
   await page.keyboard.press("p");
