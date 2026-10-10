@@ -78,6 +78,15 @@
   padding: 4px 0 7px;
 }
 
+.calendar-group-heading {
+  margin: 8px 18px 3px;
+  color: var(--text-muted);
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .tree-entry {
   display: grid;
   grid-template-columns: 12px minmax(0, 1fr);

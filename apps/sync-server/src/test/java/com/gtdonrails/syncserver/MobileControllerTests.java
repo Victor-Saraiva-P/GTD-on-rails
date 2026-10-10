@@ -3,6 +3,7 @@ package com.gtdonrails.syncserver;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.nio.file.Path;
+import java.time.LocalDate;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -17,10 +18,11 @@ class MobileControllerTests {
     void bootstrapReturnsCanonicalMobileModel() {
         MobileController controller = controller();
 
-        MobileBootstrap bootstrap = controller.bootstrap();
+        MobileBootstrap bootstrap = controller.bootstrap(LocalDate.parse("2026-09-29"));
 
         assertEquals(0, bootstrap.cursor());
         assertEquals(0, bootstrap.nextActions().size());
+        assertEquals("2026-09-29", bootstrap.calendarLocalDate());
     }
 
     @Test

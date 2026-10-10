@@ -114,7 +114,8 @@
   overflow-wrap: anywhere;
 }
 
-.tree-list--inbox .calendar-entry__time {
+.tree-list--inbox .calendar-entry__time,
+.tree-list--inbox .calendar-entry__deadline {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -122,6 +123,15 @@
   white-space: nowrap;
   font-family: inherit;
   font-size: inherit;
+}
+
+.calendar-group-heading {
+  padding: 10px 12px 4px 34px;
+  color: #8a817c;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .context-item-entry__status {

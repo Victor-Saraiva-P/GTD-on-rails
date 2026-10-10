@@ -1,37 +1,37 @@
 import { apiFetch, apiJson } from "../../lib/api/apiClient.ts";
 import { deleteStuff, updateStuffBody, updateStuffTitle } from "../inbox/api.ts";
 import type { ItemBody, Stuff } from "../inbox/types";
-import type { Calendar, CalendarConversionPayload, CalendarPatch, CalendarResponse } from "./types";
-import { normalizeCalendarBody } from "./types.ts";
+import type { Calendar, CalendarConversionPayload, CalendarEntry, CalendarEntryResponse, CalendarPatch, CalendarResponse } from "./types";
+import { normalizeCalendarBody, toCalendarEntry } from "./types.ts";
 
 /**
- * Loads due or late calendars for today's first panel.
+ * Loads aggregated Calendar Today entries for the client's local date.
  *
- * @example await fetchTodayCalendars()
+ * @example await fetchTodayCalendarEntries("2026-05-21")
  */
-export async function fetchTodayCalendars(): Promise<Calendar[]> {
-  const response = await apiJson<CalendarResponse[]>("/calendars/today");
-  return response.map(toCalendar);
+export async function fetchTodayCalendarEntries(localDate: string): Promise<CalendarEntry[]> {
+  const response = await apiJson<CalendarEntryResponse[]>(`/calendars/today?localDate=${encodeURIComponent(localDate)}`);
+  return response.map(toCalendarEntry);
 }
 
 /**
- * Loads calendars completed today.
+ * Loads aggregated Calendar entries completed on the client's local date.
  *
- * @example await fetchDoneTodayCalendars()
+ * @example await fetchDoneTodayCalendarEntries("2026-05-21")
  */
-export async function fetchDoneTodayCalendars(): Promise<Calendar[]> {
-  const response = await apiJson<CalendarResponse[]>("/calendars/done/today");
-  return response.map(toCalendar);
+export async function fetchDoneTodayCalendarEntries(localDate: string): Promise<CalendarEntry[]> {
+  const response = await apiJson<CalendarEntryResponse[]>(`/calendars/done/today?localDate=${encodeURIComponent(localDate)}`);
+  return response.map(toCalendarEntry);
 }
 
 /**
- * Loads calendars for a seven-day range starting at the supplied date.
+ * Loads active aggregated Calendar entries for a seven-day range.
  *
- * @example await fetchWeekCalendars("2026-05-18")
+ * @example await fetchWeekCalendarEntries("2026-05-18")
  */
-export async function fetchWeekCalendars(start: string): Promise<Calendar[]> {
-  const response = await apiJson<CalendarResponse[]>(`/calendars/week?start=${encodeURIComponent(start)}`);
-  return response.map(toCalendar);
+export async function fetchWeekCalendarEntries(start: string): Promise<CalendarEntry[]> {
+  const response = await apiJson<CalendarEntryResponse[]>(`/calendars/week?start=${encodeURIComponent(start)}`);
+  return response.map(toCalendarEntry);
 }
 
 /**

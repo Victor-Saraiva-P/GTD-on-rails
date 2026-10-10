@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
+import java.time.LocalDate;
 import java.util.UUID;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -39,7 +40,7 @@ class MobileServiceTests {
             """);
         put(store, "next_actions", "item-1", """
             {"item_id":"item-1","status":"NEXT_ACTION","energy":2.0,
-             "estimated_time_minutes":15,"context_ids":["context-1"]}
+             "estimated_time_minutes":15,"deadline":"2026-09-29","context_ids":["context-1"]}
             """);
         put(store, "items", "item-2", """
             {"id":"item-2","title":"Dentist","status":"CALENDAR","deleted_at":null}
@@ -49,12 +50,41 @@ class MobileServiceTests {
              "scheduled_date":"2026-09-29","scheduled_time":"09:00:00"}
             """);
 
-        MobileBootstrap bootstrap = new MobileService(store, new ObjectMapper()).bootstrap();
+        MobileBootstrap bootstrap = new MobileService(store, new ObjectMapper()).bootstrap(LocalDate.parse("2026-09-29"));
 
         assertEquals("Errands", bootstrap.contexts().getFirst().name());
         assertEquals("Buy milk", bootstrap.nextActions().getFirst().title());
         assertEquals("context-1", bootstrap.nextActions().getFirst().contextIds().getFirst());
         assertEquals("Dentist", bootstrap.calendar().getFirst().title());
+        assertEquals("2026-09-29", bootstrap.calendarLocalDate());
+        assertEquals(2, bootstrap.calendarEntries().size());
+        assertEquals("CALENDAR", bootstrap.calendarEntries().get(0).sourceKind());
+        assertEquals("SCHEDULED_TODAY", bootstrap.calendarEntries().get(0).temporalState());
+        assertEquals("NEXT_ACTION", bootstrap.calendarEntries().get(1).sourceKind());
+        assertEquals("DUE_TODAY", bootstrap.calendarEntries().get(1).temporalState());
+    }
+
+    @Test
+    void bootstrapExcludesSoftDeletedCalendarAndNextActionItems() {
+        SyncObjectStore store = store();
+        put(store, "items", "action-1", """
+            {"id":"action-1","title":"Deleted action","status":"NEXT_ACTION","deleted_at":"2026-09-29T12:00:00Z"}
+            """);
+        put(store, "next_actions", "action-1", """
+            {"item_id":"action-1","status":"NEXT_ACTION","deadline":"2026-09-29","context_ids":[]}
+            """);
+        put(store, "items", "calendar-1", """
+            {"id":"calendar-1","title":"Deleted appointment","status":"CALENDAR","deleted_at":"2026-09-29T12:00:00Z"}
+            """);
+        put(store, "calendars", "calendar-1", """
+            {"item_id":"calendar-1","status":"CALENDAR","scheduled_date":"2026-09-29","scheduled_time":null}
+            """);
+
+        MobileBootstrap bootstrap = new MobileService(store, new ObjectMapper()).bootstrap(LocalDate.parse("2026-09-29"));
+
+        assertTrue(bootstrap.nextActions().isEmpty());
+        assertTrue(bootstrap.calendar().isEmpty());
+        assertTrue(bootstrap.calendarEntries().isEmpty());
     }
 
     @Test

@@ -17,8 +17,10 @@ import com.gtdonrails.api.dtos.calendar.PatchCalendarRequestDto;
 import com.gtdonrails.api.entities.Calendar;
 import com.gtdonrails.api.entities.Item;
 import com.gtdonrails.api.enums.CalendarStatus;
+import com.gtdonrails.api.mappers.CalendarEntryMapper;
 import com.gtdonrails.api.mappers.CalendarMapper;
 import com.gtdonrails.api.repositories.CalendarRepository;
+import com.gtdonrails.api.repositories.NextActionRepository;
 import com.gtdonrails.api.types.Title;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
@@ -38,6 +40,12 @@ class CalendarServiceTests {
     private CalendarRepository calendarRepository;
 
     @Mock
+    private NextActionRepository nextActionRepository;
+
+    @Mock
+    private CalendarEntryMapper calendarEntryMapper;
+
+    @Mock
     private GoogleCalendarEventQueueService googleCalendarEventQueueService;
 
     @Mock
@@ -53,7 +61,9 @@ class CalendarServiceTests {
         calendar = calendar(calendarId);
         calendarService = new CalendarService(
             calendarRepository,
+            nextActionRepository,
             new CalendarMapper(),
+            calendarEntryMapper,
             CLOCK,
             googleCalendarEventQueueService,
             new AfterCommitExecutor(),

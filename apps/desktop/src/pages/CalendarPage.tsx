@@ -4,15 +4,18 @@ import { ListWorkspace } from "../components/ListWorkspace";
 import { RetryState } from "../components/RetryState";
 import { CalendarDetails } from "../features/calendar/CalendarDetails";
 import { CalendarList } from "../features/calendar/CalendarList";
+import { CalendarNextActionDeadlineEditDialog } from "../features/calendar/CalendarNextActionDeadlineEditDialog";
 import { CalendarScheduleEditDialog } from "../features/calendar/CalendarScheduleEditDialog";
 import type { CalendarPanel } from "../features/calendar/calendarWorkspaceState";
 import type { CalendarWorkspaceController } from "../features/calendar/useCalendarWorkspaceController";
 import { prefetchNearbyInboxAssets } from "../features/inbox/inboxAssetPrefetch";
+import { InboxStuffDetails } from "../features/inbox/InboxStuffDetails";
 import type { ItemBody } from "../features/inbox/types";
 import { LeaderMenu } from "../features/keybinds/LeaderMenu";
 import { useActiveScreen, useKeybindScreen, useRegisterKeybinds } from "../features/keybinds/hooks";
 import { calendarsListTheme, deletedCalendarsListTheme, doneCalendarsListTheme, type ListTheme } from "../features/lists/listThemes";
 import { getMondayForOffset } from "../features/calendar/calendarDateUtils";
+import { calendarWorkspaceItemDate, isNextActionCalendarEntry, type CalendarWorkspaceItem } from "../features/calendar/types.ts";
 import { activePanelZone, buildCalendarKeybinds } from "../features/calendar/calendarKeybinds";
 import { ProjectAssociateDialog } from "../features/projects/ProjectAssociateDialog";
 import { useProjectAssociateDialog } from "../features/projects/useProjectAssociateDialog";
@@ -22,6 +25,8 @@ import { useListTitleSearch } from "../features/title-search/useListTitleSearch"
 type CalendarPageProps = Readonly<{
   controller: CalendarWorkspaceController;
   selectOnGoingCalendar: (id: string) => void;
+  selectNextAction: (id: string) => void;
+  selectDoneNextAction: (id: string) => void;
   openOwnerProject?: (projectId: string, projectTitle?: string | null) => void;
   projects?: Project[];
 }>;
@@ -46,6 +51,8 @@ function useCalendarBindings(
   openAsset: () => void,
   openScheduleEdit: () => void,
   selectOnGoingCalendar: (id: string) => void,
+  selectNextAction: (id: string) => void,
+  selectDoneNextAction: (id: string) => void,
   openProjectAssociate: () => void,
   openOwnerProject?: (projectId: string, projectTitle?: string | null) => void,
   projects: Project[] = []
@@ -58,13 +65,15 @@ function useCalendarBindings(
         setActiveScreen,
         openScheduleEdit,
         selectOnGoingCalendar,
+        selectNextAction,
+        selectDoneNextAction,
         openLink,
         openAsset,
         openProjectAssociate,
         openOwnerProject,
         projects
       ),
-    [controller, setActiveScreen, openScheduleEdit, selectOnGoingCalendar, openLink, openAsset, openProjectAssociate, openOwnerProject, projects]
+    [controller, setActiveScreen, openScheduleEdit, selectOnGoingCalendar, selectNextAction, selectDoneNextAction, openLink, openAsset, openProjectAssociate, openOwnerProject, projects]
   );
   useRegisterKeybinds(bindings);
 }
@@ -101,13 +110,16 @@ function CalendarPanelBody(props: CalendarControllerProps & Readonly<{ panel: Ca
   if (props.controller.isLoading) return <p className="pane-state">Loading calendars...</p>;
   if (props.controller.errorMessage) return <RetryState message={props.controller.errorMessage} onRetry={props.controller.reload} />;
   
-  let items = props.controller.dueCalendars;
+  let items: CalendarWorkspaceItem[] = props.controller.dueCalendars;
   if (props.panel === "done-today") items = props.controller.doneTodayCalendars;
   if (props.panel === "completed") items = props.controller.completedCalendars;
   if (props.panel === "deleted") items = props.controller.deletedCalendars;
   if (["mon", "tue", "wed", "thu", "fri", "sat", "sun"].includes(props.panel)) {
     const index = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"].indexOf(props.panel);
-    items = props.controller.weeklyCalendars.filter(c => new Date(c.scheduledDate + "T00:00:00").getDay() === index);
+    items = props.controller.weeklyCalendars.filter((item) => {
+      const date = calendarWorkspaceItemDate(item);
+      return date ? new Date(`${date}T00:00:00`).getDay() === index : false;
+    });
   }
 
   if (items.length === 0) return <p className="pane-state">{emptyPanelMessage(props.panel)}</p>;
@@ -115,11 +127,11 @@ function CalendarPanelBody(props: CalendarControllerProps & Readonly<{ panel: Ca
 }
 
 function emptyPanelMessage(panel: CalendarPanel): string {
-  if (panel === "done-today") return "No calendars completed today.";
+  if (panel === "done-today") return "No items completed today.";
   if (panel === "completed") return "No completed calendars.";
   if (panel === "deleted") return "No deleted calendars.";
   if (["mon", "tue", "wed", "thu", "fri", "sat", "sun"].includes(panel)) return "";
-  return "No due or late calendars.";
+  return "No due or overdue items.";
 }
 
 function CalendarPanelReady({ controller, items, panel }: CalendarControllerProps & Readonly<{ items: CalendarWorkspaceController["stuffs"], panel: CalendarPanel }>) {
@@ -137,31 +149,32 @@ function CalendarPanelReady({ controller, items, panel }: CalendarControllerProp
       onCommitEditing={() => commitCalendarTitle(controller)}
       onCommitEditingAndContinue={() => commitCalendarTitle(controller)}
       onCancelEditing={controller.cancelTitleEdit}
+      grouped={panel === "due"}
     />
   );
 }
 
 function CalendarDetailBody({ controller }: CalendarControllerProps) {
-  if (controller.isLoading) return <p className="pane-state">Loading calendar details...</p>;
-  if (controller.errorMessage) return <p className="pane-state">Calendar details are unavailable while loading fails.</p>;
-  if (!controller.selectedItem) return <p className="pane-state">Select a calendar to inspect its details.</p>;
+  if (controller.isLoading) return <p className="pane-state">Loading item details...</p>;
+  if (controller.errorMessage) return <p className="pane-state">Item details are unavailable while loading fails.</p>;
+  if (!controller.selectedItem) return <p className="pane-state">Select an item to inspect its details.</p>;
   return <CalendarDetailReady controller={controller} />;
 }
 
 function CalendarDetailReady({ controller }: CalendarControllerProps) {
   const item = controller.selectedItem;
   if (!item) return null;
-  return (
-    <CalendarDetails
-      item={item}
-      editing={controller.editingBodyId === item.id}
-      onAutosaveEditing={(body) => controller.autosaveBody(body)}
-      onCommitEditing={(body) => controller.commitBody(body)}
-      onExitEditingFromNormalMode={() => exitCalendarBodyEditing(controller)}
-      onCancelEditing={controller.cancelBodyEdit}
-      onVimModeChange={controller.setVimMode}
-    />
-  );
+  const sharedProps = {
+    item, editing: controller.editingBodyId === item.id,
+    onAutosaveEditing: (body: ItemBody) => controller.autosaveBody(body),
+    onCommitEditing: (body: ItemBody) => controller.commitBody(body),
+    onExitEditingFromNormalMode: () => exitCalendarBodyEditing(controller),
+    onCancelEditing: controller.cancelBodyEdit, onVimModeChange: controller.setVimMode
+  };
+  if (isNextActionCalendarEntry(item)) {
+    return <InboxStuffDetails {...sharedProps} showCreatedMeta={false} metaVariant="next-action" />;
+  }
+  return <CalendarDetails {...sharedProps} />;
 }
 
 async function exitCalendarBodyEditing(controller: CalendarWorkspaceController): Promise<void> {
@@ -172,7 +185,7 @@ async function exitCalendarBodyEditing(controller: CalendarWorkspaceController):
 function DueCalendarPanel({ controller }: CalendarControllerProps) {
   const meta = `${controller.dueCalendars.length} ${controller.dueCalendars.length === 1 ? "item" : "items"}`;
   return (
-    <ListView title="Calendar" meta={meta} panelIndex={1} active={controller.activeZone === "calendar-today-due-panel"} bodyClassName="list-pane__body--flush" className="inbox-pane inbox-pane--list">
+    <ListView title="Due" meta={meta} panelIndex={1} active={controller.activeZone === "calendar-today-due-panel"} bodyClassName="list-pane__body--flush" className="inbox-pane inbox-pane--list">
       <CalendarPanelBody controller={controller} panel="due" />
     </ListView>
   );
@@ -235,8 +248,11 @@ function WeeklyCalendarPanel({ controller, day, index }: CalendarControllerProps
 }
 
 function CalendarDetailView({ controller }: CalendarControllerProps) {
+  const title = controller.selectedItem && isNextActionCalendarEntry(controller.selectedItem)
+    ? "Next Action Detail"
+    : "Calendar Detail";
   return (
-    <ListView title="Calendar Detail" viewIndex={2} active={controller.activeZone === "calendar-detail"} bodyClassName="list-pane__body--detail" className="inbox-pane inbox-pane--detail">
+    <ListView title={title} viewIndex={2} active={controller.activeZone === "calendar-detail"} bodyClassName="list-pane__body--detail" className="inbox-pane inbox-pane--detail">
       <CalendarDetailBody controller={controller} />
     </ListView>
   );
@@ -305,7 +321,7 @@ function CalendarViews({ controller }: CalendarControllerProps) {
  *
  * @example <CalendarPage controller={controller} />
  */
-export function CalendarPage({ controller, selectOnGoingCalendar, openOwnerProject, projects = [] }: CalendarPageProps) {
+export function CalendarPage({ controller, selectOnGoingCalendar, selectNextAction, selectDoneNextAction, openOwnerProject, projects = [] }: CalendarPageProps) {
   const [isLinkOpen, setIsLinkOpen] = useState(false);
   const [isAssetOpen, setIsAssetOpen] = useState(false);
   const [isScheduleEditOpen, setIsScheduleEditOpen] = useState(false);
@@ -316,7 +332,7 @@ export function CalendarPage({ controller, selectOnGoingCalendar, openOwnerProje
   useKeybindScreen("calendars");
   useCalendarZone(controller);
   useCalendarAssetPreload(controller);
-  useCalendarBindings(controller, openLink, openAsset, openScheduleEdit, selectOnGoingCalendar, projectAssociate.open, openOwnerProject, projects);
+  useCalendarBindings(controller, openLink, openAsset, openScheduleEdit, selectOnGoingCalendar, selectNextAction, selectDoneNextAction, projectAssociate.open, openOwnerProject, projects);
   const titleSearch = useListTitleSearch({
     disabled: Boolean(controller.editingTitle !== "" || controller.editingBodyId),
     items: controller.stuffs,
@@ -345,7 +361,11 @@ export function CalendarPage({ controller, selectOnGoingCalendar, openOwnerProje
       <Suspense fallback={null}>
         {isLinkOpen ? <LazyMarkdownLinkComboDialog onClose={() => setIsLinkOpen(false)} /> : null}
         {isAssetOpen && controller.selectedItem ? <LazyMarkdownAssetComboDialog itemId={controller.selectedItem.id} onClose={() => setIsAssetOpen(false)} /> : null}
-        {isScheduleEditOpen && controller.selectedItem ? <CalendarScheduleEditDialog item={controller.selectedItem} onClose={() => setIsScheduleEditOpen(false)} onSave={controller.updateSchedule} /> : null}
+        {isScheduleEditOpen && controller.selectedItem ? (
+          isNextActionCalendarEntry(controller.selectedItem)
+            ? <CalendarNextActionDeadlineEditDialog item={controller.selectedItem} onClose={() => setIsScheduleEditOpen(false)} onSave={controller.updateDeadline} />
+            : <CalendarScheduleEditDialog item={controller.selectedItem} onClose={() => setIsScheduleEditOpen(false)} onSave={controller.updateSchedule} />
+        ) : null}
         <ProjectAssociateDialog
           item={controller.selectedItem}
           isOpen={projectAssociate.isOpen}

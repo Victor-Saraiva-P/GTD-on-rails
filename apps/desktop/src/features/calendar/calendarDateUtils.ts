@@ -26,6 +26,12 @@ export function formatCalendarDate(d: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+/** Returns the milliseconds until the next local civil day begins. Example: millisecondsUntilNextCalendarDay(new Date()). */
+export function millisecondsUntilNextCalendarDay(date = new Date()): number {
+  const nextDay = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
+  return Math.max(1, nextDay.getTime() - date.getTime());
+}
+
 /**
  * Returns the Monday shifted by `weekOffset` weeks from the current week.
  *
@@ -69,6 +75,21 @@ export function actualCalendarScheduleLabel(schedule?: ScheduleWindow): string |
   const endedAt = scheduleDateTimeLabel(schedule?.dateEnd, schedule?.timeEnd);
   if (!startedAt) return endedAt;
   return endedAt ? `${startedAt} → ${endedAt}` : startedAt;
+}
+
+/** Returns the actual completion clock time for a completed Calendar projection. Example: calendarCompletionTimeLabel(schedule). */
+export function calendarCompletionTimeLabel(schedule?: ScheduleWindow): string | null {
+  return trimCalendarDisplayTime(schedule?.timeEnd);
+}
+
+/** Chooses scheduled time for active entries and actual completion time for Done Today. Example: calendarEntryDisplayTime(null, "DONE_TODAY", schedule). */
+export function calendarEntryDisplayTime(
+  scheduledTime?: string | null,
+  temporalState?: string,
+  schedule?: ScheduleWindow
+): string | null {
+  if (temporalState === "DONE_TODAY") return calendarCompletionTimeLabel(schedule);
+  return trimCalendarDisplayTime(scheduledTime);
 }
 
 /**

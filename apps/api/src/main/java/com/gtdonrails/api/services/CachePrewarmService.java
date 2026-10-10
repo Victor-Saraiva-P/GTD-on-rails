@@ -1,5 +1,8 @@
 package com.gtdonrails.api.services;
 
+import java.time.Clock;
+import java.time.LocalDate;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -21,6 +24,7 @@ public class CachePrewarmService {
     private final ProjectService projectService;
     private final ContextService contextService;
     private final CalendarService calendarService;
+    private final Clock clock;
 
     public CachePrewarmService(
         DatabaseReadinessService databaseReadinessService,
@@ -29,7 +33,8 @@ public class CachePrewarmService {
         NextActionService nextActionService,
         ProjectService projectService,
         ContextService contextService,
-        CalendarService calendarService
+        CalendarService calendarService,
+        Clock clock
     ) {
         this.databaseReadinessService = databaseReadinessService;
         this.databaseSyncService = databaseSyncService;
@@ -38,6 +43,7 @@ public class CachePrewarmService {
         this.projectService = projectService;
         this.contextService = contextService;
         this.calendarService = calendarService;
+        this.clock = clock;
     }
 
     /**
@@ -63,7 +69,7 @@ public class CachePrewarmService {
             nextActionService.getOrderedByTime(null);
             projectService.listProjects();
             contextService.listContexts();
-            calendarService.getTodayCalendars();
+            calendarService.getTodayEntries(LocalDate.now(clock));
             logger.info("Cache pre-warming completed successfully");
         } catch (RuntimeException exception) {
             logger.atWarn()

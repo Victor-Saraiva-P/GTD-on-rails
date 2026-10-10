@@ -1,15 +1,14 @@
 package com.gtdonrails.syncserver;
 
-import java.util.List;
-
-public record MobileNextAction(
+public record MobileCalendarEntry(
     String id,
     String title,
-    Double energy,
-    Long estimatedTimeMinutes,
+    String sourceKind,
+    String temporalState,
+    String date,
+    String scheduledTime,
     String deadline,
     String status,
-    List<String> contextIds,
     String projectTitle,
     String createdAt
 ) {

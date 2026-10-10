@@ -138,6 +138,8 @@ describe("calendarKeybinds - buildCalendarKeybinds", () => {
       () => {},
       () => {},
       () => {},
+      () => {},
+      () => {},
       () => { associateOpened = true; },
       (id) => { openedOwnerId = id; },
       projects
@@ -169,12 +171,50 @@ describe("calendarKeybinds - buildCalendarKeybinds", () => {
     assert.equal(openedOwnerId, "p-1");
   });
 
+  test("limits completed next action projections to completed-state operations", () => {
+    const controller = new FakeCalendarController();
+    controller.selectedItem = {
+      ...createFakeCalendarEntry("n-1", "Done report"),
+      sourceKind: "NEXT_ACTION",
+      temporalState: "DONE_TODAY",
+      scheduledDate: null,
+      scheduledTime: null,
+      deadline: "2026-09-09",
+      status: "DONE"
+    };
+    let detailScreen = "";
+    let selectedDoneId = "";
+
+    const bindings = buildCalendarKeybinds(
+      controller as unknown as CalendarWorkspaceController,
+      (screen) => { detailScreen = screen; },
+      () => {},
+      () => {},
+      () => {},
+      (id) => { selectedDoneId = id; },
+      () => {},
+      () => {}
+    );
+
+    const doneBindings = bindings.filter((binding) => binding.zone === "calendar-today-done-panel");
+    assert.equal(doneBindings.some((binding) => binding.id === "calendars.edit-done-schedule"), false);
+    assert.equal(doneBindings.some((binding) => binding.id === "calendars.associate-project-done"), false);
+    assert.ok(doneBindings.some((binding) => binding.id === "calendars.restore-done"));
+    assert.ok(doneBindings.some((binding) => binding.id === "calendars.delete-done"));
+
+    doneBindings.find((binding) => binding.id === "calendars.open-done-detail")?.runKeybind();
+    assert.equal(selectedDoneId, "n-1");
+    assert.equal(detailScreen, "done-next-actions");
+  });
+
   test("builds completed subview keybinds", () => {
     const controller = new FakeCalendarController();
     controller.activeSubview = "completed";
 
     const bindings = buildCalendarKeybinds(
       controller as unknown as CalendarWorkspaceController,
+      () => {},
+      () => {},
       () => {},
       () => {},
       () => {},
@@ -202,6 +242,8 @@ describe("calendarKeybinds - buildCalendarKeybinds", () => {
       () => {},
       () => {},
       () => {},
+      () => {},
+      () => {},
       () => {}
     );
 
@@ -219,6 +261,8 @@ describe("calendarKeybinds - buildCalendarKeybinds", () => {
 
     const bindings = buildCalendarKeybinds(
       controller as unknown as CalendarWorkspaceController,
+      () => {},
+      () => {},
       () => {},
       () => {},
       () => {},

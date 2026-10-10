@@ -4,7 +4,14 @@ import { scrollDetailPane } from "../keybinds/scrollDetailPane.ts";
 import { openOwnerProject as triggerOpenOwnerProject } from "../projects/ownerProjectNavigation.ts";
 import type { Project } from "../projects/types.ts";
 import type { CalendarPanel } from "./calendarWorkspaceState.ts";
+import { isNextActionCalendarEntry } from "./types.ts";
 import type { CalendarWorkspaceController } from "./useCalendarWorkspaceController.ts";
+
+type CalendarNavigation = Readonly<{
+  selectOnGoingItem: (id: string) => void;
+  selectNextAction: (id: string) => void;
+  selectDoneNextAction: (id: string) => void;
+}>;
 
 function calendarBinding(id: string, key: string, description: string, zone: FocusZoneId, runKeybind: () => void, leader = false, sequence?: string[]): KeybindDefinition {
   return { description, id, key, leader, runKeybind, screen: "calendars", sequence, zone };
@@ -52,8 +59,20 @@ function switchCalendarSubview(controller: CalendarWorkspaceController, directio
   direction === "next" ? controller.switchToNextSubview() : controller.switchToPreviousSubview();
 }
 
-function openCalendarDetailPage(controller: CalendarWorkspaceController, setActiveScreen: (screen: ScreenId) => void): void {
-  if (controller.selectedItem) setActiveScreen("calendar-detail-page");
+function openCalendarDetailPage(
+  controller: CalendarWorkspaceController,
+  setActiveScreen: (screen: ScreenId) => void,
+  navigation: CalendarNavigation
+): void {
+  const item = controller.selectedItem;
+  if (!item) return;
+  if (!isNextActionCalendarEntry(item)) return setActiveScreen("calendar-detail-page");
+  if (item.status === "DONE") {
+    navigation.selectDoneNextAction(item.id);
+    return setActiveScreen("done-next-actions");
+  }
+  navigation.selectNextAction(item.id);
+  setActiveScreen("next-action-detail-page");
 }
 
 function openCalendarScheduleDialog(controller: CalendarWorkspaceController, openScheduleEdit: () => void): void {
@@ -64,14 +83,19 @@ function openProjectAssociateFromKeybind(controller: CalendarWorkspaceController
   if (canEditCalendar(controller)) openProjectAssociate();
 }
 
-function runMarkAsOnGoing(controller: CalendarWorkspaceController, selectOnGoingCalendar: (id: string) => void, setActiveScreen: (screen: ScreenId) => void): void {
-  const id = controller.selectedItem?.id;
-  if (!id) return;
+function runMarkAsOnGoing(
+  controller: CalendarWorkspaceController,
+  navigation: CalendarNavigation,
+  setActiveScreen: (screen: ScreenId) => void
+): void {
+  const item = controller.selectedItem;
+  if (!item) return;
+  const nextAction = isNextActionCalendarEntry(item);
   runCalendarAction(canEditCalendar(controller), async () => {
     await controller.markAsOnGoing();
-    selectOnGoingCalendar(id);
-    setActiveScreen("ongoing-calendar-detail-page");
-  }, "Failed to mark calendar as on going");
+    navigation.selectOnGoingItem(item.id);
+    setActiveScreen(nextAction ? "ongoing-next-action-detail-page" : "ongoing-calendar-detail-page");
+  }, "Failed to mark item as on going");
 }
 
 function buildArchiveNavBindings(controller: CalendarWorkspaceController, zone: FocusZoneId, prefix: string): KeybindDefinition[] {
@@ -96,12 +120,13 @@ function buildStandardItemBindings(
   prefix: string,
   setActiveScreen: (screen: ScreenId) => void,
   openScheduleEdit: () => void,
+  navigation: CalendarNavigation,
   openOwnerProject?: (projectId: string, projectTitle?: string | null) => void,
   projects: Project[] = []
 ): KeybindDefinition[] {
   return [
-    calendarBinding(`calendars.edit-${prefix}-schedule`, "e", "Edit selected schedule", zone, () => openCalendarScheduleDialog(controller, openScheduleEdit)),
-    calendarBinding(`calendars.open-${prefix}-detail`, "Enter", "Open full detail", zone, () => openCalendarDetailPage(controller, setActiveScreen), true, ["Enter"]),
+    calendarBinding(`calendars.edit-${prefix}-schedule`, "e", "Edit selected date", zone, () => openCalendarScheduleDialog(controller, openScheduleEdit)),
+    calendarBinding(`calendars.open-${prefix}-detail`, "Enter", "Open full detail", zone, () => openCalendarDetailPage(controller, setActiveScreen, navigation), true, ["Enter"]),
     calendarBinding(`calendars.open-owner-project-${prefix}`, "d", "Open owner project", zone, () => openOwnerProjectFromKeybind(controller, openOwnerProject, projects), false, ["g", "d"])
   ];
 }
@@ -110,13 +135,14 @@ function buildCompletedPanelBindings(
   controller: CalendarWorkspaceController,
   setActiveScreen: (screen: ScreenId) => void,
   openScheduleEdit: () => void,
+  navigation: CalendarNavigation,
   openOwnerProject?: (projectId: string, projectTitle?: string | null) => void,
   projects: Project[] = []
 ): KeybindDefinition[] {
   const zone = "calendar-completed-panel";
   return [
     ...buildArchiveNavBindings(controller, zone, "completed"),
-    ...buildStandardItemBindings(controller, zone, "completed", setActiveScreen, openScheduleEdit, openOwnerProject, projects),
+    ...buildStandardItemBindings(controller, zone, "completed", setActiveScreen, openScheduleEdit, navigation, openOwnerProject, projects),
     calendarBinding("calendars.delete-completed", "d", "Delete selected calendar", zone, () => runCalendarAction(canEditCalendar(controller), controller.deleteSelected, "Failed to delete calendar")),
     calendarBinding("calendars.restore-completed", "r", "Reset status for selected calendar", zone, () => runCalendarAction(canEditCalendar(controller), controller.restoreSelected, "Failed to restore calendar")),
     ...buildUndoRedoBindings(controller, zone, "completed")
@@ -127,13 +153,14 @@ function buildDeletedPanelBindings(
   controller: CalendarWorkspaceController,
   setActiveScreen: (screen: ScreenId) => void,
   openScheduleEdit: () => void,
+  navigation: CalendarNavigation,
   openOwnerProject?: (projectId: string, projectTitle?: string | null) => void,
   projects: Project[] = []
 ): KeybindDefinition[] {
   const zone = "calendar-deleted-panel";
   return [
     ...buildArchiveNavBindings(controller, zone, "deleted"),
-    ...buildStandardItemBindings(controller, zone, "deleted", setActiveScreen, openScheduleEdit, openOwnerProject, projects),
+    ...buildStandardItemBindings(controller, zone, "deleted", setActiveScreen, openScheduleEdit, navigation, openOwnerProject, projects),
     calendarBinding("calendars.recover-deleted", "r", "Recover selected calendar", zone, () => runCalendarAction(canEditCalendar(controller), controller.recoverDeleted, "Failed to recover calendar")),
     ...buildUndoRedoBindings(controller, zone, "deleted")
   ];
@@ -159,17 +186,18 @@ function buildWeeklyDayActionBindings(
   zone: FocusZoneId,
   setActiveScreen: (screen: ScreenId) => void,
   openScheduleEdit: () => void,
-  selectOnGoingCalendar: (id: string) => void,
+  navigation: CalendarNavigation,
   openProjectAssociate: () => void,
   openOwnerProject?: (projectId: string, projectTitle?: string | null) => void,
   projects: Project[] = []
 ): KeybindDefinition[] {
   return [
-    ...buildStandardItemBindings(controller, zone, day, setActiveScreen, openScheduleEdit, openOwnerProject, projects),
+    ...buildStandardItemBindings(controller, zone, day, setActiveScreen, openScheduleEdit, navigation, openOwnerProject, projects),
     calendarBinding(`calendars.edit-${day}-title`, "Enter", "Edit selected title", zone, () => canEditCalendar(controller) && controller.startTitleEdit()),
     calendarBinding(`calendars.associate-project-${day}`, "P", "Associate to project", zone, () => openProjectAssociateFromKeybind(controller, openProjectAssociate)),
-    calendarBinding(`calendars.ongoing-${day}`, "o", "Mark as on going", zone, () => runMarkAsOnGoing(controller, selectOnGoingCalendar, setActiveScreen)),
-    calendarBinding(`calendars.delete-${day}`, "d", "Delete selected calendar", zone, () => runCalendarAction(canEditCalendar(controller), controller.deleteSelected, "Failed to delete calendar")),
+    calendarBinding(`calendars.ongoing-${day}`, "o", "Mark as on going", zone, () => runMarkAsOnGoing(controller, navigation, setActiveScreen)),
+    calendarBinding(`calendars.done-${day}`, "x", "Mark as done", zone, () => runCalendarAction(canEditCalendar(controller), controller.markAsDone, "Failed to mark item as done")),
+    calendarBinding(`calendars.delete-${day}`, "d", "Delete selected item", zone, () => runCalendarAction(canEditCalendar(controller), controller.deleteSelected, "Failed to delete item")),
     ...buildUndoRedoBindings(controller, zone, day)
   ];
 }
@@ -181,7 +209,7 @@ function buildWeeklyDayBindings(
   days: CalendarPanel[],
   setActiveScreen: (screen: ScreenId) => void,
   openScheduleEdit: () => void,
-  selectOnGoingCalendar: (id: string) => void,
+  navigation: CalendarNavigation,
   openProjectAssociate: () => void,
   openOwnerProject?: (projectId: string, projectTitle?: string | null) => void,
   projects: Project[] = []
@@ -190,7 +218,7 @@ function buildWeeklyDayBindings(
     calendarBinding(`calendars.focus-${targetDay}-from-${day}`, String(j + 1), `Focus ${targetDay} panel`, zone, () => focusCalendarPanel(controller, targetDay))
   );
   const nav = buildWeeklyDayNavigationBindings(controller, day, zone);
-  const actions = buildWeeklyDayActionBindings(controller, day, zone, setActiveScreen, openScheduleEdit, selectOnGoingCalendar, openProjectAssociate, openOwnerProject, projects);
+  const actions = buildWeeklyDayActionBindings(controller, day, zone, setActiveScreen, openScheduleEdit, navigation, openProjectAssociate, openOwnerProject, projects);
   return [...switchBindings, ...nav, ...actions];
 }
 
@@ -198,14 +226,14 @@ function buildWeeklyPanelBindings(
   controller: CalendarWorkspaceController,
   setActiveScreen: (screen: ScreenId) => void,
   openScheduleEdit: () => void,
-  selectOnGoingCalendar: (id: string) => void,
+  navigation: CalendarNavigation,
   openProjectAssociate: () => void,
   openOwnerProject?: (projectId: string, projectTitle?: string | null) => void,
   projects: Project[] = []
 ): KeybindDefinition[] {
   const days: CalendarPanel[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
   const zones: FocusZoneId[] = ["calendar-mon-panel", "calendar-tue-panel", "calendar-wed-panel", "calendar-thu-panel", "calendar-fri-panel", "calendar-sat-panel", "calendar-sun-panel"];
-  return days.flatMap((day, i) => buildWeeklyDayBindings(controller, day, zones[i], days, setActiveScreen, openScheduleEdit, selectOnGoingCalendar, openProjectAssociate, openOwnerProject, projects));
+  return days.flatMap((day, i) => buildWeeklyDayBindings(controller, day, zones[i], days, setActiveScreen, openScheduleEdit, navigation, openProjectAssociate, openOwnerProject, projects));
 }
 
 function buildDueNavigationBindings(controller: CalendarWorkspaceController): KeybindDefinition[] {
@@ -230,19 +258,19 @@ function buildDueActionBindings(
   controller: CalendarWorkspaceController,
   setActiveScreen: (screen: ScreenId) => void,
   openScheduleEdit: () => void,
-  selectOnGoingCalendar: (id: string) => void,
+  navigation: CalendarNavigation,
   openProjectAssociate: () => void,
   openOwnerProject?: (projectId: string, projectTitle?: string | null) => void,
   projects: Project[] = []
 ): KeybindDefinition[] {
   const zone = "calendar-today-due-panel";
   return [
-    ...buildStandardItemBindings(controller, zone, "due", setActiveScreen, openScheduleEdit, openOwnerProject, projects),
+    ...buildStandardItemBindings(controller, zone, "due", setActiveScreen, openScheduleEdit, navigation, openOwnerProject, projects),
     ...buildDueEditBindings(controller, zone),
     calendarBinding("calendars.associate-project-due", "P", "Associate to project", zone, () => openProjectAssociateFromKeybind(controller, openProjectAssociate)),
-    calendarBinding("calendars.ongoing", "o", "Mark as on going", zone, () => runMarkAsOnGoing(controller, selectOnGoingCalendar, setActiveScreen)),
-    calendarBinding("calendars.done", "x", "Mark as done", zone, () => runCalendarAction(canEditCalendar(controller), controller.markAsDone, "Failed to mark calendar as done")),
-    calendarBinding("calendars.delete", "d", "Delete selected calendar", zone, () => runCalendarAction(canEditCalendar(controller), controller.deleteSelected, "Failed to delete calendar")),
+    calendarBinding("calendars.ongoing", "o", "Mark as on going", zone, () => runMarkAsOnGoing(controller, navigation, setActiveScreen)),
+    calendarBinding("calendars.done", "x", "Mark as done", zone, () => runCalendarAction(canEditCalendar(controller), controller.markAsDone, "Failed to mark item as done")),
+    calendarBinding("calendars.delete", "d", "Delete selected item", zone, () => runCalendarAction(canEditCalendar(controller), controller.deleteSelected, "Failed to delete item")),
     ...buildUndoRedoBindings(controller, zone, "due")
   ];
 }
@@ -251,14 +279,14 @@ function buildDuePanelBindings(
   controller: CalendarWorkspaceController,
   setActiveScreen: (screen: ScreenId) => void,
   openScheduleEdit: () => void,
-  selectOnGoingCalendar: (id: string) => void,
+  navigation: CalendarNavigation,
   openProjectAssociate: () => void,
   openOwnerProject?: (projectId: string, projectTitle?: string | null) => void,
   projects: Project[] = []
 ): KeybindDefinition[] {
   return [
     ...buildDueNavigationBindings(controller),
-    ...buildDueActionBindings(controller, setActiveScreen, openScheduleEdit, selectOnGoingCalendar, openProjectAssociate, openOwnerProject, projects)
+    ...buildDueActionBindings(controller, setActiveScreen, openScheduleEdit, navigation, openProjectAssociate, openOwnerProject, projects)
   ];
 }
 
@@ -274,14 +302,45 @@ function buildDoneTodayPanelBindings(
   controller: CalendarWorkspaceController,
   setActiveScreen: (screen: ScreenId) => void,
   openScheduleEdit: () => void,
+  navigation: CalendarNavigation,
   openProjectAssociate: () => void,
   openOwnerProject?: (projectId: string, projectTitle?: string | null) => void,
   projects: Project[] = []
 ): KeybindDefinition[] {
   const zone = "calendar-today-done-panel";
+  const nav = buildDoneTodayNavBindings(controller, zone);
+  if (controller.selectedItem && isNextActionCalendarEntry(controller.selectedItem)) {
+    return [...nav, ...buildDoneNextActionBindings(controller, zone, setActiveScreen, navigation)];
+  }
+  return [...nav, ...buildDoneCalendarBindings(controller, zone, setActiveScreen, openScheduleEdit, navigation, openProjectAssociate, openOwnerProject, projects)];
+}
+
+function buildDoneNextActionBindings(
+  controller: CalendarWorkspaceController,
+  zone: FocusZoneId,
+  setActiveScreen: (screen: ScreenId) => void,
+  navigation: CalendarNavigation
+): KeybindDefinition[] {
   return [
-    ...buildDoneTodayNavBindings(controller, zone),
-    ...buildStandardItemBindings(controller, zone, "done", setActiveScreen, openScheduleEdit, openOwnerProject, projects),
+    calendarBinding("calendars.open-done-detail", "Enter", "Open full detail", zone, () => openCalendarDetailPage(controller, setActiveScreen, navigation), true, ["Enter"]),
+    calendarBinding("calendars.restore-done", "r", "Restore selected next action", zone, () => runCalendarAction(canEditCalendar(controller), controller.restoreSelected, "Failed to restore next action")),
+    calendarBinding("calendars.delete-done", "d", "Delete selected next action", zone, () => runCalendarAction(canEditCalendar(controller), controller.deleteSelected, "Failed to delete next action")),
+    ...buildUndoRedoBindings(controller, zone, "done")
+  ];
+}
+
+function buildDoneCalendarBindings(
+  controller: CalendarWorkspaceController,
+  zone: FocusZoneId,
+  setActiveScreen: (screen: ScreenId) => void,
+  openScheduleEdit: () => void,
+  navigation: CalendarNavigation,
+  openProjectAssociate: () => void,
+  openOwnerProject?: (projectId: string, projectTitle?: string | null) => void,
+  projects: Project[] = []
+): KeybindDefinition[] {
+  return [
+    ...buildStandardItemBindings(controller, zone, "done", setActiveScreen, openScheduleEdit, navigation, openOwnerProject, projects),
     calendarBinding("calendars.associate-project-done", "P", "Associate to project", zone, () => openProjectAssociateFromKeybind(controller, openProjectAssociate)),
     calendarBinding("calendars.restore-done", "r", "Reset status for selected calendar", zone, () => runCalendarAction(canEditCalendar(controller), controller.restoreSelected, "Failed to restore calendar")),
     calendarBinding("calendars.delete-done", "d", "Delete selected calendar", zone, () => runCalendarAction(canEditCalendar(controller), controller.deleteSelected, "Failed to delete calendar")),
@@ -293,14 +352,14 @@ function buildArchiveOrWeeklyBindings(
   controller: CalendarWorkspaceController,
   setActiveScreen: (screen: ScreenId) => void,
   openScheduleEdit: () => void,
-  selectOnGoingCalendar: (id: string) => void,
+  navigation: CalendarNavigation,
   openProjectAssociate: () => void,
   openOwnerProject?: (projectId: string, projectTitle?: string | null) => void,
   projects: Project[] = []
 ): KeybindDefinition[] | null {
-  if (controller.activeSubview === "completed") return buildCompletedPanelBindings(controller, setActiveScreen, openScheduleEdit, openOwnerProject, projects);
-  if (controller.activeSubview === "deleted") return buildDeletedPanelBindings(controller, setActiveScreen, openScheduleEdit, openOwnerProject, projects);
-  if (controller.activeSubview === "weekly") return buildWeeklyPanelBindings(controller, setActiveScreen, openScheduleEdit, selectOnGoingCalendar, openProjectAssociate, openOwnerProject, projects);
+  if (controller.activeSubview === "completed") return buildCompletedPanelBindings(controller, setActiveScreen, openScheduleEdit, navigation, openOwnerProject, projects);
+  if (controller.activeSubview === "deleted") return buildDeletedPanelBindings(controller, setActiveScreen, openScheduleEdit, navigation, openOwnerProject, projects);
+  if (controller.activeSubview === "weekly") return buildWeeklyPanelBindings(controller, setActiveScreen, openScheduleEdit, navigation, openProjectAssociate, openOwnerProject, projects);
   return null;
 }
 
@@ -308,16 +367,16 @@ function buildPanelBindings(
   controller: CalendarWorkspaceController,
   setActiveScreen: (screen: ScreenId) => void,
   openScheduleEdit: () => void,
-  selectOnGoingCalendar: (id: string) => void,
+  navigation: CalendarNavigation,
   openProjectAssociate: () => void,
   openOwnerProject?: (projectId: string, projectTitle?: string | null) => void,
   projects: Project[] = []
 ): KeybindDefinition[] {
-  const subview = buildArchiveOrWeeklyBindings(controller, setActiveScreen, openScheduleEdit, selectOnGoingCalendar, openProjectAssociate, openOwnerProject, projects);
+  const subview = buildArchiveOrWeeklyBindings(controller, setActiveScreen, openScheduleEdit, navigation, openProjectAssociate, openOwnerProject, projects);
   if (subview) return subview;
   return [
-    ...buildDuePanelBindings(controller, setActiveScreen, openScheduleEdit, selectOnGoingCalendar, openProjectAssociate, openOwnerProject, projects),
-    ...buildDoneTodayPanelBindings(controller, setActiveScreen, openScheduleEdit, openProjectAssociate, openOwnerProject, projects)
+    ...buildDuePanelBindings(controller, setActiveScreen, openScheduleEdit, navigation, openProjectAssociate, openOwnerProject, projects),
+    ...buildDoneTodayPanelBindings(controller, setActiveScreen, openScheduleEdit, navigation, openProjectAssociate, openOwnerProject, projects)
   ];
 }
 
@@ -380,16 +439,19 @@ export function buildCalendarKeybinds(
   controller: CalendarWorkspaceController,
   setActiveScreen: (screen: ScreenId) => void,
   openScheduleEdit: () => void,
-  selectOnGoingCalendar: (id: string) => void,
+  selectOnGoingItem: (id: string) => void,
+  selectNextAction: (id: string) => void,
+  selectDoneNextAction: (id: string) => void,
   openLink: () => void,
   openAsset: () => void,
   openProjectAssociate: () => void,
   openOwnerProject?: (projectId: string, projectTitle?: string | null) => void,
   projects: Project[] = []
 ): KeybindDefinition[] {
+  const navigation = { selectOnGoingItem, selectNextAction, selectDoneNextAction };
   return [
     ...buildSubviewBindings(controller),
-    ...buildPanelBindings(controller, setActiveScreen, openScheduleEdit, selectOnGoingCalendar, openProjectAssociate, openOwnerProject, projects),
+    ...buildPanelBindings(controller, setActiveScreen, openScheduleEdit, navigation, openProjectAssociate, openOwnerProject, projects),
     ...buildDetailBindings(controller, openLink, openAsset, openProjectAssociate, openOwnerProject, projects)
   ];
 }

@@ -1,8 +1,9 @@
 import { enqueueCapture, pendingCaptures, removeCapture } from "./offline-store.js";
+import { calendarEntriesForDate, calendarGroupLabel, compareCalendarEntries, filterCalendarEntries, localIsoDate, millisecondsUntilNextLocalDay } from "./calendar-projection.js";
 
 const API_ROOT = "/mobile-api";
 const CACHE_KEY = "gtd-mobile-bootstrap-v1";
-const EMPTY_BOOTSTRAP = { contexts: [], nextActions: [], calendar: [] };
+const EMPTY_BOOTSTRAP = { contexts: [], nextActions: [], calendar: [], calendarEntries: [], calendarLocalDate: null };
 
 const state = {
   bootstrap: EMPTY_BOOTSTRAP,
@@ -29,6 +30,7 @@ async function initialize() {
   bindNavigation();
   bindCapture();
   bindCalendarRange();
+  bindCalendarDateRefresh();
   bindRefresh();
   registerServiceWorker();
   await loadBootstrap();
@@ -138,7 +140,8 @@ async function loadBootstrap() {
 }
 
 async function fetchBootstrap() {
-  const response = await fetch(`${API_ROOT}/bootstrap`, { cache: "no-store" });
+  const localDate = localIsoDate();
+  const response = await fetch(`${API_ROOT}/bootstrap?localDate=${encodeURIComponent(localDate)}`, { cache: "no-store" });
   if (!response.ok) throw new Error(`bootstrap failed with HTTP ${response.status}`);
   return response.json();
 }
@@ -277,36 +280,48 @@ function selectCalendarRange(range) {
 }
 
 function renderCalendar() {
-  const items = state.bootstrap.calendar.filter(calendarInRange).sort(compareCalendarItems);
+  const localDate = localIsoDate();
+  const projected = calendarEntriesForDate(state.bootstrap, localDate);
+  const items = filterCalendarEntries(projected, state.calendarRange, localDate)
+    .sort((left, right) => compareCalendarEntries(left, right, state.calendarRange));
   elements.calendarCount.textContent = itemCount(items.length);
-  elements.calendar.innerHTML = items.length === 0
-    ? emptyState("Nothing scheduled in this range.")
-    : items.map(calendarRow).join("");
-}
-
-function calendarInRange(item) {
-  if (!item.scheduledDate) return false;
-  const itemDate = localDate(item.scheduledDate);
-  const today = startOfToday();
-  const end = new Date(today);
-  end.setDate(end.getDate() + (state.calendarRange === "week" ? 7 : 1));
-  return itemDate >= today && itemDate < end;
+  if (items.length === 0) {
+    elements.calendar.innerHTML = emptyState("Nothing due in this range.");
+    return;
+  }
+  let previousGroup = null;
+  elements.calendar.innerHTML = items.map((item) => {
+    const group = state.calendarRange === "today" ? calendarGroupLabel(item.temporalState) : null;
+    const heading = group && group !== previousGroup ? `<div class="calendar-group-heading">${escapeHtml(group)}</div>` : "";
+    previousGroup = group;
+    return `${heading}${calendarRow(item)}`;
+  }).join("");
 }
 
 function calendarRow(item) {
-  const time = item.scheduledTime ? item.scheduledTime.slice(0, 5) : "All day";
+  const glyph = item.sourceKind === "NEXT_ACTION" ? "N" : "C";
   return `
     <div class="tree-entry">
-      <span class="tree-entry__glyph" aria-hidden="true">C</span>
+      <span class="tree-entry__glyph" aria-hidden="true">${glyph}</span>
       <div class="tree-entry__content">
         ${calendarPrimary(item)}
         <div class="tree-entry__secondary">
-          <span class="calendar-time">⏱ ${escapeHtml(time)}</span>
-          <span class="calendar-date">${escapeHtml(formatDate(item.scheduledDate))}</span>
+          ${calendarTemporalMeta(item)}
+          <span class="calendar-date">${escapeHtml(formatDate(item.date))}</span>
         </div>
       </div>
     </div>
   `;
+}
+
+function calendarTemporalMeta(item) {
+  if (item.sourceKind === "NEXT_ACTION") {
+    if (item.temporalState === "OVERDUE") return `<span class="calendar-time">Overdue</span>`;
+    if (item.temporalState === "DUE_TODAY") return `<span class="calendar-time">Due today</span>`;
+    return `<span class="calendar-time">Deadline</span>`;
+  }
+  const time = item.scheduledTime ? item.scheduledTime.slice(0, 5) : "All day";
+  return `<span class="calendar-time">⏱ ${escapeHtml(time)}</span>`;
 }
 
 function calendarPrimary(item) {
@@ -316,19 +331,6 @@ function calendarPrimary(item) {
       ${projectAssociation(item.projectTitle)}
     </div>
   `;
-}
-
-function compareCalendarItems(left, right) {
-  return calendarSortKey(left).localeCompare(calendarSortKey(right));
-}
-
-function calendarSortKey(item) {
-  return `${item.scheduledDate}T${item.scheduledTime || "00:00"}`;
-}
-
-function startOfToday() {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
 }
 
 function localDate(value) {
@@ -342,6 +344,23 @@ function formatDate(value) {
     month: "short",
     day: "numeric"
   });
+}
+
+function bindCalendarDateRefresh() {
+  const refresh = () => renderCalendar();
+  window.addEventListener("focus", refresh);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) refresh();
+  });
+  scheduleCalendarDateRefresh(refresh);
+}
+
+function scheduleCalendarDateRefresh(refresh) {
+  const delay = millisecondsUntilNextLocalDay() + 50;
+  window.setTimeout(() => {
+    refresh();
+    scheduleCalendarDateRefresh(refresh);
+  }, delay);
 }
 
 function bindRefresh() {

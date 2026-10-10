@@ -6,6 +6,8 @@ public record MobileBootstrap(
     long cursor,
     List<MobileContext> contexts,
     List<MobileNextAction> nextActions,
-    List<MobileCalendarItem> calendar
+    List<MobileCalendarItem> calendar,
+    String calendarLocalDate,
+    List<MobileCalendarEntry> calendarEntries
 ) {
 }

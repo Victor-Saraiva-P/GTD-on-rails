@@ -3,10 +3,13 @@ import test, { describe } from "node:test";
 
 import {
   actualCalendarScheduleLabel,
+  calendarCompletionTimeLabel,
+  calendarEntryDisplayTime,
   formatCalendarDate,
   getMonday,
   getMondayForOffset,
   initialCalendarScheduleDraft,
+  millisecondsUntilNextCalendarDay,
   resolveTodayWeeklyPanel,
   resolveWeeklyOffset,
   saveCalendarScheduleDraft,
@@ -54,6 +57,13 @@ describe("formatCalendarDate", () => {
   test("formats date as YYYY-MM-DD with zero-padded month and day", () => {
     assert.equal(formatCalendarDate(new Date(2026, 0, 5)), "2026-01-05");
     assert.equal(formatCalendarDate(new Date(2026, 11, 25)), "2026-12-25");
+  });
+});
+
+describe("calendar local day refresh", () => {
+  test("schedules the next local midnight", () => {
+    const now = new Date(2026, 9, 9, 23, 59, 30);
+    assert.equal(millisecondsUntilNextCalendarDay(now), 30_000);
   });
 });
 
@@ -105,6 +115,18 @@ describe("calendar display time", () => {
   test("keeps missing times absent", () => {
     assert.equal(trimCalendarDisplayTime(null), null);
     assert.equal(trimCalendarDisplayTime(undefined), null);
+  });
+});
+
+describe("calendar completion time label", () => {
+  test("uses the actual schedule end time rather than the stated calendar time", () => {
+    assert.equal(calendarCompletionTimeLabel({ timeEnd: "15:20:00" }), "15:20");
+    assert.equal(calendarCompletionTimeLabel({}), null);
+  });
+
+  test("calendar entry display switches from scheduled time to completion time in Done Today", () => {
+    assert.equal(calendarEntryDisplayTime("09:30:00", "DONE_TODAY", { timeEnd: "15:20:00" }), "15:20");
+    assert.equal(calendarEntryDisplayTime("09:30:00", "DUE_TODAY", undefined), "09:30");
   });
 });
 

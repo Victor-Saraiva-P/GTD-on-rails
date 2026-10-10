@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useActiveZone } from "../keybinds/hooks";
-import { useUndoRedoHistory } from "../history/useUndoRedoHistory";
+import type { FocusZoneId } from "../keybinds/types";
+import { useCalendarActionHistory, type CalendarHistoryActionType } from "./useCalendarActionHistory.ts";
 import type { ItemBody } from "../inbox/types";
 import { isSameBody } from "../inbox/types";
 import {
@@ -25,7 +26,8 @@ import {
   type CalendarSubview,
   type WeeklyDayPanel
 } from "./calendarWorkspaceState";
-import type { Calendar, CalendarPatch } from "./types";
+import type { CalendarPatch, CalendarWorkspaceItem } from "./types";
+import { isNextActionCalendarEntry } from "./types.ts";
 import { useCalendarQuery } from "./useCalendarQuery";
 
 type CalendarEditState = ReturnType<typeof useCalendarEditState>;
@@ -38,7 +40,7 @@ function useCalendarViewState() {
   return { activePanel, activeSubview, setActivePanel, setActiveSubview };
 }
 
-function useCalendarSelection(items: Calendar[]) {
+function useCalendarSelection(items: CalendarWorkspaceItem[]) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selectedItem = selectedCalendar(items, selectedId);
   const selectedIndex = selectedCalendarIndex(items, selectedItem);
@@ -102,7 +104,7 @@ function useCalendarWorkspaceModel() {
   const selection = useCalendarSelection(items);
   const edit = useCalendarEditState();
   const zone = useActiveZone();
-  const history = useUndoRedoHistory<Calendar>();
+  const history = useCalendarActionHistory();
   return { edit, query, selection, view, zone, history };
 }
 
@@ -161,13 +163,31 @@ async function updateSelectedCalendarSchedule(model: CalendarModel, patch: Calen
   clearCalendarEditing(model.edit);
 }
 
+async function updateSelectedNextActionDeadline(model: CalendarModel, deadline: string | null): Promise<void> {
+  const item = model.selection.selectedItem;
+  if (!item || !isNextActionCalendarEntry(item)) return;
+  model.selection.setSelectedId((await model.query.updateDeadline(item, deadline)).id);
+  clearCalendarEditing(model.edit);
+}
+
 async function runSelectedCalendarMutation(
   model: CalendarModel,
-  action: (id: string) => Promise<void>
+  action: (item: CalendarWorkspaceItem) => Promise<void>,
+  historyType?: CalendarHistoryActionType
 ): Promise<void> {
   const item = model.selection.selectedItem;
   if (!item) return;
-  await action(item.id);
+  await action(item);
+  if (historyType) model.history.pushUndo({ type: historyType, payload: item });
+  clearCalendarEditing(model.edit);
+  model.zone.setActiveZone(calendarListZoneForPanel(model.view.activePanel));
+}
+
+async function recoverSelectedDeletedCalendar(model: CalendarModel): Promise<void> {
+  const item = model.selection.selectedItem;
+  if (!item) return;
+  await model.query.recoverDeleted(item.id);
+  model.history.pushUndo({ type: "RECOVER_DELETED", payload: item });
   clearCalendarEditing(model.edit);
   model.zone.setActiveZone(calendarListZoneForPanel(model.view.activePanel));
 }
@@ -183,31 +203,30 @@ async function deleteSelectedCalendarAction(model: CalendarModel): Promise<void>
   model.zone.setActiveZone(calendarListZoneForPanel(model.view.activePanel));
 }
 
-async function undoCalendarAction(model: CalendarModel) {
+async function undoCalendarAction(model: CalendarModel): Promise<void> {
   const action = model.history.popUndo();
   if (!action) return;
-
-  if (action.type === "DELETE") {
-    await model.query.recoverDeleted(action.payload.id);
-    model.selection.setSelectedId(action.payload.id);
-  } else {
-    await model.query.deleteItem(action.payload.id);
-  }
+  const item = action.payload;
+  if (action.type === "DELETE") await model.query.recoverDeleted(item.id);
+  if (action.type === "DONE" || action.type === "ONGOING") await model.query.restoreStatus(item);
+  if (action.type === "RESTORE_STATUS") await model.query.markAsDone(item);
+  if (action.type === "RECOVER_DELETED") await model.query.deleteItem(item.id);
+  model.selection.setSelectedId(item.id);
 }
 
-async function redoCalendarAction(model: CalendarModel) {
+async function redoCalendarAction(model: CalendarModel): Promise<void> {
   const action = model.history.popRedo();
   if (!action) return;
-
-  if (action.type === "RESTORE") {
-    await model.query.deleteItem(action.payload.id);
-  } else {
-    await model.query.recoverDeleted(action.payload.id);
-    model.selection.setSelectedId(action.payload.id);
-  }
+  const item = action.payload;
+  if (action.type === "DELETE") await model.query.deleteItem(item.id);
+  if (action.type === "DONE") await model.query.markAsDone(item);
+  if (action.type === "ONGOING") await model.query.markAsOnGoing(item);
+  if (action.type === "RESTORE_STATUS") await model.query.restoreStatus(item);
+  if (action.type === "RECOVER_DELETED") await model.query.recoverDeleted(item.id);
+  model.selection.setSelectedId(item.id);
 }
 
-function calendarListZoneForPanel(panel: CalendarPanel): any {
+function calendarListZoneForPanel(panel: CalendarPanel): FocusZoneId {
   if (panel === "done-today") return "calendar-today-done-panel";
   if (panel === "completed") return "calendar-completed-panel";
   if (panel === "deleted") return "calendar-deleted-panel";
@@ -277,16 +296,16 @@ function useCalendarWorkspaceActions(model: CalendarModel) {
     commitTitle: () => commitCalendarTitleEdit(model),
     deleteSelected: () => deleteSelectedCalendarAction(model),
     focusPanel: (panel: CalendarPanel) => focusCalendarPanel(model, panel),
-    markAsDone: () => runSelectedCalendarMutation(model, model.query.markAsDone),
-    markAsOnGoing: () => runSelectedCalendarMutation(model, model.query.markAsOnGoing),
+    markAsDone: () => runSelectedCalendarMutation(model, model.query.markAsDone, "DONE"),
+    markAsOnGoing: () => runSelectedCalendarMutation(model, model.query.markAsOnGoing, "ONGOING"),
     moveColumnLeft: () => moveCalendarColumn(model, "left"),
     moveColumnRight: () => moveCalendarColumn(model, "right"),
     moveWeekNext: () => moveCalendarWeek(model, "next"),
     moveWeekPrevious: () => moveCalendarWeek(model, "previous"),
     reload: model.query.reload,
     resetWorkspace: () => resetCalendarWorkspace(model),
-    restoreSelected: () => runSelectedCalendarMutation(model, model.query.restoreStatus),
-    recoverDeleted: () => runSelectedCalendarMutation(model, model.query.recoverDeleted),
+    restoreSelected: () => runSelectedCalendarMutation(model, model.query.restoreStatus, "RESTORE_STATUS"),
+    recoverDeleted: () => recoverSelectedDeletedCalendar(model),
     selectFirst: model.selection.selectFirst,
     selectLast: model.selection.selectLast,
     selectNext: model.selection.selectNext,
@@ -296,6 +315,7 @@ function useCalendarWorkspaceActions(model: CalendarModel) {
     focusTodayWeek: () => focusTodayCalendarWeek(model),
     switchToNextSubview: () => switchCalendarSubview(model, "next"),
     switchToPreviousSubview: () => switchCalendarSubview(model, "previous"),
+    updateDeadline: (deadline: string | null) => updateSelectedNextActionDeadline(model, deadline),
     updateSchedule: (patch: CalendarPatch) => updateSelectedCalendarSchedule(model, patch),
     undo: () => undoCalendarAction(model),
     redo: () => redoCalendarAction(model)

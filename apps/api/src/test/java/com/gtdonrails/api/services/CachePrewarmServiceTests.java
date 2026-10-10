@@ -4,6 +4,11 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -36,6 +41,8 @@ class CachePrewarmServiceTests {
     @Mock
     private CalendarService calendarService;
 
+    private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-05-21T12:00:00Z"), ZoneId.of("UTC"));
+
     private CachePrewarmService cachePrewarmService;
 
     @BeforeEach
@@ -47,7 +54,8 @@ class CachePrewarmServiceTests {
             nextActionService,
             projectService,
             contextService,
-            calendarService);
+            calendarService,
+            CLOCK);
     }
 
     @Test
@@ -63,7 +71,7 @@ class CachePrewarmServiceTests {
         verify(nextActionService).getOrderedByTime(null);
         verify(projectService).listProjects();
         verify(contextService).listContexts();
-        verify(calendarService).getTodayCalendars();
+        verify(calendarService).getTodayEntries(LocalDate.parse("2026-05-21"));
     }
 
     @Test

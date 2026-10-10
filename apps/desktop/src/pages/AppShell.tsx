@@ -219,7 +219,7 @@ function renderActiveScreen(
   const detail = renderDetailScreens(activeScreen, controllers);
   if (detail) return detail;
   if (activeScreen === "contexts") return <ContextsPage />;
-  if (activeScreen === "calendars") return <CalendarPage controller={controllers.calendars} selectOnGoingCalendar={controllers.ongoing.setSelectedId} openOwnerProject={openOwnerProject} projects={controllers.projects.projects} />;
+  if (activeScreen === "calendars") return <CalendarPage controller={controllers.calendars} selectOnGoingCalendar={controllers.ongoing.setSelectedId} selectNextAction={controllers.nextActions.setSelectedId} selectDoneNextAction={controllers.doneNextActions.setSelectedId} openOwnerProject={openOwnerProject} projects={controllers.projects.projects} />;
   if (activeScreen === "projects") return <ProjectsPage controller={controllers.projects} openProjectDetail={openProjectDetail} />;
   if (activeScreen === "project-detail") return <ProjectDetailPage controller={controllers.projectDetail} openItemDestination={openProjectItemDestination} openOwnerProject={openOwnerProject} projects={controllers.projects.projects} />;
   if (activeScreen === "deleted-inbox") return <DeletedInboxPage controller={controllers.deletedInbox} />;
