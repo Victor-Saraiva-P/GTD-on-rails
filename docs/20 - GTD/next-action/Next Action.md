@@ -14,7 +14,7 @@ Next actions can include [[Body Content]] for notes, links, and file assets that
 
 An available next action is ready to be selected from the next actions list when its context, time, and energy fit.
 
-An optional deadline can mark the date when the action should be preferred. Deadline is used by priority ordering together with urgency, available time, and available energy.
+An optional deadline marks the date by which the action must be completed. A deadline does not mean that the action is scheduled for that date; work that must happen on a specific date belongs on the Calendar instead. Deadline is used by priority ordering together with urgency, available time, and available energy.
 
 ### On Going
 

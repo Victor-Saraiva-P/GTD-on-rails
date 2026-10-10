@@ -9,8 +9,16 @@ A concrete action that is available to do and may optionally have a deadline. A 
 _Avoid_: Task, todo
 
 **Deadline**:
-The date a next action should be done by. When present, it is the date used to represent the active next action on an external agenda.
-_Avoid_: Due date, scheduled date
+The date by which a Next Action must be completed. It does not schedule execution for that date. When present, the original deadline date is used to represent the active Next Action on its external agenda.
+_Avoid_: Due date, scheduled date, execution date
+
+**Calendar Item**:
+Work bound to a specific date, with an optional time. A Calendar Item has its own identity and lifecycle; a Next Action with a deadline does not become one.
+_Avoid_: deadline item, due action
+
+**Calendar Projection**:
+A read-only, date-based appearance of an existing Calendar Item or Next Action in the aggregated Calendar read model. Projection never changes source identity, and mutations remain owned by the source entity API.
+_Avoid_: calendar copy, converted calendar item
 
 **Project**:
 A GTD outcome that represents a desired result with a title and optional deadline. A project may originate from captured stuff, but the project view is concerned with the result rather than the original captured body.

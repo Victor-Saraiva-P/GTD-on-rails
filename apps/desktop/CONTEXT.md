@@ -5,8 +5,20 @@ The Desktop context covers the local keyboard-driven application experience, inc
 ## Language
 
 **Current Availability State**:
-The volatile next-action list filter that represents the user's current execution constraints: contexts, available energy, and available time. It can include multiple simultaneous contexts and is not persisted on a next action.
+The volatile next-action list filter that represents the user's current execution constraints: contexts, available energy, and available time. It can include multiple simultaneous contexts and is not persisted on a next action. It never hides or reorders Calendar projections whose temporal obligation must remain visible.
 _Avoid_: current state, item state, next-action attributes
+
+**Calendar Projection**:
+A Calendar view of an existing Calendar Item or Next Action that preserves the source entity's identity. Projected Next Actions keep the `N` glyph and route edits, lifecycle transitions, detail navigation, and recovery to Next Action behavior rather than Calendar Item behavior.
+_Avoid_: calendar copy, converted calendar item
+
+**Due Next Action**:
+An available Next Action whose deadline is the local calendar date. Calendar Today surfaces it as `Due today` without converting it to a Calendar Item.
+_Avoid_: scheduled next action, calendar task
+
+**Overdue Next Action**:
+An available Next Action whose deadline is before the local calendar date. Calendar Today keeps it visible until completion, deadline change/removal, or another lifecycle transition removes it from the available state.
+_Avoid_: expired action, late calendar item
 
 **On Going Item**:
 An active execution item shown in the On Going list. It can be either an on going next action or an on going calendar item.
