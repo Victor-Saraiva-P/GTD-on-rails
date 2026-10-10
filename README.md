@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/assets/logo.png" alt="GTD on Rails logo" width="160" />
+</p>
+
 # GTD on Rails
 
 [![Version](https://img.shields.io/badge/version-1.3.0-blue)](./VERSION)
