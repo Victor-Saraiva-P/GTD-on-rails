@@ -97,7 +97,8 @@ function buildActionBindings(
 function buildActiveBindings(controller: SomedayMaybeWorkspaceController): KeybindDefinition[] {
   if (controller.activeSubview !== "active") return [];
   return [
-    somedayMaybeBinding("someday-maybe.revert", "r", "Move to inbox", "someday-maybe-list", () => void controller.revertSelectedToStuff())
+    somedayMaybeBinding("someday-maybe.revert", "r", "Move to inbox", "someday-maybe-list", () => void controller.revertSelectedToStuff()),
+    somedayMaybeBinding("someday-maybe.revert-upper", "R", "Move to inbox", "someday-maybe-list", () => void controller.revertSelectedToStuff())
   ];
 }
 

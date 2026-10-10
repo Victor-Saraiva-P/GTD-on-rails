@@ -13,6 +13,7 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -53,6 +54,17 @@ public class NextActionController {
     @PostMapping("/{id}/reset-status")
     public NextActionResponseDto resetNextActionStatus(@PathVariable UUID id) {
         return nextActionService.resetNextActionStatus(id);
+    }
+
+    /**
+     * Handles conversion from a next action item back to inbox stuff.
+     *
+     * <p>Example: {@code POST /next-actions/018f13b2-a7f3-7c44-8f1a-9f31f65a7fd2/stuff}.</p>
+     */
+    @PostMapping("/{id}/stuff")
+    public ResponseEntity<Void> revertToStuff(@PathVariable UUID id) {
+        nextActionService.revertToStuff(id);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping

@@ -200,6 +200,21 @@ public class Item extends AuditableEntity {
         status = ItemStatus.STUFF;
     }
 
+    /**
+     * Reverts this active next action item back into inbox stuff.
+     *
+     * <p>Example: {@code item.revertNextActionToStuff()}.</p>
+     */
+    public void revertNextActionToStuff() {
+        if (status != ItemStatus.NEXT_ACTION || isDeleted() || nextAction == null) {
+            throw new IllegalStateException(
+                "item value '" + status + "' is invalid; expected active NEXT_ACTION");
+        }
+        nextAction.replaceContexts(Set.of());
+        nextAction = null;
+        status = ItemStatus.STUFF;
+    }
+
     @PrePersist
     void prePersist() {
         initializeAuditTimestamps();
