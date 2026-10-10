@@ -82,6 +82,8 @@
   font-size: 1rem;
   font-weight: 700;
   line-height: 1.28;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .project-card__footer {

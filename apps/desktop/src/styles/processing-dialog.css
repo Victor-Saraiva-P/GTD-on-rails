@@ -146,6 +146,8 @@
   cursor: pointer;
   font: inherit;
   text-align: left;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .processing-dialog__list-item--focused {

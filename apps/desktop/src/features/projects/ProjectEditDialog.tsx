@@ -43,7 +43,7 @@ function ProjectTitleStep({ value, onValueChange, onBack, onSave }: Readonly<{ v
     if (event.key === "Escape") onBack();
     if (event.key === "Enter") onSave();
   };
-  return <input ref={inputRef} className="processing-dialog__input" aria-label="Title:" value={value} onChange={(event) => onValueChange(event.target.value)} onKeyDown={handleKeyDown} />;
+  return <input ref={inputRef} className="processing-dialog__input" aria-label="Title:" maxLength={200} value={value} onChange={(event) => onValueChange(event.target.value)} onKeyDown={handleKeyDown} />;
 }
 
 function deadlinePatch(deadline: string | null): ProjectPatch {
@@ -62,8 +62,10 @@ export function ProjectEditDialog({ item, onClose, onSave }: ProjectEditDialogPr
   const [error, setError] = useState<string | null>(null);
   const updateTitle = (value: string) => { setTitle(value); setError(null); };
   const saveTitle = async () => {
-    if (!title.trim()) { setError("Title is required."); return; }
-    await onSave({ title: title.trim() });
+    const trimmed = title.trim();
+    if (!trimmed) { setError("Title is required."); return; }
+    if (trimmed.length > 200) { setError("Title cannot exceed 200 characters."); return; }
+    await onSave({ title: trimmed });
   };
   return (
     <dialog className="processing-dialog" aria-modal="true" aria-label="Edit project" open>
