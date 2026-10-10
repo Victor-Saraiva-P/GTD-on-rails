@@ -16,11 +16,13 @@ import com.gtdonrails.api.dtos.nextaction.PatchNextActionRequestDto;
 import com.gtdonrails.api.entities.Context;
 import com.gtdonrails.api.entities.Item;
 import com.gtdonrails.api.entities.NextAction;
+import com.gtdonrails.api.enums.ItemStatus;
 import com.gtdonrails.api.enums.NextActionStatus;
 import com.gtdonrails.api.exceptions.item.ItemNotFoundException;
 import com.gtdonrails.api.mappers.ContextMapper;
 import com.gtdonrails.api.mappers.NextActionMapper;
 import com.gtdonrails.api.repositories.ContextRepository;
+import com.gtdonrails.api.repositories.ItemRepository;
 import com.gtdonrails.api.repositories.NextActionRepository;
 import com.gtdonrails.api.services.AssetStorageService;
 import com.gtdonrails.api.types.Title;
@@ -52,6 +54,9 @@ class NextActionServiceTests {
     private ContextRepository contextRepository;
 
     @Mock
+    private ItemRepository itemRepository;
+
+    @Mock
     private AssetStorageService assetStorageService;
 
     @Mock
@@ -77,6 +82,7 @@ class NextActionServiceTests {
         nextActionService = new NextActionService(
             nextActionRepository,
             contextRepository,
+            itemRepository,
             nextActionMapper,
             googleCalendarEventQueueService,
             new AfterCommitExecutor(),
@@ -299,6 +305,40 @@ class NextActionServiceTests {
 
         assertThat(result.getContent()).hasSize(1);
         assertThat(result.getContent().getFirst().status()).isEqualTo(NextActionStatus.DONE.name());
+    }
+
+    @Test
+    void revertToStuffRevertsStatusAndEvictsCache() {
+        org.springframework.test.util.ReflectionTestUtils.setField(item, "status", ItemStatus.NEXT_ACTION);
+        when(nextActionRepository.findById(nextActionId)).thenReturn(Optional.of(nextAction));
+
+        nextActionService.revertToStuff(nextActionId);
+
+        assertThat(item.getStatus()).isEqualTo(ItemStatus.STUFF);
+        assertThat(item.getNextAction()).isNull();
+        verify(nextActionRepository).delete(nextAction);
+        verify(itemRepository).save(item);
+        verify(cacheInvalidationService).evictItemMutation();
+    }
+
+    @Test
+    void revertToStuffThrowsWhenNotFound() {
+        UUID id = UUID.randomUUID();
+        when(nextActionRepository.findById(id)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> nextActionService.revertToStuff(id))
+            .isInstanceOf(ItemNotFoundException.class)
+            .hasMessage("NextAction " + id + " not found");
+    }
+
+    @Test
+    void revertToStuffThrowsWhenDeleted() {
+        item.softDelete();
+        when(nextActionRepository.findById(nextActionId)).thenReturn(Optional.of(nextAction));
+
+        assertThatThrownBy(() -> nextActionService.revertToStuff(nextActionId))
+            .isInstanceOf(ItemNotFoundException.class)
+            .hasMessage("item ID '" + nextActionId + "' not found; expected active NEXT_ACTION item");
     }
 
     private NextAction nextActionWithDeadline(String title, String deadline, int minutes, String energy) {
