@@ -18,13 +18,19 @@ Current Availability contexts start in `automatic` mode. The desktop detects the
 
 Pressing `c` applies a manual Current Availability override. Environment detection continues in the background but cannot replace the manually selected contexts until `A` resumes automatic mode. Pressing `C` clears contexts, energy, and time and deliberately remains in manual mode.
 
-Next actions with a deadline appear as all-day entries on the external Next Action agenda for the deadline date. Next actions without a deadline do not appear on an external agenda.
+Next actions with a deadline remain next actions; reaching the deadline does not convert them into calendar items. On the deadline date, an unfinished next action also appears in Calendar Today as due. If it remains unfinished after that date, it continues to appear in Calendar Today as overdue until it is completed or its deadline changes. In Calendar Weekly, a next action with a future deadline appears only on its deadline date. Before the deadline, urgency is communicated by next-action priority ordering rather than by placing the action on an earlier calendar date.
+
+This Calendar presence is a projection of the same next action, not a second item. The projection preserves the `N` identity instead of using the Calendar `C` glyph. Actions taken from that projection operate on the original next action: `x` completes it, `d` deletes it, `o` moves it to On Going, and editing its temporal attribute edits the deadline rather than creating a calendar schedule. Opening full detail from the projection opens Next Action Detail. While a next action is On Going, Completed, or Deleted, it is not projected into the active Calendar views; restoring it to available makes it reappear when its deadline qualifies.
+
+Calendar Today uses a single Due panel for pending Calendar Items and projected due or overdue Next Actions. Calendar Items keep their scheduled-date semantics; projected Next Actions are labeled as due today or overdue. Inside the panel, today's timed Calendar Items come first in chronological order, followed by overdue Calendar Items and Next Actions, then today's all-day Calendar Items and due-today Next Actions. This grouping keeps today's hard landscape visible even when overdue work accumulates. Completing a Next Action on or after its deadline projects it into Calendar Done Today for that local completion date, even if it passed through On Going first. A Next Action completed before its deadline does not appear in Calendar Done Today and remains visible only in Completed Next Actions and the normal execution history.
+
+Next actions with a deadline also appear as all-day entries on the external Next Action agenda for the deadline date. Next actions without a deadline do not appear on an external agenda.
 
 During Inbox processing into a next action, pressing `t` in the Deadline field fills the field with today's local date without advancing to the next step.
 
 When editing a next action with `E` then `d`, pressing `t` in the Deadline field fills the field with today's local date without saving until `Enter` is pressed.
 
-In that deadline edit field, `Delete` clears the date; `Enter` confirms removal of the deadline. This shortcut is scoped to the next-action attribute dialog. `Escape` returns to the attribute menu without saving.
+In that deadline edit field, `d` or `Delete` clears the date; `Enter` confirms removal of the deadline. This shortcut is scoped to the next-action attribute dialog. `Escape` returns to the attribute menu without saving.
 
 When editing energy or estimated time, clearing all digits and confirming with `Enter` saves zero, matching the defaults used during Inbox processing.
 
@@ -32,6 +38,7 @@ When editing energy or estimated time, clearing all digits and confirming with `
 | --- | --- | --- |
 | `d` | List | Delete selected next action. |
 | `x` | List | Mark selected next action as done. |
+| `R` | List or detail | Move selected next action back to Inbox stuff (`STUFF`). |
 | `c` | List | Set current availability. |
 | `C` | List | Clear current availability and remain in manual context mode. |
 | `A` | List | Resume automatic contexts from the current device and location signals. |

@@ -16,7 +16,7 @@ test("calendar GTD flow: creates, schedules, manages state, and deletes", async 
   await processIntoCalendar(page);
 
   // By default, it opens the grouped Today subview.
-  await expect(page.locator(".inbox-pane .list-pane__title").nth(0)).toHaveText("Calendar");
+  await expect(page.locator(".inbox-pane .list-pane__title").nth(0)).toHaveText("Due");
   await expect(page.locator(".inbox-pane .list-pane__title").nth(1)).toHaveText("Done");
   await expect(page.locator(".inbox-pane .list-pane__title").nth(2)).toHaveText("Calendar Detail");
   await verifyCalendarSubviewShortcuts(page);
@@ -83,11 +83,11 @@ async function verifyCalendarSubviewShortcuts(page: Page): Promise<void> {
   await expectCalendarSubviewAfterKey(page, "]", "Mon");
   await expectCalendarSubviewAfterKey(page, "]", "Completed");
   await expectCalendarSubviewAfterKey(page, "]", "Deleted");
-  await expectCalendarSubviewAfterKey(page, "]", "Calendar");
+  await expectCalendarSubviewAfterKey(page, "]", "Due");
   await expectCalendarSubviewAfterKey(page, "[", "Deleted");
   await expectCalendarSubviewAfterKey(page, "[", "Completed");
   await expectCalendarSubviewAfterKey(page, "[", "Mon");
-  await expectCalendarSubviewAfterKey(page, "[", "Calendar");
+  await expectCalendarSubviewAfterKey(page, "[", "Due");
 }
 
 async function expectCalendarSubviewAfterKey(page: Page, key: string, title: string): Promise<void> {

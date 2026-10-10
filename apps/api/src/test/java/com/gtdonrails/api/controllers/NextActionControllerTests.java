@@ -292,6 +292,34 @@ class NextActionControllerTests {
             .andExpect(jsonPath("$.content[0].status").value(NextActionStatus.DONE.name()));
     }
 
+    @Test
+    void revertsNextActionToStuff() throws Exception {
+        Context context = contextRepository.save(new Context("Home"));
+        Item item = itemRepository.save(new Item(new Title("Buy milk"), "2% organic"));
+        NextAction nextAction = item.convertToNextAction(new BigDecimal("2.0"), Duration.ofMinutes(15), Set.of(context));
+        item = itemRepository.save(item);
+
+        mockMvc.perform(post("/next-actions/{id}/stuff", item.getId()))
+            .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/next-actions?orderBy=energy"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(0)));
+
+        mockMvc.perform(get("/inbox"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(1)))
+            .andExpect(jsonPath("$[0].id").value(item.getId().toString()))
+            .andExpect(jsonPath("$[0].title").value("Buy milk"))
+            .andExpect(jsonPath("$[0].status").value("STUFF"));
+    }
+
+    @Test
+    void revertToStuffReturnsNotFoundForMissingNextAction() throws Exception {
+        mockMvc.perform(post("/next-actions/{id}/stuff", java.util.UUID.randomUUID()))
+            .andExpect(status().isNotFound());
+    }
+
     private NextAction saveNextAction(String title, LocalDate deadline, String energy, int minutes) {
         Item item = itemRepository.save(new Item(new Title(title), null));
         NextAction nextAction = new NextAction(item, new BigDecimal(energy), Duration.ofMinutes(minutes), Set.of());

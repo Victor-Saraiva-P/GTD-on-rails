@@ -10,6 +10,7 @@ public record MobileNextAction(
     String deadline,
     String status,
     List<String> contextIds,
-    String projectTitle
+    String projectTitle,
+    String createdAt
 ) {
 }

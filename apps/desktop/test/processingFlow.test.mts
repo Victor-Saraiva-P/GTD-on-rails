@@ -5,6 +5,7 @@ import {
   buildCalendarPayload,
   clockTimeDisplayValue,
   initialSegmentedCalendarDateState,
+  isClearDateKey,
   isSegmentedCalendarDateValid,
   moveSegmentedCalendarDateFocus,
   nextClockTimeDigits,
@@ -116,6 +117,17 @@ describe("processing flow", () => {
       scheduledDate: "2026-05-21",
       scheduledTime: null
     });
+  });
+
+  test("clear date key recognizes Delete and d case-insensitively", () => {
+    assert.equal(isClearDateKey("Delete"), true);
+    assert.equal(isClearDateKey("d"), true);
+    assert.equal(isClearDateKey("D"), true);
+    assert.equal(isClearDateKey("Backspace"), false);
+    assert.equal(isClearDateKey("t"), false);
+    assert.equal(isClearDateKey("Enter"), false);
+    assert.equal(isClearDateKey("Escape"), false);
+    assert.equal(isClearDateKey("1"), false);
   });
 });
 

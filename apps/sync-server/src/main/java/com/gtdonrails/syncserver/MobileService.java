@@ -1,6 +1,7 @@
 package com.gtdonrails.syncserver;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -28,15 +29,17 @@ public class MobileService {
     /**
      * Builds the compact read model used by the mobile PWA.
      *
-     * <p>Example: {@code mobileService.bootstrap()}.</p>
+     * <p>Example: {@code mobileService.bootstrap(LocalDate.parse("2026-10-09"))}.</p>
      */
-    public MobileBootstrap bootstrap() {
+    public MobileBootstrap bootstrap(LocalDate localDate) {
+        if (localDate == null) throw new IllegalArgumentException("localDate is required");
         Map<String, JsonNode> items = payloadsById("items");
         Map<String, String> projectTitles = projectTitles(items);
         List<MobileContext> contexts = contexts();
         List<MobileNextAction> actions = nextActions(items, projectTitles);
         List<MobileCalendarItem> calendar = calendar(items, projectTitles);
-        return new MobileBootstrap(store.currentCursor(), contexts, actions, calendar);
+        List<MobileCalendarEntry> calendarEntries = calendarEntries(calendar, actions, localDate);
+        return new MobileBootstrap(store.currentCursor(), contexts, actions, calendar, localDate.toString(), calendarEntries);
     }
 
     /**
@@ -102,7 +105,7 @@ public class MobileService {
         Map<String, String> projectTitles
     ) {
         String id = text(node, "item_id");
-        JsonNode item = items.get(id);
+        JsonNode item = activeItem(items, id);
         return new MobileNextAction(
             id,
             item == null ? null : text(item, "title"),
@@ -111,7 +114,8 @@ public class MobileService {
             text(node, "deadline"),
             text(node, "status"),
             strings(node, "context_ids"),
-            projectTitles.get(id)
+            projectTitles.get(id),
+            item == null ? null : text(item, "created_at")
         );
     }
 
@@ -133,7 +137,7 @@ public class MobileService {
         Map<String, String> projectTitles
     ) {
         String id = text(node, "item_id");
-        JsonNode item = items.get(id);
+        JsonNode item = activeItem(items, id);
         return new MobileCalendarItem(
             id,
             item == null ? null : text(item, "title"),
@@ -142,6 +146,59 @@ public class MobileService {
             text(node, "status"),
             projectTitles.get(id)
         );
+    }
+
+    private List<MobileCalendarEntry> calendarEntries(
+        List<MobileCalendarItem> calendar,
+        List<MobileNextAction> actions,
+        LocalDate localDate
+    ) {
+        List<MobileCalendarEntry> entries = new java.util.ArrayList<>();
+        calendar.forEach(item -> entries.add(calendarEntry(item, localDate)));
+        actions.stream().filter(action -> action.deadline() != null)
+            .forEach(action -> entries.add(nextActionEntry(action, localDate)));
+        entries.sort(this::compareCalendarEntries);
+        return entries;
+    }
+
+    private MobileCalendarEntry calendarEntry(MobileCalendarItem item, LocalDate localDate) {
+        LocalDate date = LocalDate.parse(item.scheduledDate());
+        String state = date.isBefore(localDate) ? "OVERDUE"
+            : date.equals(localDate) && item.scheduledTime() != null ? "SCHEDULED_TODAY"
+            : date.equals(localDate) ? "DUE_TODAY" : "WEEK";
+        return new MobileCalendarEntry(item.id(), item.title(), "CALENDAR", state, item.scheduledDate(),
+            item.scheduledTime(), null, item.status(), item.projectTitle(), null);
+    }
+
+    private MobileCalendarEntry nextActionEntry(MobileNextAction action, LocalDate localDate) {
+        LocalDate date = LocalDate.parse(action.deadline());
+        String state = date.isBefore(localDate) ? "OVERDUE" : date.equals(localDate) ? "DUE_TODAY" : "WEEK";
+        return new MobileCalendarEntry(action.id(), action.title(), "NEXT_ACTION", state, action.deadline(),
+            null, action.deadline(), action.status(), action.projectTitle(), action.createdAt());
+    }
+
+    private int compareCalendarEntries(MobileCalendarEntry left, MobileCalendarEntry right) {
+        int dateComparison = left.date().compareTo(right.date());
+        if (dateComparison != 0) return dateComparison;
+        int rankComparison = Integer.compare(calendarEntryRank(left), calendarEntryRank(right));
+        if (rankComparison != 0) return rankComparison;
+        if (left.scheduledTime() != null && right.scheduledTime() != null) return left.scheduledTime().compareTo(right.scheduledTime());
+        int creationComparison = nullSafe(left.createdAt()).compareTo(nullSafe(right.createdAt()));
+        return creationComparison != 0 ? creationComparison : left.id().compareTo(right.id());
+    }
+
+    private int calendarEntryRank(MobileCalendarEntry entry) {
+        if ("NEXT_ACTION".equals(entry.sourceKind())) return 2;
+        return entry.scheduledTime() == null ? 1 : 0;
+    }
+
+    private String nullSafe(String value) {
+        return value == null ? "" : value;
+    }
+
+    private JsonNode activeItem(Map<String, JsonNode> items, String itemId) {
+        JsonNode item = items.get(itemId);
+        return item == null || isDeleted(item) ? null : item;
     }
 
     private Map<String, String> projectTitles(Map<String, JsonNode> items) {

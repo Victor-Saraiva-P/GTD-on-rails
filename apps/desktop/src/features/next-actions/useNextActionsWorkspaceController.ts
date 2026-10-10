@@ -1,21 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
-import { useUndoRedoHistory } from "../history/useUndoRedoHistory";
-import { useActiveZone } from "../keybinds/hooks";
-import type { ItemBody } from "../inbox/types";
-import { isSameBody } from "../inbox/types";
-import type { ContextItem } from "../contexts/types";
-import type { NextAction, NextActionOrder, NextActionPatch } from "./types";
-import { DEFAULT_NEXT_ACTION_ORDER, nextOrder } from "./orderCycle";
+import { useUndoRedoHistory } from "../history/useUndoRedoHistory.ts";
+import { useActiveZone } from "../keybinds/hooks.ts";
+import type { ItemBody } from "../inbox/types.ts";
+import { isSameBody } from "../inbox/types.ts";
+import type { ContextItem } from "../contexts/types.ts";
+import type { NextAction, NextActionOrder, NextActionPatch } from "./types.ts";
+import { DEFAULT_NEXT_ACTION_ORDER, nextOrder } from "./orderCycle.ts";
 import {
   applyAutomaticContexts as applyAutomaticContextsState,
   applyManualAvailability,
   clearCurrentAvailability,
   INITIAL_CURRENT_AVAILABILITY,
   resumeAutomaticAvailability as resumeAutomaticAvailabilityState
-} from "./currentAvailabilityState";
-import { useNextActionSelection, type NextActionSelectionCursor } from "./nextActionSelection";
-import { useNextActionsQuery } from "./useNextActionsQuery";
-export { useNextActionSelection } from "./nextActionSelection";
+} from "./currentAvailabilityState.ts";
+import { useNextActionSelection, type NextActionSelectionCursor } from "./nextActionSelection.ts";
+import { useNextActionsQuery, type NextActionsQuery } from "./useNextActionsQuery.ts";
+export { useNextActionSelection } from "./nextActionSelection.ts";
 
 export type SelectionCursor = NextActionSelectionCursor;
 export type EditState = ReturnType<typeof useNextActionEditState>;
@@ -23,7 +23,7 @@ export type Model = {
   edit: EditState;
   filter: ReturnType<typeof useNextActionsFilterState>;
   history: ReturnType<typeof useUndoRedoHistory<NextAction>>;
-  query: any;
+  query: NextActionsQuery;
   selection: ReturnType<typeof useNextActionSelection>;
   zone: ReturnType<typeof useActiveZone>;
 };
@@ -191,6 +191,14 @@ export async function restoreSelectedStatus(model: Model) {
   model.zone.setActiveZone("next-actions-list");
 }
 
+export async function revertSelectedToStuff(model: Model) {
+  const item = model.selection.selectedItem;
+  if (!item) return;
+  await model.query.revertToStuff(item.id);
+  clearEditing(model.edit);
+  model.zone.setActiveZone("next-actions-list");
+}
+
 export async function undoAction(model: Model) {
   const action = model.history.popUndo();
   if (!action) return;
@@ -232,6 +240,7 @@ export function useNextActionsActions(model: Model) {
     resetWorkspace: () => resetNextActionsWorkspace(model),
     redo: () => redoAction(model),
     restoreSelected: () => restoreSelectedStatus(model),
+    revertSelectedToStuff: () => revertSelectedToStuff(model),
     selectFirst: model.selection.selectFirst,
     selectLast: model.selection.selectLast,
     selectNext: model.selection.selectNext,

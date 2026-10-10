@@ -69,6 +69,19 @@ public interface NextActionRepository extends JpaRepository<NextAction, UUID> {
 
     List<NextAction> findAllByStatusAndItem_DeletedAtIsNullOrderByItem_UpdatedAtAsc(NextActionStatus status);
 
+    List<NextAction> findAllByStatusAndDeadlineLessThanEqualAndItem_DeletedAtIsNull(
+        NextActionStatus status,
+        LocalDate deadline);
+
+    List<NextAction> findAllByStatusAndDeadlineBetweenAndItem_DeletedAtIsNull(
+        NextActionStatus status,
+        LocalDate start,
+        LocalDate end);
+
+    List<NextAction> findAllByStatusAndSchedule_DateEndAndItem_DeletedAtIsNull(
+        NextActionStatus status,
+        LocalDate dateEnd);
+
     @Query("""
         select nextAction
         from NextAction nextAction

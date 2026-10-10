@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import test, { afterEach, describe, mock } from "node:test";
 
 import {
-  fetchDoneTodayCalendars,
+  fetchDoneTodayCalendarEntries,
   fetchOnGoingCalendars,
-  fetchTodayCalendars,
-  fetchWeekCalendars,
+  fetchTodayCalendarEntries,
+  fetchWeekCalendarEntries,
   deleteCalendar,
   markCalendarDone,
   patchCalendar,
@@ -36,36 +36,52 @@ describe("calendar API", () => {
     status: "CALENDAR"
   };
 
-  test("fetchTodayCalendars loads due calendars", async () => {
+  test("fetchTodayCalendarEntries sends the client local date and preserves next action identity", async () => {
     globalThis.fetch = mock.fn(async (input) => {
-      assert.ok(input.toString().endsWith("/calendars/today"));
-      return new Response(JSON.stringify([response]), { status: 200 });
+      assert.ok(input.toString().endsWith("/calendars/today?localDate=2026-05-21"));
+      return new Response(JSON.stringify([{
+        id: "action-1",
+        sourceKind: "NEXT_ACTION",
+        temporalState: "DUE_TODAY",
+        title: "Submit report",
+        body: null,
+        scheduledDate: null,
+        scheduledTime: null,
+        deadline: "2026-05-21",
+        status: "NEXT_ACTION",
+        energy: 4,
+        estimatedTime: "PT30M",
+        contexts: [{ id: "ctx-1", name: "Laptop" }]
+      }]), { status: 200 });
     });
 
-    const calendars = await fetchTodayCalendars();
+    const entries = await fetchTodayCalendarEntries("2026-05-21");
 
-    assert.equal(calendars[0].scheduledDate, "2026-05-21");
-    assert.equal(calendars[0].scheduledTime, null);
+    assert.equal(entries[0].sourceKind, "NEXT_ACTION");
+    assert.equal(entries[0].deadline, "2026-05-21");
+    assert.equal(entries[0].scheduledDate, null);
+    assert.deepEqual(entries[0].estimatedTime, { hours: 0, minutes: 30 });
   });
 
-  test("fetchDoneTodayCalendars loads completed today calendars", async () => {
+  test("fetchDoneTodayCalendarEntries sends the client local date", async () => {
     globalThis.fetch = mock.fn(async (input) => {
-      assert.ok(input.toString().endsWith("/calendars/done/today"));
-      return new Response(JSON.stringify([{ ...response, status: "DONE" }]), { status: 200 });
+      assert.ok(input.toString().endsWith("/calendars/done/today?localDate=2026-05-21"));
+      return new Response(JSON.stringify([{ ...response, sourceKind: "CALENDAR", temporalState: "DONE_TODAY", status: "DONE" }]), { status: 200 });
     });
 
-    const calendars = await fetchDoneTodayCalendars();
+    const entries = await fetchDoneTodayCalendarEntries("2026-05-21");
 
-    assert.equal(calendars[0].status, "DONE");
+    assert.equal(entries[0].sourceKind, "CALENDAR");
+    assert.equal(entries[0].status, "DONE");
   });
 
-  test("fetchWeekCalendars sends encoded start date", async () => {
+  test("fetchWeekCalendarEntries sends encoded start date", async () => {
     globalThis.fetch = mock.fn(async (input) => {
       assert.ok(input.toString().endsWith("/calendars/week?start=2026-05-18"));
       return new Response(JSON.stringify([]), { status: 200 });
     });
 
-    await fetchWeekCalendars("2026-05-18");
+    await fetchWeekCalendarEntries("2026-05-18");
   });
 
   test("patchCalendar sends scheduling patch", async () => {

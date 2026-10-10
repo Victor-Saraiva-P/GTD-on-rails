@@ -15,7 +15,7 @@ import {
   selectedCalendarIndex,
   type CalendarPanel
 } from "../src/features/calendar/calendarWorkspaceState.ts";
-import type { Calendar } from "../src/features/calendar/types.ts";
+import type { Calendar, CalendarEntry } from "../src/features/calendar/types.ts";
 
 function calendar(id: string, title: string, status: Calendar["status"] = "CALENDAR"): Calendar {
   return {
@@ -26,6 +26,21 @@ function calendar(id: string, title: string, status: Calendar["status"] = "CALEN
     scheduledDate: "2026-05-21",
     scheduledTime: null,
     status
+  };
+}
+
+function nextActionEntry(id: string, deadline: string): CalendarEntry {
+  return {
+    id,
+    title: "Next action",
+    body: { text: "", inlineMarks: [], lineBlocks: [], blockEntities: [] },
+    createdAt: "",
+    sourceKind: "NEXT_ACTION",
+    temporalState: "WEEK",
+    scheduledDate: null,
+    scheduledTime: null,
+    deadline,
+    status: "NEXT_ACTION"
   };
 }
 
@@ -63,6 +78,13 @@ describe("calendar workspace state", () => {
 
     assert.equal(calendarItemsForPanel(due, done, [], [], [], "due")[0].id, "due");
     assert.equal(calendarItemsForPanel(due, done, [], [], [], "done-today" satisfies CalendarPanel)[0].id, "done");
+  });
+
+  test("places projected next actions in weekly columns by deadline", () => {
+    const friday = nextActionEntry("next-1", "2026-05-22");
+
+    assert.equal(calendarItemsForPanel([], [], [], [], [friday], "fri")[0].id, "next-1");
+    assert.equal(calendarItemsForPanel([], [], [], [], [friday], "thu").length, 0);
   });
 
   test("cycles calendar subviews forward with their default panels", () => {

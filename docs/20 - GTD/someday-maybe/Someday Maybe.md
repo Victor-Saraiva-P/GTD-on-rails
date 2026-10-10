@@ -34,7 +34,7 @@ In GTD on Rails, Someday/Maybe is a temporary holding state:
 | `Enter` | List | Edit selected item title. |
 | `l` | List | Edit selected item body (focuses detail pane). |
 | `h` | Detail | Focus master list. |
-| `r` | List | Move selected item back to Inbox stuff (`STUFF`). |
+| `r` / `R` | List | Move selected item back to Inbox stuff (`STUFF`). |
 | `d` | List | Soft-delete selected item. |
 | `u` | List | Undo last action (e.g. deletion). |
 | `Ctrl+r` | List | Redo last undone action. |

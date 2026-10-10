@@ -21,7 +21,8 @@ public interface CalendarRepository extends JpaRepository<Calendar, UUID> {
         CalendarStatus status,
         LocalDate dateEnd);
 
-    List<Calendar> findAllByScheduledDateBetweenAndItem_DeletedAtIsNullOrderByScheduledDateAscScheduledTimeAsc(
+    List<Calendar> findAllByStatusAndScheduledDateBetweenAndItem_DeletedAtIsNullOrderByScheduledDateAscScheduledTimeAsc(
+        CalendarStatus status,
         LocalDate start,
         LocalDate end);
 

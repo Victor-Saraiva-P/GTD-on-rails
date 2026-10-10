@@ -11,11 +11,13 @@ import com.gtdonrails.api.config.CacheNames;
 import com.gtdonrails.api.dtos.nextaction.NextActionResponseDto;
 import com.gtdonrails.api.dtos.nextaction.PatchNextActionRequestDto;
 import com.gtdonrails.api.entities.Context;
+import com.gtdonrails.api.entities.Item;
 import com.gtdonrails.api.entities.NextAction;
 import com.gtdonrails.api.enums.NextActionStatus;
 import com.gtdonrails.api.exceptions.item.ItemNotFoundException;
 import com.gtdonrails.api.mappers.NextActionMapper;
 import com.gtdonrails.api.repositories.ContextRepository;
+import com.gtdonrails.api.repositories.ItemRepository;
 import com.gtdonrails.api.repositories.NextActionRepository;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
@@ -28,6 +30,7 @@ public class NextActionService {
 
     private final NextActionRepository nextActionRepository;
     private final ContextRepository contextRepository;
+    private final ItemRepository itemRepository;
     private final NextActionMapper nextActionMapper;
     private final GoogleCalendarEventQueueService googleCalendarEventQueueService;
     private final AfterCommitExecutor afterCommitExecutor;
@@ -37,6 +40,7 @@ public class NextActionService {
     public NextActionService(
         NextActionRepository nextActionRepository,
         ContextRepository contextRepository,
+        ItemRepository itemRepository,
         NextActionMapper nextActionMapper,
         GoogleCalendarEventQueueService googleCalendarEventQueueService,
         AfterCommitExecutor afterCommitExecutor,
@@ -45,6 +49,7 @@ public class NextActionService {
     ) {
         this.nextActionRepository = nextActionRepository;
         this.contextRepository = contextRepository;
+        this.itemRepository = itemRepository;
         this.nextActionMapper = nextActionMapper;
         this.googleCalendarEventQueueService = googleCalendarEventQueueService;
         this.afterCommitExecutor = afterCommitExecutor;
@@ -109,6 +114,22 @@ public class NextActionService {
         NextActionResponseDto response = nextActionMapper.toResponse(nextActionRepository.save(nextAction));
         evictCachesAfterCommit();
         return response;
+    }
+
+    /**
+     * Reverts one active next action item back into inbox stuff.
+     *
+     * <p>Example: {@code nextActionService.revertToStuff(id)}.</p>
+     */
+    @Transactional
+    public void revertToStuff(UUID id) {
+        NextAction nextAction = findActiveNextAction(id);
+        Item item = nextAction.getItem();
+        item.revertNextActionToStuff();
+        nextActionRepository.delete(nextAction);
+        itemRepository.save(item);
+        requestGoogleCalendarEventSyncAfterCommit(id);
+        evictCachesAfterCommit();
     }
 
     private void requestGoogleCalendarEventSyncAfterCommit(UUID itemId) {
@@ -193,6 +214,14 @@ public class NextActionService {
 
     private NextAction findNextAction(UUID id) {
         return nextActionRepository.findById(id).orElseThrow(() -> new ItemNotFoundException("NextAction " + id + " not found"));
+    }
+
+    private NextAction findActiveNextAction(UUID id) {
+        NextAction nextAction = findNextAction(id);
+        if (nextAction.getItem().isDeleted()) {
+            throw new ItemNotFoundException("item ID '" + id + "' not found; expected active NEXT_ACTION item");
+        }
+        return nextAction;
     }
 
     private List<NextAction> unorderedRunnableNextActions(List<UUID> contextIds) {

@@ -7,7 +7,8 @@ import {
   fetchNextActions,
   patchNextActionAttributes,
   recoverDeletedNextAction,
-  resetNextActionStatus
+  resetNextActionStatus,
+  revertNextActionToStuff
 } from "../src/features/next-actions/api.ts";
 
 describe("next actions API", () => {
@@ -108,5 +109,15 @@ describe("next actions API", () => {
     });
 
     await recoverDeletedNextAction("na-1");
+  });
+
+  test("revertNextActionToStuff calls POST /next-actions/:id/stuff", async () => {
+    globalThis.fetch = mock.fn(async (input, init) => {
+      assert.ok(input.toString().endsWith("/next-actions/na-1/stuff"));
+      assert.equal(init?.method, "POST");
+      return new Response(null, { status: 204 });
+    });
+
+    await revertNextActionToStuff("na-1");
   });
 });

@@ -1,9 +1,9 @@
 import { InboxStuffDetails } from "../inbox/InboxStuffDetails";
 import type { ItemBody } from "../inbox/types";
-import type { Calendar } from "./types";
+import type { CalendarWorkspaceItem } from "./types";
 
 type CalendarDetailsProps = Readonly<{
-  item: Calendar;
+  item: CalendarWorkspaceItem;
   editing: boolean;
   onAutosaveEditing: (body: ItemBody) => Promise<void>;
   onCommitEditing: (body: ItemBody) => Promise<void>;

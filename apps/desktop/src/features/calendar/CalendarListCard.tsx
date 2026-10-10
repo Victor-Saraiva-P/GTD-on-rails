@@ -1,15 +1,16 @@
 import type { KeyboardEvent } from "react";
 import { InlineTitleInput } from "../../components/InlineTitleInput";
-import type { Calendar } from "./types";
+import type { CalendarWorkspaceItem } from "./types";
+import { isNextActionCalendarEntry } from "./types.ts";
 import { calendarItemIconText } from "../lists/listThemes";
 import { useScrollIntoViewWhenSelected } from "../lists/useScrollIntoViewWhenSelected";
-import { trimCalendarDisplayTime } from "./calendarDateUtils";
+import { calendarEntryDisplayTime } from "./calendarDateUtils";
 import { ProjectAssociationMarker } from "../projects/ProjectAssociationMarker";
 import { TitleSearchHighlight } from "../title-search/TitleSearchHighlight";
 
 type CalendarListCardProps = Readonly<{
   archiveStatus?: "deleted";
-  item: Calendar;
+  item: CalendarWorkspaceItem;
   editingTitleError: string | null;
   selected: boolean;
   editing: boolean;
@@ -30,15 +31,27 @@ function calendarGlyphClassName(status: string, archiveStatus?: "deleted"): stri
   return "";
 }
 
-function CalendarGlyph({ archiveStatus, status }: Readonly<{ archiveStatus?: "deleted", status: string }>) {
-  const statusClassName = calendarGlyphClassName(status, archiveStatus);
+function CalendarGlyph({ archiveStatus, item }: Readonly<{ archiveStatus?: "deleted", item: CalendarWorkspaceItem }>) {
+  if (isNextActionCalendarEntry(item)) {
+    return <span className="tree-entry__glyph tree-entry__glyph--next-action" aria-hidden="true">N</span>;
+  }
+  const statusClassName = calendarGlyphClassName(item.status, archiveStatus);
   const className = `tree-entry__glyph tree-entry__glyph--stuff${statusClassName ? ` ${statusClassName}` : ""}`;
+  return <span className={className} aria-hidden="true">{calendarItemIconText}</span>;
+}
 
-  return (
-    <span className={className} aria-hidden="true">
-      {calendarItemIconText}
-    </span>
-  );
+function calendarTemporalLabel(item: CalendarWorkspaceItem): string | null {
+  if (!isNextActionCalendarEntry(item)) return null;
+  if (item.temporalState === "DUE_TODAY") return "due today";
+  if (item.temporalState === "OVERDUE") return `overdue · ${shortDeadline(item.deadline)}`;
+  if (item.temporalState === "WEEK") return `due ${shortDeadline(item.deadline)}`;
+  if (item.temporalState === "DONE_TODAY") return "done today";
+  return null;
+}
+
+function shortDeadline(deadline?: string | null): string {
+  if (!deadline) return "";
+  return new Date(`${deadline}T00:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 function handleEditKeyDown(
@@ -60,12 +73,13 @@ function EditingCalendarCard(props: Readonly<Omit<CalendarListCardProps, "editin
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     handleEditKeyDown(event, props.onCommitEditingAndContinue);
   };
-  const displayTime = trimCalendarDisplayTime(props.item.scheduledTime);
+  const temporalState = "temporalState" in props.item ? props.item.temporalState : undefined;
+  const displayTime = calendarEntryDisplayTime(props.item.scheduledTime, temporalState, props.item.schedule);
 
   return (
     <li className="tree-list__item">
       <div className={`tree-entry tree-entry--active calendar-item-entry${props.item.projectTitle ? " calendar-item-entry--project-associated" : ""}`}>
-        <CalendarGlyph archiveStatus={props.archiveStatus} status={props.item.status} />
+        <CalendarGlyph archiveStatus={props.archiveStatus} item={props.item} />
         <div className="tree-entry__edit">
           <InlineTitleInput initialValue={props.editingTitle} onBlur={props.onCommitEditing} onEditKeyDown={handleKeyDown} onValueChange={props.onEditingTitleChange} />
           {props.editingTitleError ? <p className="tree-entry__error">{props.editingTitleError}</p> : null}
@@ -90,11 +104,13 @@ function handleSelectDoubleClick(props: Pick<CalendarListCardProps, "item" | "se
   }
 }
 
-function CalendarCardBody({ item, archiveStatus }: Readonly<{ item: Calendar; archiveStatus?: "deleted" }>) {
-  const displayTime = trimCalendarDisplayTime(item.scheduledTime);
+function CalendarCardBody({ item, archiveStatus }: Readonly<{ item: CalendarWorkspaceItem; archiveStatus?: "deleted" }>) {
+  const temporalState = "temporalState" in item ? item.temporalState : undefined;
+  const displayTime = calendarEntryDisplayTime(item.scheduledTime, temporalState, item.schedule);
+  const temporalLabel = calendarTemporalLabel(item);
   return (
     <>
-      <CalendarGlyph archiveStatus={archiveStatus} status={item.status} />
+      <CalendarGlyph archiveStatus={archiveStatus} item={item} />
       <span className="tree-entry__label">
         <TitleSearchHighlight title={item.title} itemId={item.id} />
       </span>
@@ -105,6 +121,7 @@ function CalendarCardBody({ item, archiveStatus }: Readonly<{ item: Calendar; ar
           <span>{displayTime}</span>
         </span>
       ) : null}
+      {temporalLabel ? <span className="calendar-entry__deadline">{temporalLabel}</span> : null}
     </>
   );
 }

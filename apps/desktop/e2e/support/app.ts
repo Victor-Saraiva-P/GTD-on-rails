@@ -57,6 +57,12 @@ export async function convertStuffToNextActionApi(request: APIRequestContext, st
   expect(response.ok()).toBeTruthy();
 }
 
+/** Sets a Next Action deadline through the real API for Calendar projection flows. Example: await setNextActionDeadlineApi(request, id, todayIsoValue()). */
+export async function setNextActionDeadlineApi(request: APIRequestContext, nextActionId: string, deadline: string): Promise<void> {
+  const response = await request.patch(`${apiBaseUrl}/next-actions/${nextActionId}`, { data: { deadline } });
+  expect(response.ok()).toBeTruthy();
+}
+
 export async function convertStuffToProjectApi(request: APIRequestContext, stuffId: string, deadline: string | null = null): Promise<void> {
   const response = await request.post(`${apiBaseUrl}/inbox/${stuffId}/project`, { data: { deadline } });
   expect(response.ok()).toBeTruthy();
@@ -92,7 +98,7 @@ export async function openCalendars(page: Page): Promise<void> {
   await expect(page.locator(".leader-menu")).toBeVisible();
   await page.keyboard.press("c");
   await expect(page.locator(".leader-menu")).not.toBeVisible();
-  await expect(page.locator(".inbox-pane .list-pane__title").nth(0)).toHaveText("Calendar");
+  await expect(page.locator(".inbox-pane .list-pane__title").nth(0)).toHaveText("Due");
 }
 
 export async function focusPanelAndSelectItem(page: Page, panelIndex: number, title: string) {

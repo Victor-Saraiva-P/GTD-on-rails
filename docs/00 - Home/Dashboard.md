@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="../assets/logo.png" alt="GTD on Rails logo" width="140" />
+</p>
+
 # Dashboard
 
 Welcome to the GTD-on-rails knowledge base.

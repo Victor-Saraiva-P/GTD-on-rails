@@ -196,11 +196,15 @@ fn processing_command(provider: &str, settings: &AgentProviderSettings, prompt: 
 
 fn antigravity_command(settings: &AgentProviderSettings, prompt: &str) -> Result<Command, String> {
     let binary = resolve_binary("agy", &[".local/bin/agy"]).ok_or_else(|| "Antigravity CLI is not installed or discoverable".to_string())?;
+    Ok(build_antigravity_command(binary, settings, prompt))
+}
+
+fn build_antigravity_command(binary: PathBuf, settings: &AgentProviderSettings, prompt: &str) -> Command {
     let mut command = Command::new(binary);
     command.args(["-p", prompt, "--output-format", "stream-json", "--print-timeout", "10m"]);
     if let Some(model) = &settings.model { command.arg("--model").arg(model); }
     if let Some(thinking) = &settings.thinking { command.arg("--effort").arg(thinking); }
-    Ok(command)
+    command
 }
 
 fn codex_command(settings: &AgentProviderSettings, prompt: &str) -> Result<Command, String> {
@@ -485,7 +489,9 @@ fn file_error(path: &Path, expected: &str, error: std::io::Error) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{antigravity_command, processing_prompt, AgentProviderSettings};
+    use std::path::PathBuf;
+
+    use super::{build_antigravity_command, processing_prompt, AgentProviderSettings};
 
     #[test]
     fn instructs_the_agent_to_use_read_only_project_context() {
@@ -503,7 +509,7 @@ mod tests {
     #[test]
     fn antigravity_runs_gtd_outside_the_terminal_sandbox() {
         let settings = AgentProviderSettings { model: None, thinking: None };
-        let command = antigravity_command(&settings, "process stuff").expect("Antigravity command");
+        let command = build_antigravity_command(PathBuf::from("agy"), &settings, "process stuff");
         let arguments = command
             .get_args()
             .map(|argument| argument.to_string_lossy().into_owned())

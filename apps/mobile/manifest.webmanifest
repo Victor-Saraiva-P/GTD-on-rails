@@ -6,5 +6,17 @@
   "display": "standalone",
   "background_color": "#1c1c1c",
   "theme_color": "#1c1c1c",
-  "description": "Quick capture, next actions, and calendar for GTD on Rails."
+  "description": "Quick capture, next actions, and calendar for GTD on Rails.",
+  "icons": [
+    {
+      "src": "/mobile/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/mobile/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
 }

@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
+import com.gtdonrails.api.dtos.calendar.CalendarEntryResponseDto;
 import com.gtdonrails.api.dtos.calendar.CalendarResponseDto;
 import com.gtdonrails.api.dtos.calendar.PatchCalendarRequestDto;
 import com.gtdonrails.api.services.CalendarService;
@@ -27,19 +28,22 @@ public class CalendarController {
         this.calendarService = calendarService;
     }
 
+    /** Returns aggregated Calendar Today entries for the client's local date. Example: GET /calendars/today?localDate=2026-10-09. */
     @GetMapping("/today")
-    public List<CalendarResponseDto> getTodayCalendars() {
-        return calendarService.getTodayCalendars();
+    public List<CalendarEntryResponseDto> getTodayEntries(@RequestParam LocalDate localDate) {
+        return calendarService.getTodayEntries(localDate);
     }
 
+    /** Returns items completed on the client's local date. Example: GET /calendars/done/today?localDate=2026-10-09. */
     @GetMapping("/done/today")
-    public List<CalendarResponseDto> getDoneTodayCalendars() {
-        return calendarService.getDoneTodayCalendars();
+    public List<CalendarEntryResponseDto> getDoneTodayEntries(@RequestParam LocalDate localDate) {
+        return calendarService.getDoneTodayEntries(localDate);
     }
 
+    /** Returns active Calendar projections for a seven-day range. Example: GET /calendars/week?start=2026-10-05. */
     @GetMapping("/week")
-    public List<CalendarResponseDto> getWeekCalendars(@RequestParam LocalDate start) {
-        return calendarService.getWeekCalendars(start);
+    public List<CalendarEntryResponseDto> getWeekEntries(@RequestParam LocalDate start) {
+        return calendarService.getWeekEntries(start);
     }
 
     @GetMapping("/done")

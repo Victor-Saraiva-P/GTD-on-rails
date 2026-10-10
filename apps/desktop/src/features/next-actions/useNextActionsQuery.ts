@@ -5,8 +5,8 @@ import { optimisticMutate } from "../../lib/api/optimistic.ts";
 import { mutateSharedEntityOptimistically } from "../../lib/state/optimisticSharedEntity.ts";
 import { useSyncStatus } from "../sync-status/SyncStatusProvider.tsx";
 import { useDomainRevalidation } from "../sync-status/domainChanges.ts";
-import type { ItemBody } from "../inbox/types";
-import type { NextAction, NextActionOrder, NextActionPatch } from "./types";
+import type { ItemBody } from "../inbox/types.ts";
+import type { NextAction, NextActionOrder, NextActionPatch } from "./types.ts";
 import {
   deleteNextAction,
   fetchNextActions,
@@ -15,12 +15,13 @@ import {
   patchNextActionAttributes,
   resetNextActionStatus,
   restoreNextAction,
+  revertNextActionToStuff,
   updateNextActionBody,
   updateNextActionTitle
-} from "./api";
-import { assignItemProject } from "../projects/api";
+} from "./api.ts";
+import { assignItemProject } from "../projects/api.ts";
 
-type NextActionsQuery = ReturnType<typeof useNextActionsQuery>;
+export type NextActionsQuery = ReturnType<typeof useNextActionsQuery>;
 export type NextActionsLoadState = ReturnType<typeof useNextActionsLoadState>;
 export type NextActionsMutationState = ReturnType<typeof useNextActionsMutationState>;
 
@@ -143,6 +144,7 @@ export function useNextActionsMutations(state: NextActionsLoadState, mutations: 
     patchItem: (id: string, patch: NextActionPatch) => patchItem(id, patch, state, triggerSyncStatusPolling),
     restoreStatus: (id: string) => optimisticRemoveAction(id, state, triggerSyncStatusPolling, resetNextActionStatus, mutations.setIsUpdating),
     restoreItem: (id: string) => restoreItem(id, mutations, reload, triggerSyncStatusPolling),
+    revertToStuff: (id: string) => optimisticRemoveAction(id, state, triggerSyncStatusPolling, revertNextActionToStuff, mutations.setIsUpdating),
     updateBody: (item: NextAction, body: ItemBody) => updateBody(item, body, state, triggerSyncStatusPolling),
     updateTitle: (item: NextAction, title: string) => updateTitle(item, title, state, triggerSyncStatusPolling),
     assignProject: (item: NextAction, projectId: string | null) => assignProjectAction(item, projectId, state, triggerSyncStatusPolling)

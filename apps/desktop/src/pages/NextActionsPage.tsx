@@ -135,6 +135,8 @@ function buildNextActionBindings(
     nextActionBinding("next-actions.switch-back-detail", "[", "Open deleted next actions", "next-action-detail", () => switchNextActionsView(controller, setActiveScreen, "deleted-next-actions")),
     nextActionBinding("next-actions.delete-list", "d", "Delete selected next action", "next-actions-list", () => runAsync(canEditSelected(controller), controller.deleteSelected, "Failed to delete next action")),
     nextActionBinding("next-actions.delete-detail", "d", "Delete selected next action", "next-action-detail", () => runAsync(canEditSelected(controller), controller.deleteSelected, "Failed to delete next action")),
+    nextActionBinding("next-actions.revert-list", "R", "Move to inbox", "next-actions-list", () => runAsync(canEditSelected(controller), controller.revertSelectedToStuff, "Failed to move next action to inbox")),
+    nextActionBinding("next-actions.revert-detail", "R", "Move to inbox", "next-action-detail", () => runAsync(canEditSelected(controller), controller.revertSelectedToStuff, "Failed to move next action to inbox")),
     nextActionBinding("next-actions.done-list", "x", "Mark as done", "next-actions-list", () => runAsync(canEditSelected(controller), controller.markAsDone, "Failed to mark as done")),
     nextActionBinding("next-actions.done-detail", "x", "Mark as done", "next-action-detail", () => runAsync(canEditSelected(controller), controller.markAsDone, "Failed to mark as done")),
     nextActionBinding("next-actions.current-availability-list", "c", "Set current availability", "next-actions-list", openCurrentAvailability),

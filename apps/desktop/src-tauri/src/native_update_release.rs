@@ -190,7 +190,11 @@ mod tests {
 
     #[test]
     fn exact_release_asset_is_selected() {
-        let assets = vec![asset("old.tar.gz"), asset("current.tar.gz")];
+        let assets = vec![
+            asset("GTD.on.Rails.Client_3.6.0_linux-x86_64.tar.gz"),
+            asset("old.tar.gz"),
+            asset("current.tar.gz"),
+        ];
         assert_eq!(
             find_asset(&assets, "current.tar.gz").unwrap().name,
             "current.tar.gz"
