@@ -1,4 +1,4 @@
-const CACHE_NAME = "gtd-mobile-shell-v3";
+const CACHE_NAME = "gtd-mobile-shell-v4";
 const SHELL = [
   "/mobile/",
   "/mobile/index.html",
@@ -6,7 +6,9 @@ const SHELL = [
   "/mobile/base.css",
   "/mobile/app.js",
   "/mobile/offline-store.js",
-  "/mobile/manifest.webmanifest"
+  "/mobile/manifest.webmanifest",
+  "/mobile/icon-192.png",
+  "/mobile/icon-512.png"
 ];
 
 self.addEventListener("install", (event) => {
