@@ -200,4 +200,39 @@ class ItemTests {
 
         assertEquals("item value 'STUFF' is invalid; expected active SOMEDAY_MAYBE", exception.getMessage());
     }
+
+    @Test
+    void revertNextActionToStuffSetsStatusAndClearsNextAction() {
+        Item item = new Item(new Title("Next action idea"), null);
+        item.convertToNextAction(java.math.BigDecimal.ONE, java.time.Duration.ZERO, java.util.Set.of(new Context("home")));
+
+        item.revertNextActionToStuff();
+
+        assertEquals(ItemStatus.STUFF, item.getStatus());
+        assertNull(item.getNextAction());
+    }
+
+    @Test
+    void revertNextActionToStuffRejectsNonNextAction() {
+        Item item = new Item(new Title("Inbox stuff"), null);
+
+        IllegalStateException exception = assertThrows(
+            IllegalStateException.class,
+            item::revertNextActionToStuff);
+
+        assertEquals("item value 'STUFF' is invalid; expected active NEXT_ACTION", exception.getMessage());
+    }
+
+    @Test
+    void revertNextActionToStuffRejectsDeleted() {
+        Item item = new Item(new Title("Deleted next action"), null);
+        item.convertToNextAction(java.math.BigDecimal.ONE, java.time.Duration.ZERO, java.util.Set.of(new Context("home")));
+        item.softDelete();
+
+        IllegalStateException exception = assertThrows(
+            IllegalStateException.class,
+            item::revertNextActionToStuff);
+
+        assertEquals("item value 'NEXT_ACTION' is invalid; expected active NEXT_ACTION", exception.getMessage());
+    }
 }
