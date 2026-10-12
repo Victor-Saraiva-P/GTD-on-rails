@@ -335,7 +335,7 @@ function NextActionDetailView({ controller }: NextActionControllerProps) {
 
 function CurrentAvailabilityView({ controller, availabilityCheckIn, availabilityInputRef }: Pick<NextActionsPageProps, "controller" | "availabilityCheckIn" | "availabilityInputRef">) {
   return (
-    <ListView title="Current Availability" viewIndex={3} bodyClassName="list-pane__body--detail" className="inbox-pane inbox-pane--detail availability-pane-shell">
+    <ListView title="Current Availability" viewIndex={3} bodyClassName="list-pane__body--detail" className="inbox-pane availability-pane-shell">
       <CurrentAvailabilityAgentPanel
         currentEnergy={controller.currentEnergy}
         currentTimeMinutes={controller.currentTimeMinutes}
