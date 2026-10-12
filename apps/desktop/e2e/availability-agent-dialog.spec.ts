@@ -11,11 +11,21 @@ test.beforeEach(async ({ page, request }) => {
   await expect(page.locator(".list-pane__title", { hasText: "Next Actions" }).first()).toBeVisible();
 });
 
-test("keeps the availability check-in panel visible on Next Actions and focuses it from a", async ({ page }) => {
+test("renders availability as a third non-overlapping Next Actions panel and focuses it from a", async ({ page }) => {
   const panel = page.locator('aside[aria-label="Availability check-in"]');
   const input = panel.getByPlaceholder(checkInPlaceholder);
+  const panes = page.locator(".next-actions-layout > .list-pane");
 
+  await expect(panes).toHaveCount(3);
   await expect(panel).toBeVisible();
+  await expect(panel).toHaveCSS("position", "static");
+
+  const detailBox = await panes.nth(1).boundingBox();
+  const availabilityBox = await panes.nth(2).boundingBox();
+  expect(detailBox).not.toBeNull();
+  expect(availabilityBox).not.toBeNull();
+  expect(availabilityBox!.x).toBeGreaterThanOrEqual(detailBox!.x + detailBox!.width - 1);
+
   await page.locator("main").click();
   await page.keyboard.press("a");
   await expect(input).toBeFocused();

@@ -60,10 +60,7 @@ export function CurrentAvailabilityAgentPanel(props: CurrentAvailabilityAgentPan
   return (
     <aside className="availability-agent-panel" aria-label="Availability check-in">
       <header>
-        <div>
-          <small>CURRENT AVAILABILITY</small>
-          <strong>Check in with your agent</strong>
-        </div>
+        <strong>Check in with your agent</strong>
         <span className={`availability-agent-panel__status availability-agent-panel__status--${props.checkIn.status}`}>
           {props.checkIn.status}
         </span>

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState, type RefObject } from "react";
 import { ListView } from "../components/ListView";
 import { ListWorkspace } from "../components/ListWorkspace";
 import { RetryState } from "../components/RetryState";
@@ -14,6 +14,7 @@ import { useActiveScreen, useKeybindScreen, useRegisterKeybinds } from "../featu
 import type { FocusZoneId, KeybindDefinition, ScreenId } from "../features/keybinds/types";
 import { scrollDetailPane } from "../features/keybinds/scrollDetailPane";
 import { nextActionsListTheme } from "../features/lists/listThemes";
+import { CurrentAvailabilityAgentPanel } from "../features/next-actions/CurrentAvailabilityAgentDialog";
 import { CurrentAvailabilityDialog } from "../features/next-actions/CurrentAvailabilityDialog";
 import { NextActionEditDialog } from "../features/next-actions/NextActionEditDialog";
 import { NextActionsList } from "../features/next-actions/NextActionsList";
@@ -24,10 +25,13 @@ import type { Project } from "../features/projects/types";
 import type { ContextItem } from "../features/contexts/types";
 import type { NextActionPatch } from "../features/next-actions/types";
 import type { NextActionsWorkspaceController } from "../features/next-actions/useNextActionsWorkspaceController";
+import type { CurrentAvailabilityAgentCheckIn } from "../features/next-actions/useCurrentAvailabilityAgentCheckIn";
 import { useListTitleSearch } from "../features/title-search/useListTitleSearch";
 
 type NextActionsPageProps = Readonly<{
   controller: NextActionsWorkspaceController;
+  availabilityCheckIn: CurrentAvailabilityAgentCheckIn;
+  availabilityInputRef: RefObject<HTMLTextAreaElement | null>;
   selectOnGoingAction: (id: string | null) => void;
   openOwnerProject?: (projectId: string, projectTitle?: string | null) => void;
   projects?: Project[];
@@ -329,11 +333,25 @@ function NextActionDetailView({ controller }: NextActionControllerProps) {
   );
 }
 
-function NextActionViews({ controller }: NextActionControllerProps) {
+function CurrentAvailabilityView({ controller, availabilityCheckIn, availabilityInputRef }: Pick<NextActionsPageProps, "controller" | "availabilityCheckIn" | "availabilityInputRef">) {
   return (
-    <section className="inbox-terminal-layout" aria-label="Next actions">
+    <ListView title="Current Availability" viewIndex={3} bodyClassName="list-pane__body--detail" className="inbox-pane inbox-pane--detail availability-pane-shell">
+      <CurrentAvailabilityAgentPanel
+        currentEnergy={controller.currentEnergy}
+        currentTimeMinutes={controller.currentTimeMinutes}
+        checkIn={availabilityCheckIn}
+        inputRef={availabilityInputRef}
+      />
+    </ListView>
+  );
+}
+
+function NextActionViews({ controller, availabilityCheckIn, availabilityInputRef }: Pick<NextActionsPageProps, "controller" | "availabilityCheckIn" | "availabilityInputRef">) {
+  return (
+    <section className="next-actions-layout" aria-label="Next actions">
       <NextActionsListView controller={controller} />
       <NextActionDetailView controller={controller} />
+      <CurrentAvailabilityView controller={controller} availabilityCheckIn={availabilityCheckIn} availabilityInputRef={availabilityInputRef} />
     </section>
   );
 }
@@ -343,7 +361,7 @@ function NextActionViews({ controller }: NextActionControllerProps) {
  *
  * @example <NextActionsPage controller={controller} />
  */
-export function NextActionsPage({ controller, selectOnGoingAction, openOwnerProject, projects = [] }: NextActionsPageProps) {
+export function NextActionsPage({ controller, availabilityCheckIn, availabilityInputRef, selectOnGoingAction, openOwnerProject, projects = [] }: NextActionsPageProps) {
   const contextsQuery = useContextsQuery();
   const availabilityAutomation = useAvailabilityAutomation(contextsQuery.contexts, controller);
   const [isCurrentAvailabilityOpen, setIsCurrentAvailabilityOpen] = useState(false);
@@ -376,7 +394,7 @@ export function NextActionsPage({ controller, selectOnGoingAction, openOwnerProj
 
   return (
     <ListWorkspace theme={nextActionsListTheme} currentClassName="list-workspace__current--next-actions" currentLabel={<NextActionsFooterLabel controller={controller} />} modeLabel={controller.vimMode ?? undefined} titleSearch={titleSearch}>
-      <NextActionViews controller={controller} />
+      <NextActionViews controller={controller} availabilityCheckIn={availabilityCheckIn} availabilityInputRef={availabilityInputRef} />
       <LeaderMenu />
       <Suspense fallback={null}>
         {isLinkOpen ? <LazyMarkdownLinkComboDialog onClose={() => setIsLinkOpen(false)} /> : null}

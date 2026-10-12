@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { clearAssetObjectUrlCache } from "../features/inbox/assetFiles";
 import { useCalendarWorkspaceController } from "../features/calendar/useCalendarWorkspaceController";
 import { useDeletedInboxWorkspaceController } from "../features/inbox/useDeletedInboxWorkspaceController";
@@ -20,8 +20,7 @@ import {
   useArchivedNextActionsWorkspaceController
 } from "../features/next-actions/useArchivedNextActionsWorkspaceController";
 import { useNextActionsWorkspaceController } from "../features/next-actions/useNextActionsWorkspaceController";
-import { CurrentAvailabilityAgentPanel } from "../features/next-actions/CurrentAvailabilityAgentDialog";
-import { useCurrentAvailabilityAgentCheckIn } from "../features/next-actions/useCurrentAvailabilityAgentCheckIn";
+import { useCurrentAvailabilityAgentCheckIn, type CurrentAvailabilityAgentCheckIn } from "../features/next-actions/useCurrentAvailabilityAgentCheckIn";
 import { doneNextActionsListTheme, deletedNextActionsListTheme } from "../features/lists/listThemes";
 import { ArchivedNextActionsPage } from "./ArchivedNextActionsPage";
 import { CalendarDetailPage } from "./CalendarDetailPage";
@@ -223,7 +222,9 @@ function renderActiveScreen(
   setActiveScreen: (screen: ScreenId) => void,
   openProjectDetail: () => void,
   openOwnerProject: (projectId: string, projectTitle?: string | null, targetItemId?: string | null) => void,
-  openProjectItemDestination: (item: ProjectItem) => void
+  openProjectItemDestination: (item: ProjectItem) => void,
+  availabilityCheckIn: CurrentAvailabilityAgentCheckIn,
+  availabilityInputRef: RefObject<HTMLTextAreaElement | null>
 ) {
   const detail = renderDetailScreens(activeScreen, controllers);
   if (detail) return detail;
@@ -232,7 +233,7 @@ function renderActiveScreen(
   if (activeScreen === "projects") return <ProjectsPage controller={controllers.projects} openProjectDetail={openProjectDetail} />;
   if (activeScreen === "project-detail") return <ProjectDetailPage controller={controllers.projectDetail} openItemDestination={openProjectItemDestination} openOwnerProject={openOwnerProject} projects={controllers.projects.projects} />;
   if (activeScreen === "deleted-inbox") return <DeletedInboxPage controller={controllers.deletedInbox} />;
-  if (activeScreen === "next-actions") return <NextActionsPage controller={controllers.nextActions} selectOnGoingAction={controllers.ongoing.setSelectedId} openOwnerProject={openOwnerProject} projects={controllers.projects.projects} />;
+  if (activeScreen === "next-actions") return <NextActionsPage controller={controllers.nextActions} availabilityCheckIn={availabilityCheckIn} availabilityInputRef={availabilityInputRef} selectOnGoingAction={controllers.ongoing.setSelectedId} openOwnerProject={openOwnerProject} projects={controllers.projects.projects} />;
   if (activeScreen === "ongoing-next-actions") return <OnGoingNextActionsPage controller={controllers.ongoing} selectNextAction={controllers.nextActions.setSelectedId} openOwnerProject={openOwnerProject} projects={controllers.projects.projects} />;
   if (activeScreen === "done-next-actions") return renderDoneNextActionsPage(controllers);
   if (activeScreen === "deleted-next-actions") return renderDeletedNextActionsPage(controllers);
@@ -309,15 +310,16 @@ export function AppShell() {
   useRegisterKeybinds(navigationBindings);
   return (
     <>
-      {renderActiveScreen(activeScreen, controllers, setActiveScreen, openProjectDetail, navigation.openOwnerProject, navigation.openProjectItemDestination)}
-      {activeScreen === "next-actions" ? (
-        <CurrentAvailabilityAgentPanel
-          currentEnergy={controllers.nextActions.currentEnergy}
-          currentTimeMinutes={controllers.nextActions.currentTimeMinutes}
-          checkIn={availabilityCheckIn}
-          inputRef={availabilityInputRef}
-        />
-      ) : null}
+      {renderActiveScreen(
+        activeScreen,
+        controllers,
+        setActiveScreen,
+        openProjectDetail,
+        navigation.openOwnerProject,
+        navigation.openProjectItemDestination,
+        availabilityCheckIn,
+        availabilityInputRef
+      )}
       {isHintModeActive && <HintOverlay onExit={closeHintMode} />}
       <WhichKeyDialog />
     </>

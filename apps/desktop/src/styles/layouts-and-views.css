@@ -37,6 +37,7 @@
   overflow: hidden;
 }
 
+.next-actions-layout,
 .project-detail-layout {
   padding: 20px 10px 16px;
   min-height: 0;

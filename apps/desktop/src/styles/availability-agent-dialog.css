@@ -1,39 +1,32 @@
+.availability-pane-shell:focus-within {
+  border-color: rgba(var(--list-accent-rgb), 0.72);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.02),
+    0 0 0 1px rgba(var(--list-accent-rgb), 0.2),
+    0 18px 36px rgba(0, 0, 0, 0.2);
+}
+
+.availability-pane-shell:focus-within .list-pane__title,
+.availability-pane-shell:focus-within .list-pane__view-index {
+  color: var(--list-accent);
+}
+
 .availability-agent-panel {
-  position: fixed;
-  z-index: 40;
-  top: 18px;
-  right: 18px;
-  bottom: 50px;
-  width: min(390px, calc(100vw - 36px));
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
   display: flex;
   flex-direction: column;
   gap: 14px;
-  padding: 16px;
-  border: 1px solid rgba(var(--list-accent-rgb), 0.62);
-  border-radius: 9px;
-  background: #151412;
   color: #d7d2ce;
   font-family: var(--font-mono);
-  box-shadow: -18px 0 50px rgba(0, 0, 0, 0.38);
 }
 
 .availability-agent-panel header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
-}
-
-.availability-agent-panel header small,
-.availability-agent-panel header strong {
-  display: block;
-}
-
-.availability-agent-panel header small {
-  margin-bottom: 4px;
-  color: #77706a;
-  font-size: 0.64rem;
-  letter-spacing: 0.09em;
 }
 
 .availability-agent-panel header strong {
@@ -78,13 +71,13 @@
 
 .availability-agent-panel__textarea {
   width: 100%;
-  min-height: 170px;
+  min-height: 150px;
   resize: vertical;
   padding: 12px;
-  border: 1px solid #3e3a36;
+  border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 7px;
   outline: none;
-  background: #0e0e0d;
+  background: rgba(0, 0, 0, 0.2);
   color: #ece6e1;
   font: 0.82rem/1.55 var(--font-mono);
 }
@@ -108,9 +101,9 @@
   align-items: center;
   justify-content: space-between;
   padding: 10px 12px;
-  border: 1px solid #35312e;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 6px;
-  background: #11100f;
+  background: rgba(0, 0, 0, 0.16);
 }
 
 .availability-agent-panel__result strong {
@@ -145,9 +138,9 @@
 
 .availability-agent-panel button {
   padding: 8px 10px;
-  border: 1px solid #45403c;
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 6px;
-  background: #23201e;
+  background: rgba(255, 255, 255, 0.05);
   color: #d7d2ce;
   font: 0.75rem var(--font-mono);
   cursor: pointer;
