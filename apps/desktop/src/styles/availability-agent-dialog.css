@@ -1,0 +1,163 @@
+.availability-pane-shell:focus-within {
+  border-color: rgba(var(--list-accent-rgb), 0.72);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.02),
+    0 0 0 1px rgba(var(--list-accent-rgb), 0.2),
+    0 18px 36px rgba(0, 0, 0, 0.2);
+}
+
+.availability-pane-shell:focus-within .list-pane__title,
+.availability-pane-shell:focus-within .list-pane__view-index {
+  color: var(--list-accent);
+}
+
+.availability-agent-panel {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  color: #d7d2ce;
+  font-family: var(--font-mono);
+}
+
+.availability-agent-panel header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.availability-agent-panel header strong {
+  color: var(--list-accent);
+  font-size: 0.92rem;
+}
+
+.availability-agent-panel__status {
+  padding: 3px 6px;
+  border: 1px solid #3d3936;
+  border-radius: 999px;
+  color: #827a75;
+  font-size: 0.62rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.availability-agent-panel__status--interpreting {
+  border-color: rgba(var(--list-accent-rgb), 0.6);
+  color: var(--list-accent);
+}
+
+.availability-agent-panel__status--ready {
+  border-color: #537760;
+  color: #86b594;
+}
+
+.availability-agent-panel__status--error {
+  border-color: #97353d;
+  color: #d9959a;
+}
+
+.availability-agent-panel__state {
+  display: grid;
+  gap: 4px;
+  padding: 9px 10px;
+  border-left: 2px solid rgba(var(--list-accent-rgb), 0.7);
+  background: rgba(var(--list-accent-rgb), 0.07);
+  color: #9e9690;
+  font-size: 0.7rem;
+}
+
+.availability-agent-panel__textarea {
+  width: 100%;
+  min-height: 150px;
+  resize: vertical;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 7px;
+  outline: none;
+  background: rgba(0, 0, 0, 0.2);
+  color: #ece6e1;
+  font: 0.82rem/1.55 var(--font-mono);
+}
+
+.availability-agent-panel__textarea:focus {
+  border-color: var(--list-accent);
+  box-shadow: 0 0 0 1px rgba(var(--list-accent-rgb), 0.25);
+}
+
+.availability-agent-panel__textarea:disabled {
+  opacity: 0.62;
+}
+
+.availability-agent-panel__result {
+  display: grid;
+  gap: 8px;
+}
+
+.availability-agent-panel__result > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.16);
+}
+
+.availability-agent-panel__result strong {
+  color: #8d8680;
+  font-size: 0.7rem;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.availability-agent-panel__result span {
+  color: #ede7e2;
+  font-size: 1rem;
+}
+
+.availability-agent-panel__result p,
+.availability-agent-panel__muted {
+  margin: 0;
+  color: #77706b;
+  font-size: 0.7rem;
+  line-height: 1.5;
+}
+
+.availability-agent-panel__error {
+  margin: 0;
+  padding: 9px 10px;
+  border-left: 2px solid #97353d;
+  background: rgba(151, 53, 61, 0.1);
+  color: #d9959a;
+  font-size: 0.7rem;
+  line-height: 1.5;
+}
+
+.availability-agent-panel button {
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #d7d2ce;
+  font: 0.75rem var(--font-mono);
+  cursor: pointer;
+}
+
+.availability-agent-panel__primary,
+.availability-agent-panel__apply {
+  border-color: rgba(var(--list-accent-rgb), 0.82) !important;
+  background: rgba(var(--list-accent-rgb), 0.17) !important;
+  color: var(--list-accent) !important;
+}
+
+.availability-agent-panel__apply {
+  margin-top: auto;
+}
+
+.availability-agent-panel button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}

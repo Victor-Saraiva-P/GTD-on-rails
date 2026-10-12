@@ -233,11 +233,41 @@ fn prepare_run_log(run_id: &str) -> Result<PathBuf, String> {
     Ok(path)
 }
 
-fn configure_processing_command(command: &mut Command, api_url: &str) {
+fn configure_agent_command(command: &mut Command) {
     command.stdout(Stdio::piped()).stderr(Stdio::piped());
-    command.env("GTD_API_URL", api_url);
     if let Some(path) = processing_path() { command.env("PATH", path); }
     if let Some(home) = std::env::var_os("HOME") { command.current_dir(home); }
+}
+
+fn configure_processing_command(command: &mut Command, api_url: &str) {
+    configure_agent_command(command);
+    command.env("GTD_API_URL", api_url);
+}
+
+pub(crate) fn run_configured_agent(prompt: &str) -> Result<String, String> {
+    let settings = agent_processing_settings()?;
+    validate_settings(&settings)?;
+    let provider = settings.processor.clone();
+    let mut command = processing_command(&provider, provider_settings(&settings), prompt)?;
+    configure_agent_command(&mut command);
+    let output = command.output().map_err(|error| format!("{provider} agent failed to start: {error}"))?;
+    if !output.status.success() { return Err(agent_command_error(&provider, &output.stderr)); }
+    let log = String::from_utf8_lossy(&output.stdout);
+    agent_response(&log)
+        .or_else(|| exact_json_agent_response(&log))
+        .ok_or_else(|| format!("{provider} agent returned no final response"))
+}
+
+fn exact_json_agent_response(log: &str) -> Option<String> {
+    let trimmed = log.trim();
+    serde_json::from_str::<Value>(trimmed).ok()?;
+    Some(trimmed.to_string())
+}
+
+fn agent_command_error(provider: &str, stderr: &[u8]) -> String {
+    let message = String::from_utf8_lossy(stderr).trim().chars().take(800).collect::<String>();
+    if message.is_empty() { return format!("{provider} agent exited unsuccessfully without an error message"); }
+    format!("{provider} agent exited unsuccessfully: {message}")
 }
 
 fn processing_api_url(app: &tauri::AppHandle) -> Result<String, String> {
@@ -491,7 +521,7 @@ fn file_error(path: &Path, expected: &str, error: std::io::Error) -> String {
 mod tests {
     use std::path::PathBuf;
 
-    use super::{build_antigravity_command, processing_prompt, AgentProviderSettings};
+    use super::{build_antigravity_command, exact_json_agent_response, processing_prompt, AgentProviderSettings};
 
     #[test]
     fn instructs_the_agent_to_use_read_only_project_context() {
@@ -516,6 +546,12 @@ mod tests {
             .collect::<Vec<_>>();
 
         assert!(!arguments.iter().any(|argument| argument == "--sandbox"));
+    }
+
+    #[test]
+    fn accepts_plain_json_as_a_configured_agent_response() {
+        let response = exact_json_agent_response("{\"energy\":3.5,\"timeMinutes\":40}");
+        assert_eq!(response.as_deref(), Some("{\"energy\":3.5,\"timeMinutes\":40}"));
     }
 
     #[test]

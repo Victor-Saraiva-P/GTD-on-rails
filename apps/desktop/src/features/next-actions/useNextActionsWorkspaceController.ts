@@ -8,11 +8,14 @@ import type { NextAction, NextActionOrder, NextActionPatch } from "./types.ts";
 import { DEFAULT_NEXT_ACTION_ORDER, nextOrder } from "./orderCycle.ts";
 import {
   applyAutomaticContexts as applyAutomaticContextsState,
+  applyCurrentAvailabilityCapacity as applyCurrentAvailabilityCapacityState,
   applyManualAvailability,
   clearCurrentAvailability,
   INITIAL_CURRENT_AVAILABILITY,
+  restoreCurrentAvailabilityCapacity,
   resumeAutomaticAvailability as resumeAutomaticAvailabilityState
 } from "./currentAvailabilityState.ts";
+import { loadCurrentAvailabilityCapacity, saveCurrentAvailabilityCapacity } from "./currentAvailabilityStorage.ts";
 import { useNextActionSelection, type NextActionSelectionCursor } from "./nextActionSelection.ts";
 import { useNextActionsQuery, type NextActionsQuery } from "./useNextActionsQuery.ts";
 export { useNextActionSelection } from "./nextActionSelection.ts";
@@ -38,11 +41,27 @@ export function useNextActionEditState() {
   return { editingBodyId, editingId, editingTitle, editingTitleError, setEditingBodyId, setEditingId, setEditingTitle, setEditingTitleError, setVimMode, vimMode };
 }
 
+function initialCurrentAvailabilityState() {
+  if (typeof window === "undefined") return INITIAL_CURRENT_AVAILABILITY;
+  return restoreCurrentAvailabilityCapacity(
+    INITIAL_CURRENT_AVAILABILITY,
+    loadCurrentAvailabilityCapacity(window.localStorage)
+  );
+}
+
+function persistCurrentAvailabilityCapacity(currentEnergy: number | null, currentTimeMinutes: number | null) {
+  if (typeof window === "undefined") return;
+  saveCurrentAvailabilityCapacity(window.localStorage, { currentEnergy, currentTimeMinutes });
+}
+
 export function useNextActionsFilterState() {
-  const [availability, setAvailability] = useState(INITIAL_CURRENT_AVAILABILITY);
+  const [availability, setAvailability] = useState(initialCurrentAvailabilityState);
   const [orderBy, setOrderBy] = useState<NextActionOrder>(DEFAULT_NEXT_ACTION_ORDER);
   const [shouldSelectFirst, setShouldSelectFirst] = useState(false);
   const [selectFirstPreviousItems, setSelectFirstPreviousItems] = useState<NextAction[] | null>(null);
+  useEffect(() => {
+    persistCurrentAvailabilityCapacity(availability.currentEnergy, availability.currentTimeMinutes);
+  }, [availability.currentEnergy, availability.currentTimeMinutes]);
   return {
     ...availability,
     availability,
@@ -247,6 +266,7 @@ export function useNextActionsActions(model: Model) {
     selectPrevious: model.selection.selectPrevious,
     applyAutomaticContexts: (contexts: ContextItem[]) => applyAutomaticAvailability(model, contexts),
     applyCurrentAvailability: (contexts: ContextItem[], energy: number | null, timeMinutes: number | null) => applyCurrentAvailability(model, contexts, energy, timeMinutes),
+    applyCurrentAvailabilityCapacity: (energy: number | null, timeMinutes: number | null) => applyCurrentAvailabilityCapacity(model, energy, timeMinutes),
     resetCurrentAvailability: () => resetCurrentAvailability(model),
     resumeAutomaticAvailability: (contexts: ContextItem[]) => resumeAutomaticAvailability(model, contexts),
     startBodyEdit: () => startBodyEdit(model),
@@ -269,6 +289,11 @@ export function applyAutomaticAvailability(model: Model, contexts: ContextItem[]
 
 export function applyCurrentAvailability(model: Model, contexts: ContextItem[], energy: number | null, timeMinutes: number | null) {
   model.filter.setAvailability((state) => applyManualAvailability(state, contexts, energy, timeMinutes));
+  selectFirstAfterAvailabilityChange(model);
+}
+
+export function applyCurrentAvailabilityCapacity(model: Model, energy: number | null, timeMinutes: number | null) {
+  model.filter.setAvailability((state) => applyCurrentAvailabilityCapacityState(state, energy, timeMinutes));
   selectFirstAfterAvailabilityChange(model);
 }
 
