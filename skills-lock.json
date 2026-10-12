@@ -1,6 +1,18 @@
 {
   "version": 1,
   "skills": {
+    "ai-memory-devspace-handoff": {
+      "source": "Victor-Saraiva-P/ai-memory-skills",
+      "sourceType": "github",
+      "skillPath": "skills/ai-memory-devspace-handoff/SKILL.md",
+      "computedHash": "2016e087537124d8921d58352f4e6e01b1b5fb56e5c8c5d3159b2e261bc6845c"
+    },
+    "ai-memory-devspace-start": {
+      "source": "Victor-Saraiva-P/ai-memory-skills",
+      "sourceType": "github",
+      "skillPath": "skills/ai-memory-devspace-start/SKILL.md",
+      "computedHash": "9385bb1b37fa79fc5e21aac836d6b9b5690fcc19a96b28eeb001e7508882ba39"
+    },
     "ask-matt": {
       "source": "mattpocock/skills",
       "sourceType": "github",
