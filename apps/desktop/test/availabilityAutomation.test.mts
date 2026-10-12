@@ -3,11 +3,17 @@ import test from "node:test";
 
 import {
   applyAutomaticContexts,
+  applyCurrentAvailabilityCapacity,
   applyManualAvailability,
   clearCurrentAvailability,
   INITIAL_CURRENT_AVAILABILITY,
+  restoreCurrentAvailabilityCapacity,
   resumeAutomaticAvailability
 } from "../src/features/next-actions/currentAvailabilityState.ts";
+import {
+  loadCurrentAvailabilityCapacity,
+  saveCurrentAvailabilityCapacity
+} from "../src/features/next-actions/currentAvailabilityStorage.ts";
 import { fetchAvailabilityEnvironmentSignals } from "../src/features/availability-automation/native.ts";
 import { resolveAutomaticContexts } from "../src/features/availability-automation/resolveAutomaticContexts.ts";
 import {
@@ -130,5 +136,47 @@ test("invalid stored availability settings safely fall back to defaults", () => 
   assert.deepEqual(loadAvailabilityAutomationSettings(storage), {
     deviceContextId: null,
     locationContextIds: {}
+  });
+});
+
+test("agent capacity update preserves automatic contexts and mode", () => {
+  const automatic = applyAutomaticContexts(INITIAL_CURRENT_AVAILABILITY, [home, notebook]);
+  const updated = applyCurrentAvailabilityCapacity(automatic, 3.5, 40);
+
+  assert.equal(updated.contextMode, "automatic");
+  assert.deepEqual(updated.contexts, [home, notebook]);
+  assert.equal(updated.currentEnergy, 3.5);
+  assert.equal(updated.currentTimeMinutes, 40);
+});
+
+test("current energy and time round-trip through machine-local storage", () => {
+  const storage = new MemoryStorage();
+  saveCurrentAvailabilityCapacity(storage, { currentEnergy: 6.5, currentTimeMinutes: 90 });
+
+  assert.deepEqual(loadCurrentAvailabilityCapacity(storage), {
+    currentEnergy: 6.5,
+    currentTimeMinutes: 90
+  });
+});
+
+test("persisted capacity restores without changing automatic context state", () => {
+  const restored = restoreCurrentAvailabilityCapacity(INITIAL_CURRENT_AVAILABILITY, {
+    currentEnergy: 4,
+    currentTimeMinutes: 25
+  });
+
+  assert.equal(restored.contextMode, "automatic");
+  assert.deepEqual(restored.contexts, []);
+  assert.equal(restored.currentEnergy, 4);
+  assert.equal(restored.currentTimeMinutes, 25);
+});
+
+test("invalid persisted capacity values degrade independently to unset", () => {
+  const storage = new MemoryStorage();
+  storage.setItem("gtd.current-availability.v1", JSON.stringify({ currentEnergy: 12, currentTimeMinutes: 30 }));
+
+  assert.deepEqual(loadCurrentAvailabilityCapacity(storage), {
+    currentEnergy: null,
+    currentTimeMinutes: 30
   });
 });

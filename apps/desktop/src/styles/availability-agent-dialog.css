@@ -1,0 +1,138 @@
+.availability-agent-dialog__backdrop {
+  position: fixed;
+  z-index: 70;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.58);
+}
+
+.availability-agent-dialog {
+  position: relative;
+  width: min(680px, calc(100vw - 40px));
+  margin: 0;
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+  border: 1px solid rgba(var(--list-accent-rgb), 0.8);
+  border-radius: 10px;
+  background: #161513;
+  color: #d7d2ce;
+  font-family: var(--font-mono);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.46);
+}
+
+.availability-agent-dialog header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--list-accent);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.availability-agent-dialog > p {
+  margin: 0;
+  color: #918984;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.availability-agent-dialog__textarea {
+  width: 100%;
+  min-height: 108px;
+  resize: vertical;
+  padding: 12px;
+  border: 1px solid #3e3a36;
+  border-radius: 7px;
+  outline: none;
+  background: #0e0e0d;
+  color: #ece6e1;
+  font: 0.88rem/1.55 var(--font-mono);
+}
+
+.availability-agent-dialog__textarea:focus {
+  border-color: var(--list-accent);
+  box-shadow: 0 0 0 1px rgba(var(--list-accent-rgb), 0.25);
+}
+
+.availability-agent-dialog__state {
+  display: grid;
+  gap: 4px;
+  padding: 9px 10px;
+  border-left: 2px solid rgba(var(--list-accent-rgb), 0.7);
+  background: rgba(var(--list-accent-rgb), 0.07);
+  color: #9e9690;
+  font-size: 0.7rem;
+}
+
+.availability-agent-dialog__result {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.availability-agent-dialog__result > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border: 1px solid #35312e;
+  border-radius: 6px;
+  background: #11100f;
+}
+
+.availability-agent-dialog__result strong {
+  color: #8d8680;
+  font-size: 0.7rem;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.availability-agent-dialog__result span {
+  color: #ede7e2;
+  font-size: 1rem;
+}
+
+.availability-agent-dialog__result p {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #77706b;
+  font-size: 0.68rem;
+}
+
+.availability-agent-dialog__error {
+  padding: 9px 10px;
+  border-left: 2px solid #97353d;
+  background: rgba(151, 53, 61, 0.1);
+  color: #d9959a !important;
+}
+
+.availability-agent-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.availability-agent-dialog__actions button {
+  padding: 7px 10px;
+  border: 1px solid #45403c;
+  border-radius: 6px;
+  background: #23201e;
+  color: #d7d2ce;
+  font: 0.75rem var(--font-mono);
+  cursor: pointer;
+}
+
+.availability-agent-dialog__actions button:last-child {
+  border-color: rgba(var(--list-accent-rgb), 0.82);
+  background: rgba(var(--list-accent-rgb), 0.17);
+  color: var(--list-accent);
+}
+
+.availability-agent-dialog__actions button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}

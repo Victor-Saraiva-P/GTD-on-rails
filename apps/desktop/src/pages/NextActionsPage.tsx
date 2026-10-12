@@ -14,6 +14,7 @@ import { useActiveScreen, useKeybindScreen, useRegisterKeybinds } from "../featu
 import type { FocusZoneId, KeybindDefinition, ScreenId } from "../features/keybinds/types";
 import { scrollDetailPane } from "../features/keybinds/scrollDetailPane";
 import { nextActionsListTheme } from "../features/lists/listThemes";
+import { CurrentAvailabilityAgentDialog } from "../features/next-actions/CurrentAvailabilityAgentDialog";
 import { CurrentAvailabilityDialog } from "../features/next-actions/CurrentAvailabilityDialog";
 import { NextActionEditDialog } from "../features/next-actions/NextActionEditDialog";
 import { NextActionsList } from "../features/next-actions/NextActionsList";
@@ -119,6 +120,7 @@ function buildNextActionBindings(
   setActiveScreen: (screen: ScreenId) => void,
   selectOnGoingAction: (id: string | null) => void,
   openCurrentAvailability: () => void,
+  openAgentAvailability: () => void,
   resumeAutomaticAvailability: () => void,
   openAttrs: () => void,
   openLink: () => void,
@@ -140,6 +142,8 @@ function buildNextActionBindings(
     nextActionBinding("next-actions.done-list", "x", "Mark as done", "next-actions-list", () => runAsync(canEditSelected(controller), controller.markAsDone, "Failed to mark as done")),
     nextActionBinding("next-actions.done-detail", "x", "Mark as done", "next-action-detail", () => runAsync(canEditSelected(controller), controller.markAsDone, "Failed to mark as done")),
     nextActionBinding("next-actions.current-availability-list", "c", "Set current availability", "next-actions-list", openCurrentAvailability),
+    nextActionBinding("next-actions.agent-availability-list", "a", "Check in with configured agent", "next-actions-list", openAgentAvailability),
+    nextActionBinding("next-actions.agent-availability-detail", "a", "Check in with configured agent", "next-action-detail", openAgentAvailability),
     nextActionBinding("next-actions.clear-current-availability-list", "C", "Clear current availability", "next-actions-list", controller.resetCurrentAvailability),
     nextActionBinding("next-actions.resume-automatic-availability-list", "A", "Resume automatic contexts", "next-actions-list", resumeAutomaticAvailability),
     nextActionBinding("next-actions.attrs-list", "E", "Edit next action attributes", "next-actions-list", () => canEditSelected(controller) && openAttrs()),
@@ -180,6 +184,7 @@ function useNextActionBindings(
   controller: NextActionsWorkspaceController,
   selectOnGoingAction: (id: string | null) => void,
   openCurrentAvailability: () => void,
+  openAgentAvailability: () => void,
   resumeAutomaticAvailability: () => void,
   openAttrs: () => void,
   openLink: () => void,
@@ -197,6 +202,7 @@ function useNextActionBindings(
         setActiveScreen,
         selectOnGoingAction,
         openCurrentAvailability,
+        openAgentAvailability,
         resumeAutomaticAvailability,
         openAttrs,
         openLink,
@@ -206,7 +212,7 @@ function useNextActionBindings(
         openOwnerProject,
         projects
       ),
-    [controller, setActiveScreen, selectOnGoingAction, openCurrentAvailability, resumeAutomaticAvailability, openAttrs, openLink, openAsset, openProjectAssociate, isAttrsOpen, openOwnerProject, projects]
+    [controller, setActiveScreen, selectOnGoingAction, openCurrentAvailability, openAgentAvailability, resumeAutomaticAvailability, openAttrs, openLink, openAsset, openProjectAssociate, isAttrsOpen, openOwnerProject, projects]
   );
   useRegisterKeybinds(bindings);
 }
@@ -347,12 +353,14 @@ export function NextActionsPage({ controller, selectOnGoingAction, openOwnerProj
   const contextsQuery = useContextsQuery();
   const availabilityAutomation = useAvailabilityAutomation(contextsQuery.contexts, controller);
   const [isCurrentAvailabilityOpen, setIsCurrentAvailabilityOpen] = useState(false);
+  const [isAgentAvailabilityOpen, setIsAgentAvailabilityOpen] = useState(false);
   const [isAttrsOpen, setIsAttrsOpen] = useState(false);
   const projectAssociate = useProjectAssociateDialog();
   const [isLinkOpen, setIsLinkOpen] = useState(false);
   const [isAssetOpen, setIsAssetOpen] = useState(false);
-  const isPickerOpen = isAttrsOpen || isCurrentAvailabilityOpen || projectAssociate.isOpen;
+  const isPickerOpen = isAttrsOpen || isCurrentAvailabilityOpen || isAgentAvailabilityOpen || projectAssociate.isOpen;
   const openCurrentAvailability = useCallback(() => !isPickerOpen && setIsCurrentAvailabilityOpen(true), [isPickerOpen]);
+  const openAgentAvailability = useCallback(() => !isPickerOpen && setIsAgentAvailabilityOpen(true), [isPickerOpen]);
   const resumeAutomaticAvailability = useCallback(
     () => void resumeAutomaticContexts(controller, availabilityAutomation.detectCurrentContexts),
     [availabilityAutomation.detectCurrentContexts, controller]
@@ -364,7 +372,7 @@ export function NextActionsPage({ controller, selectOnGoingAction, openOwnerProj
   useKeybindScreen("next-actions");
   useNextActionZone(controller);
   useNextActionAssetPreload(controller);
-  useNextActionBindings(controller, selectOnGoingAction, openCurrentAvailability, resumeAutomaticAvailability, openAttrs, openLink, openAsset, openProjectAssociate, isAttrsOpen, openOwnerProject, projects);
+  useNextActionBindings(controller, selectOnGoingAction, openCurrentAvailability, openAgentAvailability, resumeAutomaticAvailability, openAttrs, openLink, openAsset, openProjectAssociate, isAttrsOpen, openOwnerProject, projects);
   const titleSearch = useListTitleSearch({
     disabled: Boolean(controller.editingId || controller.editingBodyId),
     items: controller.stuffs,
@@ -383,6 +391,7 @@ export function NextActionsPage({ controller, selectOnGoingAction, openOwnerProj
         {isAssetOpen && controller.selectedItem ? <LazyMarkdownAssetComboDialog itemId={controller.selectedItem.id} onClose={() => setIsAssetOpen(false)} /> : null}
       </Suspense>
       {isCurrentAvailabilityOpen ? <CurrentAvailabilityDialog contextIds={controller.contexts.map((context) => context.id)} energy={controller.currentEnergy} timeMinutes={controller.currentTimeMinutes} onApply={(contextIds, energy, timeMinutes) => applyCurrentAvailability(controller, contextsQuery.contexts, contextIds, energy, timeMinutes, () => setIsCurrentAvailabilityOpen(false))} onClose={() => setIsCurrentAvailabilityOpen(false)} /> : null}
+      {isAgentAvailabilityOpen ? <CurrentAvailabilityAgentDialog currentEnergy={controller.currentEnergy} currentTimeMinutes={controller.currentTimeMinutes} onApply={controller.applyCurrentAvailabilityCapacity} onClose={() => setIsAgentAvailabilityOpen(false)} /> : null}
       {isAttrsOpen && controller.selectedItem ? <NextActionEditDialog item={controller.selectedItem} onSave={(patch) => saveAttributes(controller, patch, () => setIsAttrsOpen(false))} onClose={() => setIsAttrsOpen(false)} /> : null}
       <ProjectAssociateDialog
         item={controller.selectedItem}

@@ -1,5 +1,6 @@
 import type { ContextItem } from "../contexts/types.ts";
 import type { AvailabilityContextMode } from "../availability-automation/types.ts";
+import type { PersistedCurrentAvailabilityCapacity } from "./currentAvailabilityStorage.ts";
 
 export type CurrentAvailabilityState = {
   contexts: ContextItem[];
@@ -56,4 +57,27 @@ export function resumeAutomaticAvailability(state: CurrentAvailabilityState, con
  */
 export function clearCurrentAvailability(state: CurrentAvailabilityState): CurrentAvailabilityState {
   return { ...state, contexts: [], currentEnergy: null, currentTimeMinutes: null, contextMode: "manual" };
+}
+
+/** Applies only energy and time while preserving the current context mode and context selection.
+ *
+ * @example applyCurrentAvailabilityCapacity(state, 4.5, 30)
+ */
+export function applyCurrentAvailabilityCapacity(
+  state: CurrentAvailabilityState,
+  currentEnergy: number | null,
+  currentTimeMinutes: number | null
+): CurrentAvailabilityState {
+  return { ...state, currentEnergy, currentTimeMinutes };
+}
+
+/** Restores persisted machine-local energy and time without restoring context state.
+ *
+ * @example restoreCurrentAvailabilityCapacity(INITIAL_CURRENT_AVAILABILITY, persisted)
+ */
+export function restoreCurrentAvailabilityCapacity(
+  state: CurrentAvailabilityState,
+  capacity: PersistedCurrentAvailabilityCapacity
+): CurrentAvailabilityState {
+  return applyCurrentAvailabilityCapacity(state, capacity.currentEnergy, capacity.currentTimeMinutes);
 }

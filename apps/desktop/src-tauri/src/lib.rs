@@ -4,6 +4,7 @@ use tauri::{Manager, RunEvent};
 
 mod agent_processing;
 mod agent_processing_runtime;
+mod availability_agent;
 mod availability_automation;
 mod clipboard;
 mod native_update;
@@ -148,6 +149,7 @@ fn build_app() -> tauri::App {
             agent_processing::save_agent_processing_settings,
             agent_processing::agent_processing_options,
             agent_processing::start_agent_processing,
+            availability_agent::interpret_current_availability,
             availability_automation::availability_environment_signals,
             native_update::native_update_check,
             native_update::native_update_install,
