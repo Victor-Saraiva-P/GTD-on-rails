@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/logo.png" alt="GTD on Rails logo" width="160" />
+  <img src="docs/assets/logo.svg" alt="GTD on Rails logo" width="160" />
 </p>
 
 # GTD on Rails
@@ -104,7 +104,7 @@ rclone File Sync
 - Desktop: Tauri 2, React 19, TypeScript, Vite, Rust
 - Backend: Spring Boot 4, Java 21, Gradle
 - Persistence: local SQLite, Flyway, Spring Data JPA, Hibernate
-- Sync and integrations: revisioned personal sync server, `rclone` backup publication, Google Calendar API
+- Sync and integrations: revisioned personal sync server/client, `rclone` backup publication, Google Calendar API
 - Tooling: Make, pnpm, Turbo, Playwright
 
 ## Run Locally
