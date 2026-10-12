@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { clearAssetObjectUrlCache } from "../features/inbox/assetFiles";
 import { useCalendarWorkspaceController } from "../features/calendar/useCalendarWorkspaceController";
 import { useDeletedInboxWorkspaceController } from "../features/inbox/useDeletedInboxWorkspaceController";
@@ -20,6 +20,8 @@ import {
   useArchivedNextActionsWorkspaceController
 } from "../features/next-actions/useArchivedNextActionsWorkspaceController";
 import { useNextActionsWorkspaceController } from "../features/next-actions/useNextActionsWorkspaceController";
+import { CurrentAvailabilityAgentPanel } from "../features/next-actions/CurrentAvailabilityAgentDialog";
+import { useCurrentAvailabilityAgentCheckIn } from "../features/next-actions/useCurrentAvailabilityAgentCheckIn";
 import { doneNextActionsListTheme, deletedNextActionsListTheme } from "../features/lists/listThemes";
 import { ArchivedNextActionsPage } from "./ArchivedNextActionsPage";
 import { CalendarDetailPage } from "./CalendarDetailPage";
@@ -99,6 +101,13 @@ function buildNavigationBindings(
     ...buildScreenJumpBindings(jumpToScreen, controllers),
     { id: "navigation.open-hint-mode", key: "h", description: "Hint mode (jump to UI element)", leader: true, sequence: ["h"], runKeybind: openHintMode },
     { id: "navigation.toggle-zoom-mode", key: "z", description: "Toggle Zoom Mode", leader: true, sequence: ["z"], runKeybind: toggleZoomMode }
+  ];
+}
+
+function buildAvailabilityCheckInBindings(focusCheckIn: () => void): KeybindDefinition[] {
+  return [
+    { id: "next-actions.focus-agent-availability-list", key: "a", description: "Focus availability check-in", screen: "next-actions", zone: "next-actions-list", runKeybind: focusCheckIn },
+    { id: "next-actions.focus-agent-availability-detail", key: "a", description: "Focus availability check-in", screen: "next-actions", zone: "next-action-detail", runKeybind: focusCheckIn }
   ];
 }
 
@@ -256,11 +265,15 @@ function useAppShellBindings(
   navigation: ReturnType<typeof useJumpListNavigation>,
   controllers: AppControllers,
   openHintMode: () => void,
-  toggleZoomMode: () => void
+  toggleZoomMode: () => void,
+  focusAvailabilityCheckIn: () => void
 ) {
   return useMemo(
-    () => buildNavigationBindings(navigation.jumpToScreen, navigation.goBack, navigation.goForward, controllers, openHintMode, toggleZoomMode),
-    [navigation.jumpToScreen, navigation.goBack, navigation.goForward, controllers, openHintMode, toggleZoomMode]
+    () => [
+      ...buildNavigationBindings(navigation.jumpToScreen, navigation.goBack, navigation.goForward, controllers, openHintMode, toggleZoomMode),
+      ...buildAvailabilityCheckInBindings(focusAvailabilityCheckIn)
+    ],
+    [navigation.jumpToScreen, navigation.goBack, navigation.goForward, controllers, openHintMode, toggleZoomMode, focusAvailabilityCheckIn]
   );
 }
 
@@ -282,11 +295,14 @@ export function AppShell() {
   const { isHintModeActive, openHintMode, closeHintMode } = useHintModeState();
   const { toggleZoomMode } = useZoomMode();
   const controllers = useAppControllers(projectDetailProject);
+  const availabilityInputRef = useRef<HTMLTextAreaElement>(null);
+  const availabilityCheckIn = useCurrentAvailabilityAgentCheckIn(controllers.nextActions.applyCurrentAvailabilityCapacity);
+  const focusAvailabilityCheckIn = useCallback(() => availabilityInputRef.current?.focus(), []);
   const navigation = useJumpListNavigation({
     activeScreen, setActiveScreen, controllers, projectDetailProject, setProjectDetailProject
   });
   const openProjectDetail = useOpenProjectDetail(controllers, navigation);
-  const navigationBindings = useAppShellBindings(navigation, controllers, openHintMode, toggleZoomMode);
+  const navigationBindings = useAppShellBindings(navigation, controllers, openHintMode, toggleZoomMode, focusAvailabilityCheckIn);
 
   useScreenLocalEffects(activeScreen, controllers);
   useAgentStateBridge(activeScreen);
@@ -294,6 +310,12 @@ export function AppShell() {
   return (
     <>
       {renderActiveScreen(activeScreen, controllers, setActiveScreen, openProjectDetail, navigation.openOwnerProject, navigation.openProjectItemDestination)}
+      <CurrentAvailabilityAgentPanel
+        currentEnergy={controllers.nextActions.currentEnergy}
+        currentTimeMinutes={controllers.nextActions.currentTimeMinutes}
+        checkIn={availabilityCheckIn}
+        inputRef={availabilityInputRef}
+      />
       {isHintModeActive && <HintOverlay onExit={closeHintMode} />}
       <WhichKeyDialog />
     </>

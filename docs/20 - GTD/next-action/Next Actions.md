@@ -18,7 +18,7 @@ Current Availability contexts start in `automatic` mode. The desktop detects the
 
 Pressing `c` applies a manual Current Availability override. Environment detection continues in the background but cannot replace the manually selected contexts until `A` resumes automatic mode. Pressing `C` clears contexts, energy, and time and deliberately remains in manual mode.
 
-Pressing `a` opens an Availability check-in dialog. Free-form text about current energy and usable time is interpreted by the same machine-local agent, model, and thinking settings configured for Inbox agent processing. The agent returns a candidate energy value and available time for review; nothing changes until `Apply availability` is confirmed. Applying the candidate changes only energy and time, preserving the current automatic/manual context mode and selected contexts. Energy and available time are persisted machine-locally and restored after restarting the desktop; they are not synchronized by the GTD sync client.
+The desktop keeps an Availability check-in panel visible across application screens. Free-form text about current energy and usable time is interpreted by the same machine-local agent, model, and thinking settings configured for Inbox agent processing. Interpretation runs at AppShell scope, so navigation to Inbox, Projects, Calendar, or another page does not interrupt it; the candidate remains available for review after the agent finishes. Nothing changes until `Use this availability` is confirmed. Applying the candidate changes only energy and time, preserving the current automatic/manual context mode and selected contexts. Energy and available time are persisted machine-locally and restored after restarting the desktop; they are not synchronized by the GTD sync client. On Next Actions, pressing `a` focuses the persistent check-in text field.
 
 Next actions with a deadline remain next actions; reaching the deadline does not convert them into calendar items. On the deadline date, an unfinished next action also appears in Calendar Today as due. If it remains unfinished after that date, it continues to appear in Calendar Today as overdue until it is completed or its deadline changes. In Calendar Weekly, a next action with a future deadline appears only on its deadline date. Before the deadline, urgency is communicated by next-action priority ordering rather than by placing the action on an earlier calendar date.
 
@@ -42,7 +42,7 @@ When editing energy or estimated time, clearing all digits and confirming with `
 | `x` | List | Mark selected next action as done. |
 | `R` | List or detail | Move selected next action back to Inbox stuff (`STUFF`). |
 | `c` | List | Set current availability. |
-| `a` | List or detail | Check in with the configured agent to interpret available energy and time. |
+| `a` | List or detail | Focus the persistent Availability check-in panel. |
 | `C` | List | Clear current availability and remain in manual context mode. |
 | `A` | List | Resume automatic contexts from the current device and location signals. |
 | `E` | List or detail | Edit next action attributes. |
