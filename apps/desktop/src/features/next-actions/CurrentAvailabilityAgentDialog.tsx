@@ -51,7 +51,7 @@ function statusCopy(checkIn: CurrentAvailabilityAgentCheckIn) {
 }
 
 /**
- * Persistent Current Availability check-in panel mounted at AppShell scope.
+ * Next Actions Current Availability drawer backed by AppShell-scoped check-in state.
  *
  * @example <CurrentAvailabilityAgentPanel currentEnergy={5} currentTimeMinutes={30} checkIn={checkIn} inputRef={inputRef} />
  */

@@ -310,12 +310,14 @@ export function AppShell() {
   return (
     <>
       {renderActiveScreen(activeScreen, controllers, setActiveScreen, openProjectDetail, navigation.openOwnerProject, navigation.openProjectItemDestination)}
-      <CurrentAvailabilityAgentPanel
-        currentEnergy={controllers.nextActions.currentEnergy}
-        currentTimeMinutes={controllers.nextActions.currentTimeMinutes}
-        checkIn={availabilityCheckIn}
-        inputRef={availabilityInputRef}
-      />
+      {activeScreen === "next-actions" ? (
+        <CurrentAvailabilityAgentPanel
+          currentEnergy={controllers.nextActions.currentEnergy}
+          currentTimeMinutes={controllers.nextActions.currentTimeMinutes}
+          checkIn={availabilityCheckIn}
+          inputRef={availabilityInputRef}
+        />
+      ) : null}
       {isHintModeActive && <HintOverlay onExit={closeHintMode} />}
       <WhichKeyDialog />
     </>

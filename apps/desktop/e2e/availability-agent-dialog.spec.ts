@@ -11,7 +11,7 @@ test.beforeEach(async ({ page, request }) => {
   await expect(page.locator(".list-pane__title", { hasText: "Next Actions" }).first()).toBeVisible();
 });
 
-test("keeps the availability check-in panel visible and focuses it from a", async ({ page }) => {
+test("keeps the availability check-in panel visible on Next Actions and focuses it from a", async ({ page }) => {
   const panel = page.locator('aside[aria-label="Availability check-in"]');
   const input = panel.getByPlaceholder(checkInPlaceholder);
 
@@ -21,7 +21,7 @@ test("keeps the availability check-in panel visible and focuses it from a", asyn
   await expect(input).toBeFocused();
 });
 
-test("keeps check-in draft visible while navigating between screens", async ({ page }) => {
+test("hides the panel outside Next Actions but restores its draft when returning", async ({ page }) => {
   const panel = page.locator('aside[aria-label="Availability check-in"]');
   const input = panel.getByPlaceholder(checkInPlaceholder);
   await input.fill("Tired after lunch, with about 40 minutes available.");
@@ -31,8 +31,14 @@ test("keeps check-in draft visible while navigating between screens", async ({ p
   await page.keyboard.press("p");
 
   await expect(page.locator(".list-pane__title").first()).toHaveText("Projects");
+  await expect(panel).toHaveCount(0);
+
+  await page.keyboard.press(" ");
+  await page.keyboard.press("n");
+
+  await expect(page.locator(".list-pane__title", { hasText: "Next Actions" }).first()).toBeVisible();
   await expect(panel).toBeVisible();
-  await expect(input).toHaveValue("Tired after lunch, with about 40 minutes available.");
+  await expect(panel.getByPlaceholder(checkInPlaceholder)).toHaveValue("Tired after lunch, with about 40 minutes available.");
 });
 
 test("continues agent interpretation while navigating away from Next Actions", async ({ page }) => {
@@ -59,13 +65,18 @@ test("continues agent interpretation while navigating away from Next Actions", a
   await page.keyboard.press("p");
 
   await expect(page.locator(".list-pane__title").first()).toHaveText("Projects");
-  await expect(panel).toContainText("Agent is interpreting your current energy and usable time");
+  await expect(panel).toHaveCount(0);
 
   await page.evaluate(() => {
     const resolver = (window as Window & typeof globalThis & { __resolveAvailability?: (value: unknown) => void }).__resolveAvailability;
     resolver?.({ energy: 3.5, timeMinutes: 40, rationale: "Low energy with a short usable window." });
   });
 
+  await page.keyboard.press(" ");
+  await page.keyboard.press("n");
+
+  await expect(page.locator(".list-pane__title", { hasText: "Next Actions" }).first()).toBeVisible();
+  await expect(panel).toBeVisible();
   await expect(panel).toContainText("3.5 / 10");
   await expect(panel).toContainText("40 min");
 });
