@@ -7,10 +7,12 @@ native_dir="$release_dir/native"
 package_name="GTD.on.Rails_${version}_linux-x86_64"
 package_dir="$native_dir/$package_name"
 archive_path="$native_dir/$package_name.tar.gz"
+logo_svg="../../docs/assets/logo.svg"
 
 test -x "$release_dir/desktop" || { echo "$release_dir/desktop is invalid; expected built Tauri binary"; exit 1; }
 test -x "$release_dir/gtd-api" || { echo "$release_dir/gtd-api is invalid; expected built sidecar launcher"; exit 1; }
 test -f "$release_dir/binaries/gtd-api.jar" || { echo "$release_dir/binaries/gtd-api.jar is invalid; expected backend jar"; exit 1; }
+test -f "$logo_svg" || { echo "$logo_svg is invalid; expected logo SVG"; exit 1; }
 
 cargo build --locked --release --manifest-path ../cli/Cargo.toml
 test -x "../cli/target/release/gtd" || { echo "../cli/target/release/gtd is invalid; expected built agent CLI"; exit 1; }
@@ -22,7 +24,8 @@ cp "$release_dir/desktop" "$package_dir/gtd-on-rails"
 cp "$release_dir/gtd-api" "$package_dir/gtd-api"
 cp "$release_dir/binaries/gtd-api.jar" "$package_dir/binaries/gtd-api.jar"
 cp "../cli/target/release/gtd" "$package_dir/gtd"
-cp "src-tauri/icons/icon.png" "$package_dir/icon.png"
+sed -n 's/.*base64,\([^"]*\).*/\1/p' "$logo_svg" | base64 -d > "$package_dir/icon.png"
+test -s "$package_dir/icon.png" || { echo "$package_dir/icon.png is invalid; expected decoded logo PNG"; exit 1; }
 cp "scripts/gtd-on-rails-launcher" "$package_dir/gtd-on-rails-launcher"
 cp "scripts/install-native-linux.sh" "$package_dir/install.sh"
 printf '%s\n' "$version" > "$package_dir/VERSION"
