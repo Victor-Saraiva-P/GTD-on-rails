@@ -49,11 +49,17 @@ export type AgentProcessingFinished = {
   logPath: string;
 };
 
-export type AgentProcessingProgress = {
+export type AgentActivityKind = "status" | "reasoning" | "tool" | "response";
+
+export type AgentActivity = {
+  kind: AgentActivityKind;
+  message: string;
+};
+
+export type AgentProcessingProgress = AgentActivity & {
   runId: string;
   stuffId: string;
   provider: ProcessingAgent;
-  message: string;
 };
 
 export type TrackedAgentProcessingRun = {
@@ -71,4 +77,5 @@ export type TrackedAgentProcessingRun = {
   finishedAt: number | null;
   denied: boolean;
   response: string | null;
+  activities: AgentActivity[];
 };

@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tauri::Emitter;
 
-use crate::agent_processing_runtime::{agent_response, has_denied_action, processing_progress_message};
+use crate::agent_processing_runtime::{agent_activity, agent_response, has_denied_action, AgentActivity};
 
 const SETTINGS_FILE: &str = "agent-processing.json";
 const MODEL_CACHE_FILE: &str = "agent-processing-models.json";
@@ -87,6 +87,7 @@ struct AgentProcessingProgress {
     run_id: String,
     stuff_id: String,
     provider: String,
+    kind: String,
     message: String,
 }
 
@@ -209,13 +210,17 @@ fn build_antigravity_command(binary: PathBuf, settings: &AgentProviderSettings, 
 
 fn codex_command(settings: &AgentProviderSettings, prompt: &str) -> Result<Command, String> {
     let binary = resolve_codex_binary().ok_or_else(|| "Codex CLI is not installed or discoverable".to_string())?;
+    Ok(build_codex_command(binary, settings, prompt))
+}
+
+fn build_codex_command(binary: PathBuf, settings: &AgentProviderSettings, prompt: &str) -> Command {
     let mut command = Command::new(binary);
-    command.args(["exec", "--sandbox", "workspace-write", "--ask-for-approval", "never", "--color", "never", "--skip-git-repo-check"]);
-    command.args(["-c", "sandbox_workspace_write.network_access=true"]);
+    command.args(["exec", "--sandbox", "workspace-write", "--color", "never", "--skip-git-repo-check", "--json"]);
+    command.args(["-c", "approval_policy=\"never\"", "-c", "sandbox_workspace_write.network_access=true"]);
     if let Some(model) = &settings.model { command.arg("--model").arg(model); }
     if let Some(thinking) = &settings.thinking { command.arg("-c").arg(format!("model_reasoning_effort=\"{thinking}\"")); }
     command.arg(prompt);
-    Ok(command)
+    command
 }
 
 fn new_run_id(stuff_id: &str) -> Result<String, String> {
@@ -244,18 +249,39 @@ fn configure_processing_command(command: &mut Command, api_url: &str) {
     command.env("GTD_API_URL", api_url);
 }
 
-pub(crate) fn run_configured_agent(prompt: &str) -> Result<String, String> {
+pub(crate) fn run_configured_agent<F>(prompt: &str, mut on_activity: F) -> Result<String, String>
+where F: FnMut(AgentActivity) {
     let settings = agent_processing_settings()?;
     validate_settings(&settings)?;
     let provider = settings.processor.clone();
     let mut command = processing_command(&provider, provider_settings(&settings), prompt)?;
     configure_agent_command(&mut command);
-    let output = command.output().map_err(|error| format!("{provider} agent failed to start: {error}"))?;
-    if !output.status.success() { return Err(agent_command_error(&provider, &output.stderr)); }
-    let log = String::from_utf8_lossy(&output.stdout);
-    agent_response(&log)
-        .or_else(|| exact_json_agent_response(&log))
+    let mut child = command.spawn().map_err(|error| format!("{provider} agent failed to start: {error}"))?;
+    let stdout = child.stdout.take().ok_or_else(|| format!("{provider} agent stdout is unavailable"))?;
+    let stderr = child.stderr.take().ok_or_else(|| format!("{provider} agent stderr is unavailable"))?;
+    let stderr_task = std::thread::spawn(move || collect_agent_stderr(stderr));
+    let log = stream_agent_stdout(stdout, &mut on_activity);
+    let status = child.wait().map_err(|error| format!("{provider} agent process could not be joined: {error}"))?;
+    let stderr = stderr_task.join().unwrap_or_default();
+    if !status.success() { return Err(agent_command_error(&provider, &stderr)); }
+    agent_response(&log).or_else(|| exact_json_agent_response(&log))
         .ok_or_else(|| format!("{provider} agent returned no final response"))
+}
+
+fn stream_agent_stdout<R: Read, F: FnMut(AgentActivity)>(stream: R, on_activity: &mut F) -> String {
+    let mut log = String::new();
+    for line in BufReader::new(stream).lines().map_while(Result::ok) {
+        if let Some(activity) = agent_activity(&line) { on_activity(activity); }
+        log.push_str(&line);
+        log.push('\n');
+    }
+    log
+}
+
+fn collect_agent_stderr<R: Read>(mut stream: R) -> Vec<u8> {
+    let mut bytes = Vec::new();
+    let _ = stream.read_to_end(&mut bytes);
+    bytes
 }
 
 fn exact_json_agent_response(log: &str) -> Option<String> {
@@ -315,8 +341,8 @@ fn monitor_stream<R: Read + Send + 'static>(
     Some(std::thread::spawn(move || {
         for line in BufReader::new(stream).lines().map_while(Result::ok) {
             write_run_log_line(&log, &line);
-            if let Some(message) = processing_progress_message(&line) {
-                emit_processing_progress(&app, &run, message);
+            if let Some(activity) = agent_activity(&line) {
+                emit_processing_progress(&app, &run, &activity);
             }
         }
     }))
@@ -328,12 +354,13 @@ fn write_run_log_line(log: &Arc<Mutex<Option<File>>>, line: &str) {
     let _ = writeln!(file, "{line}");
 }
 
-fn emit_processing_progress(app: &tauri::AppHandle, run: &AgentProcessingRun, message: &str) {
+fn emit_processing_progress(app: &tauri::AppHandle, run: &AgentProcessingRun, activity: &AgentActivity) {
     let progress = AgentProcessingProgress {
         run_id: run.run_id.clone(),
         stuff_id: run.stuff_id.clone(),
         provider: run.provider.clone(),
-        message: message.to_string(),
+        kind: activity.kind.to_string(),
+        message: activity.message.clone(),
     };
     let _ = app.emit("agent-processing-progress", progress);
 }
@@ -519,9 +546,12 @@ fn file_error(path: &Path, expected: &str, error: std::io::Error) -> String {
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
+    use std::{io::Cursor, path::PathBuf};
 
-    use super::{build_antigravity_command, exact_json_agent_response, processing_prompt, AgentProviderSettings};
+    use super::{
+        build_antigravity_command, build_codex_command, collect_agent_stderr,
+        exact_json_agent_response, processing_prompt, stream_agent_stdout, AgentProviderSettings,
+    };
 
     #[test]
     fn instructs_the_agent_to_use_read_only_project_context() {
@@ -552,6 +582,26 @@ mod tests {
     fn accepts_plain_json_as_a_configured_agent_response() {
         let response = exact_json_agent_response("{\"energy\":3.5,\"timeMinutes\":40}");
         assert_eq!(response.as_deref(), Some("{\"energy\":3.5,\"timeMinutes\":40}"));
+    }
+
+    #[test]
+    fn codex_emits_json_events_without_the_removed_approval_flag() {
+        let settings = AgentProviderSettings { model: None, thinking: None };
+        let command = build_codex_command(PathBuf::from("codex"), &settings, "process stuff");
+        let arguments = command.get_args().map(|value| value.to_string_lossy().into_owned()).collect::<Vec<_>>();
+        assert!(arguments.iter().any(|value| value == "--json"));
+        assert!(arguments.iter().any(|value| value == "approval_policy=\"never\""));
+        assert!(!arguments.iter().any(|value| value == "--ask-for-approval"));
+    }
+
+    #[test]
+    fn streams_agent_activity_while_preserving_stdout() {
+        let line = serde_json::json!({"event":"step_update","step_update":{"state":"ACTIVE","step_type":"tool","tool_info":{"parameters":{"CommandLine":"gtd contexts list"}}}}).to_string();
+        let mut activities = Vec::new();
+        let log = stream_agent_stdout(Cursor::new(format!("{line}\n")), &mut |activity| activities.push(activity));
+        assert_eq!(activities[0].message, "Loading GTD contexts");
+        assert_eq!(log, format!("{line}\n"));
+        assert_eq!(collect_agent_stderr(Cursor::new(b"failure")), b"failure");
     }
 
     #[test]

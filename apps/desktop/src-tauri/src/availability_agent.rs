@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
+use tauri::Emitter;
 
 use crate::agent_processing::run_configured_agent;
+use crate::agent_processing_runtime::AgentActivity;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -10,26 +12,49 @@ pub struct CurrentAvailabilityInterpretation {
     pub rationale: String,
 }
 
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CurrentAvailabilityAgentProgress {
+    run_id: String,
+    kind: String,
+    message: String,
+}
+
 /// Interprets a natural-language availability check-in with the configured processing agent.
 ///
 /// Example: `interpret_current_availability("Tired, with 40 minutes".into()).await`.
 #[tauri::command]
 pub async fn interpret_current_availability(
+    app: tauri::AppHandle,
     description: String,
+    run_id: String,
 ) -> Result<CurrentAvailabilityInterpretation, String> {
     validate_description(&description)?;
+    validate_run_id(&run_id)?;
     tauri::async_runtime::spawn_blocking(move || {
-        interpret_current_availability_blocking(description)
+        interpret_current_availability_blocking(app, description, run_id)
     })
     .await
     .map_err(|error| format!("availability agent task failed to join: {error}"))?
 }
 
 fn interpret_current_availability_blocking(
+    app: tauri::AppHandle,
     description: String,
+    run_id: String,
 ) -> Result<CurrentAvailabilityInterpretation, String> {
-    let response = run_configured_agent(&availability_interpretation_prompt(&description))?;
+    let prompt = availability_interpretation_prompt(&description);
+    let response = run_configured_agent(&prompt, |activity| emit_progress(&app, &run_id, activity))?;
     parse_availability_interpretation(&response)
+}
+
+fn emit_progress(app: &tauri::AppHandle, run_id: &str, activity: AgentActivity) {
+    let progress = CurrentAvailabilityAgentProgress {
+        run_id: run_id.to_string(),
+        kind: activity.kind.to_string(),
+        message: activity.message,
+    };
+    let _ = app.emit("availability-agent-progress", progress);
 }
 
 fn validate_description(description: &str) -> Result<(), String> {
@@ -41,6 +66,11 @@ fn validate_description(description: &str) -> Result<(), String> {
         ));
     }
     Ok(())
+}
+
+fn validate_run_id(run_id: &str) -> Result<(), String> {
+    if !run_id.is_empty() && run_id.len() <= 100 && run_id.is_ascii() { return Ok(()); }
+    Err(format!("availability run id value '{run_id}' is invalid; expected 1..100 ASCII characters"))
 }
 
 fn availability_interpretation_prompt(description: &str) -> String {
@@ -111,7 +141,7 @@ fn normalize_rationale(rationale: &str) -> Result<String, String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{availability_interpretation_prompt, parse_availability_interpretation};
+    use super::{availability_interpretation_prompt, parse_availability_interpretation, validate_run_id};
 
     #[test]
     fn availability_prompt_forbids_tools_and_requests_exact_json() {
@@ -147,5 +177,12 @@ mod tests {
         )
         .expect_err("negative time should fail");
         assert!(error.contains("non-negative integer"));
+    }
+
+    #[test]
+    fn validates_progress_run_identifiers() {
+        assert!(validate_run_id("1791935916765-1").is_ok());
+        assert!(validate_run_id("").is_err());
+        assert!(validate_run_id("ação").is_err());
     }
 }
