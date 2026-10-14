@@ -1,4 +1,5 @@
 import type { RefObject } from "react";
+import { AgentActivityFeed } from "../agent-processing/AgentActivityFeed.tsx";
 import type { CurrentAvailabilityInterpretation } from "./currentAvailabilityAgent.ts";
 import type { CurrentAvailabilityAgentCheckIn } from "./useCurrentAvailabilityAgentCheckIn.ts";
 
@@ -82,6 +83,7 @@ export function CurrentAvailabilityAgentPanel(props: CurrentAvailabilityAgentPan
       >
         {interpreting ? "Interpreting..." : "Interpret my situation"}
       </button>
+      <AgentActivityFeed activities={props.checkIn.activities} active={interpreting} label="Interpretation activity" />
       {statusCopy(props.checkIn)}
       <button
         className="availability-agent-panel__apply"

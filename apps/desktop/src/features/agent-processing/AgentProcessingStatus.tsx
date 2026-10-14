@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { AgentActivityFeed } from "./AgentActivityFeed";
 import { useAgentProcessing } from "./AgentProcessingProvider";
 import type { TrackedAgentProcessingRun } from "./types";
 
@@ -57,6 +58,7 @@ export function AgentProcessingStuffStatus({ stuffId }: Readonly<{ stuffId: stri
         <span className="agent-run__elapsed">{elapsedLabel(run, now)}</span>
       </div>
       <div className="agent-run__meta">{runConfiguration(run)}</div>
+      <AgentActivityFeed activities={run.activities} active={active} />
       {run.response ? <div className="agent-run__response">{run.response}</div> : null}
       {run.logPath ? <div className="agent-run__log" title={run.logPath}>log: {run.logPath}</div> : null}
     </div>

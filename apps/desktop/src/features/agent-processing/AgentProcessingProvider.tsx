@@ -1,8 +1,9 @@
 import { listen } from "@tauri-apps/api/event";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type Dispatch, type MutableRefObject, type PropsWithChildren, type SetStateAction } from "react";
 import { isTauriRuntime } from "../../lib/tauriRuntime";
+import { appendAgentActivity } from "./activity";
 import { startAgentProcessing } from "./native";
-import type { AgentProcessingFinished, AgentProcessingProgress, AgentProcessingRun, TrackedAgentProcessingRun } from "./types";
+import type { AgentActivity, AgentProcessingFinished, AgentProcessingProgress, AgentProcessingRun, TrackedAgentProcessingRun } from "./types";
 
 type AgentProcessingContextValue = {
   runs: TrackedAgentProcessingRun[];
@@ -34,7 +35,8 @@ function startingRun(stuffId: string, stuffTitle: string): TrackedAgentProcessin
     startedAt: Date.now(),
     finishedAt: null,
     denied: false,
-    response: null
+    response: null,
+    activities: [{ kind: "status", message: "Starting configured agent" }]
   };
 }
 
@@ -43,7 +45,8 @@ function runningRun(starting: TrackedAgentProcessingRun, run: AgentProcessingRun
     ...starting,
     ...run,
     state: "running",
-    activity: "Agent started; waiting for GTD activity"
+    activity: "Agent started; waiting for GTD activity",
+    activities: appendAgentActivity(starting.activities, { kind: "status", message: "Agent process started" })
   };
 }
 
@@ -102,7 +105,7 @@ function useAgentEvents(
     const progress = listen<AgentProcessingProgress>("agent-processing-progress", event => {
       const current = runsRef.current[event.payload.stuffId];
       if (!current || current.runId !== event.payload.runId) return;
-      replaceRun(current.stuffId, { ...current, activity: event.payload.message });
+      replaceRun(current.stuffId, withActivity(current, event.payload));
     });
     const finished = listen<AgentProcessingFinished>("agent-processing-finished", event => {
       const current = runsRef.current[event.payload.stuffId];
@@ -119,10 +122,23 @@ function useAgentEvents(
 
 function finishRun(current: TrackedAgentProcessingRun, result: AgentProcessingFinished): TrackedAgentProcessingRun {
   const completed = { ...current, response: result.response, finishedAt: Date.now() };
-  if (result.processed) return { ...completed, state: "processed", activity: "Stuff processed successfully" };
-  if (result.denied) return { ...completed, state: "failed", denied: true, activity: "Agent permission was denied" };
-  if (!result.success) return { ...completed, state: "failed", activity: "Agent process failed; inspect the run log" };
-  return { ...completed, state: "finished", activity: "Agent finished without processing the stuff" };
+  if (result.processed) return finishWithActivity(completed, "processed", "Stuff processed successfully");
+  if (result.denied) return { ...finishWithActivity(completed, "failed", "Agent permission was denied"), denied: true };
+  if (!result.success) return finishWithActivity(completed, "failed", "Agent process failed; inspect the run log");
+  return finishWithActivity(completed, "finished", "Agent finished without processing the stuff");
+}
+
+function withActivity(run: TrackedAgentProcessingRun, activity: AgentActivity): TrackedAgentProcessingRun {
+  return { ...run, activity: activity.message, activities: appendAgentActivity(run.activities, activity) };
+}
+
+function finishWithActivity(
+  run: TrackedAgentProcessingRun,
+  state: TrackedAgentProcessingRun["state"],
+  message: string
+): TrackedAgentProcessingRun {
+  const activities = appendAgentActivity(run.activities, { kind: state === "failed" ? "status" : "response", message });
+  return { ...run, state, activity: message, activities };
 }
 
 /** Accesses global headless-agent run state and actions.

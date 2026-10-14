@@ -70,6 +70,7 @@ test("continues agent interpretation while navigating away from Next Actions", a
   await panel.getByPlaceholder(checkInPlaceholder).fill("Tired after lunch, with about 40 minutes available.");
   await panel.getByRole("button", { name: "Interpret my situation" }).click();
   await expect(panel).toContainText("Agent is interpreting your current energy and usable time");
+  await expect(panel.getByRole("region", { name: "Interpretation activity" })).toContainText("Starting configured agent");
 
   await page.keyboard.press(" ");
   await page.keyboard.press("p");
