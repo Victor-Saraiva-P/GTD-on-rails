@@ -1,6 +1,8 @@
 package com.gtdonrails.api.sync;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
@@ -82,12 +84,27 @@ public class FileConflictResolutionService {
         String mergedContent
     ) {
         SyncServerGateway.SyncRemoteObject remote = currentRemote(conflict);
-        SyncFileOutboxEntry entry = activeEntry(conflict);
         SyncConflictSnapshotStore.ConflictFiles files = snapshots.read(
             conflict.objectType(), conflict.objectId(), conflict.remoteRevision()
         );
+        Optional<SyncFileOutboxEntry> active = outbox.activeFor(conflict.objectType(), conflict.objectId());
+        if (active.isEmpty()) {
+            resolveOrphanConflict(conflict, remote, files);
+            finishConflict(conflict);
+            return;
+        }
+        SyncFileOutboxEntry entry = active.orElseThrow();
         applyChoice(conflict, entry, remote, files, choice, mergedContent);
         finishConflict(conflict);
+    }
+
+    public void reconcileCompletedMutation(SyncFileOutboxEntry entry, long remoteRevision, byte[] pushedContent) {
+        List<LocalSyncStateStore.SyncConflictRecord> conflicts = stateStore.pendingConflicts();
+        for (LocalSyncStateStore.SyncConflictRecord conflict : conflicts) {
+            if (!matchesCompletedMutation(conflict, entry, remoteRevision)) continue;
+            if (!remoteStillMatchesPushedContent(entry, remoteRevision, pushedContent)) continue;
+            finishConflict(conflict);
+        }
     }
 
     private Resolution resolveAgainstCurrent(
@@ -245,11 +262,19 @@ public class FileConflictResolutionService {
         return remote;
     }
 
-    private SyncFileOutboxEntry activeEntry(LocalSyncStateStore.SyncConflictRecord conflict) {
-        return outbox.activeFor(conflict.objectType(), conflict.objectId())
-            .orElseThrow(() -> new IllegalStateException(
-                "sync conflict '" + conflict.id() + "' has no local file mutation to resolve"
-            ));
+    private void resolveOrphanConflict(
+        LocalSyncStateStore.SyncConflictRecord conflict,
+        SyncServerGateway.SyncRemoteObject remote,
+        SyncConflictSnapshotStore.ConflictFiles files
+    ) {
+        byte[] remoteContent = readRemoteContent(conflict, remote);
+        boolean sameAsRemote = Arrays.equals(files.local(), remoteContent)
+            && Arrays.equals(files.remote(), remoteContent);
+        if (sameAsRemote) return;
+        throw new IllegalStateException(
+            "sync conflict '" + conflict.id()
+                + "' has no active local mutation and cannot be safely resolved; expected local and remote snapshots to match current remote content"
+        );
     }
 
     private void requireRevision(SyncServerGateway.SyncRemoteObject remote, long expected) {
@@ -264,6 +289,18 @@ public class FileConflictResolutionService {
         return DELETE.equals(entry.operation()) ? new byte[0] : localFiles.read(entry.relativePath());
     }
 
+    private byte[] readRemoteContent(
+        LocalSyncStateStore.SyncConflictRecord conflict,
+        SyncServerGateway.SyncRemoteObject remote
+    ) {
+        if (remote.deleted()) return new byte[0];
+        SyncFileServerGateway.RemoteFileContent remoteFile = filesGateway.read(
+            conflict.objectType(), conflict.objectId()
+        );
+        requireRevision(remoteFile.revision(), remote.revision(), conflict.id());
+        return remoteFile.content();
+    }
+
     private Optional<byte[]> baseContent(SyncFileOutboxEntry entry) {
         long revision = stateStore.revision(entry.objectType(), entry.objectId());
         return bases.read(entry.objectType(), entry.objectId(), revision)
@@ -272,6 +309,40 @@ public class FileConflictResolutionService {
 
     private long remoteCursor() {
         return objectsGateway.state().cursor();
+    }
+
+    private boolean matchesCompletedMutation(
+        LocalSyncStateStore.SyncConflictRecord conflict,
+        SyncFileOutboxEntry entry,
+        long remoteRevision
+    ) {
+        boolean sameObject = conflict.objectType().equals(entry.objectType())
+            && conflict.objectId().equals(entry.objectId());
+        if (!sameObject) return false;
+        boolean sameOperation = entry.operationId().toString().equals(conflict.localOperationId());
+        if (!sameOperation) return false;
+        return conflict.remoteRevision() <= remoteRevision;
+    }
+
+    private boolean remoteStillMatchesPushedContent(
+        SyncFileOutboxEntry entry,
+        long remoteRevision,
+        byte[] pushedContent
+    ) {
+        SyncServerGateway.SyncRemoteObject remote = objectsGateway.object(entry.objectType(), entry.objectId());
+        if (remote.revision() != remoteRevision) return false;
+        if (remote.deleted()) return pushedContent.length == 0;
+        SyncFileServerGateway.RemoteFileContent remoteFile = filesGateway.read(entry.objectType(), entry.objectId());
+        if (remoteFile.revision() != remoteRevision) return false;
+        return Arrays.equals(remoteFile.content(), pushedContent);
+    }
+
+    private void requireRevision(long actual, long expected, long conflictId) {
+        if (actual == expected) return;
+        throw new IllegalStateException(
+            "sync conflict '" + conflictId + "' remote file revision '" + actual
+                + "' is invalid; expected revision '" + expected + "'"
+        );
     }
 
     private void supersede(SyncFileOutboxEntry entry, String reason) {
