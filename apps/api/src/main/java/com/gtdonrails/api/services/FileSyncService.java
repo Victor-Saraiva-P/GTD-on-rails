@@ -176,6 +176,7 @@ public class FileSyncService {
             SyncServerGateway.SyncPushResult result = push(entry, content);
             rememberSuccessfulPush(entry, result.revision(), content);
             outbox.markCompleted(entry.id());
+            conflictResolver.reconcileCompletedMutation(entry, result.revision(), content);
             return true;
         } catch (SyncServerConflictException conflict) {
             return resolveConflict(entry, conflict);

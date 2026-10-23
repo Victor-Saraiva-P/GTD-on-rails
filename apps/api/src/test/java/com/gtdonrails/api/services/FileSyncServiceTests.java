@@ -84,6 +84,7 @@ class FileSyncServiceTests {
 
         verify(outbox).markProcessing(entry.id());
         verify(outbox).markCompleted(entry.id());
+        verify(conflictResolver).reconcileCompletedMutation(eq(entry), eq(5L), any(byte[].class));
         verify(stateStore).updateRevision(entry.objectType(), entry.objectId(), 5L);
         verify(baseStore).save(eq(entry.objectType()), eq(entry.objectId()), eq(5L), any(byte[].class));
         assertEquals(FileSyncState.SYNCED, service.status().state());

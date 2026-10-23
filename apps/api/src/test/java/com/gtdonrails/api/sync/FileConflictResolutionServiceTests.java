@@ -6,11 +6,13 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -198,6 +200,84 @@ class FileConflictResolutionServiceTests {
         );
     }
 
+    @Test
+    void orphanConflictWithMatchingSnapshotsCanBeResolvedWithoutActiveOutboxEntry() {
+        LocalSyncStateStore.SyncConflictRecord conflict = conflict("body_document");
+        when(objectsGateway.object("body_document", "item-1")).thenReturn(remote(false));
+        when(outbox.activeFor("body_document", "item-1")).thenReturn(Optional.empty());
+        when(snapshots.read("body_document", "item-1", 5L)).thenReturn(
+            new SyncConflictSnapshotStore.ConflictFiles(
+                Optional.of(bytes("base")), bytes("remote"), bytes("remote")
+            )
+        );
+        when(filesGateway.read("body_document", "item-1")).thenReturn(
+            new SyncFileServerGateway.RemoteFileContent(
+                bytes("remote"), "items/item-1/body.md", "sha", "text/markdown", 5L
+            )
+        );
+
+        service().resolvePendingConflict(conflict, SyncConflictChoice.REMOTE, null);
+
+        verify(stateStore).markConflictResolved(7L);
+        verify(snapshots).delete("body_document", "item-1", 5L);
+    }
+
+    @Test
+    void orphanConflictWithDivergentSnapshotsStillRequiresManualIntervention() {
+        LocalSyncStateStore.SyncConflictRecord conflict = conflict("body_document");
+        when(objectsGateway.object("body_document", "item-1")).thenReturn(remote(false));
+        when(outbox.activeFor("body_document", "item-1")).thenReturn(Optional.empty());
+        when(snapshots.read("body_document", "item-1", 5L)).thenReturn(
+            new SyncConflictSnapshotStore.ConflictFiles(
+                Optional.of(bytes("base")), bytes("local"), bytes("remote")
+            )
+        );
+        when(filesGateway.read("body_document", "item-1")).thenReturn(
+            new SyncFileServerGateway.RemoteFileContent(
+                bytes("remote"), "items/item-1/body.md", "sha", "text/markdown", 5L
+            )
+        );
+
+        assertThrows(
+            IllegalStateException.class,
+            () -> service().resolvePendingConflict(conflict, SyncConflictChoice.LOCAL, null)
+        );
+        verify(stateStore, never()).markConflictResolved(7L);
+    }
+
+    @Test
+    void orphanConflictResolutionFailsWhenRemoteRevisionHasDrifted() {
+        LocalSyncStateStore.SyncConflictRecord conflict = conflict("body_document");
+        when(objectsGateway.object("body_document", "item-1")).thenReturn(new SyncServerGateway.SyncRemoteObject(
+            "body_document", "item-1", 6L, "items/item-1/body.md", "sha", 10L, "text/markdown", false
+        ));
+
+        assertThrows(
+            IllegalStateException.class,
+            () -> service().resolvePendingConflict(conflict, SyncConflictChoice.REMOTE, null)
+        );
+        verify(stateStore, never()).markConflictResolved(7L);
+    }
+
+    @Test
+    void completedMutationReconcilesMatchingPendingConflictFromConcurrentPullRace() {
+        SyncFileOutboxEntry entry = entry("UPSERT");
+        when(stateStore.pendingConflicts()).thenReturn(
+            List.of(conflict("body_document", "00000000-0000-0000-0000-000000000001"))
+        );
+        when(objectsGateway.object("body_document", "item-1")).thenReturn(remote(false));
+        when(filesGateway.read("body_document", "item-1")).thenReturn(
+            new SyncFileServerGateway.RemoteFileContent(
+                bytes("remote"), "items/item-1/body.md", "sha", "text/markdown", 5L
+            )
+        );
+
+        service().reconcileCompletedMutation(entry, 5L, bytes("remote"));
+
+        verify(stateStore).markConflictResolved(7L);
+        verify(snapshots).delete("body_document", "item-1", 5L);
+    }
+
     private void preparePushConflict(
         SyncFileOutboxEntry entry,
         SyncFileServerGateway.RemoteFileContent remoteFile
@@ -238,8 +318,12 @@ class FileConflictResolutionServiceTests {
     }
 
     private LocalSyncStateStore.SyncConflictRecord conflict(String type) {
+        return conflict(type, "operation-1");
+    }
+
+    private LocalSyncStateStore.SyncConflictRecord conflict(String type, String operationId) {
         return new LocalSyncStateStore.SyncConflictRecord(
-            7L, type, "item-1", "operation-1", 5L, 9L, Instant.EPOCH
+            7L, type, "item-1", operationId, 5L, 9L, Instant.EPOCH
         );
     }
 
