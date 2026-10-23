@@ -8,7 +8,7 @@ desktop_dir="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
 desktop_file="$desktop_dir/gtd-on-rails.desktop"
 config_dir="${XDG_CONFIG_HOME:-$HOME/.config}"
 env_file="$config_dir/gtd-on-rails.env"
-production_base_url="${GTD_SYNC_SERVER_BASE_URL:-http://pc-omarchy.tail010544.ts.net:9475}"
+production_base_url="${GTD_SYNC_SERVER_BASE_URL:-http://solanum.tail010544.ts.net:9475}"
 
 read_env_value() {
   local key="$1"

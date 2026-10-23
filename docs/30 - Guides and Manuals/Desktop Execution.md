@@ -110,6 +110,18 @@ make gtd-install v3.0.1
 
 The installer verifies SHA-256 checksums, extracts the package, and installs the desktop binary, API sidecar jar, controlled `gtd` agent CLI, launcher script, desktop icon, and `.desktop` entry. It also configures scoped headless access for supported agent harnesses: Antigravity receives only `command(gtd)` and `unsandboxed(gtd)` plus the global `gtd-processing` skill, while Codex receives a dedicated `gtd` prefix rule plus the same global skill. Existing unrelated agent settings are left untouched.
 
+The production desktop installer defaults `GTD_SYNC_SERVER_BASE_URL` to `http://solanum.tail010544.ts.net:9475`. Keep using `GTD_SYNC_SERVER_BASE_URL` and `GTD_SYNC_SERVER_AUTH_TOKEN` environment overrides when you need a different endpoint or token.
+
+### Migrating existing desktop clients after server restore
+
+When the production sync server is restored and rotates `datasetEpoch`, existing clients must rebootstrap before sync resumes.
+
+1. Pause synchronization from the desktop UI.
+2. Update `GTD_SYNC_SERVER_BASE_URL` and `GTD_SYNC_SERVER_AUTH_TOKEN` in `~/.config/gtd-on-rails.env` (or reinstall with those environment variables set).
+3. Resume the app and run the existing rebootstrap action from the synchronization recovery panel.
+
+Rebootstrap is a deliberate manual action and is never triggered automatically by the installer. The rebootstrap flow creates a local recovery backup snapshot before replacing synchronized local state.
+
 The rolling `main-latest` publication also includes the standalone `gtd` CLI. Install it without reinstalling the desktop with:
 
 ```sh
