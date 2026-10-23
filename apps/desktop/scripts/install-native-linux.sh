@@ -8,7 +8,6 @@ desktop_dir="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
 desktop_file="$desktop_dir/gtd-on-rails.desktop"
 config_dir="${XDG_CONFIG_HOME:-$HOME/.config}"
 env_file="$config_dir/gtd-on-rails.env"
-production_base_url="${GTD_SYNC_SERVER_BASE_URL:-http://solanum.tail010544.ts.net:9475}"
 
 read_env_value() {
   local key="$1"
@@ -34,6 +33,9 @@ set_env_value() {
   fi
   mv "$tmp_file" "$env_file"
 }
+
+existing_base_url="$(read_env_value GTD_SYNC_SERVER_BASE_URL "$env_file" || true)"
+production_base_url="${GTD_SYNC_SERVER_BASE_URL:-${existing_base_url:-http://solanum.tail010544.ts.net:9475}}"
 
 command -v java >/dev/null 2>&1 || { echo "java is invalid; expected Java 21 installed"; exit 127; }
 

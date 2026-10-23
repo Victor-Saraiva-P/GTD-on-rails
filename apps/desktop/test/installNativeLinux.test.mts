@@ -31,7 +31,13 @@ function createInstallerFixture(tempRoot: string): string {
   return fixture;
 }
 
-function runInstaller(baseUrl?: string): string {
+type InstallerRunOptions = {
+  baseUrl?: string;
+  savedEnvLines?: string[];
+  tokenFromEnv?: string | null;
+};
+
+function runInstaller(options: InstallerRunOptions = {}): string {
   const tempRoot = mkdtempSync(resolve(os.tmpdir(), "desktop-installer-test-"));
   try {
     const fixture = createInstallerFixture(tempRoot);
@@ -41,6 +47,9 @@ function runInstaller(baseUrl?: string): string {
     mkdirSync(home, { recursive: true });
     mkdirSync(xdgDataHome, { recursive: true });
     mkdirSync(xdgConfigHome, { recursive: true });
+    if (options.savedEnvLines) {
+      writeFileSync(resolve(xdgConfigHome, "gtd-on-rails.env"), `${options.savedEnvLines.join("\n")}\n`, "utf8");
+    }
     const fakeBin = resolve(tempRoot, "bin");
     mkdirSync(fakeBin, { recursive: true });
     makeExecutable(resolve(fakeBin, "java"), "#!/usr/bin/env bash\nexit 0\n");
@@ -50,10 +59,11 @@ function runInstaller(baseUrl?: string): string {
       HOME: home,
       XDG_DATA_HOME: xdgDataHome,
       XDG_CONFIG_HOME: xdgConfigHome,
-      GTD_SYNC_SERVER_AUTH_TOKEN: "test-token",
       PATH: `${fakeBin}:${process.env.PATH ?? ""}`
     };
-    if (baseUrl) env.GTD_SYNC_SERVER_BASE_URL = baseUrl;
+    const tokenFromEnv = options.tokenFromEnv === undefined ? "test-token" : options.tokenFromEnv;
+    if (tokenFromEnv !== null) env.GTD_SYNC_SERVER_AUTH_TOKEN = tokenFromEnv;
+    if (options.baseUrl) env.GTD_SYNC_SERVER_BASE_URL = options.baseUrl;
 
     const result = spawnSync("bash", [resolve(fixture, "install.sh")], { cwd: fixture, env, encoding: "utf8" });
     assert.equal(result.status, 0, result.stderr || result.stdout);
@@ -69,8 +79,28 @@ test("desktop native installer defaults to the solanum sync server endpoint", ()
   assert.match(environmentFile, /^GTD_SYNC_SERVER_AUTH_TOKEN=test-token$/m);
 });
 
-test("desktop native installer keeps GTD_SYNC_SERVER_BASE_URL override precedence", () => {
-  const environmentFile = runInstaller("http://example.tailnet:9475");
-  assert.match(environmentFile, /^GTD_SYNC_SERVER_BASE_URL=http:\/\/example\.tailnet:9475$/m);
+test("desktop native installer keeps saved URL and token on reinstall", () => {
+  const environmentFile = runInstaller({
+    savedEnvLines: [
+      "GTD_SYNC_SERVER_BASE_URL=http://saved.tailnet:9475",
+      "GTD_SYNC_SERVER_AUTH_TOKEN=saved-token"
+    ],
+    tokenFromEnv: null
+  });
+  assert.match(environmentFile, /^GTD_SYNC_SERVER_BASE_URL=http:\/\/saved\.tailnet:9475$/m);
+  assert.match(environmentFile, /^GTD_SYNC_SERVER_AUTH_TOKEN=saved-token$/m);
+});
+
+test("desktop native installer keeps explicit URL override precedence over saved URL", () => {
+  const environmentFile = runInstaller({
+    baseUrl: "http://override.tailnet:9475",
+    savedEnvLines: [
+      "GTD_SYNC_SERVER_BASE_URL=http://saved.tailnet:9475",
+      "GTD_SYNC_SERVER_AUTH_TOKEN=saved-token"
+    ],
+    tokenFromEnv: null
+  });
+  assert.match(environmentFile, /^GTD_SYNC_SERVER_BASE_URL=http:\/\/override\.tailnet:9475$/m);
+  assert.match(environmentFile, /^GTD_SYNC_SERVER_AUTH_TOKEN=saved-token$/m);
   assert.doesNotMatch(environmentFile, /pc-omarchy/);
 });
