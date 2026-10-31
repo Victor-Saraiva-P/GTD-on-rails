@@ -13,11 +13,39 @@ use crate::models::{
 ///
 /// Example: `run(client, command)`.
 pub fn run(client: ApiClient, command: Command) -> Result<(), CliError> {
+    if std::env::var("GTD_RECOMMENDATION_ONLY").as_deref() == Ok("1") && !is_read_only(&command) {
+        return Err(CliError::ReadOnlyRecommendation);
+    }
     match command {
         Command::Inbox(args) => run_inbox(&client, args.command),
         Command::Contexts(args) => run_contexts(&client, args.command),
         Command::Stuff(args) => run_stuff(&client, args.command),
         Command::Agent(_) => unreachable!("agent setup commands do not require the GTD API"),
+    }
+}
+
+fn is_read_only(command: &Command) -> bool {
+    match command {
+        Command::Inbox(_) | Command::Contexts(_) => true,
+        Command::Stuff(args) => matches!(args.command, StuffCommand::Show { .. } | StuffCommand::Export { .. } | StuffCommand::ProjectContext { .. }),
+        Command::Agent(_) => false,
+    }
+}
+
+#[cfg(test)]
+mod recommendation_tests {
+    use super::is_read_only;
+    use crate::args::{Command, InboxArgs, InboxCommand, StuffArgs, StuffCommand, ProcessArgs, ProcessCommand};
+
+    #[test]
+    fn recommendation_mode_allows_inspection_but_blocks_all_mutation_commands() {
+        let id = "018f13b2-a7f3-7c44-8f1a-9f31f65a7fd2".to_string();
+        assert!(is_read_only(&Command::Inbox(InboxArgs { command: InboxCommand::List })));
+        assert!(is_read_only(&Command::Stuff(StuffArgs { command: StuffCommand::Show { id: id.clone() } })));
+        assert!(!is_read_only(&Command::Stuff(StuffArgs { command: StuffCommand::Title { id: id.clone(), title: "Changed".into() } })));
+        assert!(!is_read_only(&Command::Stuff(StuffArgs { command: StuffCommand::Process(ProcessArgs {
+            command: ProcessCommand::SomedayMaybe { id }
+        }) })));
     }
 }
 

@@ -16,7 +16,7 @@ const SETTINGS_FILE: &str = "agent-processing.json";
 const MODEL_CACHE_FILE: &str = "agent-processing-models.json";
 const DEVELOPMENT_API_URL: &str = "http://127.0.0.1:8080";
 const DEFAULT_THINKING: &[&str] = &["low", "medium", "high", "xhigh", "max"];
-const GTD_PROCESSING_SKILL: &str = include_str!("../../../../.agents/skills/gtd-processing/SKILL.md");
+use crate::agent_recommendations::{recommendation_prompt, parse_recommendation, save_recommendation, AgentRecommendation};
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -61,6 +61,7 @@ pub struct AgentProcessingOptions {
 pub struct AgentProcessingRun {
     pub run_id: String,
     pub stuff_id: String,
+    pub stuff_title: String,
     pub provider: String,
     pub model: Option<String>,
     pub thinking: Option<String>,
@@ -78,6 +79,7 @@ struct AgentProcessingFinished {
     processed: bool,
     denied: bool,
     response: Option<String>,
+    recommendation: Option<AgentRecommendation>,
     log_path: String,
 }
 
@@ -161,12 +163,12 @@ pub fn start_agent_processing(app: tauri::AppHandle, stuff_id: String, stuff_tit
     let provider_settings = provider_settings(&settings).clone();
     let run_id = new_run_id(&stuff_id)?;
     let log_path = prepare_run_log(&run_id)?;
-    let prompt = processing_prompt(&settings.processor, &stuff_id, &stuff_title);
+    let prompt = recommendation_prompt(&stuff_id, &stuff_title);
     let api_url = processing_api_url(&app)?;
     let mut command = processing_command(&settings.processor, &provider_settings, &prompt)?;
     configure_processing_command(&mut command, &api_url);
     let child = command.spawn().map_err(|error| format!("{} processing failed to start: {error}", settings.processor))?;
-    let run = processing_run(&settings.processor, &provider_settings, &stuff_id, &run_id, &log_path, child.id());
+    let run = processing_run(&settings.processor, &provider_settings, &stuff_id, &stuff_title, &run_id, &log_path, child.id());
     monitor_processing_run(app, child, run.clone());
     Ok(run)
 }
@@ -180,13 +182,6 @@ fn validate_stuff_identity(stuff_id: &str, stuff_title: &str) -> Result<(), Stri
 
 fn provider_settings(settings: &AgentProcessingSettings) -> &AgentProviderSettings {
     if settings.processor == "codex" { &settings.codex } else { &settings.antigravity }
-}
-
-fn processing_prompt(_provider: &str, stuff_id: &str, stuff_title: &str) -> String {
-    let task = format!(
-        "Process the inbox stuff with id {stuff_id} (\"{stuff_title}\"). Inspect the selected stuff and its read-only project context only as the skill directs. If clarification is required, ask the minimum clarification question and stop. Otherwise process the selected stuff into the appropriate GTD destination."
-    );
-    format!("Follow this GTD processing skill exactly:\n\n{GTD_PROCESSING_SKILL}\n\nTask:\n{task}")
 }
 
 fn processing_command(provider: &str, settings: &AgentProviderSettings, prompt: &str) -> Result<Command, String> {
@@ -247,6 +242,7 @@ fn configure_agent_command(command: &mut Command) {
 fn configure_processing_command(command: &mut Command, api_url: &str) {
     configure_agent_command(command);
     command.env("GTD_API_URL", api_url);
+    command.env("GTD_RECOMMENDATION_ONLY", "1");
 }
 
 pub(crate) fn run_configured_agent<F>(prompt: &str, mut on_activity: F) -> Result<String, String>
@@ -311,8 +307,8 @@ fn processing_path() -> Option<OsString> {
     std::env::join_paths(entries).ok()
 }
 
-fn processing_run(provider: &str, settings: &AgentProviderSettings, stuff_id: &str, run_id: &str, log_path: &Path, process_id: u32) -> AgentProcessingRun {
-    AgentProcessingRun { run_id: run_id.to_string(), stuff_id: stuff_id.to_string(), provider: provider.to_string(), model: settings.model.clone(), thinking: settings.thinking.clone(), process_id, log_path: log_path.display().to_string() }
+fn processing_run(provider: &str, settings: &AgentProviderSettings, stuff_id: &str, stuff_title: &str, run_id: &str, log_path: &Path, process_id: u32) -> AgentProcessingRun {
+    AgentProcessingRun { run_id: run_id.to_string(), stuff_id: stuff_id.to_string(), stuff_title: stuff_title.to_string(), provider: provider.to_string(), model: settings.model.clone(), thinking: settings.thinking.clone(), process_id, log_path: log_path.display().to_string() }
 }
 
 fn monitor_processing_run(app: tauri::AppHandle, mut child: std::process::Child, run: AgentProcessingRun) {
@@ -368,16 +364,20 @@ fn emit_processing_progress(app: &tauri::AppHandle, run: &AgentProcessingRun, ac
 fn emit_processing_finished(app: &tauri::AppHandle, run: AgentProcessingRun, process_success: bool) {
     let log = fs::read_to_string(&run.log_path).unwrap_or_default();
     let denied = has_denied_action(&log);
-    let processed = log.contains(&format!("processed stuff {} as ", run.stuff_id));
     let response = agent_response(&log);
+    let recommendation = if process_success && !denied {
+        response.as_ref().and_then(|message| parse_recommendation(message, &run.stuff_id, &run.stuff_title).ok())
+    } else { None };
+    let saved = recommendation.as_ref().is_some_and(|value| save_recommendation(value.clone()).is_ok());
     let finished = AgentProcessingFinished {
         run_id: run.run_id,
         stuff_id: run.stuff_id,
         provider: run.provider,
-        success: process_success && !denied,
-        processed,
+        success: process_success && !denied && saved,
+        processed: false,
         denied,
         response,
+        recommendation: if saved { recommendation } else { None },
         log_path: run.log_path,
     };
     let _ = app.emit("agent-processing-finished", finished);
@@ -550,20 +550,14 @@ mod tests {
 
     use super::{
         build_antigravity_command, build_codex_command, collect_agent_stderr,
-        exact_json_agent_response, processing_prompt, stream_agent_stdout, AgentProviderSettings,
+        exact_json_agent_response, stream_agent_stdout, AgentProviderSettings,
     };
 
     #[test]
     fn instructs_the_agent_to_use_read_only_project_context() {
-        let prompt = processing_prompt(
-            "codex",
-            "018f13b2-a7f3-7c44-8f1a-9f31f65a7fd2",
-            "Draft release checklist",
-        );
-
-        assert!(prompt.contains("--- PROJECT CONTEXT (READ-ONLY) ---"));
-        assert!(prompt.contains("gtd stuff project-context <id> --output <directory>"));
-        assert!(prompt.contains("Never mutate the project context"));
+        let prompt = crate::agent_recommendations::recommendation_prompt("018f13b2-a7f3-7c44-8f1a-9f31f65a7fd2", "Draft release checklist");
+        assert!(prompt.contains("NEVER call gtd stuff process"));
+        assert!(prompt.contains("gtd stuff project-context"));
     }
 
     #[test]
@@ -605,14 +599,9 @@ mod tests {
     }
 
     #[test]
-    fn keeps_the_selected_stuff_as_the_only_mutation_target() {
-        let prompt = processing_prompt(
-            "antigravity",
-            "018f13b2-a7f3-7c44-8f1a-9f31f65a7fd2",
-            "Draft release checklist",
-        );
-
-        assert!(prompt.contains("Mutate only the selected stuff"));
-        assert!(prompt.contains("If no project context block is present, continue the normal workflow"));
+    fn requires_read_only_agent_processing() {
+        let prompt = crate::agent_recommendations::recommendation_prompt("018f13b2-a7f3-7c44-8f1a-9f31f65a7fd2", "Draft release checklist");
+        assert!(prompt.contains("NEVER call gtd stuff process"));
+        assert!(prompt.contains("gtd stuff project-context"));
     }
 }

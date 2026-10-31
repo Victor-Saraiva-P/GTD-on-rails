@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { isTauriRuntime } from "../../lib/tauriRuntime";
-import type { AgentProcessingOptions, AgentProcessingRun, AgentProcessingSettings } from "./types";
+import type { AgentProcessingOptions, AgentProcessingRun, AgentProcessingSettings, AgentRecommendation } from "./types";
 
 const browserSettings: AgentProcessingSettings = {
   processor: "antigravity",
@@ -38,6 +38,22 @@ export async function loadAgentProcessingOptions(refresh = false): Promise<Agent
 export async function saveAgentProcessingSettings(settings: AgentProcessingSettings): Promise<void> {
   if (!isTauriRuntime()) return;
   await invoke("save_agent_processing_settings", { settings });
+}
+
+/** Loads locally persisted, unapproved agent proposals after a desktop restart.
+ * @example await listAgentRecommendations()
+ */
+export async function listAgentRecommendations(): Promise<AgentRecommendation[]> {
+  if (!isTauriRuntime()) return [];
+  return invoke<AgentRecommendation[]>("list_agent_recommendations");
+}
+
+/** Dismisses a saved proposal after successful confirmation or explicit dismissal.
+ * @example await removeAgentRecommendation(stuffId)
+ */
+export async function removeAgentRecommendation(stuffId: string): Promise<void> {
+  if (!isTauriRuntime()) return;
+  await invoke("remove_agent_recommendation", { stuffId });
 }
 
 /** Starts a headless processing run for one inbox stuff item using the saved agent settings.

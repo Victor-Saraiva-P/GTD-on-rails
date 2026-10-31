@@ -1,0 +1,32 @@
+/* Production inline AI recommendations share the Inbox terminal layout and accent. */
+.agent-review__row { list-style: none; margin: 0 12px 12px 28px; min-width: 0; }
+.agent-review { padding: 6px 10px; border-left: 2px solid var(--list-accent); background: rgba(var(--list-accent-rgb),.07); border-radius: 0 3px 3px 0; font-family: var(--font-mono); font-size: .73rem; color: #c8c1bc; }
+.agent-review:focus { outline: 1px solid rgba(var(--list-accent-rgb), .65); outline-offset: 2px; }
+.agent-review__summary { display: flex; align-items: center; gap: 8px; color: #d3a57d; line-height: 1.6; }
+.agent-review__summary span:nth-child(2) { flex: 1; }
+.agent-review__indicator { color: var(--list-accent); }
+.agent-review button { cursor: pointer; background: transparent; border: 0; color: #d7d2ce; font: inherit; text-align: left; padding: 5px 7px; border-radius: 2px; }
+.agent-review button:hover,.agent-review button:focus-visible { background: rgba(var(--list-accent-rgb), .17); outline: none; }
+.agent-review kbd { color: var(--list-accent); font: inherit; padding-right: 9px; }
+.agent-review__content { display: grid; gap: 12px; padding: 9px 2px 4px; }
+.agent-review__content>p { margin: 0; line-height: 1.65; color: #ada39c; }
+.agent-review__options { display: grid; gap: 2px; }
+.agent-review__option { width: 100%; display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 8px; border-left: 2px solid transparent!important; }
+.agent-review__option--selected { border-left-color: var(--list-accent)!important; background: rgba(var(--list-accent-rgb), .14)!important; }
+.agent-review__option span { display: grid; gap: 3px; }
+.agent-review__option strong { font-weight: 600; }
+.agent-review__option small { color: #948981; font-size: .67rem; line-height: 1.5; }
+.agent-review__clarification { display: grid; gap: 7px; padding: 11px; border-left: 2px solid #ad845d; background: rgba(var(--list-accent-rgb), .06); }
+.agent-review__clarification strong { color: #d9aa82; }
+.agent-review__clarification p { margin: 0; color: #c1b2a4; }
+.agent-review__clarification span,.agent-review__hint { color: #a59a92; line-height: 1.5; }
+.agent-review__fields { display: grid; gap: 8px; padding-top: 11px; border-top: 1px solid rgba(255,255,255,.09); }
+.agent-review__fields label { display: grid; gap: 5px; color: #c49c7a; }
+.agent-review__fields input { min-height: 30px; width: 100%; min-width: 0; background: #171717; border: 1px solid rgba(var(--list-accent-rgb), .55); border-radius: 2px; color: #eee; font: inherit; padding: 4px 8px; }
+.agent-review__fields input:focus { outline: 1px solid var(--list-accent); }
+.agent-review__context { overflow-wrap: anywhere; color: #92867d; }
+.agent-review__actions { display: flex; flex-wrap: wrap; gap: 4px 10px; border-top: 1px solid rgba(255,255,255,.09); padding-top: 9px; }
+.agent-review__actions button:first-child { color: var(--list-accent); }
+.agent-review button:disabled { cursor: not-allowed; opacity: .5; }
+.agent-review__error { padding: 8px; background: #3b2827; color: #f48771!important; overflow-wrap: anywhere; }
+.agent-review .agent-run { margin: 10px 0 0; }

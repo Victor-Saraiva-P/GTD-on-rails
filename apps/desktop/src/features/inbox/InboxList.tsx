@@ -1,3 +1,4 @@
+import { Fragment, type ReactNode } from "react";
 import type { Stuff } from "./types";
 import { InboxListStuff } from "./InboxListStuff";
 
@@ -14,6 +15,7 @@ type InboxListProps = Readonly<{
   onCommitEditingAndContinue: () => void;
   onCancelEditing: () => void;
   glyph?: string;
+  renderAfterItem?: (item: Stuff) => ReactNode;
 }>;
 
 type InboxListItemProps = Readonly<Omit<InboxListProps, "items"> & {
@@ -45,12 +47,16 @@ function InboxListItem({
  */
 export function InboxList({
   items,
+  renderAfterItem,
   ...itemProps
 }: InboxListProps) {
   return (
     <ol className="tree-list tree-list--inbox" aria-label="Inbox items">
       {items.map((item) => (
-        <InboxListItem key={item.id} item={item} {...itemProps} />
+        <Fragment key={item.id}>
+          <InboxListItem item={item} {...itemProps} />
+          {renderAfterItem?.(item)}
+        </Fragment>
       ))}
     </ol>
   );
