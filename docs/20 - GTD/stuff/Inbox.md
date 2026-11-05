@@ -22,6 +22,8 @@ After processing removes stuff from the Inbox, focus returns to the Inbox list. 
 
 Processing stuff into a project opens the Projects page after the project is created.
 
+`Space a` runs the configured agent in recommendation-only mode. When analysis completes, an inline review appears directly under the corresponding Inbox item. The original Stuff remains unprocessed until the user explicitly confirms the destination. The review allows choosing an alternative, editing the proposed title and metadata, deferring the decision with `Esc`, or dismissing the suggestion. When the agent abstains, the review states that classification is unresolved and shows clarification questions instead of preselecting a destination. Pending suggestions survive application restarts in machine-local native configuration storage; they are not GTD elements and are not synced by the GTD database sync. Manual processing with `p` is unchanged.
+
 | Shortcut | Scope | Action |
 | --- | --- | --- |
 | `a` | List | Add new stuff. |

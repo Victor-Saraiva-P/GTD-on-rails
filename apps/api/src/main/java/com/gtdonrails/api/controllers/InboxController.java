@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import com.gtdonrails.api.dtos.calendar.ConvertStuffToCalendarRequestDto;
 import com.gtdonrails.api.dtos.inbox.ConvertStuffToNextActionRequestDto;
+import com.gtdonrails.api.dtos.inbox.ApproveAgentRecommendationRequestDto;
 import com.gtdonrails.api.dtos.inbox.CreateStuffRequestDto;
 import com.gtdonrails.api.dtos.inbox.StuffResponseDto;
 import com.gtdonrails.api.dtos.project.ConvertStuffToProjectRequestDto;
@@ -109,6 +110,20 @@ public class InboxController {
         @Valid @RequestBody ConvertStuffToProjectRequestDto request
     ) {
         inboxService.convertStuffToProject(id, request);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Converts only after the user approves an agent proposal; title and destination share one transaction.
+     *
+     * <p>Example: {@code POST /inbox/{id}/approve-recommendation}.</p>
+     */
+    @PostMapping("/{id}/approve-recommendation")
+    public ResponseEntity<Void> approveAgentRecommendation(
+        @PathVariable UUID id,
+        @Valid @RequestBody ApproveAgentRecommendationRequestDto request
+    ) {
+        inboxService.approveAgentRecommendation(id, request);
         return ResponseEntity.noContent().build();
     }
 

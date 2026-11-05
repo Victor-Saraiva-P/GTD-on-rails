@@ -60,6 +60,34 @@ class InboxControllerTests {
     }
 
     @Test
+    void appliesAnApprovedProjectAndItsEditedTitleTogether() throws Exception {
+        Item stuff = itemRepository.save(new Item(new Title("Original capture"), null));
+
+        mockMvc.perform(post("/inbox/{id}/approve-recommendation", stuff.getId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"kind\":\"project\",\"title\":\"Apartment move completed\"}"))
+            .andExpect(status().isNoContent());
+
+        Item converted = itemRepository.findById(stuff.getId()).orElseThrow();
+        org.junit.jupiter.api.Assertions.assertEquals("Apartment move completed", converted.getTitle().value());
+        org.junit.jupiter.api.Assertions.assertEquals(com.gtdonrails.api.enums.ItemStatus.PROJECT, converted.getStatus());
+    }
+
+    @Test
+    void failedApprovalRollsBackTheEditedTitleAndClassification() throws Exception {
+        Item stuff = itemRepository.save(new Item(new Title("Original capture"), null));
+
+        mockMvc.perform(post("/inbox/{id}/approve-recommendation", stuff.getId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"kind\":\"next-action\",\"title\":\"Changed title\",\"contextIds\":[\"00000000-0000-0000-0000-000000000001\"]}"))
+            .andExpect(status().is4xxClientError());
+
+        Item unchanged = itemRepository.findById(stuff.getId()).orElseThrow();
+        org.junit.jupiter.api.Assertions.assertEquals("Original capture", unchanged.getTitle().value());
+        org.junit.jupiter.api.Assertions.assertEquals(com.gtdonrails.api.enums.ItemStatus.STUFF, unchanged.getStatus());
+    }
+
+    @Test
     void createsStuffWithTitleOnly() throws Exception {
         mockMvc.perform(post("/inbox")
                 .contentType(MediaType.APPLICATION_JSON)

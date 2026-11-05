@@ -2,7 +2,8 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react
 import { ListView } from "../components/ListView";
 import { ListWorkspace } from "../components/ListWorkspace";
 import { useAgentProcessing } from "../features/agent-processing/AgentProcessingProvider";
-import { AgentProcessingStuffStatus } from "../features/agent-processing/AgentProcessingStatus";
+import { AgentRecommendationInline } from "../features/agent-processing/AgentRecommendationInline";
+import type { AgentRecommendationKind } from "../features/agent-processing/types";
 import { RetryState } from "../components/RetryState";
 import { InboxList } from "../features/inbox/InboxList";
 import { InboxStuffDetails } from "../features/inbox/InboxStuffDetails";
@@ -32,6 +33,8 @@ type InboxPageProps = Readonly<{
 
 type InboxControllerProps = Readonly<{
   controller: InboxWorkspaceController;
+  openProjects?: () => void;
+  openManualProcessing?: () => void;
 }>;
 
 const LazyMarkdownAssetComboDialog = lazy(async () => {
@@ -180,6 +183,10 @@ function buildInboxBindings(
     inboxBinding("inbox.undo-list", "u", "Undo last deletion", "inbox-list", () => void controller.undo()),
     inboxBinding("inbox.undo-detail", "u", "Undo last deletion", "stuff-detail", () => void controller.undo()),
     inboxBinding("inbox.process-list", "p", "Process selected stuff", "inbox-list", () => openProcessingFromKeybind(controller, openProcessing)),
+    inboxBinding("inbox.review-agent-recommendation", "v", "Focus pending agent recommendation", "inbox-list", () => {
+      const id = controller.selectedItem?.id;
+      if (id) (document.getElementById(`agent-review-trigger-${id}`) ?? document.getElementById(`agent-review-root-${id}`))?.focus();
+    }),
     inboxBinding("inbox.process-detail", "p", "Process selected stuff", "stuff-detail", () => openProcessingFromKeybind(controller, openProcessing)),
     inboxBinding("inbox.agent-process-list", "a", "Process selected stuff with configured agent", "inbox-list", () => processWithAgentFromKeybind(controller, startAgent), true, ["a"]),
     inboxBinding("inbox.agent-process-detail", "a", "Process selected stuff with configured agent", "stuff-detail", () => processWithAgentFromKeybind(controller, startAgent), true, ["a"]),
@@ -267,7 +274,11 @@ function selectInboxStuff(controller: InboxWorkspaceController, id: string): voi
   controller.setActiveZone("inbox-list");
 }
 
-function InboxListReady({ controller }: InboxControllerProps) {
+function InboxListReady({ controller, openProjects, openManualProcessing }: InboxControllerProps) {
+  const afterConversion = (kind: AgentRecommendationKind) => {
+    controller.reload();
+    if (kind === "project") openProjects?.();
+  };
   return (
     <InboxList
       items={controller.stuffs}
@@ -281,11 +292,12 @@ function InboxListReady({ controller }: InboxControllerProps) {
       onCommitEditing={() => commitStuffTitle(controller)}
       onCommitEditingAndContinue={() => commitStuffTitle(controller)}
       onCancelEditing={controller.cancelEditingSelectedStuff}
+      renderAfterItem={(item) => <AgentRecommendationInline key={item.id} item={item} selected={item.id === controller.selectedItem?.id} onConverted={afterConversion} onManualProcessing={() => openManualProcessing?.()} />}
     />
   );
 }
 
-function InboxListBody({ controller }: InboxControllerProps) {
+function InboxListBody({ controller, openProjects, openManualProcessing }: InboxControllerProps) {
   if (controller.isLoading) {
     return <p className="pane-state">Loading inbox...</p>;
   }
@@ -294,19 +306,16 @@ function InboxListBody({ controller }: InboxControllerProps) {
     return <RetryState message={controller.errorMessage} onRetry={controller.reload} />;
   }
 
-  return controller.stuffs.length === 0 ? <p className="pane-state">Inbox is empty.</p> : <InboxListReady controller={controller} />;
+  return controller.stuffs.length === 0 ? <p className="pane-state">Inbox is empty.</p> : <InboxListReady controller={controller} openProjects={openProjects} openManualProcessing={openManualProcessing} />;
 }
 
 function InboxDetailReady({ controller }: InboxControllerProps) {
-  const { runForStuff } = useAgentProcessing();
   const selectedItem = controller.selectedItem;
   if (!selectedItem) return null;
-  const agentAction = runForStuff(selectedItem.id) ? <AgentProcessingStuffStatus stuffId={selectedItem.id} /> : null;
   return (
     <InboxStuffDetails
       item={selectedItem}
       editing={controller.editingBodyId === selectedItem.id}
-      headerActions={agentAction}
       onAutosaveEditing={(body) => autosaveStuffBody(controller, body)}
       onCommitEditing={(body) => commitStuffBody(controller, body)}
       onExitEditingFromNormalMode={() => exitBodyEditingFromNormalMode(controller)}
@@ -332,12 +341,12 @@ function InboxDetailBody({ controller }: InboxControllerProps) {
   );
 }
 
-function InboxListView({ controller }: InboxControllerProps) {
+function InboxListView({ controller, openProjects, openManualProcessing }: InboxControllerProps) {
   const listMeta = `${controller.stuffs.length} ${controller.stuffs.length === 1 ? "item" : "items"}`;
 
   return (
     <ListView title="Inbox" meta={listMeta} viewIndex={1} active={controller.activeZone === "inbox-list"} bodyClassName="list-pane__body--flush" className="inbox-pane inbox-pane--list">
-      <InboxListBody controller={controller} />
+      <InboxListBody controller={controller} openProjects={openProjects} openManualProcessing={openManualProcessing} />
     </ListView>
   );
 }
@@ -350,10 +359,10 @@ function InboxDetailView({ controller }: InboxControllerProps) {
   );
 }
 
-function InboxViews({ controller }: InboxControllerProps) {
+function InboxViews({ controller, openProjects, openManualProcessing }: InboxControllerProps) {
   return (
     <section className="inbox-terminal-layout" aria-label="Inbox">
-      <InboxListView controller={controller} />
+      <InboxListView controller={controller} openProjects={openProjects} openManualProcessing={openManualProcessing} />
       <InboxDetailView controller={controller} />
     </section>
   );
@@ -373,21 +382,25 @@ export function InboxPage({ controller, openProjects, openOwnerProject, projects
   const openLinkCombo = useCallback(() => setIsLinkComboOpen(true), []);
   const openAssetCombo = useCallback(() => setIsAssetComboOpen(true), []);
   const openProcessing = useCallback(() => setIsProcessingOpen(true), []);
-  const processSelectedItem = (energy: number | null, time: number | null, contextIds: string[], deadline: string | null) => {
-    void controller.processSelectedStuff(energy, time, contextIds, deadline);
+  const finishManualProcessing = (conversion: Promise<void>, asProject = false) => {
+    const id = controller.selectedItem?.id;
+    void conversion.then(async () => {
+      if (id && agentProcessing.recommendationForStuff(id)) await agentProcessing.dismissRecommendation(id);
+      if (asProject) openProjects();
+    }).catch(error => console.error("Manual GTD processing failed", error));
     setIsProcessingOpen(false);
+  };
+  const processSelectedItem = (energy: number | null, time: number | null, contextIds: string[], deadline: string | null) => {
+    finishManualProcessing(controller.processSelectedStuff(energy, time, contextIds, deadline));
   };
   const processSelectedCalendarItem = (payload: CalendarConversionPayload) => {
-    void controller.processSelectedStuffToCalendar(payload);
-    setIsProcessingOpen(false);
+    finishManualProcessing(controller.processSelectedStuffToCalendar(payload));
   };
   const processSelectedProjectItem = (deadline: string | null) => {
-    void controller.processSelectedStuffToProject(deadline).then(openProjects);
-    setIsProcessingOpen(false);
+    finishManualProcessing(controller.processSelectedStuffToProject(deadline), true);
   };
   const processSelectedSomedayMaybeItem = () => {
-    void controller.processSelectedStuffToSomedayMaybe();
-    setIsProcessingOpen(false);
+    finishManualProcessing(controller.processSelectedStuffToSomedayMaybe());
   };
   useKeybindScreen("inbox");
   useInboxZone(controller);
@@ -407,7 +420,7 @@ export function InboxPage({ controller, openProjects, openOwnerProject, projects
 
   return (
     <ListWorkspace theme={inboxListTheme} currentLabel={inboxListTheme.label} modeLabel={controller.vimMode ?? undefined} titleSearch={titleSearch}>
-      <InboxViews controller={controller} />
+      <InboxViews controller={controller} openProjects={openProjects} openManualProcessing={openProcessing} />
       <LeaderMenu />
       <Suspense fallback={null}>
         {isLinkComboOpen ? <LazyMarkdownLinkComboDialog onClose={() => setIsLinkComboOpen(false)} /> : null}

@@ -28,9 +28,33 @@ export type AgentProcessingOptions = {
   codex: AgentProviderOptions;
 };
 
+export type AgentRecommendationKind = "next-action" | "project" | "calendar" | "someday";
+
+export type AgentRecommendationOption = {
+  kind: AgentRecommendationKind;
+  title: string;
+  reason: string;
+  energy: number | null;
+  minutes: number | null;
+  contextIds: string[];
+  deadline: string | null;
+  scheduledDate: string | null;
+  scheduledTime: string | null;
+};
+
+export type AgentRecommendation = {
+  stuffId: string;
+  sourceTitle: string;
+  reason: string;
+  questions: string[];
+  options: AgentRecommendationOption[];
+  recommendedIndex: number | null;
+};
+
 export type AgentProcessingRun = {
   runId: string;
   stuffId: string;
+  stuffTitle: string;
   provider: ProcessingAgent;
   model: string | null;
   thinking: string | null;
@@ -46,6 +70,7 @@ export type AgentProcessingFinished = {
   processed: boolean;
   denied: boolean;
   response: string | null;
+  recommendation: AgentRecommendation | null;
   logPath: string;
 };
 

@@ -2,8 +2,8 @@ import { listen } from "@tauri-apps/api/event";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type Dispatch, type MutableRefObject, type PropsWithChildren, type SetStateAction } from "react";
 import { isTauriRuntime } from "../../lib/tauriRuntime";
 import { appendAgentActivity } from "./activity";
-import { startAgentProcessing } from "./native";
-import type { AgentActivity, AgentProcessingFinished, AgentProcessingProgress, AgentProcessingRun, TrackedAgentProcessingRun } from "./types";
+import { listAgentRecommendations, removeAgentRecommendation, startAgentProcessing } from "./native";
+import type { AgentActivity, AgentProcessingFinished, AgentProcessingProgress, AgentProcessingRun, TrackedAgentProcessingRun, AgentRecommendation } from "./types";
 
 type AgentProcessingContextValue = {
   runs: TrackedAgentProcessingRun[];
@@ -11,6 +11,8 @@ type AgentProcessingContextValue = {
   revision: number;
   start: (stuffId: string, stuffTitle: string) => Promise<void>;
   runForStuff: (stuffId: string) => TrackedAgentProcessingRun | null;
+  recommendationForStuff: (stuffId: string) => AgentRecommendation | null;
+  dismissRecommendation: (stuffId: string) => Promise<void>;
 };
 
 const AgentProcessingContext = createContext<AgentProcessingContextValue | null>(null);
@@ -61,6 +63,15 @@ function isActive(run: TrackedAgentProcessingRun | undefined): boolean {
 export function AgentProcessingProvider({ children }: PropsWithChildren) {
   const [runsByStuff, setRunsByStuff] = useState<Record<string, TrackedAgentProcessingRun>>({});
   const [revision, setRevision] = useState(0);
+  const [recommendations, setRecommendations] = useState<Record<string, AgentRecommendation>>({});
+  useEffect(() => {
+    let mounted = true;
+    void listAgentRecommendations().then((items) => {
+      if (!mounted) return;
+      setRecommendations((current) => ({ ...Object.fromEntries(items.map(item => [item.stuffId, item])), ...current }));
+    }).catch(error => console.error("Failed to load saved agent recommendations", error));
+    return () => { mounted = false; };
+  }, []);
   const runsRef = useRef(runsByStuff);
 
   const replaceRun = useCallback((stuffId: string, run: TrackedAgentProcessingRun) => {
@@ -81,7 +92,7 @@ export function AgentProcessingProvider({ children }: PropsWithChildren) {
     }
   }, [replaceRun]);
 
-  useAgentEvents(runsRef, replaceRun, setRevision);
+  useAgentEvents(runsRef, replaceRun, setRevision, setRecommendations);
   const runs = useMemo(() => Object.values(runsByStuff).sort((left, right) => right.startedAt - left.startedAt), [runsByStuff]);
   const activeRuns = useMemo(() => runs.filter(isActive), [runs]);
   const value = useMemo<AgentProcessingContextValue>(() => ({
@@ -89,8 +100,13 @@ export function AgentProcessingProvider({ children }: PropsWithChildren) {
     activeRuns,
     revision,
     start,
-    runForStuff: (stuffId) => runsByStuff[stuffId] ?? null
-  }), [activeRuns, revision, runs, runsByStuff, start]);
+    runForStuff: (stuffId) => runsByStuff[stuffId] ?? null,
+    recommendationForStuff: (stuffId) => recommendations[stuffId] ?? null,
+    dismissRecommendation: async (stuffId) => {
+      await removeAgentRecommendation(stuffId);
+      setRecommendations(current => { const next = { ...current }; delete next[stuffId]; return next; });
+    }
+  }), [activeRuns, revision, runs, runsByStuff, start, recommendations]);
 
   return <AgentProcessingContext.Provider value={value}>{children}</AgentProcessingContext.Provider>;
 }
@@ -98,7 +114,8 @@ export function AgentProcessingProvider({ children }: PropsWithChildren) {
 function useAgentEvents(
   runsRef: MutableRefObject<Record<string, TrackedAgentProcessingRun>>,
   replaceRun: (stuffId: string, run: TrackedAgentProcessingRun) => void,
-  setRevision: Dispatch<SetStateAction<number>>
+  setRevision: Dispatch<SetStateAction<number>>,
+  setRecommendations: Dispatch<SetStateAction<Record<string, AgentRecommendation>>>
 ) {
   useEffect(() => {
     if (!isTauriRuntime()) return;
@@ -111,21 +128,24 @@ function useAgentEvents(
       const current = runsRef.current[event.payload.stuffId];
       if (!current || current.runId !== event.payload.runId) return;
       replaceRun(current.stuffId, finishRun(current, event.payload));
+      if (event.payload.recommendation) {
+        setRecommendations(previous => ({ ...previous, [current.stuffId]: event.payload.recommendation! }));
+      }
       setRevision(value => value + 1);
     });
     return () => {
       void progress.then(dispose => dispose());
       void finished.then(dispose => dispose());
     };
-  }, [replaceRun, runsRef, setRevision]);
+  }, [replaceRun, runsRef, setRevision, setRecommendations]);
 }
 
 function finishRun(current: TrackedAgentProcessingRun, result: AgentProcessingFinished): TrackedAgentProcessingRun {
   const completed = { ...current, response: result.response, finishedAt: Date.now() };
-  if (result.processed) return finishWithActivity(completed, "processed", "Stuff processed successfully");
+  if (result.recommendation) return finishWithActivity(completed, "finished", "Recommendation ready for review");
   if (result.denied) return { ...finishWithActivity(completed, "failed", "Agent permission was denied"), denied: true };
   if (!result.success) return finishWithActivity(completed, "failed", "Agent process failed; inspect the run log");
-  return finishWithActivity(completed, "finished", "Agent finished without processing the stuff");
+  return finishWithActivity(completed, "failed", "Agent returned no usable recommendation; inspect the run log");
 }
 
 function withActivity(run: TrackedAgentProcessingRun, activity: AgentActivity): TrackedAgentProcessingRun {

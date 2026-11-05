@@ -8,6 +8,8 @@ import java.util.UUID;
 import com.gtdonrails.api.config.CacheNames;
 import com.gtdonrails.api.dtos.calendar.ConvertStuffToCalendarRequestDto;
 import com.gtdonrails.api.dtos.inbox.ConvertStuffToNextActionRequestDto;
+import com.gtdonrails.api.dtos.inbox.ApproveAgentRecommendationRequestDto;
+import com.gtdonrails.api.dtos.item.ItemTimeRequestDto;
 import com.gtdonrails.api.dtos.inbox.CreateStuffRequestDto;
 import com.gtdonrails.api.dtos.inbox.StuffResponseDto;
 import com.gtdonrails.api.dtos.project.ConvertStuffToProjectRequestDto;
@@ -164,6 +166,34 @@ public class InboxService {
         itemRepository.save(item);
         requestGoogleCalendarEventSyncAfterCommit(id);
         evictCachesAfterCommit();
+    }
+
+    /**
+     * Applies a human-approved recommendation atomically, including its edited title.
+     *
+     * <p>Example: {@code inboxService.approveAgentRecommendation(id, request)}.</p>
+     */
+    @Transactional
+    public void approveAgentRecommendation(UUID id, ApproveAgentRecommendationRequestDto request) {
+        Item item = findStuff(id);
+        item.setTitle(new Title(itemTextNormalizer.normalizeTitle(request.title())));
+        switch (request.kind()) {
+            case "next-action" -> convertStuffToNextAction(id, approvedNextAction(request));
+            case "project" -> convertStuffToProject(id, new ConvertStuffToProjectRequestDto(request.deadline()));
+            case "calendar" -> convertStuffToCalendar(id, new ConvertStuffToCalendarRequestDto(request.scheduledDate(), request.scheduledTime()));
+            case "someday" -> convertStuffToSomedayMaybe(id);
+            default -> throw new IllegalArgumentException("invalid GTD recommendation kind '" + request.kind() + "'");
+        }
+    }
+
+    private ConvertStuffToNextActionRequestDto approvedNextAction(ApproveAgentRecommendationRequestDto request) {
+        long minutes = request.minutes() == null ? 0 : request.minutes();
+        return new ConvertStuffToNextActionRequestDto(
+            request.energy() == null ? java.math.BigDecimal.ZERO : request.energy(),
+            new ItemTimeRequestDto(minutes / 60, (int) (minutes % 60)),
+            request.contextIds() == null ? List.of() : request.contextIds(),
+            request.deadline()
+        );
     }
 
     private Item findStuff(UUID id) {

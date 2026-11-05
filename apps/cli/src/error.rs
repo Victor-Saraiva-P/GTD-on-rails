@@ -2,6 +2,8 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum CliError {
+    #[error("GTD recommendation-only session forbids write operations; expected read-only CLI command")]
+    ReadOnlyRecommendation,
     #[error("invalid API URL '{0}'; expected an absolute http(s) URL")]
     InvalidApiUrl(String),
     #[error("HTTP request failed: {0}")]
