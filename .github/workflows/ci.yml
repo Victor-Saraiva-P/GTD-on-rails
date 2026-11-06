@@ -12,7 +12,7 @@ permissions:
 jobs:
   check:
     name: Check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
@@ -47,7 +47,7 @@ jobs:
 
   static-check:
     name: Static Check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
@@ -76,7 +76,7 @@ jobs:
 
   desktop-native:
     name: Desktop Native
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
@@ -174,7 +174,7 @@ jobs:
 
   client-native:
     name: Client Native
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
@@ -216,7 +216,7 @@ jobs:
       - static-check
       - desktop-native
       - client-native
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
 
