@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import fcntl
 import hashlib
+import http.client
 import json
 import os
 import re
@@ -27,7 +28,9 @@ from typing import Any
 REPOSITORY = "Victor-Saraiva-P/GTD-on-rails"
 LATEST_API = f"https://api.github.com/repos/{REPOSITORY}/releases/tags/staging-latest"
 SHA_PATTERN = re.compile(r"[0-9a-f]{40}")
-VERSION_PATTERN = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+")
+VERSION_PATTERN = re.compile(r"\d+\.\d+\.\d+")
+STAGING_HOST = "100.100.212.95"  # Private Solanum Tailscale IPv4; never use public HTTP.
+UPDATER_SCRIPT = "staging-release-updater.py"
 HOME = Path.home()
 
 
@@ -133,12 +136,14 @@ def verify_checksum(archive: Path, checksum_text: str) -> None:
     checksum_line = checksum_text.strip().splitlines()
     if len(checksum_line) != 1:
         raise StagingUpdateError("Expected a single SHA-256 checksum line")
-    expected = re.fullmatch(r"([0-9a-f]{64})\s+\*?(.+)", checksum_line[0])
-    if not expected or expected.group(2) != archive.name:
-        raise StagingUpdateError(f"Invalid checksum metadata for {archive.name!r}")
+    parts = checksum_line[0].split()
+    if len(parts) != 2 or not re.fullmatch(r"[0-9a-f]{64}", parts[0]):
+        raise StagingUpdateError(f"Invalid SHA-256 format for {archive.name!r}")
+    if parts[1].removeprefix("*") != archive.name:
+        raise StagingUpdateError(f"Invalid checksum filename for {archive.name!r}")
     with archive.open("rb") as payload:
         digest = hashlib.file_digest(payload, "sha256").hexdigest()
-    if digest != expected.group(1):
+    if digest != parts[0]:
         raise StagingUpdateError(f"SHA-256 mismatch for candidate archive {archive.name!r}")
 
 
@@ -225,6 +230,7 @@ def guard_server(target: InstallTarget) -> None:
     settings = server_settings(target.install_dir.parents[2])
     expected = {"GTD_SYNC_SERVER_DEPLOYMENT_ENVIRONMENT": "staging",
                 "GTD_SYNC_SERVER_PORT": "9476",
+                "GTD_SYNC_SERVER_BIND_ADDRESS": STAGING_HOST,
                 "GTD_GOOGLE_CALENDAR_PROJECTION_ENABLED": "false",
                 "GTD_SYNC_SERVER_GOOGLE_CALLBACK_LISTENER_ENABLED": "false",
                 "GTD_SYNC_SERVER_RCLONE_ENABLED": "false",
@@ -249,13 +255,13 @@ def active_desktop(target: InstallTarget) -> bool:
             continue
         try:
             executable = os.readlink(process / "exe")
-        except (OSError, PermissionError):
+        except OSError:
             continue
         if executable == binary or executable == binary + " (deleted)":
             return True
         try:
             arguments = (process / "cmdline").read_bytes()
-        except (OSError, PermissionError):
+        except OSError:
             continue
         if str(target.install_dir / "binaries/gtd-api.jar").encode() in arguments:
             return True
@@ -277,27 +283,34 @@ def invoke_service(action: str) -> None:
 def staging_healthy(revision: str | None, retries: int = 35) -> bool:
     """Verify the running staging API's health and guarded identity."""
     settings = server_settings()
-    url = f"http://{settings['GTD_SYNC_SERVER_BIND_ADDRESS']}:9476"
     for _ in range(retries):
         try:
-            result = read_json_local(url + "/health")
-            identity = read_json_local(url + "/v1/backups/environment",
+            result = read_json_local("/health")
+            identity = read_json_local("/v1/backups/environment",
                                        settings["GTD_SYNC_SERVER_AUTH_TOKEN"])
             if (result.get("status") == "UP" and identity.get("environment") == "staging"
                     and (revision is None or result.get("revision") == revision)):
                 return True
-        except (OSError, ValueError, KeyError, TimeoutError):
+        except (OSError, ValueError, KeyError, http.client.HTTPException, StagingUpdateError):
             pass
         time.sleep(1)
     return False
 
 
-def read_json_local(url: str, token: str | None = None) -> dict[str, Any]:
-    """Read an authenticated stage-only API response through the private interface."""
+def read_json_local(endpoint: str, token: str | None = None) -> dict[str, Any]:
+    """Read only fixed staging API paths over Solanum's encrypted Tailscale link."""
+    if endpoint not in ("/health", "/v1/backups/environment"):
+        raise StagingUpdateError(f"Refusing unexpected staging API path {endpoint!r}")
     headers = {"Authorization": f"Bearer {token}"} if token else {}
-    req = urllib.request.Request(url, headers=headers)
-    with urllib.request.urlopen(req, timeout=3) as response:
-        return json.load(response)
+    connection = http.client.HTTPConnection(STAGING_HOST, 9476, timeout=3)  # NOSONAR - WireGuard encrypts Tailscale-only transport
+    try:
+        connection.request("GET", endpoint, headers=headers)
+        response = connection.getresponse()
+        if response.status != 200:
+            raise StagingUpdateError(f"Staging API {endpoint} returned HTTP {response.status}")
+        return json.loads(response.read(65536).decode("utf-8"))
+    finally:
+        connection.close()
 
 
 def snapshot_data(target: InstallTarget) -> None:
@@ -341,7 +354,7 @@ def rollback(target: InstallTarget) -> None:
     restore_previous_data(target)
     previous_updater = target.updater_dir / "previous-updater.py"
     if not target.is_server and previous_updater.is_file():
-        os.replace(previous_updater, target.updater_dir / "staging-release-updater.py")
+        os.replace(previous_updater, target.updater_dir / UPDATER_SCRIPT)
     if target.is_server:
         invoke_service("start")
         if not staging_healthy(installed_revision(target)):
@@ -365,10 +378,10 @@ def refresh_desktop_updater(target: InstallTarget, package: Path) -> None:
     """Replace the staging-only updater when a newer signed package includes it."""
     if target.is_server:
         return
-    source = package / "staging-release-updater.py"
+    source = package / UPDATER_SCRIPT
     if not source.is_file():
         return  # First published staging package predates updater distribution.
-    installed = target.updater_dir / "staging-release-updater.py"
+    installed = target.updater_dir / UPDATER_SCRIPT
     previous = target.updater_dir / "previous-updater.py"
     temporary = target.updater_dir / "next-updater.py"
     if installed.is_file():
@@ -406,13 +419,22 @@ def deploy(target: InstallTarget, revision: str, package: Path) -> None:
         raise
 
 
+def update_mode(apply: bool, verify: bool) -> str:
+    """Select a single update plan mode for structured logging."""
+    if verify:
+        return "verify"
+    if apply:
+        return "apply"
+    return "check"
+
+
 def run_update(target: InstallTarget, apply: bool, verify: bool = False) -> None:
     """Plan or apply a pinned candidate revision from the staging-only channel."""
     revision, release, manifest = candidate_release()
     current = installed_revision(target)
     print(json.dumps({"target": target.name, "current": current, "candidate": revision,
                       "updateAvailable": current != revision,
-                      "mode": "verify" if verify else ("apply" if apply else "check")}))
+                      "mode": update_mode(apply, verify)}))
     if not verify and (current == revision or not apply):
         return
     if current == "missing":

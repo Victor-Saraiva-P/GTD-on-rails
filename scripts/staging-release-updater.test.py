@@ -46,6 +46,15 @@ class StagingReleaseUpdaterTests(unittest.TestCase):
         for name in ("desktop", "server"):
             updater.guard_staging_paths(updater.target_config(name, self.root))
 
+    def test_update_mode_is_unambiguous(self):
+        self.assertEqual(updater.update_mode(False, False), "check")
+        self.assertEqual(updater.update_mode(True, False), "apply")
+        self.assertEqual(updater.update_mode(False, True), "verify")
+
+    def test_local_api_rejects_non_staging_endpoints(self):
+        with self.assertRaises(updater.StagingUpdateError):
+            updater.read_json_local("/not-staging")
+
     def test_invalid_target_fails_closed(self):
         with self.assertRaises(updater.StagingUpdateError):
             updater.target_config("production", self.root)
@@ -73,8 +82,9 @@ class StagingReleaseUpdaterTests(unittest.TestCase):
         updater.verify_checksum(archive, good)
         with self.assertRaises(updater.StagingUpdateError):
             updater.verify_checksum(archive, "f" * 64 + "  package.tar.gz")
+        mismatched_name = good.replace("package.tar.gz", "other.tar.gz")
         with self.assertRaises(updater.StagingUpdateError):
-            updater.verify_checksum(archive, good.replace("package.tar.gz", "other.tar.gz"))
+            updater.verify_checksum(archive, mismatched_name)
 
     def test_package_revision_mismatch_aborts_before_swap(self):
         target = updater.target_config("desktop", self.root)
