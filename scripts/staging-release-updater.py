@@ -291,7 +291,8 @@ def staging_healthy(revision: str | None, retries: int = 35) -> bool:
             if (result.get("status") == "UP" and identity.get("environment") == "staging"
                     and (revision is None or result.get("revision") == revision)):
                 return True
-        except (OSError, ValueError, KeyError, http.client.HTTPException, StagingUpdateError):
+        except (OSError, ValueError, KeyError, http.client.HTTPException,
+                StagingUpdateError, subprocess.SubprocessError):
             pass
         time.sleep(1)
     return False
@@ -301,6 +302,9 @@ def read_json_local(endpoint: str, token: str | None = None) -> dict[str, Any]:
     """Read only fixed staging API paths over Solanum's encrypted Tailscale link."""
     if endpoint not in ("/health", "/v1/backups/environment"):
         raise StagingUpdateError(f"Refusing unexpected staging API path {endpoint!r}")
+    tailnet_ips = subprocess.check_output(["tailscale", "ip", "-4"], text=True).splitlines()
+    if STAGING_HOST not in tailnet_ips:
+        raise StagingUpdateError("Refusing to send staging credentials outside active Tailscale")
     headers = {"Authorization": f"Bearer {token}"} if token else {}
     connection = http.client.HTTPConnection(STAGING_HOST, 9476, timeout=3)  # NOSONAR - WireGuard encrypts Tailscale-only transport
     try:

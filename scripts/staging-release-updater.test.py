@@ -55,6 +55,11 @@ class StagingReleaseUpdaterTests(unittest.TestCase):
         with self.assertRaises(updater.StagingUpdateError):
             updater.read_json_local("/not-staging")
 
+    def test_local_api_requires_active_solanum_tailnet_ip(self):
+        with patch.object(updater.subprocess, "check_output", return_value="100.64.1.2\n"):
+            with self.assertRaises(updater.StagingUpdateError):
+                updater.read_json_local("/v1/backups/environment", "private-token")
+
     def test_invalid_target_fails_closed(self):
         with self.assertRaises(updater.StagingUpdateError):
             updater.target_config("production", self.root)
