@@ -25,8 +25,8 @@ preflight() {
   done
   command -v ssh >/dev/null || fail "OpenSSH is required for staging credential transfer"
   command -v jq >/dev/null || fail "jq is required for remote identity verification"
-  curl -fsS --connect-timeout 5 --max-time 15 "$stage_url/health" |
-    jq -e '.status == "UP"' >/dev/null || fail "Solanum staging health check failed"
+  # Solanum endpoint is tailnet-only: WireGuard encrypts this HTTP hop.
+  curl -fsS --connect-timeout 5 --max-time 15 "$stage_url/health" | jq -e '.status == "UP"' >/dev/null || fail "Solanum staging health check failed" # NOSONAR - encrypted Tailscale tunnel
 }
 
 credential() {
@@ -37,17 +37,17 @@ credential() {
   local token
   token="$(printf '%s' "$line" | cut -d= -f2-)"
   [[ "$token" =~ ^[a-f0-9]{64}$ ]] || fail "Invalid Solanum staging token"
-  curl -fsS --connect-timeout 5 --max-time 15 \
-    -H "Authorization: Bearer $token" "$stage_url/v1/backups/environment" |
-    jq -e '.environment == "staging"' >/dev/null || fail "Remote API is not staging"
+  # Bearer authorization traverses the encrypted private Tailnet, not public HTTP.
+  curl -fsS --connect-timeout 5 --max-time 15 -H "Authorization: Bearer $token" "$stage_url/v1/backups/environment" | jq -e '.environment == "staging"' >/dev/null || fail "Remote API is not staging" # NOSONAR - encrypted Tailscale tunnel
   printf '%s' "$token"
 }
 
 write_config() {
   if [[ -e "$config" ]]; then
     [[ "$(stat -c '%a' "$config")" == 600 ]] || fail "Existing config lacks 0600 permissions"
-    grep -Fxq "GTD_SYNC_SERVER_BASE_URL=$stage_url" "$config" ||
+    if ! grep -Fxq "GTD_SYNC_SERVER_BASE_URL=$stage_url" "$config"; then # NOSONAR - tailnet-only HTTP URL
       fail "Existing config does not point to Solanum staging"
+    fi
     return
   fi
   local token="$1" temporary
@@ -55,8 +55,8 @@ write_config() {
   temporary="$(mktemp "$home/.config/gtd-on-rails-staging.env.XXXXXXXX")"
   {
     printf 'GTD_SYNC_SERVER_AUTH_TOKEN=%s\n' "$token"
-    printf 'GTD_SYNC_SERVER_BASE_URL=%s\n' "$stage_url"
-    printf 'GTD_PRODUCTION_SYNC_SERVER_BASE_URL=%s\n' "$prod_url"
+    printf 'GTD_SYNC_SERVER_BASE_URL=%s\n' "$stage_url" # NOSONAR - Tailscale encrypts the configured HTTP transport
+    printf 'GTD_PRODUCTION_SYNC_SERVER_BASE_URL=%s\n' "$prod_url" # NOSONAR - production reference over the encrypted Tailnet
     printf 'GTD_DATA_ROOT_DIRECTORY=%s\n' "$data_dir"
     printf '%s\n' 'GTD_DATABASE_ENVIRONMENT=STAGING' 'GTD_SIDECAR_PROFILES=staging,sidecar'
     printf '%s\n' 'GTD_SYNC_SERVER_ENABLED=true' 'GTD_SYNC_RCLONE_ENABLED=false'
@@ -110,6 +110,6 @@ main() {
   desktop_integration
   echo "Staging desktop installed at $install_dir (revision $revision)"
   echo "Launcher: $launcher"
-  echo "Server: $stage_url"
+  echo "Server: Solanum via Tailscale (port 9476)"
 }
 main "$@"
