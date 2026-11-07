@@ -35,6 +35,41 @@ staging, set `GTD_SYNC_SERVER_BASE_URL` to the staging service endpoint and
 that the configured staging URL is not the production endpoint. Set
 `GTD_PRODUCTION_SYNC_SERVER_BASE_URL` when production uses a custom URL.
 
+## Native staging desktop on Omarchy
+
+The `main` CI also builds a **separate staging desktop** after the production
+archives are packaged. It uses `tauri.staging.conf.json`, embeds the staging
+asset root, and publishes `GTD.on.Rails.Staging_<version>_linux-x86_64.tar.gz`
+plus its SHA-256 checksum to `staging-latest` and the immutable `candidate-<sha>`.
+The production promotion workflow ignores this staging-only archive.
+
+The staging desktop package uses **its own** `install.sh` and intentionally
+does not install the global `gtd` CLI or modify the production desktop.
+On Omarchy, download both staging archive assets from a CI-validated release,
+verify SHA-256, extract, and execute its bundled installer:
+
+```sh
+sha256sum -c GTD.on.Rails.Staging_3.6.1_linux-x86_64.tar.gz.sha256
+tar -xzf GTD.on.Rails.Staging_3.6.1_linux-x86_64.tar.gz
+bash GTD.on.Rails.Staging_3.6.1_linux-x86_64/install.sh
+```
+
+The installer requires Tailscale connectivity and an SSH session authorized for
+`victor@solanum`. It fetches **only** the staging bearer token into
+`~/.config/gtd-on-rails-staging.env` (mode `0600`) and checks that the remote
+server explicitly identifies itself as staging. The installed application lives
+under `~/.local/share/gtd-on-rails-staging` and creates a separate launcher
+`~/.local/bin/gtd-on-rails-staging` plus the application-menu entry
+**GTD on Rails (Staging)**. Its SQLite dataset lives in
+`~/Documents/staging-gtd-on-rails` and syncs to Solanum port `9476`.
+
+Launch with `gtd-on-rails-staging` or the Omarchy application menu. The staging
+Tauri identifier is distinct from production and its built-in native updater
+is disabled, because the existing updater writes to production-only paths.
+The staging package installer refuses to overwrite a different revision
+without an explicit upgrade procedure; close the staging app before any upgrade.
+Do not run the production `make gtd-install` command for staging.
+
 ## Refreshing staging from production
 
 The refresh process uses the existing consistent snapshot/restore APIs rather
