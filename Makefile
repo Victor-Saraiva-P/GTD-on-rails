@@ -5,7 +5,7 @@ ARG2 := $(word 2,$(ARGS))
 ARG3_PLUS := $(wordlist 3,999,$(ARGS))
 ARG2_PLUS := $(wordlist 2,999,$(ARGS))
 
-.PHONY: help gtd cli cli-package cli-install cli-install-dev client mobile sync-server client-package client-install mobile-install gtd-install dev staging client-dev client-staging test unit integration e2e check lint
+.PHONY: help gtd cli cli-package cli-install cli-install-dev client mobile sync-server client-package client-install mobile-install gtd-install dev staging staging-refresh client-dev client-staging test unit integration e2e check lint
 
 help:
 	@if [ "$(PRIMARY_GOAL)" = "help" ] || [ -z "$(PRIMARY_GOAL)" ]; then \
@@ -15,6 +15,8 @@ help:
 	    'Run processes in separate terminals:' \
 	    '  make gtd                    desktop + local API using dev data' \
 	    '  make gtd staging            desktop + local API using staging data' \
+	    '  make staging-refresh        validate Solanum snapshot refresh configuration (dry-run)' \
+	    '  make staging-refresh APPLY=1  refresh staging from a production snapshot (destructive)' \
 	    '  make cli <args...>          run the GTD agent CLI against the local API' \
 	    '  make cli-package            build standalone production CLI tarball' \
 	    '  make cli-install [tag]      install rolling main gtd CLI (or a version tag)' \
@@ -119,6 +121,11 @@ dev:
 staging:
 	@if [ "$(PRIMARY_GOAL)" = "staging" ]; then \
 	  node scripts/run-gtd.mjs --env=staging; \
+	fi
+
+staging-refresh:
+	@if [ "$(PRIMARY_GOAL)" = "staging-refresh" ]; then \
+	  node scripts/refresh-staging-sync.mjs $(if $(filter 1,$(APPLY)),--apply --confirm=REFRESH_STAGING,); \
 	fi
 
 client-dev:

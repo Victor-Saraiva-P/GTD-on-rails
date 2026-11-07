@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import test from "node:test";
 import {
+  assertStagingSyncUrl,
   clientBuildSpec,
   clientDataRoot,
   clientPort,
@@ -39,6 +40,20 @@ test("staging GTD runtime uses staging profile, data, and sync endpoint", () => 
   assert.equal(specs[1].args.at(-1), "dev:staging");
 });
 
+test("staging rejects the production sync endpoint", () => {
+  const production = "https://sync.example.test:9475";
+  assert.throws(
+    () => gtdRuntimeEnvironment("staging", {
+      GTD_SYNC_SERVER_BASE_URL: production,
+      GTD_PRODUCTION_SYNC_SERVER_BASE_URL: production
+    }), /isolated non-production endpoint/
+  );
+  assert.throws(() => assertStagingSyncUrl("http://127.0.0.1:9475", {}), /isolated/);
+  assert.doesNotThrow(() => assertStagingSyncUrl("https://sync.example.test:9476", {
+    GTD_PRODUCTION_SYNC_SERVER_BASE_URL: production
+  }));
+});
+
 test("persistent Java runtimes use built jars instead of Gradle bootRun", () => {
   const apiBuild = gtdBuildSpec();
   const clientBuild = clientBuildSpec();
@@ -59,4 +74,8 @@ test("sync client data is isolated by runtime environment", () => {
   const staging = clientRuntimeEnvironment("staging", {});
   assert.equal(staging.GTD_SYNC_SERVER_PORT, "9474");
   assert.equal(staging.GTD_SYNC_SERVER_PUBLIC_BASE_URL, "http://127.0.0.1:9474");
+  assert.equal(staging.GTD_SYNC_SERVER_DEPLOYMENT_ENVIRONMENT, "staging");
+  assert.equal(staging.GTD_GOOGLE_CALENDAR_PROJECTION_ENABLED, "false");
+  assert.equal(staging.GTD_SYNC_SERVER_GOOGLE_CALLBACK_LISTENER_ENABLED, "false");
+  assert.equal(staging.GTD_CLIENT_AUTO_UPDATE_ENABLED, "false");
 });

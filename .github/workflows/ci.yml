@@ -208,8 +208,8 @@ jobs:
           if-no-files-found: error
           retention-days: 3
 
-  publish-main:
-    name: Publish Main Update
+  publish-staging:
+    name: Publish Staging Candidate
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs:
       - check
@@ -271,26 +271,42 @@ jobs:
             '{version: $version, revision: $revision, archiveName: $archiveName, checksumName: $checksumName, cliArchiveName: $cliArchiveName, cliChecksumName: $cliChecksumName, clientArchiveName: $clientArchiveName, clientChecksumName: $clientChecksumName}' \
             > rolling-native/main-update.json
 
-      - name: Publish rolling main release
+      - name: Publish immutable candidate for this commit
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release view main-latest >/dev/null 2>&1 || \
-            gh release create main-latest \
-              --prerelease \
-              --target main \
-              --title "GTD on Rails main" \
-              --notes "Rolling build from the latest validated main commit."
-          gh release edit main-latest \
-            --prerelease \
-            --title "GTD on Rails main" \
-            --notes "Rolling build for commit ${GITHUB_SHA}."
-          gh release upload main-latest \
-            rolling-native/*.tar.gz \
-            rolling-native/*.tar.gz.sha256 \
-            rolling-cli/*.tar.gz \
-            rolling-cli/*.tar.gz.sha256 \
-            rolling-client/*.tar.gz \
-            rolling-client/*.tar.gz.sha256 \
-            rolling-native/main-update.json \
+          set -euo pipefail
+          candidate="candidate-${GITHUB_SHA}"
+          if ! gh release view "$candidate" >/dev/null 2>&1; then
+            gh release create "$candidate" \
+              --draft --target "$GITHUB_SHA" \
+              --title "GTD on Rails staging candidate ${GITHUB_SHA}" \
+              --notes "CI-validated binaries. Production requires manual promotion."
+            gh release upload "$candidate" \
+              rolling-native/*.tar.gz rolling-native/*.tar.gz.sha256 \
+              rolling-cli/*.tar.gz rolling-cli/*.tar.gz.sha256 \
+              rolling-client/*.tar.gz rolling-client/*.tar.gz.sha256 \
+              rolling-native/main-update.json
+            gh release edit "$candidate" --draft=false --prerelease
+          fi
+
+      - name: Publish rolling staging channel
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release view staging-latest >/dev/null 2>&1 || \
+            gh release create staging-latest \
+              --prerelease --target "${GITHUB_SHA}" \
+              --title "GTD on Rails staging" \
+              --notes "Unapproved build for staging validation."
+          gh release upload staging-latest \
+            rolling-native/*.tar.gz rolling-native/*.tar.gz.sha256 \
+            rolling-cli/*.tar.gz rolling-cli/*.tar.gz.sha256 \
+            rolling-client/*.tar.gz rolling-client/*.tar.gz.sha256 \
             --clobber
+          # Publish last so staging updaters only see a manifest once binaries exist.
+          gh release upload staging-latest rolling-native/main-update.json --clobber
+          gh release edit staging-latest --prerelease --target "${GITHUB_SHA}" \
+            --title "GTD on Rails staging" \
+            --notes "Candidate ${GITHUB_SHA}. Not promoted to production."
