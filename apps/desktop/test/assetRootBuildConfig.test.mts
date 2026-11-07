@@ -15,4 +15,7 @@ test("staging builds keep asset previews inside the staging data directory", asy
   const packageJson = await readFile(new URL("../package.json", import.meta.url), "utf8");
   assert.match(packageJson, /"desktop:build:staging": "VITE_DATA_ROOT_DIRECTORY_NAME=staging-gtd-on-rails/);
   assert.match(packageJson, /"desktop:build:staging-reset": "VITE_DATA_ROOT_DIRECTORY_NAME=staging-gtd-on-rails/);
+  const scripts = JSON.parse(packageJson).scripts;
+  assert.match(scripts["desktop:build:staging"], /--config src-tauri\/tauri\.staging\.conf\.json/);
+  assert.match(scripts["desktop:build:staging-reset"], /--config src-tauri\/tauri\.staging\.conf\.json/);
 });

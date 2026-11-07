@@ -78,7 +78,10 @@ pub struct NativeUpdateRequest {
 }
 
 #[tauri::command]
-pub fn native_update_check() -> Result<NativeUpdateStatus, String> {
+pub fn native_update_check(app: AppHandle) -> Result<NativeUpdateStatus, String> {
+    if !native_updates_allowed(&app.config().identifier) {
+        return Ok(disabled_native_update_status());
+    }
     recover_native_installation()?;
     let release = fetch_main_release()?;
     let manifest = fetch_main_manifest(&release.assets)?;
@@ -97,6 +100,24 @@ pub fn native_update_check() -> Result<NativeUpdateStatus, String> {
         &manifest,
         &release.assets,
     )
+}
+
+fn native_updates_allowed(identifier: &str) -> bool {
+    identifier == "com.gtdonrails.desktop"
+}
+
+fn disabled_native_update_status() -> NativeUpdateStatus {
+    NativeUpdateStatus {
+        available: false,
+        current_version: env!("CARGO_PKG_VERSION").to_string(),
+        current_revision: current_build_revision(),
+        latest_version: env!("CARGO_PKG_VERSION").to_string(),
+        latest_revision: current_build_revision(),
+        archive_name: None,
+        archive_url: None,
+        checksum_name: None,
+        checksum_url: None,
+    }
 }
 
 fn current_build_revision() -> String {
@@ -157,6 +178,9 @@ fn local_share_dir(name: &str) -> Result<PathBuf, String> {
 
 #[tauri::command]
 pub fn native_update_install(app: AppHandle, request: NativeUpdateRequest) -> Result<(), String> {
+    if !native_updates_allowed(&app.config().identifier) {
+        return Err("Native updates are disabled outside the production desktop".to_string());
+    }
     let update_dir = native_update_dir(&request.latest_version)?;
     prepare_native_update(&request, &update_dir)?;
     let script_path = write_update_script(&update_dir)?;
@@ -390,6 +414,14 @@ fn shell_quote(value: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn staging_desktop_never_touches_production_native_updates() {
+        assert!(native_updates_allowed("com.gtdonrails.desktop"));
+        assert!(!native_updates_allowed("com.gtdonrails.desktop.staging"));
+        assert!(!native_updates_allowed("com.gtdonrails.desktop.dev"));
+        assert!(!disabled_native_update_status().available);
+    }
 
     #[test]
     fn update_script_installs_core_runtime_only() {

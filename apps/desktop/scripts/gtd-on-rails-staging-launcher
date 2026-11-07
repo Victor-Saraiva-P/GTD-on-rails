@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+home="$HOME"
+install_dir="$home/.local/share/gtd-on-rails-staging"
+config="$home/.config/gtd-on-rails-staging.env"
+[[ -f "$config" && ! -L "$config" ]] ||
+  { echo 'Staging configuration missing or unsafe' >&2; exit 1; }
+[[ "$(stat -c '%a' "$config")" == 600 ]] ||
+  { echo 'Staging configuration must be mode 0600' >&2; exit 1; }
+
+# Never inherit a production token, database directory, or Rclone settings.
+unset GTD_SYNC_SERVER_AUTH_TOKEN GTD_SYNC_SERVER_BASE_URL GTD_DATA_ROOT_DIRECTORY
+unset GTD_DATABASE_ENVIRONMENT GTD_SIDECAR_PROFILES GTD_SYNC_RCLONE_ENABLED
+unset GTD_SYNC_SERVER_ENABLED GTD_CLIENT_AUTO_UPDATE_ENABLED
+while IFS='=' read -r key value || [[ -n "$key" ]]; do
+  case "$key" in
+    GTD_SYNC_SERVER_AUTH_TOKEN|GTD_SYNC_SERVER_BASE_URL|GTD_PRODUCTION_SYNC_SERVER_BASE_URL|GTD_DATA_ROOT_DIRECTORY|GTD_DATABASE_ENVIRONMENT|GTD_SIDECAR_PROFILES|GTD_SYNC_RCLONE_ENABLED|GTD_SYNC_SERVER_ENABLED|GTD_CLIENT_AUTO_UPDATE_ENABLED)
+      export "$key=$value" ;;
+  esac
+done < "$config"
+
+[[ "$GTD_SYNC_SERVER_BASE_URL" == 'http://solanum.tail010544.ts.net:9476' ]] ||
+  { echo 'Staging must target Solanum port 9476' >&2; exit 1; }
+[[ "$GTD_DATA_ROOT_DIRECTORY" == "$home/Documents/staging-gtd-on-rails" ]] ||
+  { echo 'Staging data directory mismatch' >&2; exit 1; }
+[[ "$GTD_DATABASE_ENVIRONMENT" == STAGING && "$GTD_SIDECAR_PROFILES" == staging,sidecar ]] ||
+  { echo 'Staging identity not configured' >&2; exit 1; }
+[[ "$GTD_SYNC_RCLONE_ENABLED" == false ]] ||
+  { echo 'Staging must not enable direct Rclone sync' >&2; exit 1; }
+exec "$install_dir/gtd-on-rails" "$@"
