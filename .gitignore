@@ -12,6 +12,8 @@ build/
 .gradle/
 out/
 *.log
+__pycache__/
+*.pyc
 playwright-report/
 test-results/
 coverage/

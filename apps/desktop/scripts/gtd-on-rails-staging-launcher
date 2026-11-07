@@ -27,4 +27,10 @@ done < "$config"
   { echo 'Staging identity not configured' >&2; exit 1; }
 [[ "$GTD_SYNC_RCLONE_ENABLED" == false ]] ||
   { echo 'Staging must not enable direct Rclone sync' >&2; exit 1; }
+# The updater is isolated from the runtime and never writes production files.
+updater="$home/.local/share/gtd-on-rails-staging-updater/staging-release-updater.py"
+if [[ -f "$updater" ]]; then
+  /usr/bin/python3 "$updater" --target desktop --apply ||
+    printf 'Staging update failed; starting the installed staging version.\n' >&2
+fi
 exec "$install_dir/gtd-on-rails" "$@"
