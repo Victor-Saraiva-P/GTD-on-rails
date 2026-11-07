@@ -8,6 +8,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -20,6 +22,7 @@ public class GoogleCalendarProjectionQueue {
     private final GoogleCalendarProjectionService projection;
     private final GoogleCalendarMirrorStore store;
     private final GoogleCalendarCredentialsStore credentials;
+    private final boolean projectionEnabled;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final AtomicBoolean running = new AtomicBoolean(false);
 
@@ -29,14 +32,18 @@ public class GoogleCalendarProjectionQueue {
     private volatile Instant lastSuccessfulSyncAt;
     private volatile String lastError;
 
+    @Autowired
     public GoogleCalendarProjectionQueue(
         GoogleCalendarProjectionService projection,
         GoogleCalendarMirrorStore store,
-        GoogleCalendarCredentialsStore credentials
+        GoogleCalendarCredentialsStore credentials,
+        @Value("${gtd.sync-server.environment:production}") String environment,
+        @Value("${gtd.sync-server.google-calendar.projection-enabled:true}") boolean enabled
     ) {
         this.projection = projection;
         this.store = store;
         this.credentials = credentials;
+        this.projectionEnabled = enabled && !"staging".equalsIgnoreCase(environment);
         refreshIdleState();
     }
 
@@ -76,6 +83,7 @@ public class GoogleCalendarProjectionQueue {
     }
 
     private void submit() {
+        if (!projectionEnabled) return;
         if (!credentials.credentialsConfigured() || !credentials.connected()) {
             refreshIdleState();
             return;
@@ -131,6 +139,10 @@ public class GoogleCalendarProjectionQueue {
     }
 
     private void refreshIdleState() {
+        if (!projectionEnabled) {
+            state = "DISABLED";
+            return;
+        }
         if (!credentials.credentialsConfigured()) {
             state = "DISABLED";
             return;
@@ -143,6 +155,7 @@ public class GoogleCalendarProjectionQueue {
     }
 
     private String statusState(long pendingCount) {
+        if (!projectionEnabled) return "DISABLED";
         if (running.get()) return "SYNCING";
         if ("FAILED".equals(state) && pendingCount > 0) return "FAILED";
         if (!credentials.credentialsConfigured()) return "DISABLED";

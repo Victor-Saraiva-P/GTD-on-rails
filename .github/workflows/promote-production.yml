@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       revision:
-        description: "40-character Git commit SHA homologated in staging"
+        description: "Exact 40-character SHA homologated in staging"
         required: true
         type: string
       confirmation:
-        description: "Type PROMOTE to confirm production rollout"
+        description: "Type PROMOTE to authorize the production update"
         required: true
         type: string
 
@@ -16,12 +16,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: production-promotion
+  group: gtd-production-promotion
   cancel-in-progress: false
 
 jobs:
   promote:
-    name: Promote exact approved artifacts
+    name: Promote already built artifacts
     runs-on: ubuntu-24.04
     environment: production
     permissions:
@@ -29,40 +29,45 @@ jobs:
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       APPROVED_REVISION: ${{ inputs.revision }}
-      PROMOTION_CONFIRMATION: ${{ inputs.confirmation }}
+      CONFIRMATION: ${{ inputs.confirmation }}
     steps:
-      - name: Checkout main history
+      - name: Checkout commit history
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
 
-      - name: Require explicit approval and a commit from main
+      - name: Verify confirmation and commit ancestry
         shell: bash
         run: |
           set -euo pipefail
-          test "$PROMOTION_CONFIRMATION" = "PROMOTE"
+          test "$CONFIRMATION" = "PROMOTE"
           [[ "$APPROVED_REVISION" =~ ^[a-f0-9]{40}$ ]]
           git fetch origin main
           git merge-base --is-ancestor "$APPROVED_REVISION" origin/main
 
-      - name: Download approved candidate manifest and verify revision
+      - name: Download immutable candidate manifest
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p candidate
-          gh release download staging-latest --pattern main-update.json --dir candidate
+          mkdir candidate
+          candidate_tag="candidate-${APPROVED_REVISION}"
+          target="$(gh release view "$candidate_tag" --json targetCommitish --jq '.targetCommitish')"
+          test "$target" = "$APPROVED_REVISION"
+          gh release download "$candidate_tag" \
+            --pattern main-update.json --dir candidate
           test "$(jq -r '.revision' candidate/main-update.json)" = "$APPROVED_REVISION"
           test "$(jq -r '.version' candidate/main-update.json)" != "null"
 
-      - name: Download and verify the exact staging archives
+      - name: Verify all candidate archive checksums
         shell: bash
         run: |
           set -euo pipefail
+          candidate_tag="candidate-${APPROVED_REVISION}"
           for key in archiveName checksumName cliArchiveName cliChecksumName clientArchiveName clientChecksumName; do
             file="$(jq -r --arg key "$key" '.[$key]' candidate/main-update.json)"
-            [[ "$file" =~ ^[a-zA-Z0-9._-]+$ ]]
+            [[ "$file" =~ ^[A-Za-z0-9._-]+$ ]]
             test "$file" != "null"
-            gh release download staging-latest --pattern "$file" --dir candidate
+            gh release download "$candidate_tag" --pattern "$file" --dir candidate
           done
           (
             cd candidate
@@ -71,27 +76,23 @@ jobs:
               sha256sum -c "$checksum"
             done
           )
-          # Abort if a concurrent CI publish replaced the candidate while downloading it.
-          gh release download staging-latest --pattern main-update.json --dir "$RUNNER_TEMP" --clobber
-          cmp candidate/main-update.json "$RUNNER_TEMP/main-update.json"
 
-      - name: Publish immutable binaries before switching production manifest
+      - name: Upload approved artifacts to the production channel
         shell: bash
         run: |
           set -euo pipefail
-          gh release view main-latest >/dev/null 2>&1 || gh release create main-latest \
-            --prerelease --target "$APPROVED_REVISION" \
-            --title "GTD on Rails production" \
-            --notes "Production artifacts require explicit staging approval."
-          gh release edit main-latest \
-            --prerelease --target "$APPROVED_REVISION" \
-            --title "GTD on Rails production" \
-            --notes "Promoted from staging revision $APPROVED_REVISION."
+          gh release view main-latest >/dev/null 2>&1 || \
+            gh release create main-latest --prerelease --target "$APPROVED_REVISION" \
+              --title "GTD on Rails production" \
+              --notes "Production packages are promoted from CI-validated staging."
           files=()
           for key in archiveName checksumName cliArchiveName cliChecksumName clientArchiveName clientChecksumName; do
             name="$(jq -r --arg key "$key" '.[$key]' candidate/main-update.json)"
             files+=("candidate/$name")
           done
           gh release upload main-latest "${files[@]}" --clobber
-          # The updater reads this manifest: upload it LAST to activate the candidate.
+          # This manifest is the release pointer consumed by production updaters.
           gh release upload main-latest candidate/main-update.json --clobber
+          gh release edit main-latest --prerelease --target "$APPROVED_REVISION" \
+            --title "GTD on Rails production" \
+            --notes "Approved staging candidate ${APPROVED_REVISION}."

@@ -2,6 +2,8 @@ package com.gtdonrails.syncserver;
 
 import java.nio.file.Path;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -13,10 +15,24 @@ public class BackupController {
 
     private final SnapshotBackupService backups;
     private final SnapshotRestoreService restores;
+    private final String environment;
 
-    public BackupController(SnapshotBackupService backups, SnapshotRestoreService restores) {
+    public BackupController(
+        SnapshotBackupService backups,
+        SnapshotRestoreService restores,
+        @Value("${gtd.sync-server.environment:production}") String environment
+    ) {
         this.backups = backups;
         this.restores = restores;
+        this.environment = environment;
+    }
+
+    @GetMapping("/environment")
+    public EnvironmentResponse environment() {
+        return new EnvironmentResponse(environment);
+    }
+
+    public record EnvironmentResponse(String environment) {
     }
 
     @PostMapping

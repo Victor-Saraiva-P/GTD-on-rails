@@ -19,14 +19,16 @@ export function normalizeRuntimeEnvironment(value = "dev") {
 
 export function gtdRuntimeEnvironment(name, baseEnvironment = process.env) {
   const environmentName = normalizeRuntimeEnvironment(name);
+  const syncUrl = baseEnvironment.GTD_SYNC_SERVER_BASE_URL
+    ?? `http://127.0.0.1:${clientPort(environmentName)}`;
+  if (environmentName === "staging") assertStagingSyncUrl(syncUrl, baseEnvironment);
   return {
     ...baseEnvironment,
     PATH: fixedExecutablePath,
     GTD_DATA_ROOT_DIRECTORY: gtdDataRoot(environmentName, baseEnvironment),
     GTD_DATABASE_ENVIRONMENT: databaseEnvironment(environmentName),
     GTD_SYNC_SERVER_ENABLED: baseEnvironment.GTD_SYNC_SERVER_ENABLED ?? "true",
-    GTD_SYNC_SERVER_BASE_URL: baseEnvironment.GTD_SYNC_SERVER_BASE_URL
-      ?? `http://127.0.0.1:${clientPort(environmentName)}`,
+    GTD_SYNC_SERVER_BASE_URL: syncUrl,
     APP_CORS_ALLOWED_ORIGINS: "http://127.0.0.1:1420,http://localhost:1420",
     VITE_DATA_ROOT_DIRECTORY_NAME: dataRootName(environmentName)
   };
@@ -41,7 +43,13 @@ export function clientRuntimeEnvironment(name, baseEnvironment = process.env) {
     GTD_SYNC_SERVER_BIND_ADDRESS: baseEnvironment.GTD_SYNC_SERVER_BIND_ADDRESS ?? "127.0.0.1",
     GTD_SYNC_SERVER_PORT: baseEnvironment.GTD_SYNC_SERVER_PORT ?? String(clientPort(environmentName)),
     GTD_SYNC_SERVER_PUBLIC_BASE_URL: baseEnvironment.GTD_SYNC_SERVER_PUBLIC_BASE_URL
-      ?? `http://127.0.0.1:${clientPort(environmentName)}`
+      ?? `http://127.0.0.1:${clientPort(environmentName)}`,
+    GTD_SYNC_SERVER_DEPLOYMENT_ENVIRONMENT: environmentName,
+    GTD_GOOGLE_CALENDAR_PROJECTION_ENABLED: environmentName === "staging" ? "false" : "true",
+    GTD_SYNC_SERVER_GOOGLE_CALLBACK_LISTENER_ENABLED: environmentName === "staging"
+      ? "false" : (baseEnvironment.GTD_SYNC_SERVER_GOOGLE_CALLBACK_LISTENER_ENABLED ?? "false"),
+    GTD_CLIENT_AUTO_UPDATE_ENABLED: environmentName === "staging"
+      ? "false" : (baseEnvironment.GTD_CLIENT_AUTO_UPDATE_ENABLED ?? "true")
   };
 }
 
@@ -94,6 +102,30 @@ export function clientDataRoot(name, environment = process.env) {
   if (override) return override;
   const directory = name === "staging" ? "staging-gtd-sync-server" : "dev-gtd-sync-server";
   return path.join(repositoryRoot, directory);
+}
+
+/**
+ * Rejects staging endpoints that resolve to the configured production sync service.
+ *
+ * @example assertStagingSyncUrl("http://127.0.0.1:9474", {})
+ */
+export function assertStagingSyncUrl(value, environment = process.env) {
+  const production = environment.GTD_PRODUCTION_SYNC_SERVER_BASE_URL
+    ?? "http://solanum.tail010544.ts.net:9475";
+  let stagingOrigin;
+  let productionOrigin;
+  try {
+    stagingOrigin = new URL(value).origin;
+    productionOrigin = new URL(production).origin;
+  } catch {
+    throw new Error(`staging sync URL '${value}' is invalid; expected a fully qualified HTTP(S) URL`);
+  }
+  if (stagingOrigin === productionOrigin || stagingOrigin === "http://127.0.0.1:9475") {
+    throw new Error(`staging sync URL '${value}' is invalid; expected an isolated non-production endpoint`);
+  }
+  if (!/^https?:\/\//.test(value)) {
+    throw new Error(`staging sync URL '${value}' is invalid; expected an HTTP(S) endpoint`);
+  }
 }
 
 export function clientPort(name) {

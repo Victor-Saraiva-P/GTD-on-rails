@@ -68,7 +68,7 @@ Startup sequence:
 4. readiness verifies local SQLite/schema compatibility;
 5. the main workspace opens.
 
-Production desktop, standalone CLI, and sync-client packages use the rolling `main-latest` GitHub prerelease by default. A successful `main` CI run publishes all three archives, their SHA-256 checksums, and a shared `main-update.json`. The desktop and managed sync client compare the manifest Git revision with their current build revision, so multiple builds may share the same SemVer version without being treated as the same build. Versioned GitHub releases remain explicit stable checkpoints and rollback targets.
+Production desktop, standalone CLI, and sync-client packages use the rolling `main-latest` GitHub prerelease by default. Successful `main` CI builds publish a commit-specific `candidate-<sha>` release and the rolling `staging-latest` channel, **not** `main-latest`. A manual, approved production-promotion workflow copies those validated archives and checksums to `main-latest` without rebuilding. The desktop and managed sync client compare the manifest Git revision with their current build revision, so multiple builds may share the same SemVer version without being treated as the same build. Versioned GitHub releases remain explicit stable checkpoints and rollback targets. See [Staging and Promotion](Staging%20and%20Promotion.md).
 
 There is no database setup wizard and no PostgreSQL client-tool installation step.
 
@@ -96,7 +96,7 @@ Rebootstrap always creates a local recovery snapshot before replacing synchroniz
 
 Production distribution remains the native Linux `.tar.gz` package.
 
-To install the latest validated `main` desktop build:
+To install the latest **approved production** desktop build:
 
 ```sh
 make gtd-install
@@ -122,7 +122,7 @@ When the production sync server is restored and rotates `datasetEpoch`, existing
 
 Rebootstrap is a deliberate manual action and is never triggered automatically by the installer. The rebootstrap flow creates a local recovery backup snapshot before replacing synchronized local state.
 
-The rolling `main-latest` publication also includes the standalone `gtd` CLI. Install it without reinstalling the desktop with:
+The manually promoted `main-latest` publication also includes the standalone `gtd` CLI. Install it without reinstalling the desktop with:
 
 ```sh
 make cli-install
@@ -158,7 +158,7 @@ The installer creates `~/.local/share/gtd-on-rails-client`, `~/.local/bin/gtd-cl
 
 The sync dataset remains separate at `~/.local/share/gtd-on-rails-sync-server` by default, so replacing or rolling back client binaries never replaces canonical data.
 
-Managed client installations self-check the rolling `main-latest` publication. The administration dashboard's **Client** tab shows current/latest version, Git revision, and update state and allows manual check/install. Auto-update can be disabled with `GTD_CLIENT_AUTO_UPDATE_ENABLED=false` in `~/.config/gtd-on-rails-client.env`.
+Managed client installations self-check the approved `main-latest` publication. The administration dashboard's **Client** tab shows current/latest version, Git revision, and update state and allows manual check/install. Auto-update can be disabled with `GTD_CLIENT_AUTO_UPDATE_ENABLED=false` in `~/.config/gtd-on-rails-client.env`.
 
 ### Google Calendar diagnostics
 
