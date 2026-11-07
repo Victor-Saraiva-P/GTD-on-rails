@@ -4,7 +4,7 @@ umask 077
 
 version="$(node -p 'require("./package.json").version')"
 release_dir="src-tauri/target/release"
-native_dir="$release_dir/staging-native"
+native_dir="${GTD_STAGING_NATIVE_RELEASE_DIR:-$release_dir/staging-native}"
 package_name="GTD.on.Rails.Staging_$version""_linux-x86_64"
 package_dir="$native_dir/$package_name"
 archive="$native_dir/$package_name.tar.gz"
@@ -26,6 +26,8 @@ install -m 0755 "$release_dir/gtd-api" "$package_dir/gtd-api"
 install -m 0600 "$release_dir/binaries/gtd-api.jar" "$package_dir/binaries/gtd-api.jar"
 install -m 0755 scripts/gtd-on-rails-staging-launcher "$package_dir/gtd-on-rails-launcher"
 install -m 0755 scripts/install-staging-native-linux.sh "$package_dir/install.sh"
+install -m 0600 ../../scripts/staging-release-updater.py "$package_dir/staging-release-updater.py"
+install -m 0600 ../../scripts/install-staging-update-timer.sh "$package_dir/install-staging-update-timer.sh"
 sed -n 's/.*base64,\([^"]*\).*/\1/p' "$logo" | base64 -d > "$package_dir/icon.png"
 [[ -s "$package_dir/icon.png" ]] || { echo "App icon not decoded" >&2; exit 1; }
 printf '%s\n' "$version" > "$package_dir/VERSION"

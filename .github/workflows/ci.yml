@@ -39,6 +39,9 @@ jobs:
       - name: Check app version sync
         run: pnpm version:check
 
+      - name: Test isolated staging release updater
+        run: python3 -B scripts/staging-release-updater.test.py
+
       - name: Install Playwright browser
         run: pnpm --filter @gtd-on-rails/desktop e2e:install:ci
 
@@ -325,6 +328,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
+          latest_main="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')"
+          if [[ "$latest_main" != "$GITHUB_SHA" ]]; then
+            echo "Skipping outdated staging-latest publication ($GITHUB_SHA); main is $latest_main"
+            exit 0
+          fi
           gh release view staging-latest >/dev/null 2>&1 || \
             gh release create staging-latest \
               --prerelease --target "${GITHUB_SHA}" \

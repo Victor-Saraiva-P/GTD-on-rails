@@ -70,6 +70,63 @@ The staging package installer refuses to overwrite a different revision
 without an explicit upgrade procedure; close the staging app before any upgrade.
 Do not run the production `make gtd-install` command for staging.
 
+## Automatic updates of staging releases
+
+Both staging machines poll the rolling `staging-latest` channel without touching
+`main-latest` or production installations. The updater follows the current
+commit SHA to `candidate-<full-sha>`, checks the candidate manifest and commit,
+downloads only the native package for that machine, validates SHA-256, then
+checks the embedded `VERSION` and `REVISION` before replacing binaries.
+
+The **Solanum** `gtd-on-rails-client-staging-update.timer` checks about every
+15 minutes. It stops **only** the staging sync service, copies the staging data
+root and current runtime into an isolated rollback area, starts the verified
+candidate and checks `/health` plus the authenticated
+`/v1/backups/environment`. A failed startup restores the previous staging
+binary **and** data snapshot; production is never stopped. Its separate
+`gtd-on-rails-client.service` is checked for availability before the update.
+
+The **Omarchy** `gtd-on-rails-staging-update.timer` checks about every
+20 minutes. If the staging app or sidecar is running, it defers the update.
+Otherwise it backs up `~/Documents/staging-gtd-on-rails` and replaces only
+`~/.local/share/gtd-on-rails-staging`. It retains the previous installation
+and local data for a manual rollback if the GUI fails to launch after updating.
+Newly packaged desktop launchers also check for a staging update at launch.
+The existing production desktop, CLI, services and credentials are not touched.
+
+To provision a new machine, install the staging package, which now bundles
+`staging-release-updater.py` and creates its staging-only systemd user timer.
+For an existing installation or Solanum provisioned by `server-infra`, use the
+same updater scripts directly:
+
+```sh
+# Examine the latest CI candidate without changing installed files.
+python3 scripts/staging-release-updater.py --target desktop
+python3 scripts/staging-release-updater.py --target server
+
+# Download and fully verify the candidate, without swapping the runtime.
+python3 scripts/staging-release-updater.py --target desktop --verify
+
+# Apply the update only to the requested staging target.
+python3 scripts/staging-release-updater.py --target desktop --apply
+
+# Manual rollback discards staging changes since the pre-upgrade snapshot.
+python3 scripts/staging-release-updater.py --target desktop \
+  --rollback --confirm ROLLBACK_STAGING
+```
+
+Run `--target server` **on Solanum**, never on the Omarchy machine. The
+server-infra repo manages its systemd unit and operational installation.
+Inspect timers with `systemctl --user list-timers` and their results with
+`journalctl --user -u gtd-on-rails-staging-update.service` (Omarchy) or
+`journalctl --user -u gtd-on-rails-client-staging-update.service` (Solanum).
+Retain rollback snapshots only in private staging paths (permissions 0700).
+
+The staging channel's rolling pointer is updated only when the publishing CI
+commit is still the current tip of `main`; late-running older workflows must
+not downgrade staging. No timer copies production data or triggers a refresh:
+that remains the separate, guarded manual snapshot-restore workflow below.
+
 ## Refreshing staging from production
 
 The refresh process uses the existing consistent snapshot/restore APIs rather

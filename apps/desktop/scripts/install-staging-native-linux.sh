@@ -108,6 +108,9 @@ main() {
   write_config "$token"
   unset token
   desktop_integration
+  if [[ -f "$package_dir/staging-release-updater.py" && -f "$package_dir/install-staging-update-timer.sh" ]]; then
+    bash "$package_dir/install-staging-update-timer.sh" desktop "$package_dir/staging-release-updater.py"
+  fi
   echo "Staging desktop installed at $install_dir (revision $revision)"
   echo "Launcher: $launcher"
   echo "Server: Solanum via Tailscale (port 9476)"
