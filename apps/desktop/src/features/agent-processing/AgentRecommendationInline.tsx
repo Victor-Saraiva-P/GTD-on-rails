@@ -5,6 +5,7 @@ import { useAgentProcessing } from "./AgentProcessingProvider";
 import { AgentProcessingStuffStatus } from "./AgentProcessingStatus";
 import { applyRecommendation } from "./applyRecommendation";
 import type { AgentRecommendationOption } from "./types";
+import { reviewKeyAction } from "./reviewKeyAction";
 
 type Props = Readonly<{
   item: Stuff;
@@ -111,14 +112,16 @@ function useReviewShortcuts(
     if (!active) return;
     const onKey = (event: globalThis.KeyboardEvent) => {
       if (hasActiveModalKeybindScope()) return;
-      if (event.key === "Escape" && isTypingInReview(event.target) &&
-          !(event.target instanceof HTMLElement && event.target.closest(".agent-review"))) return;
-      if (event.key === "Escape") close();
-      else if (isTypingInReview(event.target)) return;
-      else if (event.key === "Enter" && !(event.target instanceof HTMLElement && event.target.closest("button"))) void confirm();
-      else if (/^[1-3]$/.test(event.key) && Number(event.key) <= optionCount) choose(Number(event.key) - 1);
-      else if (event.key === "p") manual();
-      else return;
+      const target = event.target instanceof HTMLElement ? event.target : null;
+      const typing = isTypingInReview(event.target);
+      const buttonFocused = Boolean(target?.closest("button"));
+      const insideReview = Boolean(target?.closest(".agent-review"));
+      const action = reviewKeyAction(event.key, optionCount, typing, buttonFocused, insideReview);
+      if (!action) return;
+      if (action === "close") close();
+      else if (action === "confirm") void confirm();
+      else if (action === "manual") manual();
+      else choose(action.select);
       event.preventDefault();
       event.stopPropagation();
     };
