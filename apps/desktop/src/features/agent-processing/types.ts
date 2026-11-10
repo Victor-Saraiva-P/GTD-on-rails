@@ -34,6 +34,7 @@ export type AgentRecommendationOption = {
   kind: AgentRecommendationKind;
   title: string;
   reason: string;
+  body?: string | null;
   energy: number | null;
   minutes: number | null;
   contextIds: string[];
@@ -45,6 +46,8 @@ export type AgentRecommendationOption = {
 export type AgentRecommendation = {
   stuffId: string;
   sourceTitle: string;
+  provider?: ProcessingAgent | null;
+  conversationId?: string | null;
   reason: string;
   questions: string[];
   options: AgentRecommendationOption[];
