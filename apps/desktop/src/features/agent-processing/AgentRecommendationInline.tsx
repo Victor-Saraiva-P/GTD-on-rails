@@ -45,6 +45,11 @@ function useReviewSelection(item: Stuff, recommendation: ReturnType<ReturnType<t
   return { expanded, setExpanded, index, choose, title, setTitle, draft, setDraft };
 }
 
+function displayReviewDate(isoDate: string): string {
+  const [year, month, day] = isoDate.split("-");
+  return `${day}/${month}/${year}`;
+}
+
 function OptionalReviewDate({ label, value, onChange }: Readonly<{
   label: string;
   value: string | null;
@@ -56,11 +61,12 @@ function OptionalReviewDate({ label, value, onChange }: Readonly<{
     <span>{label}</span>
     {value ? <div className="agent-review__date-controls">
       <input aria-label={label} type="date" value={value} onChange={event => chooseDate(event.target.value)} />
+      <span className="agent-review__date-formatted">{displayReviewDate(value)}</span>
       <button type="button" onClick={() => { onChange(null); setAdding(false); }}>Clear date</button>
     </div> : <>
       <span className="agent-review__date-empty">No date suggested</span>
       {!adding ? <button type="button" onClick={() => setAdding(true)}>Add date</button> :
-        <input aria-label={label} type="date" value="" onChange={event => chooseDate(event.target.value)} />}
+        <input aria-label={label} type="date" defaultValue="" onChange={event => chooseDate(event.target.value)} />}
     </>}
   </div>;
 }
@@ -105,6 +111,8 @@ function useReviewShortcuts(
     if (!active) return;
     const onKey = (event: globalThis.KeyboardEvent) => {
       if (hasActiveModalKeybindScope()) return;
+      if (event.key === "Escape" && isTypingInReview(event.target) &&
+          !(event.target instanceof HTMLElement && event.target.closest(".agent-review"))) return;
       if (event.key === "Escape") close();
       else if (isTypingInReview(event.target)) return;
       else if (event.key === "Enter" && !(event.target instanceof HTMLElement && event.target.closest("button"))) void confirm();
