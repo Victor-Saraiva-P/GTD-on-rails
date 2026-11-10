@@ -11,6 +11,8 @@ import { buildApiUrl } from "../../config/env";
 import { ContextNameWithIcon } from "../contexts/ContextNameWithIcon";
 import { ProjectAssociationMarker } from "../projects/ProjectAssociationMarker";
 import { ensureItemBodyLoaded } from "./itemBodyLoader.ts";
+import { AgentReviewBodyDiff, AgentReviewTitleDiff } from "../agent-processing/AgentRecommendationDiff";
+import type { AgentRecommendationOption } from "../agent-processing/types";
 
 const LazyItemBodyMarkdownEditor = lazy(async () => {
   const module = await import("./ItemBodyMarkdownEditor");
@@ -28,13 +30,14 @@ type InboxStuffDetailsProps = Readonly<{
   showCreatedMeta?: boolean;
   metaVariant?: "default" | "next-action" | "calendar";
   headerActions?: ReactNode;
+  reviewOption?: AgentRecommendationOption | null;
 }>;
 
 function initialMetaParts(item: Stuff, showCreatedMeta: boolean): ReactNode[] {
   return showCreatedMeta && item.createdAt ? [`created: ${formatStuffCreatedAt(item.createdAt).toLowerCase()}`] : [];
 }
 
-function InboxDetailHeader({ item, showCreatedMeta = true }: Readonly<Pick<InboxStuffDetailsProps, "item" | "showCreatedMeta">>) {
+function InboxDetailHeader({ item, showCreatedMeta = true, reviewOption }: Readonly<Pick<InboxStuffDetailsProps, "item" | "showCreatedMeta" | "reviewOption">>) {
   let metaParts = initialMetaParts(item, showCreatedMeta);
   
   if (item.energy !== undefined && item.energy !== null) {
@@ -54,7 +57,8 @@ function InboxDetailHeader({ item, showCreatedMeta = true }: Readonly<Pick<Inbox
 
   return (
     <>
-      <h1 className="inbox-detail__title">{item.title}</h1>
+      {reviewOption ? <AgentReviewTitleDiff original={item.title} proposed={reviewOption.title} /> :
+        <h1 className="inbox-detail__title">{item.title}</h1>}
       <p className="inbox-detail__meta"><MetaParts parts={metaParts} /></p>
       <div className="inbox-detail__divider" />
     </>
@@ -162,10 +166,10 @@ function CalendarScheduleMetaRow({ label, value }: Readonly<{ label: string; val
   );
 }
 
-function DetailHeader({ item, metaVariant, showCreatedMeta }: Readonly<Pick<InboxStuffDetailsProps, "item" | "metaVariant" | "showCreatedMeta">>) {
+function DetailHeader({ item, metaVariant, showCreatedMeta, reviewOption }: Readonly<Pick<InboxStuffDetailsProps, "item" | "metaVariant" | "showCreatedMeta" | "reviewOption">>) {
   if (metaVariant === "calendar") return <CalendarDetailHeader item={item} />;
   if (metaVariant === "next-action") return <NextActionDetailHeader item={item} />;
-  return <InboxDetailHeader item={item} showCreatedMeta={showCreatedMeta} />;
+  return <InboxDetailHeader item={item} showCreatedMeta={showCreatedMeta} reviewOption={reviewOption} />;
 }
 
 const ASSET_TOKEN_PATTERN = /(\[\[asset:([0-9a-fA-F-]{36})]]|\[asset:([0-9a-fA-F-]{36})]|⟦asset:([0-9a-fA-F-]{36})⟧)/g;
@@ -329,9 +333,12 @@ function BodyMarkdownSurface(props: InboxStuffDetailsProps) {
 export function InboxStuffDetails(props: InboxStuffDetailsProps) {
   return (
     <div className="inbox-detail">
-      <DetailHeader item={props.item} metaVariant={props.metaVariant} showCreatedMeta={props.showCreatedMeta} />
+      <DetailHeader item={props.item} metaVariant={props.metaVariant} showCreatedMeta={props.showCreatedMeta}
+        reviewOption={props.editing ? null : props.reviewOption} />
       {props.headerActions ? <div style={headerActionsStyle}>{props.headerActions}</div> : null}
-      <BodyMarkdownSurface {...props} />
+      {!props.editing && props.reviewOption?.body != null ?
+        <AgentReviewBodyDiff item={props.item} proposed={props.reviewOption.body} /> :
+        <BodyMarkdownSurface {...props} />}
     </div>
   );
 }
