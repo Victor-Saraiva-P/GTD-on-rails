@@ -60,7 +60,7 @@ export async function removeAgentRecommendation(stuffId: string): Promise<void> 
  *
  * @example await startAgentProcessing(stuff.id, stuff.title)
  */
-export async function startAgentProcessing(stuffId: string, stuffTitle: string): Promise<AgentProcessingRun> {
+export async function startAgentProcessing(stuffId: string, stuffTitle: string, fresh = false): Promise<AgentProcessingRun> {
   if (!isTauriRuntime()) throw new Error("Agent processing requires the native desktop runtime.");
-  return invoke<AgentProcessingRun>("start_agent_processing", { stuffId, stuffTitle });
+  return invoke<AgentProcessingRun>("start_agent_processing", { stuffId, stuffTitle, fresh });
 }
