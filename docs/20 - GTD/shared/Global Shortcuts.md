@@ -64,10 +64,11 @@ These shortcuts are available while an Inbox stuff item is selected and no title
 | Shortcut | Action |
 | --- | --- |
 | `p` | Open the manual GTD processing dialog. |
-| `Space a` | Ask the configured agent to analyze the selected stuff and save a recommendation for human review (without converting the stuff). |
+| `Space a` | Continue the selected Stuff's saved agent session (or start one if none exists), reading its latest title and body before proposing a new recommendation. |
+| `Space A` | Start a fresh agent session for the selected Stuff and discard the previous pending recommendation. |
 | `v` | Focus the pending recommendation for the selected Inbox stuff when one is available. |
 
-Headless agent analysis continues while navigating to other stuff or screens. Active runs remain visible in the shared footer. Completed recommendations appear inline below the Inbox item and are saved locally until explicitly confirmed or dismissed. With the recommendation focused, `1`–`3` selects an alternative, `Enter` confirms the selected alternative, and `Esc` leaves the recommendation pending. The agent never performs the conversion; `p` remains the existing manual processing shortcut.
+Headless agent analysis continues while navigating to other stuff or screens. Active runs remain visible in the shared footer. Completed recommendations appear inline below the Inbox item and are saved locally until explicitly confirmed or dismissed. With the recommendation open, `1`–`3` selects an alternative, `Enter` confirms the selected alternative, `Esc` leaves the recommendation pending, and `p` opens manual processing. These keys work even if keyboard focus is on the Inbox row, but do not override typing in title, body, or date inputs. The review offers editable polished title/body proposals; optional dates are empty unless explicitly suggested and may be cleared. Approved changes apply together with conversion. The agent never performs the conversion; `p` remains the existing manual processing shortcut.
 
 ## Item Navigation
 
