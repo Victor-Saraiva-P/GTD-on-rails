@@ -20,11 +20,27 @@
 .agent-review__clarification strong { color: #d9aa82; }
 .agent-review__clarification p { margin: 0; color: #c1b2a4; }
 .agent-review__clarification span,.agent-review__hint { color: #a59a92; line-height: 1.5; }
+.agent-review__text-preview { display: grid; gap: 7px; min-width: 0; padding-top: 9px; border-top: 1px solid rgba(255,255,255,.09); }
+.agent-review__text-preview-heading { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; color: #c49c7a; }
+.agent-review__text-preview-heading span { font-size: .68rem; color: #978b81; }
+.agent-review__text-preview-heading b:first-child { color: #f29e97; }
+.agent-review__text-preview-heading b:last-of-type { color: #91c89b; margin-left: 8px; }
+.agent-review__diff-file { min-width: 0; border: 1px solid rgba(255,255,255,.1); border-radius: 3px; overflow: hidden; }
+.agent-review__diff-file-heading { display: flex; justify-content: space-between; background: #22201e; color: #bfb3a9; padding: 5px 8px; font-size: .68rem; }
+.agent-review__diff-file-heading span,.agent-review__diff-unchanged { color: #928980; font-size: .68rem; }
+.agent-review__diff-lines { max-height: 175px; overflow: auto; }
+.agent-review__diff-line { display: grid; grid-template-columns: 23px minmax(0, 1fr); padding: 3px 8px 3px 0; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.agent-review__diff-line span:first-child { text-align: center; user-select: none; }
+.agent-review__diff-line--same { color: #a9a09a; }
+.agent-review__diff-line--remove { color: #f2aaa3; background: rgba(225,88,76,.13); }
+.agent-review__diff-line--add { color: #a1d8ad; background: rgba(66,160,92,.15); }
+.agent-review__diff-line--omit { color: #988b81; font-style: italic; background: #22201e; }
+.agent-review__diff-file>button { display: block; width: 100%; padding: 6px; border-top: 1px solid rgba(255,255,255,.09); color: #c49c7a; text-align: center; }
+.agent-review__diff-unchanged { padding: 2px 3px; }
 .agent-review__fields { display: grid; gap: 8px; padding-top: 11px; border-top: 1px solid rgba(255,255,255,.09); }
 .agent-review__fields label { display: grid; gap: 5px; color: #c49c7a; }
-.agent-review__fields input,.agent-review__fields textarea,.agent-review__date input { min-height: 30px; width: 100%; min-width: 0; background: #171717; border: 1px solid rgba(var(--list-accent-rgb), .55); border-radius: 2px; color: #eee; font: inherit; padding: 4px 8px; }
-.agent-review__fields textarea { resize: vertical; min-height: 64px; }
-.agent-review__fields input:focus,.agent-review__fields textarea:focus,.agent-review__date input:focus { outline: 1px solid var(--list-accent); }
+.agent-review__fields input,.agent-review__date input { min-height: 30px; width: 100%; min-width: 0; background: #171717; border: 1px solid rgba(var(--list-accent-rgb), .55); border-radius: 2px; color: #eee; font: inherit; padding: 4px 8px; }
+.agent-review__fields input:focus,.agent-review__date input:focus { outline: 1px solid var(--list-accent); }
 .agent-review__date { display: grid; gap: 5px; color: #c49c7a; }
 .agent-review__date-controls { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; }
 .agent-review__date-controls input { width: auto; flex: 1; }

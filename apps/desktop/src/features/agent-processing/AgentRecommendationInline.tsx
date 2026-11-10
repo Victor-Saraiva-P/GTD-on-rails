@@ -4,6 +4,7 @@ import type { Stuff } from "../inbox/types";
 import { useAgentProcessing } from "./AgentProcessingProvider";
 import { AgentProcessingStuffStatus } from "./AgentProcessingStatus";
 import { applyRecommendation } from "./applyRecommendation";
+import { AgentRecommendationDiff } from "./AgentRecommendationDiff";
 import type { AgentRecommendationOption } from "./types";
 import { reviewKeyAction } from "./reviewKeyAction";
 
@@ -28,22 +29,19 @@ function errorText(error: unknown): string {
 function useReviewSelection(item: Stuff, recommendation: ReturnType<ReturnType<typeof useAgentProcessing>["recommendationForStuff"]>) {
   const [expanded, setExpanded] = useState(false);
   const [index, setIndex] = useState<number | null>(recommendation?.recommendedIndex ?? null);
-  const [title, setTitle] = useState("");
   const [draft, setDraft] = useState<AgentRecommendationOption | null>(null);
   useEffect(() => {
     setIndex(recommendation?.recommendedIndex ?? null);
     const selected = recommendation?.options[recommendation.recommendedIndex ?? -1];
     setDraft(selected ? { ...selected } : null);
-    setTitle(selected?.title ?? item.title);
   }, [recommendation, item.id]);
   function choose(next: number) {
     const option = recommendation?.options[next];
     if (!option) return;
     setIndex(next);
     setDraft({ ...option });
-    setTitle(option.title);
   }
-  return { expanded, setExpanded, index, choose, title, setTitle, draft, setDraft };
+  return { expanded, setExpanded, index, choose, draft, setDraft };
 }
 
 function displayReviewDate(isoDate: string): string {
@@ -72,17 +70,12 @@ function OptionalReviewDate({ label, value, onChange }: Readonly<{
   </div>;
 }
 
-function ReviewFields({ draft, title, onTitle, onDraft }: Readonly<{
+function ReviewFields({ draft, onDraft }: Readonly<{
   draft: AgentRecommendationOption;
-  title: string;
-  onTitle: (title: string) => void;
   onDraft: (option: AgentRecommendationOption) => void;
 }>) {
   const update = (values: Partial<AgentRecommendationOption>) => onDraft({ ...draft, ...values });
   return <div className="agent-review__fields">
-    <label>Title <input aria-label="Proposed title" value={title} onChange={event => onTitle(event.target.value)} /></label>
-    <label>Body (optional) <textarea aria-label="Proposed body" rows={3} placeholder="Leave empty to keep the original body"
-      value={draft.body ?? ""} onChange={event => update({ body: event.target.value || null })} /></label>
     {draft.kind === "next-action" && <>
       <label>Energy (0–10) <input aria-label="Proposed energy" type="number" min="0" max="10" step="0.5" value={draft.energy ?? ""} onChange={event => update({ energy: event.target.value === "" ? null : Number(event.target.value) })} /></label>
       <label>Minutes <input aria-label="Proposed minutes" type="number" min="0" step="1" value={draft.minutes ?? ""} onChange={event => update({ minutes: event.target.value === "" ? null : Number(event.target.value) })} /></label>
@@ -154,7 +147,7 @@ export function AgentRecommendationInline({ item, selected, onConverted, onManua
     if (!recommendation || !review.draft || stale || saving) return;
     setSaving(true); setError(null);
     try {
-      await applyRecommendation(item, review.draft, review.title);
+      await applyRecommendation(item, review.draft, review.draft.title);
       await agent.dismissRecommendation(item.id);
       onConverted(review.draft.kind);
     } catch (cause) { setError(errorText(cause)); }
@@ -208,8 +201,10 @@ export function AgentRecommendationInline({ item, selected, onConverted, onManua
         <div className="agent-review__options">{recommendation.options.map((option, index) =>
           <button key={`${option.kind}-${index}`} className={review.index === index ? "agent-review__option agent-review__option--selected" : "agent-review__option"}
             onClick={() => review.choose(index)}><kbd>{index + 1}</kbd><span><strong>{labels[option.kind]}</strong>{index === recommendation.recommendedIndex ? " · Suggested" : " · Alternative"}<small>{option.reason}</small></span></button>)}</div>
-        {review.draft ? <ReviewFields draft={review.draft} title={review.title} onTitle={review.setTitle} onDraft={review.setDraft} /> :
-          <p className="agent-review__hint">No option selected. You can leave this undecided.</p>}
+        {review.draft ? <>
+          <AgentRecommendationDiff item={item} option={review.draft} />
+          {review.draft.kind !== "someday" && <ReviewFields draft={review.draft} onDraft={review.setDraft} />}
+        </> : <p className="agent-review__hint">No option selected. You can leave this undecided.</p>}
         {error && <p role="alert" className="agent-review__error">{error}</p>}
         <div className="agent-review__actions">
           {review.draft && !stale && <button disabled={saving} onClick={() => void confirm()}>Confirm conversion <kbd>Enter</kbd></button>}
