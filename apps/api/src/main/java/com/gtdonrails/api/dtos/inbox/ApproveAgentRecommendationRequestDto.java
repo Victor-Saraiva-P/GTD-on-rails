@@ -19,6 +19,7 @@ import jakarta.validation.constraints.Size;
 public record ApproveAgentRecommendationRequestDto(
     @NotBlank String kind,
     @NotBlank @Size(max = 500) String title,
+    @Size(max = 100000) String body,
     @DecimalMin("0") @DecimalMax("10") BigDecimal energy,
     @Min(0) Long minutes,
     List<UUID> contextIds,
