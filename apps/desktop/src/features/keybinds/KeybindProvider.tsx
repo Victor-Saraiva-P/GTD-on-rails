@@ -233,6 +233,12 @@ function handleGlobalKeyDown(event: KeyboardEvent, config: KeydownConfig) {
     return;
   }
 
+  // Pending inline agent review owns these keys even when focus remains on the Inbox row.
+  if (document.querySelector('[data-agent-review-active="true"]') &&
+      ["Escape", "Enter", "1", "2", "3", "p"].includes(event.key)) {
+    return;
+  }
+
   if (isTypingTarget(event.target) || event.metaKey || event.altKey) {
     return;
   }
