@@ -10,8 +10,10 @@ const stuff: Stuff = {
 };
 
 class FakeApprovalGateway {
+  bodies: Array<string | null | undefined> = [];
   calls: Array<{ id: string; kind: string; title: string; minutes: number | null; date: string | null }> = [];
   approve: RecommendationApproval = async (id, option, title) => {
+    this.bodies.push(option.body);
     this.calls.push({ id, kind: option.kind, title, minutes: option.minutes, date: option.scheduledDate });
   };
 }
@@ -42,9 +44,17 @@ test("requires a scheduled date before sending any Calendar approval", async () 
   assert.equal(gateway.calls[0].date, "2026-11-03");
 });
 
+test("passes the edited body for an atomic approval without inventing one when absent", async () => {
+  const gateway = new FakeApprovalGateway();
+  await applyRecommendation(stuff, { ...proposal("project"), body: "Polished context and intent." }, "Project outcome", gateway.approve);
+  await applyRecommendation(stuff, proposal("project"), "Unchanged note", gateway.approve);
+  assert.deepEqual(gateway.bodies, ["Polished context and intent.", undefined]);
+});
+
 test("invalid titles and estimates are rejected before persistence", async () => {
   const gateway = new FakeApprovalGateway();
   await assert.rejects(applyRecommendation(stuff, proposal("project"), "   ", gateway.approve), /title/);
   await assert.rejects(applyRecommendation(stuff, { ...proposal("next-action"), minutes: -1 }, "Action", gateway.approve), /Minutes/);
+  await assert.rejects(applyRecommendation(stuff, { ...proposal("project"), body: "a".repeat(100_001) }, "Action", gateway.approve), /body exceeds/);
   assert.deepEqual(gateway.calls, []);
 });

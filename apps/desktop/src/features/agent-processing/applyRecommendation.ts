@@ -29,6 +29,7 @@ export async function applyRecommendation(
   const normalized = title.trim();
   if (!normalized || normalized.length > 500) throw new Error("A proposed title must have 1–500 characters.");
   if (option.kind === "calendar" && !option.scheduledDate) throw new Error("Calendar recommendations require a scheduled date.");
+  if (option.body != null && option.body.length > 100_000) throw new Error("The proposed body exceeds 100000 characters.");
   if (option.energy != null && (!Number.isFinite(option.energy) || option.energy < 0 || option.energy > 10)) throw new Error("Energy must be from 0 to 10.");
   if (option.minutes != null && (!Number.isInteger(option.minutes) || option.minutes < 0)) throw new Error("Minutes must be a nonnegative whole number.");
   await approve(stuff.id, option, normalized);

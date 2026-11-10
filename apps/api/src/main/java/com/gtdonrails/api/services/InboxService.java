@@ -24,6 +24,7 @@ import com.gtdonrails.api.normalizers.ItemTextNormalizer;
 import com.gtdonrails.api.repositories.ContextRepository;
 import com.gtdonrails.api.repositories.ItemRepository;
 import com.gtdonrails.api.types.Title;
+import com.gtdonrails.api.types.ItemBody;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -177,6 +178,7 @@ public class InboxService {
     public void approveAgentRecommendation(UUID id, ApproveAgentRecommendationRequestDto request) {
         Item item = findStuff(id);
         item.setTitle(new Title(itemTextNormalizer.normalizeTitle(request.title())));
+        applyApprovedBody(item, request.body());
         switch (request.kind()) {
             case "next-action" -> convertStuffToNextAction(id, approvedNextAction(request));
             case "project" -> convertStuffToProject(id, new ConvertStuffToProjectRequestDto(request.deadline()));
@@ -184,6 +186,14 @@ public class InboxService {
             case "someday" -> convertStuffToSomedayMaybe(id);
             default -> throw new IllegalArgumentException("invalid GTD recommendation kind '" + request.kind() + "'");
         }
+    }
+
+    private void applyApprovedBody(Item item, String proposedBody) {
+        if (proposedBody == null || proposedBody.equals(item.getBody().text())) return;
+        if (!item.getBody().blockEntities().isEmpty()) {
+            throw new IllegalArgumentException("approved body cannot replace asset-backed content; expected unchanged body");
+        }
+        item.setBody(new ItemBody(proposedBody, null, null, null));
     }
 
     private ConvertStuffToNextActionRequestDto approvedNextAction(ApproveAgentRecommendationRequestDto request) {

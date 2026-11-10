@@ -9,7 +9,7 @@ type AgentProcessingContextValue = {
   runs: TrackedAgentProcessingRun[];
   activeRuns: TrackedAgentProcessingRun[];
   revision: number;
-  start: (stuffId: string, stuffTitle: string) => Promise<void>;
+  start: (stuffId: string, stuffTitle: string, fresh?: boolean) => Promise<void>;
   runForStuff: (stuffId: string) => TrackedAgentProcessingRun | null;
   recommendationForStuff: (stuffId: string) => AgentRecommendation | null;
   dismissRecommendation: (stuffId: string) => Promise<void>;
@@ -80,12 +80,16 @@ export function AgentProcessingProvider({ children }: PropsWithChildren) {
     setRunsByStuff(next);
   }, []);
 
-  const start = useCallback(async (stuffId: string, stuffTitle: string) => {
+  const start = useCallback(async (stuffId: string, stuffTitle: string, fresh = false) => {
     if (isActive(runsRef.current[stuffId])) return;
+    if (fresh) {
+      await removeAgentRecommendation(stuffId);
+      setRecommendations(current => { const next = { ...current }; delete next[stuffId]; return next; });
+    }
     const pending = startingRun(stuffId, stuffTitle);
     replaceRun(stuffId, pending);
     try {
-      const run = await startAgentProcessing(stuffId, stuffTitle);
+      const run = await startAgentProcessing(stuffId, stuffTitle, fresh);
       replaceRun(stuffId, runningRun(pending, run));
     } catch (error) {
       replaceRun(stuffId, { ...pending, state: "failed", activity: errorMessage(error), finishedAt: Date.now() });

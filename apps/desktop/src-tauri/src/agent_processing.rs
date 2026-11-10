@@ -16,7 +16,7 @@ const SETTINGS_FILE: &str = "agent-processing.json";
 const MODEL_CACHE_FILE: &str = "agent-processing-models.json";
 const DEVELOPMENT_API_URL: &str = "http://127.0.0.1:8080";
 const DEFAULT_THINKING: &[&str] = &["low", "medium", "high", "xhigh", "max"];
-use crate::agent_recommendations::{recommendation_prompt, parse_recommendation, save_recommendation, AgentRecommendation};
+use crate::agent_recommendations::{recommendation_prompt, parse_recommendation, previous_agent_session, save_recommendation, AgentRecommendation};
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -156,7 +156,7 @@ pub fn agent_processing_options(refresh: bool) -> Result<AgentProcessingOptions,
 ///
 /// Example: `start_agent_processing(app, id, title)` launches the selected harness and returns immediately.
 #[tauri::command]
-pub fn start_agent_processing(app: tauri::AppHandle, stuff_id: String, stuff_title: String) -> Result<AgentProcessingRun, String> {
+pub fn start_agent_processing(app: tauri::AppHandle, stuff_id: String, stuff_title: String, fresh: bool) -> Result<AgentProcessingRun, String> {
     validate_stuff_identity(&stuff_id, &stuff_title)?;
     let settings = agent_processing_settings()?;
     validate_settings(&settings)?;
@@ -164,8 +164,9 @@ pub fn start_agent_processing(app: tauri::AppHandle, stuff_id: String, stuff_tit
     let run_id = new_run_id(&stuff_id)?;
     let log_path = prepare_run_log(&run_id)?;
     let prompt = recommendation_prompt(&stuff_id, &stuff_title);
+    let session_id = if fresh { None } else { previous_agent_session(&stuff_id, &settings.processor)? };
     let api_url = processing_api_url(&app)?;
-    let mut command = processing_command(&settings.processor, &provider_settings, &prompt)?;
+    let mut command = processing_command(&settings.processor, &provider_settings, &prompt, session_id.as_deref())?;
     configure_processing_command(&mut command, &api_url);
     let child = command.spawn().map_err(|error| format!("{} processing failed to start: {error}", settings.processor))?;
     let run = processing_run(&settings.processor, &provider_settings, &stuff_id, &stuff_title, &run_id, &log_path, child.id());
@@ -184,36 +185,38 @@ fn provider_settings(settings: &AgentProcessingSettings) -> &AgentProviderSettin
     if settings.processor == "codex" { &settings.codex } else { &settings.antigravity }
 }
 
-fn processing_command(provider: &str, settings: &AgentProviderSettings, prompt: &str) -> Result<Command, String> {
-    if provider == "antigravity" { return antigravity_command(settings, prompt); }
-    if provider == "codex" { return codex_command(settings, prompt); }
+fn processing_command(provider: &str, settings: &AgentProviderSettings, prompt: &str, session: Option<&str>) -> Result<Command, String> {
+    if provider == "antigravity" { return antigravity_command(settings, prompt, session); }
+    if provider == "codex" { return codex_command(settings, prompt, session); }
     Err(format!("processing agent '{provider}' is unsupported"))
 }
 
-fn antigravity_command(settings: &AgentProviderSettings, prompt: &str) -> Result<Command, String> {
+fn antigravity_command(settings: &AgentProviderSettings, prompt: &str, session: Option<&str>) -> Result<Command, String> {
     let binary = resolve_binary("agy", &[".local/bin/agy"]).ok_or_else(|| "Antigravity CLI is not installed or discoverable".to_string())?;
-    Ok(build_antigravity_command(binary, settings, prompt))
+    Ok(build_antigravity_command(binary, settings, prompt, session))
 }
 
-fn build_antigravity_command(binary: PathBuf, settings: &AgentProviderSettings, prompt: &str) -> Command {
+fn build_antigravity_command(binary: PathBuf, settings: &AgentProviderSettings, prompt: &str, session: Option<&str>) -> Command {
     let mut command = Command::new(binary);
     command.args(["-p", prompt, "--output-format", "stream-json", "--print-timeout", "10m"]);
+    if let Some(id) = session { command.arg("--conversation").arg(id); }
     if let Some(model) = &settings.model { command.arg("--model").arg(model); }
     if let Some(thinking) = &settings.thinking { command.arg("--effort").arg(thinking); }
     command
 }
 
-fn codex_command(settings: &AgentProviderSettings, prompt: &str) -> Result<Command, String> {
+fn codex_command(settings: &AgentProviderSettings, prompt: &str, session: Option<&str>) -> Result<Command, String> {
     let binary = resolve_codex_binary().ok_or_else(|| "Codex CLI is not installed or discoverable".to_string())?;
-    Ok(build_codex_command(binary, settings, prompt))
+    Ok(build_codex_command(binary, settings, prompt, session))
 }
 
-fn build_codex_command(binary: PathBuf, settings: &AgentProviderSettings, prompt: &str) -> Command {
+fn build_codex_command(binary: PathBuf, settings: &AgentProviderSettings, prompt: &str, session: Option<&str>) -> Command {
     let mut command = Command::new(binary);
     command.args(["exec", "--sandbox", "workspace-write", "--color", "never", "--skip-git-repo-check", "--json"]);
     command.args(["-c", "approval_policy=\"never\"", "-c", "sandbox_workspace_write.network_access=true"]);
     if let Some(model) = &settings.model { command.arg("--model").arg(model); }
     if let Some(thinking) = &settings.thinking { command.arg("-c").arg(format!("model_reasoning_effort=\"{thinking}\"")); }
+    if let Some(id) = session { command.arg("resume").arg(id); }
     command.arg(prompt);
     command
 }
@@ -250,7 +253,7 @@ where F: FnMut(AgentActivity) {
     let settings = agent_processing_settings()?;
     validate_settings(&settings)?;
     let provider = settings.processor.clone();
-    let mut command = processing_command(&provider, provider_settings(&settings), prompt)?;
+    let mut command = processing_command(&provider, provider_settings(&settings), prompt, None)?;
     configure_agent_command(&mut command);
     let mut child = command.spawn().map_err(|error| format!("{provider} agent failed to start: {error}"))?;
     let stdout = child.stdout.take().ok_or_else(|| format!("{provider} agent stdout is unavailable"))?;
@@ -367,6 +370,11 @@ fn emit_processing_finished(app: &tauri::AppHandle, run: AgentProcessingRun, pro
     let response = agent_response(&log);
     let recommendation = if process_success && !denied {
         response.as_ref().and_then(|message| parse_recommendation(message, &run.stuff_id, &run.stuff_title).ok())
+            .map(|mut proposal| {
+                proposal.provider = Some(run.provider.clone());
+                proposal.conversation_id = conversation_id_from_log(&log);
+                proposal
+            })
     } else { None };
     let saved = recommendation.as_ref().is_some_and(|value| save_recommendation(value.clone()).is_ok());
     let finished = AgentProcessingFinished {
@@ -381,6 +389,16 @@ fn emit_processing_finished(app: &tauri::AppHandle, run: AgentProcessingRun, pro
         log_path: run.log_path,
     };
     let _ = app.emit("agent-processing-finished", finished);
+}
+
+fn conversation_id_from_log(log: &str) -> Option<String> {
+    log.lines().find_map(|line| {
+        let value: Value = serde_json::from_str(line).ok()?;
+        let id = value.get("thread_id").or_else(|| value.get("conversation_id"))
+            .or_else(|| value.get("result")?.get("conversation_id"))?.as_str()?;
+        let valid = id.len() == 36 && id.chars().all(|character| character.is_ascii_hexdigit() || character == '-');
+        valid.then(|| id.to_string())
+    })
 }
 
 fn validate_settings(settings: &AgentProcessingSettings) -> Result<(), String> {
@@ -550,7 +568,7 @@ mod tests {
 
     use super::{
         build_antigravity_command, build_codex_command, collect_agent_stderr,
-        exact_json_agent_response, stream_agent_stdout, AgentProviderSettings,
+        conversation_id_from_log, exact_json_agent_response, stream_agent_stdout, AgentProviderSettings,
     };
 
     #[test]
@@ -563,7 +581,7 @@ mod tests {
     #[test]
     fn antigravity_runs_gtd_outside_the_terminal_sandbox() {
         let settings = AgentProviderSettings { model: None, thinking: None };
-        let command = build_antigravity_command(PathBuf::from("agy"), &settings, "process stuff");
+        let command = build_antigravity_command(PathBuf::from("agy"), &settings, "process stuff", None);
         let arguments = command
             .get_args()
             .map(|argument| argument.to_string_lossy().into_owned())
@@ -579,9 +597,33 @@ mod tests {
     }
 
     #[test]
+    fn resumes_only_the_specified_antigravity_conversation() {
+        let settings = AgentProviderSettings { model: None, thinking: None };
+        let command = build_antigravity_command(PathBuf::from("agy"), &settings, "reconsider", Some("12345678-1234-1234-1234-123456789abc"));
+        let arguments = command.get_args().map(|arg| arg.to_string_lossy().into_owned()).collect::<Vec<_>>();
+        assert!(arguments.windows(2).any(|pair| pair == ["--conversation", "12345678-1234-1234-1234-123456789abc"]));
+    }
+
+    #[test]
+    fn resumes_the_correct_codex_thread() {
+        let settings = AgentProviderSettings { model: None, thinking: None };
+        let command = build_codex_command(PathBuf::from("codex"), &settings, "reconsider", Some("12345678-1234-1234-1234-123456789abc"));
+        let arguments = command.get_args().map(|arg| arg.to_string_lossy().into_owned()).collect::<Vec<_>>();
+        assert!(arguments.windows(3).any(|part| part == ["resume", "12345678-1234-1234-1234-123456789abc", "reconsider"]));
+    }
+
+    #[test]
+    fn extracts_each_provider_session_identifier() {
+        let codex = "{\"type\":\"thread.started\",\"thread_id\":\"12345678-1234-1234-1234-123456789abc\"}";
+        let agy = "{\"event\":\"init\",\"conversation_id\":\"11111111-2222-3333-4444-555555555555\"}";
+        assert_eq!(conversation_id_from_log(codex).as_deref(), Some("12345678-1234-1234-1234-123456789abc"));
+        assert_eq!(conversation_id_from_log(agy).as_deref(), Some("11111111-2222-3333-4444-555555555555"));
+    }
+
+    #[test]
     fn codex_emits_json_events_without_the_removed_approval_flag() {
         let settings = AgentProviderSettings { model: None, thinking: None };
-        let command = build_codex_command(PathBuf::from("codex"), &settings, "process stuff");
+        let command = build_codex_command(PathBuf::from("codex"), &settings, "process stuff", None);
         let arguments = command.get_args().map(|value| value.to_string_lossy().into_owned()).collect::<Vec<_>>();
         assert!(arguments.iter().any(|value| value == "--json"));
         assert!(arguments.iter().any(|value| value == "approval_policy=\"never\""));

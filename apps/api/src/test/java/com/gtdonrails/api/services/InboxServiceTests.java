@@ -19,6 +19,7 @@ import java.util.UUID;
 import com.gtdonrails.api.dtos.calendar.ConvertStuffToCalendarRequestDto;
 import com.gtdonrails.api.dtos.inbox.ConvertStuffToNextActionRequestDto;
 import com.gtdonrails.api.dtos.inbox.CreateStuffRequestDto;
+import com.gtdonrails.api.dtos.inbox.ApproveAgentRecommendationRequestDto;
 import com.gtdonrails.api.dtos.inbox.StuffResponseDto;
 import com.gtdonrails.api.dtos.item.ItemTimeRequestDto;
 import com.gtdonrails.api.dtos.project.ConvertStuffToProjectRequestDto;
@@ -223,6 +224,37 @@ class InboxServiceTests {
         verify(itemRepository).save(stuff);
         verify(googleCalendarEventQueueService).requestUpsert(stuffId);
         verify(cacheInvalidationService).evictItemMutation();
+    }
+
+    @Test
+    void approvalAtomicallyAppliesPolishedTitleAndBody() {
+        UUID stuffId = UUID.randomUUID();
+        Item stuff = new Item(new Title("need do the thing"), "a rushed note");
+        when(itemRepository.findByIdAndStatusAndDeletedAtIsNull(stuffId, ItemStatus.STUFF))
+            .thenReturn(Optional.of(stuff));
+
+        inboxService.approveAgentRecommendation(stuffId, new ApproveAgentRecommendationRequestDto(
+            "someday", "Plan the next steps", "Review the available approaches.",
+            null, null, List.of(), null, null, null));
+
+        assertEquals("Plan the next steps", stuff.getTitle().value());
+        assertEquals("Review the available approaches.", stuff.getBody().text());
+        assertEquals(ItemStatus.SOMEDAY_MAYBE, stuff.getStatus());
+        verify(itemRepository).save(stuff);
+    }
+
+    @Test
+    void approvalWithNoBodySuggestionPreservesTheOriginalNote() {
+        UUID stuffId = UUID.randomUUID();
+        Item stuff = new Item(new Title("read"), "Existing text stays");
+        when(itemRepository.findByIdAndStatusAndDeletedAtIsNull(stuffId, ItemStatus.STUFF))
+            .thenReturn(Optional.of(stuff));
+
+        inboxService.approveAgentRecommendation(stuffId, new ApproveAgentRecommendationRequestDto(
+            "project", "Read the manual", null, null, null, List.of(), null, null, null));
+
+        assertEquals("Existing text stays", stuff.getBody().text());
+        assertEquals(ItemStatus.PROJECT, stuff.getStatus());
     }
 
     private ConvertStuffToNextActionRequestDto convertRequest(UUID contextId) {

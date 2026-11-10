@@ -22,8 +22,15 @@
 .agent-review__clarification span,.agent-review__hint { color: #a59a92; line-height: 1.5; }
 .agent-review__fields { display: grid; gap: 8px; padding-top: 11px; border-top: 1px solid rgba(255,255,255,.09); }
 .agent-review__fields label { display: grid; gap: 5px; color: #c49c7a; }
-.agent-review__fields input { min-height: 30px; width: 100%; min-width: 0; background: #171717; border: 1px solid rgba(var(--list-accent-rgb), .55); border-radius: 2px; color: #eee; font: inherit; padding: 4px 8px; }
-.agent-review__fields input:focus { outline: 1px solid var(--list-accent); }
+.agent-review__fields input,.agent-review__fields textarea,.agent-review__date input { min-height: 30px; width: 100%; min-width: 0; background: #171717; border: 1px solid rgba(var(--list-accent-rgb), .55); border-radius: 2px; color: #eee; font: inherit; padding: 4px 8px; }
+.agent-review__fields textarea { resize: vertical; min-height: 64px; }
+.agent-review__fields input:focus,.agent-review__fields textarea:focus,.agent-review__date input:focus { outline: 1px solid var(--list-accent); }
+.agent-review__date { display: grid; gap: 5px; color: #c49c7a; }
+.agent-review__date-controls { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; }
+.agent-review__date-controls input { width: auto; flex: 1; }
+.agent-review__date-empty { color: #97877c; }
+.agent-review__date-formatted { color: #d7d2ce; }
+.agent-review__date button { padding: 4px 8px; border: 1px solid rgba(var(--list-accent-rgb), .4); width: fit-content; }
 .agent-review__context { overflow-wrap: anywhere; color: #92867d; }
 .agent-review__actions { display: flex; flex-wrap: wrap; gap: 4px 10px; border-top: 1px solid rgba(255,255,255,.09); padding-top: 9px; }
 .agent-review__actions button:first-child { color: var(--list-accent); }
