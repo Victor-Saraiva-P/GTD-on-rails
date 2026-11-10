@@ -139,10 +139,10 @@ function openProcessingFromKeybind(controller: InboxWorkspaceController, openPro
   }
 }
 
-function processWithAgentFromKeybind(controller: InboxWorkspaceController, startAgent: (stuffId: string, stuffTitle: string) => Promise<void>) {
+function processWithAgentFromKeybind(controller: InboxWorkspaceController, startAgent: (stuffId: string, stuffTitle: string, fresh?: boolean) => Promise<void>, fresh = false) {
   const item = controller.selectedItem;
   if (!canEditSelectedStuff(controller) || !item) return;
-  runInboxAsyncAction(true, () => startAgent(item.id, item.title), "Failed to start agent processing");
+  runInboxAsyncAction(true, () => startAgent(item.id, item.title, fresh), "Failed to start agent processing");
 }
 
 function openProjectAssociateFromKeybind(controller: InboxWorkspaceController, openProjectAssociate: () => void) {
@@ -167,7 +167,7 @@ function buildInboxBindings(
   openLinkCombo: () => void,
   openAssetCombo: () => void,
   openProcessing: () => void,
-  startAgent: (stuffId: string, stuffTitle: string) => Promise<void>,
+  startAgent: (stuffId: string, stuffTitle: string, fresh?: boolean) => Promise<void>,
   openProjectAssociate: () => void,
   openOwnerProject?: (projectId: string, projectTitle?: string | null) => void,
   projects: Project[] = []
@@ -188,8 +188,10 @@ function buildInboxBindings(
       if (id) (document.getElementById(`agent-review-trigger-${id}`) ?? document.getElementById(`agent-review-root-${id}`))?.focus();
     }),
     inboxBinding("inbox.process-detail", "p", "Process selected stuff", "stuff-detail", () => openProcessingFromKeybind(controller, openProcessing)),
-    inboxBinding("inbox.agent-process-list", "a", "Process selected stuff with configured agent", "inbox-list", () => processWithAgentFromKeybind(controller, startAgent), true, ["a"]),
-    inboxBinding("inbox.agent-process-detail", "a", "Process selected stuff with configured agent", "stuff-detail", () => processWithAgentFromKeybind(controller, startAgent), true, ["a"]),
+    inboxBinding("inbox.agent-process-list", "a", "Continue analysis with configured agent", "inbox-list", () => processWithAgentFromKeybind(controller, startAgent), true, ["a"]),
+    inboxBinding("inbox.agent-process-detail", "a", "Continue analysis with configured agent", "stuff-detail", () => processWithAgentFromKeybind(controller, startAgent), true, ["a"]),
+    inboxBinding("inbox.agent-reset-list", "A", "Start a new agent analysis session", "inbox-list", () => processWithAgentFromKeybind(controller, startAgent, true), true, ["A"]),
+    inboxBinding("inbox.agent-reset-detail", "A", "Start a new agent analysis session", "stuff-detail", () => processWithAgentFromKeybind(controller, startAgent, true), true, ["A"]),
     inboxBinding("inbox.associate-project-list", "P", "Associate to project", "inbox-list", () => openProjectAssociateFromKeybind(controller, openProjectAssociate)),
     inboxBinding("inbox.associate-project-detail", "P", "Associate to project", "stuff-detail", () => openProjectAssociateFromKeybind(controller, openProjectAssociate)),
     inboxBinding("inbox.open-owner-project-list", "d", "Open owner project", "inbox-list", () => openOwnerProjectFromKeybind(controller, openOwnerProject, projects), false, ["g", "d"]),
@@ -221,7 +223,7 @@ function useInboxBindings(
   openLinkCombo: () => void,
   openAssetCombo: () => void,
   openProcessing: () => void,
-  startAgent: (stuffId: string, stuffTitle: string) => Promise<void>,
+  startAgent: (stuffId: string, stuffTitle: string, fresh?: boolean) => Promise<void>,
   openProjectAssociate: () => void,
   openOwnerProject?: (projectId: string, projectTitle?: string | null) => void,
   projects: Project[] = []
