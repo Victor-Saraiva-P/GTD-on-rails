@@ -24,7 +24,9 @@ export function gtdRuntimeEnvironment(name, baseEnvironment = process.env) {
   if (environmentName === "staging") assertStagingSyncUrl(syncUrl, baseEnvironment);
   return {
     ...baseEnvironment,
-    PATH: fixedExecutablePath,
+    // Keep executable resolution restricted while allowing package-manager shims
+    // that invoke "node" through /usr/bin/env to launch under mise/Omarchy.
+    PATH: [path.dirname(process.execPath), path.dirname(resolvePnpmExecutable(baseEnvironment)), fixedExecutablePath].join(path.delimiter),
     GTD_DATA_ROOT_DIRECTORY: gtdDataRoot(environmentName, baseEnvironment),
     GTD_DATABASE_ENVIRONMENT: databaseEnvironment(environmentName),
     GTD_SYNC_SERVER_ENABLED: baseEnvironment.GTD_SYNC_SERVER_ENABLED ?? "true",
@@ -61,7 +63,26 @@ export function clientBuildSpec() {
   return gradleBuildSpec("sync-server");
 }
 
-export function gtdProcessSpecs(name) {
+/**
+ * Resolve the actual pnpm executable from the invoking terminal. The runtime
+ * intentionally uses a restricted PATH, so a bare "pnpm" cannot be relied on.
+ * @example resolvePnpmExecutable({ PATH: "/usr/local/bin:/usr/bin" })
+ */
+export function resolvePnpmExecutable(environment = process.env) {
+  const directories = (environment.PATH ?? "").split(path.delimiter).filter(path.isAbsolute);
+  for (const directory of directories) {
+    const executable = path.join(directory, "pnpm");
+    try {
+      fs.accessSync(executable, fs.constants.X_OK);
+      return executable;
+    } catch {
+      // Check the next PATH entry.
+    }
+  }
+  return "/usr/bin/pnpm";
+}
+
+export function gtdProcessSpecs(name, environment = process.env) {
   const environmentName = normalizeRuntimeEnvironment(name);
   return [
     {
@@ -72,7 +93,7 @@ export function gtdProcessSpecs(name) {
     },
     {
       label: "desktop",
-      command: "/usr/bin/pnpm",
+      command: resolvePnpmExecutable(environment),
       args: ["--filter", "@gtd-on-rails/desktop", "run", desktopScript(environmentName)],
       cwd: repositoryRoot
     }

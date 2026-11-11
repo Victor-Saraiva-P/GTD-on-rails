@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { chmod, mkdtemp, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import {
@@ -11,7 +13,8 @@ import {
   gtdBuildSpec,
   gtdProcessSpecs,
   gtdRuntimeEnvironment,
-  normalizeRuntimeEnvironment
+  normalizeRuntimeEnvironment,
+  resolvePnpmExecutable
 } from "./runtime-config.mjs";
 
 test("runtime environment accepts only dev and staging", () => {
@@ -24,6 +27,7 @@ test("dev GTD runtime uses isolated local data and sync endpoint", () => {
   const environment = gtdRuntimeEnvironment("dev", {});
   assert.equal(path.basename(environment.GTD_DATA_ROOT_DIRECTORY), "dev-gtd-on-rails");
   assert.equal(environment.GTD_DATABASE_ENVIRONMENT, "DEVELOPMENT");
+  assert.equal(environment.PATH.split(path.delimiter)[0], path.dirname(process.execPath));
   assert.equal(environment.GTD_SYNC_SERVER_ENABLED, "true");
   assert.equal(environment.GTD_SYNC_SERVER_BASE_URL, "http://127.0.0.1:9473");
 });
@@ -52,6 +56,18 @@ test("staging rejects the production sync endpoint", () => {
   assert.doesNotThrow(() => assertStagingSyncUrl("https://sync.example.test:9476", {
     GTD_PRODUCTION_SYNC_SERVER_BASE_URL: production
   }));
+});
+
+test("desktop runtime resolves pnpm installed in the invoking user's PATH", async (t) => {
+  const bin = await mkdtemp(path.join(os.tmpdir(), "gtd-pnpm-"));
+  t.after(() => rm(bin, { recursive: true, force: true }));
+  const executable = path.join(bin, "pnpm");
+  await writeFile(executable, "#!/bin/sh\nexit 0\n");
+  await chmod(executable, 0o755);
+  const environment = { PATH: `${bin}:/usr/bin` };
+  assert.equal(resolvePnpmExecutable(environment), executable);
+  assert.equal(gtdProcessSpecs("dev", environment)[1].command, executable);
+  assert.ok(gtdRuntimeEnvironment("dev", environment).PATH.split(path.delimiter).includes(bin));
 });
 
 test("persistent Java runtimes use built jars instead of Gradle bootRun", () => {
