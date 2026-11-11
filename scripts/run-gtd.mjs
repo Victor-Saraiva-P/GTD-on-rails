@@ -1,3 +1,4 @@
+import { mkdir } from "node:fs/promises";
 import {
   gtdBuildSpec,
   gtdProcessSpecs,
@@ -14,12 +15,24 @@ import {
   waitForHttpReady
 } from "./process-runner.mjs";
 
+/** Create the local SQLite parent directory before Spring/Hikari opens gtd.db.
+ * @example await ensureGtdDataRoot("/tmp/my-gtd-development-data")
+ */
+export async function ensureGtdDataRoot(directory) {
+  try {
+    await mkdir(directory, { recursive: true, mode: 0o700 });
+  } catch (error) {
+    throw new Error(`Cannot prepare GTD data directory '${directory}': ${error.message}`, { cause: error });
+  }
+}
+
 export async function startGtd(environmentName = "dev") {
   const normalized = normalizeRuntimeEnvironment(environmentName);
   await assertPortAvailable(runtimePorts.api);
   await assertPortAvailable(runtimePorts.desktop);
 
   const environment = gtdRuntimeEnvironment(normalized);
+  await ensureGtdDataRoot(environment.GTD_DATA_ROOT_DIRECTORY);
   runBuild(gtdBuildSpec(), environment);
   const [apiSpec, desktopSpec] = gtdProcessSpecs(normalized);
   const api = spawnManagedProcess(apiSpec, environment);
