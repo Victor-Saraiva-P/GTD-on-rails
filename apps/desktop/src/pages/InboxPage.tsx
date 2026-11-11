@@ -3,6 +3,7 @@ import { ListView } from "../components/ListView";
 import { ListWorkspace } from "../components/ListWorkspace";
 import { useAgentProcessing } from "../features/agent-processing/AgentProcessingProvider";
 import { AgentRecommendationInline } from "../features/agent-processing/AgentRecommendationInline";
+import { openAgentReviewFromShortcut } from "../features/agent-processing/openAgentReviewFromShortcut";
 import type { AgentRecommendationKind, AgentRecommendationOption } from "../features/agent-processing/types";
 import { selectedReviewOption, updateActiveAgentReview, type ActiveAgentReview } from "../features/agent-processing/reviewPreviewSelection";
 import { RetryState } from "../components/RetryState";
@@ -186,9 +187,8 @@ function buildInboxBindings(
     inboxBinding("inbox.undo-list", "u", "Undo last deletion", "inbox-list", () => void controller.undo()),
     inboxBinding("inbox.undo-detail", "u", "Undo last deletion", "stuff-detail", () => void controller.undo()),
     inboxBinding("inbox.process-list", "p", "Process selected stuff", "inbox-list", () => openProcessingFromKeybind(controller, openProcessing)),
-    inboxBinding("inbox.review-agent-recommendation", "v", "Focus pending agent recommendation", "inbox-list", () => {
-      const id = controller.selectedItem?.id;
-      if (id) (document.getElementById(`agent-review-trigger-${id}`) ?? document.getElementById(`agent-review-root-${id}`))?.focus();
+    inboxBinding("inbox.review-agent-recommendation", "v", "Open pending agent recommendation", "inbox-list", () => {
+      openAgentReviewFromShortcut(controller.selectedItem?.id);
     }),
     inboxBinding("inbox.process-detail", "p", "Process selected stuff", "stuff-detail", () => openProcessingFromKeybind(controller, openProcessing)),
     inboxBinding("inbox.agent-process-list", "a", "Continue analysis with configured agent", "inbox-list", () => processWithAgentFromKeybind(controller, startAgent), true, ["a"]),
