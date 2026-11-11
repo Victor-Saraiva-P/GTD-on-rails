@@ -4,7 +4,6 @@ import type { Stuff } from "../inbox/types";
 import { useAgentProcessing } from "./AgentProcessingProvider";
 import { AgentProcessingStuffStatus } from "./AgentProcessingStatus";
 import { applyRecommendation } from "./applyRecommendation";
-import { AgentRecommendationDiff } from "./AgentRecommendationDiff";
 import type { AgentRecommendationOption } from "./types";
 import { reviewKeyAction } from "./reviewKeyAction";
 
@@ -13,6 +12,7 @@ type Props = Readonly<{
   selected: boolean;
   onConverted: (kind: AgentRecommendationOption["kind"]) => void;
   onManualProcessing: () => void;
+  onReviewPreviewChange?: (stuffId: string, option: AgentRecommendationOption | null) => void;
 }>;
 
 const labels = {
@@ -126,7 +126,7 @@ function useReviewShortcuts(
 /** Places pending AI advice directly beneath the corresponding real Inbox row.
  * @example <AgentRecommendationInline item={stuff} selected onConverted={reload} onManualProcessing={openWizard} />
  */
-export function AgentRecommendationInline({ item, selected, onConverted, onManualProcessing }: Props) {
+export function AgentRecommendationInline({ item, selected, onConverted, onManualProcessing, onReviewPreviewChange }: Props) {
   const agent = useAgentProcessing();
   const recommendation = agent.recommendationForStuff(item.id);
   const run = agent.runForStuff(item.id);
@@ -138,6 +138,11 @@ export function AgentRecommendationInline({ item, selected, onConverted, onManua
   useEffect(() => {
     if (run?.state === "finished" && recommendation) review.setExpanded(true);
   }, [run?.finishedAt, recommendation, review.setExpanded]);
+
+  useEffect(() => {
+    onReviewPreviewChange?.(item.id, selected && review.expanded && !running ? review.draft : null);
+  }, [item.id, selected, review.expanded, review.draft, running, onReviewPreviewChange]);
+  useEffect(() => () => onReviewPreviewChange?.(item.id, null), [item.id, onReviewPreviewChange]);
 
   const stale = recommendation != null && recommendation.sourceTitle !== item.title;
   const abstained = recommendation?.recommendedIndex == null;
@@ -201,10 +206,9 @@ export function AgentRecommendationInline({ item, selected, onConverted, onManua
         <div className="agent-review__options">{recommendation.options.map((option, index) =>
           <button key={`${option.kind}-${index}`} className={review.index === index ? "agent-review__option agent-review__option--selected" : "agent-review__option"}
             onClick={() => review.choose(index)}><kbd>{index + 1}</kbd><span><strong>{labels[option.kind]}</strong>{index === recommendation.recommendedIndex ? " · Suggested" : " · Alternative"}<small>{option.reason}</small></span></button>)}</div>
-        {review.draft ? <>
-          <AgentRecommendationDiff item={item} option={review.draft} />
-          {review.draft.kind !== "someday" && <ReviewFields draft={review.draft} onDraft={review.setDraft} />}
-        </> : <p className="agent-review__hint">No option selected. You can leave this undecided.</p>}
+        {review.draft ? review.draft.kind !== "someday" &&
+          <ReviewFields draft={review.draft} onDraft={review.setDraft} /> :
+          <p className="agent-review__hint">No option selected. You can leave this undecided.</p>}
         {error && <p role="alert" className="agent-review__error">{error}</p>}
         <div className="agent-review__actions">
           {review.draft && !stale && <button disabled={saving} onClick={() => void confirm()}>Confirm conversion <kbd>Enter</kbd></button>}

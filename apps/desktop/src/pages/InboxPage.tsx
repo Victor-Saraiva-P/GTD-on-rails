@@ -3,7 +3,9 @@ import { ListView } from "../components/ListView";
 import { ListWorkspace } from "../components/ListWorkspace";
 import { useAgentProcessing } from "../features/agent-processing/AgentProcessingProvider";
 import { AgentRecommendationInline } from "../features/agent-processing/AgentRecommendationInline";
-import type { AgentRecommendationKind } from "../features/agent-processing/types";
+import { openAgentReviewFromShortcut } from "../features/agent-processing/openAgentReviewFromShortcut";
+import type { AgentRecommendationKind, AgentRecommendationOption } from "../features/agent-processing/types";
+import { selectedReviewOption, updateActiveAgentReview, type ActiveAgentReview } from "../features/agent-processing/reviewPreviewSelection";
 import { RetryState } from "../components/RetryState";
 import { InboxList } from "../features/inbox/InboxList";
 import { InboxStuffDetails } from "../features/inbox/InboxStuffDetails";
@@ -35,6 +37,8 @@ type InboxControllerProps = Readonly<{
   controller: InboxWorkspaceController;
   openProjects?: () => void;
   openManualProcessing?: () => void;
+  onReviewPreviewChange?: (stuffId: string, option: AgentRecommendationOption | null) => void;
+  activeReview?: ActiveAgentReview | null;
 }>;
 
 const LazyMarkdownAssetComboDialog = lazy(async () => {
@@ -183,9 +187,8 @@ function buildInboxBindings(
     inboxBinding("inbox.undo-list", "u", "Undo last deletion", "inbox-list", () => void controller.undo()),
     inboxBinding("inbox.undo-detail", "u", "Undo last deletion", "stuff-detail", () => void controller.undo()),
     inboxBinding("inbox.process-list", "p", "Process selected stuff", "inbox-list", () => openProcessingFromKeybind(controller, openProcessing)),
-    inboxBinding("inbox.review-agent-recommendation", "v", "Focus pending agent recommendation", "inbox-list", () => {
-      const id = controller.selectedItem?.id;
-      if (id) (document.getElementById(`agent-review-trigger-${id}`) ?? document.getElementById(`agent-review-root-${id}`))?.focus();
+    inboxBinding("inbox.review-agent-recommendation", "v", "Open pending agent recommendation", "inbox-list", () => {
+      openAgentReviewFromShortcut(controller.selectedItem?.id);
     }),
     inboxBinding("inbox.process-detail", "p", "Process selected stuff", "stuff-detail", () => openProcessingFromKeybind(controller, openProcessing)),
     inboxBinding("inbox.agent-process-list", "a", "Continue analysis with configured agent", "inbox-list", () => processWithAgentFromKeybind(controller, startAgent), true, ["a"]),
@@ -276,7 +279,7 @@ function selectInboxStuff(controller: InboxWorkspaceController, id: string): voi
   controller.setActiveZone("inbox-list");
 }
 
-function InboxListReady({ controller, openProjects, openManualProcessing }: InboxControllerProps) {
+function InboxListReady({ controller, openProjects, openManualProcessing, onReviewPreviewChange }: InboxControllerProps) {
   const afterConversion = (kind: AgentRecommendationKind) => {
     controller.reload();
     if (kind === "project") openProjects?.();
@@ -294,12 +297,12 @@ function InboxListReady({ controller, openProjects, openManualProcessing }: Inbo
       onCommitEditing={() => commitStuffTitle(controller)}
       onCommitEditingAndContinue={() => commitStuffTitle(controller)}
       onCancelEditing={controller.cancelEditingSelectedStuff}
-      renderAfterItem={(item) => <AgentRecommendationInline key={item.id} item={item} selected={item.id === controller.selectedItem?.id} onConverted={afterConversion} onManualProcessing={() => openManualProcessing?.()} />}
+      renderAfterItem={(item) => <AgentRecommendationInline key={item.id} item={item} selected={item.id === controller.selectedItem?.id} onConverted={afterConversion} onManualProcessing={() => openManualProcessing?.()} onReviewPreviewChange={onReviewPreviewChange} />}
     />
   );
 }
 
-function InboxListBody({ controller, openProjects, openManualProcessing }: InboxControllerProps) {
+function InboxListBody({ controller, openProjects, openManualProcessing, onReviewPreviewChange }: InboxControllerProps) {
   if (controller.isLoading) {
     return <p className="pane-state">Loading inbox...</p>;
   }
@@ -308,16 +311,17 @@ function InboxListBody({ controller, openProjects, openManualProcessing }: Inbox
     return <RetryState message={controller.errorMessage} onRetry={controller.reload} />;
   }
 
-  return controller.stuffs.length === 0 ? <p className="pane-state">Inbox is empty.</p> : <InboxListReady controller={controller} openProjects={openProjects} openManualProcessing={openManualProcessing} />;
+  return controller.stuffs.length === 0 ? <p className="pane-state">Inbox is empty.</p> : <InboxListReady controller={controller} openProjects={openProjects} openManualProcessing={openManualProcessing} onReviewPreviewChange={onReviewPreviewChange} />;
 }
 
-function InboxDetailReady({ controller }: InboxControllerProps) {
+function InboxDetailReady({ controller, activeReview }: InboxControllerProps) {
   const selectedItem = controller.selectedItem;
   if (!selectedItem) return null;
   return (
     <InboxStuffDetails
       item={selectedItem}
       editing={controller.editingBodyId === selectedItem.id}
+      reviewOption={selectedReviewOption(activeReview ?? null, selectedItem.id)}
       onAutosaveEditing={(body) => autosaveStuffBody(controller, body)}
       onCommitEditing={(body) => commitStuffBody(controller, body)}
       onExitEditingFromNormalMode={() => exitBodyEditingFromNormalMode(controller)}
@@ -327,7 +331,7 @@ function InboxDetailReady({ controller }: InboxControllerProps) {
   );
 }
 
-function InboxDetailBody({ controller }: InboxControllerProps) {
+function InboxDetailBody({ controller, activeReview }: InboxControllerProps) {
   if (controller.isLoading) {
     return <p className="pane-state">Loading stuff details...</p>;
   }
@@ -337,35 +341,35 @@ function InboxDetailBody({ controller }: InboxControllerProps) {
   }
 
   return controller.selectedItem ? (
-    <InboxDetailReady controller={controller} />
+    <InboxDetailReady controller={controller} activeReview={activeReview} />
   ) : (
     <p className="pane-state">Select a stuff to inspect its details.</p>
   );
 }
 
-function InboxListView({ controller, openProjects, openManualProcessing }: InboxControllerProps) {
+function InboxListView({ controller, openProjects, openManualProcessing, onReviewPreviewChange }: InboxControllerProps) {
   const listMeta = `${controller.stuffs.length} ${controller.stuffs.length === 1 ? "item" : "items"}`;
 
   return (
     <ListView title="Inbox" meta={listMeta} viewIndex={1} active={controller.activeZone === "inbox-list"} bodyClassName="list-pane__body--flush" className="inbox-pane inbox-pane--list">
-      <InboxListBody controller={controller} openProjects={openProjects} openManualProcessing={openManualProcessing} />
+      <InboxListBody controller={controller} openProjects={openProjects} openManualProcessing={openManualProcessing} onReviewPreviewChange={onReviewPreviewChange} />
     </ListView>
   );
 }
 
-function InboxDetailView({ controller }: InboxControllerProps) {
+function InboxDetailView({ controller, activeReview }: InboxControllerProps) {
   return (
     <ListView title="Stuff Detail" viewIndex={2} active={controller.activeZone === "stuff-detail"} bodyClassName="list-pane__body--detail" className="inbox-pane inbox-pane--detail">
-      <InboxDetailBody controller={controller} />
+      <InboxDetailBody controller={controller} activeReview={activeReview} />
     </ListView>
   );
 }
 
-function InboxViews({ controller, openProjects, openManualProcessing }: InboxControllerProps) {
+function InboxViews({ controller, openProjects, openManualProcessing, onReviewPreviewChange, activeReview }: InboxControllerProps) {
   return (
     <section className="inbox-terminal-layout" aria-label="Inbox">
-      <InboxListView controller={controller} openProjects={openProjects} openManualProcessing={openManualProcessing} />
-      <InboxDetailView controller={controller} />
+      <InboxListView controller={controller} openProjects={openProjects} openManualProcessing={openManualProcessing} onReviewPreviewChange={onReviewPreviewChange} />
+      <InboxDetailView controller={controller} activeReview={activeReview} />
     </section>
   );
 }
@@ -380,6 +384,10 @@ export function InboxPage({ controller, openProjects, openOwnerProject, projects
   const [isLinkComboOpen, setIsLinkComboOpen] = useState(false);
   const [isAssetComboOpen, setIsAssetComboOpen] = useState(false);
   const [isProcessingOpen, setIsProcessingOpen] = useState(false);
+  const [activeReview, setActiveReview] = useState<ActiveAgentReview | null>(null);
+  const onReviewPreviewChange = useCallback((id: string, option: AgentRecommendationOption | null) => {
+    setActiveReview(current => updateActiveAgentReview(current, id, option));
+  }, []);
   const projectAssociate = useProjectAssociateDialog();
   const openLinkCombo = useCallback(() => setIsLinkComboOpen(true), []);
   const openAssetCombo = useCallback(() => setIsAssetComboOpen(true), []);
@@ -422,7 +430,7 @@ export function InboxPage({ controller, openProjects, openOwnerProject, projects
 
   return (
     <ListWorkspace theme={inboxListTheme} currentLabel={inboxListTheme.label} modeLabel={controller.vimMode ?? undefined} titleSearch={titleSearch}>
-      <InboxViews controller={controller} openProjects={openProjects} openManualProcessing={openProcessing} />
+      <InboxViews controller={controller} openProjects={openProjects} openManualProcessing={openProcessing} onReviewPreviewChange={onReviewPreviewChange} activeReview={activeReview} />
       <LeaderMenu />
       <Suspense fallback={null}>
         {isLinkComboOpen ? <LazyMarkdownLinkComboDialog onClose={() => setIsLinkComboOpen(false)} /> : null}
